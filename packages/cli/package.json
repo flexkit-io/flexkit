@@ -1,0 +1,14 @@
+{
+  "name": "@flexkit/cli",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "npm run build -- --watch"
+  },
+  "devDependencies": {
+    "tsup": "^7.2.0",
+    "typescript": "^4.5.2"
+  }
+}

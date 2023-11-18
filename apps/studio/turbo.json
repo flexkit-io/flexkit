@@ -1,0 +1,13 @@
+{
+  "extends": ["//"],
+  "pipeline": {
+    "build": {
+      "dotEnv": [".env.local", ".env"],
+      "env": ["NEXT_PUBLIC_FLEXKIT_PROJECT_ID"]
+    },
+    "dev": {
+      "dotEnv": [".env.local", ".env"],
+      "env": ["NEXT_PUBLIC_FLEXKIT_PROJECT_ID"]
+    }
+  }
+}

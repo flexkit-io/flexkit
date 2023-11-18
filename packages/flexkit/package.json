@@ -1,0 +1,73 @@
+{
+  "name": "@flexkit/studio",
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "tsup src/index.tsx --format esm,cjs --dts --external react",
+    "dev": "tsup src/index.tsx --format esm,cjs --watch --dts --external react",
+    "lint": "eslint \"src/**/*.ts*\"",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "ui:add": "pnpm dlx shadcn-ui@latest add"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.2",
+    "@types/pluralize": "^0.0.32",
+    "@types/ramda": "^0.29.7",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/serviceworker": "^0.0.76",
+    "@types/uuid": "^9.0.6",
+    "autoprefixer": "^10.4.16",
+    "eslint-config-custom": "workspace:*",
+    "next": "13.5.6",
+    "postcss": "^8.4.31",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwind-config": "workspace:*",
+    "tailwindcss": "^3.3.3",
+    "tsconfig": "workspace:*",
+    "tsup": "^7.2.0",
+    "typescript": "^4.5.2"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.8.6",
+    "@hookform/resolvers": "^3.3.2",
+    "@lexical/code": "^0.12.2",
+    "@lexical/html": "^0.12.2",
+    "@lexical/link": "^0.12.2",
+    "@lexical/list": "^0.12.2",
+    "@lexical/markdown": "^0.12.2",
+    "@lexical/react": "^0.12.2",
+    "@lexical/rich-text": "^0.12.2",
+    "@lexical/selection": "^0.12.2",
+    "@lexical/table": "^0.12.2",
+    "@lexical/utils": "^0.12.2",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-toggle": "^1.0.3",
+    "@radix-ui/react-toggle-group": "^1.0.4",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "graphql": "^16.8.1",
+    "lexical": "^0.12.2",
+    "lucide-react": "^0.292.0",
+    "next-themes": "^0.2.1",
+    "pluralize": "^8.0.0",
+    "ramda": "^0.29.1",
+    "react-hook-form": "^7.47.0",
+    "swr": "^2.2.4",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss-animate": "^1.0.7",
+    "uuid": "^9.0.1"
+  },
+  "peerDependencies": {
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  }
+}
