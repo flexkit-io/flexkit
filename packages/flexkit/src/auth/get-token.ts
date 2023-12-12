@@ -1,19 +1,19 @@
-// import { apiPaths } from '../core/api-paths';
+'use server';
 
-export function getToken(code: string): string {
-  // const token: string = await fetch(new URL(apiPaths.sessionId).href, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify({ code }),
-  // })
-  //   .then((res) => res.json())
-  //   .catch((_error) => {
-  //     return '';
-  //   });
+import { apiPaths } from '../core/api-paths';
 
-  // return token;
+export async function getToken(code: string): Promise<{ sid: string }> {
+  const token: { sid: string } = await fetch(new URL(apiPaths.sessionId).href, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ code }),
+  })
+    .then((res) => res.json())
+    .catch((_error) => {
+      return '';
+    });
 
-  return code;
+  return token;
 }

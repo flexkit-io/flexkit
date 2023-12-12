@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext } from 'react';
+import { Loading } from '../ui/components/loading';
 import useAuthService from './use-auth-service';
 import type { Auth, AuthService, User, ProjectConfig } from './types';
 import Login from './login';
@@ -18,7 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
   const [isLoading, auth] = useAuthService();
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <Loading />;
   }
 
   return <AuthContext.Provider value={[isLoading, auth]}>{auth.user?.id ? children : <Login />}</AuthContext.Provider>;

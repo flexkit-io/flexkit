@@ -1,13 +1,6 @@
-import '@flexkit/studio/src/styles.css';
-import { Inter } from 'next/font/google';
+import '@flexkit/studio/styles.css';
+import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
-import { AuthProvider } from '@flexkit/studio';
-
-const inter = Inter({
-  weight: ['400', '600', '700'],
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Flexkit Studio',
@@ -16,18 +9,27 @@ export const metadata: Metadata = {
     width: 'device-width',
     initialScale: 1,
   },
+  icons: {
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    icon: [
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    other: [
+      {
+        rel: 'mask-icon',
+        url: '/safari-pinned-tab.svg',
+      },
+    ],
+  },
+  manifest: '/site.webmanifest',
+  themeColor: '#ffffff',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
-  // const nextCookies = cookies();
-  // const token = nextCookies.get('FKSESSID');
-
   return (
-    <html className={inter.className} lang="en" suppressHydrationWarning>
-      <body>
-        {/* <AuthProvider>{children}</AuthProvider> */}
-        {children}
-      </body>
+    <html className={GeistSans.className} lang="en">
+      <body>{children}</body>
     </html>
   );
 }

@@ -1,5 +1,3 @@
-import './styles.css';
+'use client';
 
-export { AuthProvider } from './auth/auth-context';
-export { FlexkitStudio } from './ui/flexkit-studio';
-export { getToken } from './auth/get-token';
+export { FlexkitStudio } from './core/flexkit-studio';

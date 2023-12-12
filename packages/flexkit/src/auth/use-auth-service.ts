@@ -26,9 +26,13 @@ export default function useAuthService(): AuthService {
         scopes: {}, // schema?.scopes || {},
       },
       logout: async () => {
+        // wipe remote session
         await fetch(apiPaths.logout, { method: 'POST', mode: 'cors' });
 
-        // TODO: delete auth cookie
+        // delete first-party auth cookie
+        await fetch('/api/flexkit/logout', { method: 'GET' });
+
+        window.location.reload();
       },
     },
   ];

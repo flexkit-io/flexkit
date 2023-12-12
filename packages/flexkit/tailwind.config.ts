@@ -13,7 +13,7 @@ const config = {
     },
     extend: {
       fontFamily: {
-        sans: ['var(--font-sans)', ...fontFamily.sans],
+        sans: ['var(--font-geist-sans)', ...fontFamily.sans],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -48,6 +48,16 @@ const config = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+        },
+        bitbucket: {
+          DEFAULT: '#0052CC',
+          foreground: '#FFFFFF',
+          hover: '#1668E2',
+        },
+        github: {
+          DEFAULT: '#24292f',
+          foreground: '#FFFFFF',
+          hover: '#454e5a',
         },
       },
       borderRadius: {

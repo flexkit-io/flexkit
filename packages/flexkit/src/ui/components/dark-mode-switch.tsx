@@ -1,12 +1,22 @@
+import { useState, useEffect } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
+import { ToggleGroup, ToggleGroupItem } from '../primitives/toggle-group';
 
-export function DarkModeSwitch(): JSX.Element {
-  const { setTheme } = useTheme();
+export function DarkModeSwitch(): JSX.Element | null {
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
-    <ToggleGroup size="sm" type="single">
+    <ToggleGroup size="sm" type="single" value={theme}>
       <ToggleGroupItem
         aria-label="Set dark mode"
         onClick={() => {

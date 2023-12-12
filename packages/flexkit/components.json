@@ -10,7 +10,7 @@
     "cssVariables": true
   },
   "aliases": {
-    "components": "src/ui/components",
+    "components": "src/ui/primitives",
     "utils": "src/ui/lib/utils"
   }
 }

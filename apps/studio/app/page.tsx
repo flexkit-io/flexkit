@@ -1,6 +1,7 @@
 'use client';
 
 import { FlexkitStudio } from '@flexkit/studio';
+import config from '../flexkit.config';
 
 export default function Page(): JSX.Element {
   // const appDispatch = useAppDispatch();
@@ -12,5 +13,5 @@ export default function Page(): JSX.Element {
   //   appDispatch({ type: 'SET_BREADCRUMBS', payload: [{ label: 'Dashboard' }] });
   // }, [appDispatch]);
 
-  return <FlexkitStudio />;
+  return <FlexkitStudio config={config} />;
 }

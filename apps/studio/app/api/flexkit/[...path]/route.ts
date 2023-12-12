@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { cookies } from 'next/headers';
 
 /**
  * Catch-all endpoint to re-route API requests to Flexkit.
@@ -12,14 +13,17 @@ const domain = 'api.flexkit.io';
 const apiUrl = `https://${projectId}.${domain}`;
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const token = 'xxxxxxxxxx'; // TODO: get from cookie
+  const cookieStore = cookies();
+  const token = cookieStore.get('sessionToken')?.value;
   const { pathname, search } = request.nextUrl;
-  const path = pathname.replace('/api', '');
+  const path = pathname.replace('/api/flexkit', '');
+
+  console.log(path);
 
   const response = await fetch(`${apiUrl}${path}${search}`, {
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `${token}`,
       'Content-Type': 'application/json',
     },
   });
@@ -30,7 +34,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 async function handler(request: NextRequest): Promise<NextResponse> {
-  const token = 'xxxxxxxxxx'; // TODO: get from cookie
+  const cookieStore = cookies();
+  const token = cookieStore.get('sessionToken')?.value;
   const { pathname, search } = request.nextUrl;
   const path = pathname.replace('/api', '');
   let body;

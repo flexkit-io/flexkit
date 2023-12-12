@@ -4,13 +4,26 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./server": "./dist/server/index.js",
+    "./tailwind.config": "./tailwind.config.ts",
+    "./styles.css": "./dist/index.css"
+  },
+  "typesVersions": {
+    "*": {
+      "server": [
+        "./dist/server/index.d.ts"
+      ]
+    }
+  },
   "sideEffects": false,
   "files": [
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup src/index.tsx --format esm,cjs --dts --external react",
-    "dev": "tsup src/index.tsx --format esm,cjs --watch --dts --external react",
+    "build": "tsup src/index.tsx src/server/index.tsx --format esm,cjs --dts --external react & tailwindcss -i ./src/styles.css -o dist/index.css",
+    "dev": "tsup src/index.tsx src/server/index.tsx --format esm,cjs --watch --dts --external react & tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "ui:add": "pnpm dlx shadcn-ui@latest add"
@@ -48,11 +61,19 @@
     "@lexical/selection": "^0.12.2",
     "@lexical/table": "^0.12.2",
     "@lexical/utils": "^0.12.2",
+    "@radix-ui/react-avatar": "^1.0.4",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-scroll-area": "^1.0.5",
+    "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-slot": "^1.0.2",
+    "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-toggle": "^1.0.3",
     "@radix-ui/react-toggle-group": "^1.0.4",
+    "@radix-ui/react-tooltip": "^1.0.7",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
+    "cmdk": "^0.2.0",
     "graphql": "^16.8.1",
     "lexical": "^0.12.2",
     "lucide-react": "^0.292.0",
@@ -63,7 +84,8 @@
     "swr": "^2.2.4",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "zustand": "^4.4.7"
   },
   "peerDependencies": {
     "@types/react": "^18.0.0",
