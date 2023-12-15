@@ -7,7 +7,7 @@
     },
     "dev": {
       "dotEnv": [".env.local", ".env"],
-      "env": ["NEXT_PUBLIC_FLEXKIT_PROJECT_ID"]
+      "env": ["NEXT_PUBLIC_FLEXKIT_PROJECT_ID", "DEBUG"]
     }
   }
 }

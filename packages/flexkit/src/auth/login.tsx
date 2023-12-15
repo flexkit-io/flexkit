@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import useSWR from 'swr';
 import { Button } from 'src/ui/primitives/button';
 import { DarkModeSwitch } from 'src/ui/components/dark-mode-switch';
@@ -43,7 +44,7 @@ export default function Login(): JSX.Element {
               <p className="text-sm text-muted-foreground">Choose login provider</p>
             </div>
             {data.providers.map((provider: Provider) => (
-              <>
+              <Fragment key={provider.name}>
                 {provider.button.variant === 'link' ? (
                   <a
                     className="text-sm text-center"
@@ -67,7 +68,7 @@ export default function Login(): JSX.Element {
                     </a>
                   </Button>
                 )}
-              </>
+              </Fragment>
             ))}
             <div className="flex flex-col items-center pt-5">
               <svg className="w-[7rem]" fill="none" viewBox="0 0 191 42" xmlns="http://www.w3.org/2000/svg">

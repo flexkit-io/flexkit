@@ -18,8 +18,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
   const path = pathname.replace('/api/flexkit', '');
 
-  console.log(path);
-
   const response = await fetch(`${apiUrl}${path}${search}`, {
     headers: {
       Accept: 'application/json',

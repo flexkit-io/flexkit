@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, MoreHorizontal, PackageCheck, PackageX, Palette, Settings, Wrench } from 'lucide-react';
+import { NavLink, Outlet } from 'react-router-dom';
 import type { AppOptions } from '../../core/config/types';
 import { Button } from '../primitives/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../primitives/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../primitives/tooltip';
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import {
 
 type Props = {
   apps: AppOptions[];
+  activeAppName: string;
   version: {
     current: string;
     latest: string;
@@ -22,12 +23,11 @@ type Props = {
   };
 };
 
-export function AppView({ apps, version }: Props): JSX.Element {
-  // the currently selected app should come via props from the router, since it is reflected in the URL as a path segment
-  const [activeApp, setActiveApp] = useState('desk');
+export function AppView({ apps, activeAppName, version }: Props): JSX.Element {
+  const [activeApp, setActiveApp] = useState(activeAppName);
   const [appBarHeight, setAppBarHeight] = useState(0);
   const [visibleApps, setVisibleApps] = useState<AppOptions[]>(apps);
-  const [additionalApps, setAdditionalApps] = useState<AppOptions[]>([]); // apps that are not visible in the sidebar
+  const [additionalApps, setAdditionalApps] = useState<AppOptions[]>([]); // apps that are not visible in the sidebar due to lack of space
   const appBar = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,129 +63,131 @@ export function AppView({ apps, version }: Props): JSX.Element {
     setAdditionalApps(_additionalApps);
   }, [apps, activeApp, appBarHeight]);
 
-  function onAppChange(value: string): void {
-    setActiveApp(value);
-  }
-
   return (
-    <Tabs
-      className="flex h-full"
-      defaultValue="desk"
-      onValueChange={onAppChange}
-      orientation="vertical"
-      value={activeApp}
-    >
-      <div className="flex flex-col h-full bg-muted" ref={appBar}>
-        <div className="grow">
-          <TabsList className="grid grid-cols-1 w-12 h-auto p-0 rounded-none">
-            <TooltipProvider>
+    <div className="flex h-full">
+      <TooltipProvider>
+        <div className="flex flex-col h-full w-12 bg-muted" ref={appBar}>
+          <div className="grow">
+            <div className="grid grid-cols-1 w-12 h-auto">
               {visibleApps.map((app) => (
-                <Tooltip key={app.name}>
-                  <TooltipTrigger>
-                    <TabsTrigger
-                      className="h-12 p-2 rounded-none border-l-2 data-[state=active]:border-current"
-                      value={app.name}
+                <Button asChild className="h-12 w-12" key={app.name} variant="ghost">
+                  <Tooltip>
+                    <TooltipTrigger
+                      asChild
+                      className="h-12 p-2 rounded-none border-2 border-transparent data-[state=active]:border-l-current focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-2 focus-visible:border-ring focus-visible:rounded-sm"
                     >
-                      {app.icon}
-                    </TabsTrigger>
+                      <NavLink className="aria-[current]:bg-background aria-[current]:border-l-white" to={app.name}>
+                        {app.icon}
+                      </NavLink>
+                    </TooltipTrigger>
                     <TooltipContent side="right">
                       <p>{app.title}</p>
                     </TooltipContent>
-                  </TooltipTrigger>
-                </Tooltip>
-              ))}
-            </TooltipProvider>
-          </TabsList>
-          {additionalApps.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="flex h-12 w-12 p-0 data-[state=open]:bg-muted text-muted-foreground" variant="ghost">
-                  <MoreHorizontal className="w-5 h-5" strokeWidth={1.5} />
-                  <span className="sr-only">View additional apps</span>
+                  </Tooltip>
                 </Button>
+              ))}
+            </div>
+            {/* additional apps */}
+            {additionalApps.length > 0 && (
+              <DropdownMenu>
+                <Tooltip>
+                  <DropdownMenuTrigger asChild>
+                    <TooltipTrigger className="flex justify-center items-center h-12 w-12 p-0 data-[state=open]:bg-muted text-muted-foreground transition-colors focus-visible:outline-none focus-visible:border-2 focus-visible:border-ring focus-visible:rounded-sm">
+                      <MoreHorizontal className="w-5 h-5" strokeWidth={1.5} />
+                      <span className="sr-only">View additional apps</span>
+                      <TooltipContent side="right">
+                        <p>Additional apps</p>
+                      </TooltipContent>
+                    </TooltipTrigger>
+                  </DropdownMenuTrigger>
+                </Tooltip>
+                <DropdownMenuContent align="start" className="w-56" side="right">
+                  {additionalApps.map((app) => (
+                    <DropdownMenuItem
+                      asChild
+                      key={app.name}
+                      onSelect={() => {
+                        setActiveApp(app.name);
+                      }}
+                    >
+                      <NavLink to={app.name}>{app.title}</NavLink>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+          {/* settings button */}
+          <DropdownMenu>
+            <Tooltip>
+              <DropdownMenuTrigger asChild>
+                <TooltipTrigger className="flex justify-center items-center h-12 w-12 p-0 data-[state=open]:bg-muted text-muted-foreground transition-colors focus-visible:outline-none focus-visible:border-2 focus-visible:border-ring focus-visible:rounded-sm">
+                  <Settings className="w-5 h-5" strokeWidth={1.5} />
+                  <span className="sr-only">Settings menu</span>
+                  <TooltipContent side="right">
+                    <p>Settings menu</p>
+                  </TooltipContent>
+                </TooltipTrigger>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56" side="right">
-                {additionalApps.map((app) => (
-                  <DropdownMenuItem
-                    key={app.name}
-                    onSelect={() => {
-                      setActiveApp(app.name);
-                    }}
-                  >
-                    {app.title}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+            </Tooltip>
+            <DropdownMenuContent align="start" className="w-60" side="right">
+              <DropdownMenuItem
+                onSelect={() => {
+                  //
+                }}
+              >
+                <Keyboard className="mr-2 h-4 w-4" />
+                <span>Command Menu</span>
+                <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => {
+                  //
+                }}
+              >
+                <Palette className="mr-2 h-4 w-4" />
+                <span>Theme</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  //
+                }}
+              >
+                <Wrench className="mr-2 h-4 w-4" />
+                <span>Manage project</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={version.isCurrent}
+                onSelect={() => {
+                  if (!version.isCurrent) {
+                    // TODO: open upgrade modal
+                  }
+                }}
+              >
+                {version.isCurrent ? (
+                  <>
+                    <PackageCheck className="mr-2 h-4 w-4" />
+                    <span>Version {version.current}</span>
+                  </>
+                ) : (
+                  <>
+                    <PackageX className="mr-2 h-4 w-4" />
+                    <span>
+                      Version {version.current}.<br />
+                      Upgrade to {version.latest}
+                    </span>
+                  </>
+                )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        {/* settings button */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="flex h-12 w-12 p-0 data-[state=open]:bg-muted text-muted-foreground" variant="ghost">
-              <Settings className="w-5 h-5" strokeWidth={1.5} />
-              <span className="sr-only">Settings menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-60" side="right">
-            <DropdownMenuItem
-              onSelect={() => {
-                //
-              }}
-            >
-              <Keyboard className="mr-2 h-4 w-4" />
-              <span>Command Menu</span>
-              <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() => {
-                //
-              }}
-            >
-              <Palette className="mr-2 h-4 w-4" />
-              <span>Theme</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => {
-                //
-              }}
-            >
-              <Wrench className="mr-2 h-4 w-4" />
-              <span>Manage project</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              disabled={version.isCurrent}
-              onSelect={() => {
-                if (!version.isCurrent) {
-                  // TODO: open upgrade modal
-                }
-              }}
-            >
-              {version.isCurrent ? (
-                <>
-                  <PackageCheck className="mr-2 h-4 w-4" />
-                  <span>Version {version.current}</span>
-                </>
-              ) : (
-                <>
-                  <PackageX className="mr-2 h-4 w-4" />
-                  <span>
-                    Version {version.current}.<br />
-                    Upgrade to {version.latest}
-                  </span>
-                </>
-              )}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      </TooltipProvider>
+      <div className="w-full focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
+        <Outlet />
       </div>
-      {apps.map((app) => (
-        <TabsContent key={app.name} value={app.name}>
-          <app.component />
-        </TabsContent>
-      ))}
-    </Tabs>
+    </div>
   );
 }

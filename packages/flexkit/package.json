@@ -29,6 +29,7 @@
     "ui:add": "pnpm dlx shadcn-ui@latest add"
   },
   "devDependencies": {
+    "@types/debug": "^4.1.12",
     "@types/node": "^20.5.2",
     "@types/pluralize": "^0.0.32",
     "@types/ramda": "^0.29.7",
@@ -74,6 +75,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
+    "debug": "^4.3.4",
     "graphql": "^16.8.1",
     "lexical": "^0.12.2",
     "lucide-react": "^0.292.0",
@@ -81,6 +83,7 @@
     "pluralize": "^8.0.0",
     "ramda": "^0.29.1",
     "react-hook-form": "^7.47.0",
+    "react-router-dom": "^6.21.0",
     "swr": "^2.2.4",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",

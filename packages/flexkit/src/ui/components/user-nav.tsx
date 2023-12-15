@@ -75,7 +75,14 @@ export function UserNav(): JSX.Element {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => {
-            auth.logout();
+            auth
+              .logout()
+              .then(() => {
+                //
+              })
+              .catch(() => {
+                //
+              });
           }}
         >
           Log out

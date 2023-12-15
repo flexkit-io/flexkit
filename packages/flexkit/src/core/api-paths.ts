@@ -12,7 +12,7 @@ const baseUrl = `https://${projectId}.${domain}`;
 export const apiPaths = {
   authProviders: `${baseUrl}/auth/providers`,
   sessionId: `${baseUrl}/auth/session`,
-  currentUser: 'api/flexkit/users/me',
+  currentUser: '/api/flexkit/users/me',
   schema: `${baseUrl}/schema`,
-  logout: `api/flexkit/auth/logout`,
+  logout: `/api/flexkit/auth/logout`,
 };

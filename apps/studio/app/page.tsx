@@ -1,17 +1,14 @@
 'use client';
 
-import { FlexkitStudio } from '@flexkit/studio';
-import config from '../flexkit.config';
+import Link from 'next/link';
 
 export default function Page(): JSX.Element {
-  // const appDispatch = useAppDispatch();
-
-  // TODO: find a better way to set the title and breadcrumbs.
-  // useEffect(() => {
-  //   appDispatch({ type: 'IS_ROUTE_LOADING', payload: false });
-  //   appDispatch({ type: 'SET_TITLE', payload: 'Dashboard' });
-  //   appDispatch({ type: 'SET_BREADCRUMBS', payload: [{ label: 'Dashboard' }] });
-  // }, [appDispatch]);
-
-  return <FlexkitStudio config={config} />;
+  return (
+    <div className="flex flex-col items-center justify-center flex-1">
+      <h1 className="text-6xl font-bold">Hello there!</h1>
+      <p className="text-xl mt-4">
+        This is a Flexkit app. Head over to the <Link href="/studio">Flexkit Studio</Link>
+      </p>
+    </div>
+  );
 }
