@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
  */
 
 export const runtime = 'edge';
+// TODO: the projectId should be passed in as a parameter
 const projectId = process.env.NEXT_PUBLIC_FLEXKIT_PROJECT_ID;
 const domain = 'api.flexkit.io';
 const apiUrl = `https://${projectId}.${domain}`;

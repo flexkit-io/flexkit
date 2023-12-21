@@ -1,11 +1,16 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import useSWR from 'swr';
-import { Button } from 'src/ui/primitives/button';
-import { DarkModeSwitch } from 'src/ui/components/dark-mode-switch';
-import { Loading } from 'src/ui/components/loading';
+import { Navigate, useLocation } from 'react-router-dom';
+import { Button } from '../ui/primitives/button';
+import { DarkModeSwitch } from '../ui/components/dark-mode-switch';
+import { Loading } from '../ui/components/loading';
+import { Label } from '../ui/primitives/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { apiPaths } from '../core/api-paths';
+import { useConfig } from '../core/config/config-context';
+import { useAuth } from './auth-context';
 
 type Provider = {
   name: string;
@@ -21,15 +26,28 @@ type Provider = {
   };
 };
 
-export default function Login(): JSX.Element {
-  const projectId = process.env.NEXT_PUBLIC_FLEXKIT_PROJECT_ID ?? '';
+export function Login(): JSX.Element {
+  const { projects } = useConfig();
+  const [selectedProject, setSelectedProject] = useState(projects[0]);
   const { data, error, isLoading } = useSWR(apiPaths.authProviders, (url: string) =>
     fetch(url, { mode: 'cors' }).then((res) => res.json() as Promise<{ providers: Provider[] }>)
   );
+  const [isAuthLoading, auth] = useAuth();
   const copyrightYear = new Date().getFullYear();
+  const location = useLocation();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- generic "any" typing comes from react-router-dom
+  let fromPath: string = location.state?.from?.pathname ?? `${selectedProject.basePath}/${selectedProject.projectId}`;
 
-  if (isLoading || !data) {
+  if (!fromPath.includes(selectedProject.projectId)) {
+    fromPath = `${selectedProject.basePath}/${selectedProject.projectId}`;
+  }
+
+  if (isLoading || isAuthLoading || !data) {
     return <Loading />;
+  }
+
+  if (auth.user?.id) {
+    return <Navigate replace state={{ from: location }} to={`${selectedProject.basePath}`} />;
   }
 
   if (error) throw error;
@@ -37,40 +55,76 @@ export default function Login(): JSX.Element {
   return (
     <>
       <div className="container relative h-[calc(100vh-3rem)] flex items-center justify-center lg:px-0">
-        <div className="lg:p-8">
-          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-            <div className="flex flex-col space-y-2 text-center">
-              <h1 className="text-2xl font-medium tracking-tight">Login to Flexkit Studio</h1>
-              <p className="text-sm text-muted-foreground">Choose login provider</p>
-            </div>
-            {data.providers.map((provider: Provider) => (
-              <Fragment key={provider.name}>
-                {provider.button.variant === 'link' ? (
-                  <a
-                    className="text-sm text-center"
-                    href={composeLoginHref({ url: provider.url, projectId, basePath: '/api/flexkit/get-token' })}
-                  >
-                    {provider.title}
-                  </a>
-                ) : (
-                  <Button
-                    asChild
-                    className={`${provider.button.color} ${provider.button.backgroundColor} hover:${provider.button.colorHover} hover:${provider.button.backgroundColorHover}`}
-                    key={provider.name}
-                    type="button"
-                    variant={provider.button.variant}
-                  >
-                    <a href={composeLoginHref({ url: provider.url, projectId, basePath: '/api/flexkit/get-token' })}>
-                      {provider.button.iconUrl ? (
-                        <img alt={provider.title} className="w-[20px] h-[20px] mr-2" src={provider.button.iconUrl} />
-                      ) : null}
+        <div className="w-full lg:p-8">
+          <div className="mx-auto flex w-full flex-col justify-center sm:w-[350px]">
+            <h1 className="mb-4 text-2xl text-center font-medium tracking-tight">Login to Flexkit Studio</h1>
+            {projects.length > 1 ? (
+              <div className="flex-col space-y-2 mb-3">
+                <Label className="text-sm text-left text-muted-foreground" htmlFor="project">
+                  Select project
+                </Label>
+                <Select
+                  defaultValue={selectedProject.projectId}
+                  onValueChange={(projectId) => {
+                    setSelectedProject(projects.find((project) => project.projectId === projectId) ?? projects[0]);
+                  }}
+                >
+                  <SelectTrigger className="mb-4 w-full h-9 py-1" id="project">
+                    <SelectValue aria-label={selectedProject.title}>{selectedProject.title}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project) => (
+                      <SelectItem key={project.projectId} value={project.projectId}>
+                        {project.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <p className="mt-2 mb-2 text-sm text-left text-muted-foreground">Choose login provider</p>
+            <div className="flex flex-col space-y-6">
+              {data.providers.map((provider: Provider) => (
+                <Fragment key={provider.name}>
+                  {provider.button.variant === 'link' ? (
+                    <a
+                      className="text-sm text-center"
+                      href={composeLoginHref({
+                        url: provider.url,
+                        projectId: selectedProject.projectId,
+                        basePath: '/api/flexkit/get-token',
+                        fromPath,
+                      })}
+                    >
                       {provider.title}
                     </a>
-                  </Button>
-                )}
-              </Fragment>
-            ))}
-            <div className="flex flex-col items-center pt-5">
+                  ) : (
+                    <Button
+                      asChild
+                      className={`${provider.button.color} ${provider.button.backgroundColor} hover:${provider.button.colorHover} hover:${provider.button.backgroundColorHover}`}
+                      key={provider.name}
+                      type="button"
+                      variant={provider.button.variant}
+                    >
+                      <a
+                        href={composeLoginHref({
+                          url: provider.url,
+                          projectId: selectedProject.projectId,
+                          basePath: '/api/flexkit/get-token',
+                          fromPath,
+                        })}
+                      >
+                        {provider.button.iconUrl ? (
+                          <img alt={provider.title} className="w-[20px] h-[20px] mr-2" src={provider.button.iconUrl} />
+                        ) : null}
+                        {provider.title}
+                      </a>
+                    </Button>
+                  )}
+                </Fragment>
+              ))}
+            </div>
+            <div className="flex flex-col items-center pt-8">
               <svg className="w-[7rem]" fill="none" viewBox="0 0 191 42" xmlns="http://www.w3.org/2000/svg">
                 <path
                   d="M59.2923 38.5263H52.7518V19.433H49.5653V12.9332H52.7518V11.7145C52.7518 10.1373 53.0471 8.65569 53.638 7.26967C54.245 5.88368 55.0677 4.68089 56.1058 3.66131C57.16 2.62579 58.3817 1.81331 59.7713 1.22386C61.1609 0.618477 62.6464 0.315788 64.2276 0.315788H69.1388V6.81564H64.2276C63.5247 6.81564 62.8698 6.9431 62.2628 7.19798C61.6719 7.43696 61.1528 7.77948 60.7057 8.22554C60.2746 8.65569 59.9311 9.17344 59.6756 9.77882C59.4201 10.3683 59.2923 11.0135 59.2923 11.7145V12.9332H67.3182V19.433H59.2923V38.5263Z"
@@ -157,12 +211,14 @@ interface CreateHrefForProviderOptions {
   projectId: string;
   url: string;
   basePath: string;
+  fromPath: string;
 }
 
-function composeLoginHref({ projectId, url, basePath }: CreateHrefForProviderOptions): string {
+function composeLoginHref({ projectId, url, basePath, fromPath }: CreateHrefForProviderOptions): string {
   const params = new URLSearchParams();
   params.set('origin', `${location.origin}${basePath}`);
   params.set('projectId', projectId);
+  params.set('redirect', fromPath);
 
   return `${url}?${params.toString()}`;
 }

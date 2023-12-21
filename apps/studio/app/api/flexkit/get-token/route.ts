@@ -4,12 +4,13 @@ export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code') ?? '';
   const token = await getToken(code);
+  const redirect = searchParams.get('redirect') ?? '/';
 
   return new Response('Redirecting...', {
     status: 307,
     headers: {
       'Set-Cookie': `sessionToken=${token.sid}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=31536000;`,
-      Location: '/', //TODO: redirect to the referer (the user might be logging in from any page, and must return to that page)
+      Location: redirect,
     },
   });
 }
