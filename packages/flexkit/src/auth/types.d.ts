@@ -21,7 +21,7 @@ export type Credentials = {
 export type Auth = {
   user: User | undefined;
   projectConfig: ProjectConfig | null;
-  logout: () => Promise<void>;
+  logout: (projectId: string) => Promise<void>;
 };
 
 export type AuthService = [boolean, Auth];

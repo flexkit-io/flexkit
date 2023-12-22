@@ -1,5 +1,6 @@
 import { defineConfig } from '@flexkit/studio/server';
-import { Image, Layers3, Layout as LayoutIcon, Tag } from 'lucide-react';
+import { Desk } from '@flexkit/studio';
+import { Image, Layers3, Tag } from 'lucide-react';
 
 export default defineConfig([
   {
@@ -14,12 +15,7 @@ export default defineConfig([
         contributes: {
           apps: [
             // <-- this is a list of apps that will be shown in the sidebar. It's an array, because existing apps can't be overwritten.
-            {
-              name: 'desk',
-              icon: <LayoutIcon strokeWidth={1.5} />,
-              title: 'Desk Test',
-              component: <div>Desk</div>,
-            },
+            Desk(),
             {
               name: 'images',
               icon: <Image strokeWidth={1.5} />,

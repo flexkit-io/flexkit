@@ -3,12 +3,10 @@
 import { useEffect, useState } from 'react';
 import { debug } from 'debug';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { AuthProvider } from '../auth/auth-context';
-import { Login } from '../auth/login';
 import { ThemeProvider } from '../ui/theme-context';
 import { Layout } from '../ui/containers/layout';
 import { Root } from '../ui/containers/root';
-import { ConfigProvider, getApps } from './config/config-context';
+import { getApps } from './config/config-context';
 import type { Config, ProjectOptions, SingleProject } from './config/types';
 
 /**
@@ -49,12 +47,8 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
   const router = createBrowserRouter([
     {
       path: '/studio',
-      element: <Root />,
+      element: <Root config={configArray} />,
       children: [
-        {
-          path: '/studio/login',
-          element: <Login />,
-        },
         {
           path: '/studio/:projectId',
           element: <Layout version={{ current: '1.0.0', latest: '1.0.0', isCurrent: true }} />,
@@ -71,11 +65,7 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" disableTransitionOnChange enableSystem>
-      <AuthProvider>
-        <ConfigProvider config={configArray}>
-          <RouterProvider router={router} />
-        </ConfigProvider>
-      </AuthProvider>
+      <RouterProvider router={router} />
     </ThemeProvider>
   );
 }

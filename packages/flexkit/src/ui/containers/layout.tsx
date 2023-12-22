@@ -1,6 +1,9 @@
-import { Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
-// import useSWR from 'swr';
+import { Outlet, useParams } from 'react-router-dom';
+import useSWR from 'swr';
+import type { Fetcher } from 'swr';
 import { useAuth } from '../../auth/auth-context';
+import { Login } from '../../auth/login';
+import { apiPaths } from '../../core/api-paths';
 import { useConfig } from '../../core/config/config-context';
 import { Loading } from '../components/loading';
 import { AppBar } from './app-bar';
@@ -14,20 +17,30 @@ type Props = {
   };
 };
 
+const fetcher = (url: string): Promise<Fetcher> =>
+  fetch(url, { mode: 'cors' }).then((res) => res.json() as Promise<Fetcher>);
+
 export function Layout({ version }: Props): JSX.Element {
   const { contributions, projects } = useConfig();
-  const location = useLocation();
   const [isLoading, auth] = useAuth();
   const { projectId } = useParams();
   const { apps } = contributions;
-  // const { data: schema, isLoading: isLoadingSchema } = useSWR(() => (user ? apiPaths['schema'] : null), fetcher);
+  const {
+    data: schema,
+    isLoading: isLoadingSchema,
+    error,
+  } = useSWR(() => (auth.user?.id ? apiPaths(projectId ?? '').schema : null), fetcher);
 
-  if (isLoading) {
+  if (isLoading || isLoadingSchema) {
     return <Loading />;
   }
 
   if (!auth.user?.id) {
-    return <Navigate replace state={{ from: location }} to="/studio/login" />;
+    return <Login projectId={projectId ?? ''} />;
+  }
+
+  if (error) {
+    throw new Error('Not found');
   }
 
   return (
@@ -36,6 +49,7 @@ export function Layout({ version }: Props): JSX.Element {
       <div className="flex h-full border-t grow shrink">
         <AppBar apps={apps} version={version} />
         <div className="w-full focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
+          {JSON.stringify(schema)}
           <Outlet />
         </div>
       </div>

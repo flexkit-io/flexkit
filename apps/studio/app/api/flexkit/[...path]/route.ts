@@ -8,16 +8,15 @@ import { cookies } from 'next/headers';
  */
 
 export const runtime = 'edge';
-// TODO: the projectId should be passed in as a parameter
-const projectId = process.env.NEXT_PUBLIC_FLEXKIT_PROJECT_ID;
 const domain = 'api.flexkit.io';
-const apiUrl = `https://${projectId}.${domain}`;
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const cookieStore = cookies();
   const token = cookieStore.get('sessionToken')?.value;
   const { pathname, search } = request.nextUrl;
-  const path = pathname.replace('/api/flexkit', '');
+  const [, , , projectId] = pathname.split('/');
+  const apiUrl = `https://${projectId}.${domain}`;
+  const path = pathname.replace(`/api/flexkit/${projectId}`, '');
 
   const response = await fetch(`${apiUrl}${path}${search}`, {
     headers: {
@@ -36,7 +35,9 @@ async function handler(request: NextRequest): Promise<NextResponse> {
   const cookieStore = cookies();
   const token = cookieStore.get('sessionToken')?.value;
   const { pathname, search } = request.nextUrl;
-  const path = pathname.replace('/api', '');
+  const [, , , projectId] = pathname.split('/');
+  const apiUrl = `https://${projectId}.${domain}`;
+  const path = pathname.replace(`/api/flexkit/${projectId}`, '');
   let body;
 
   try {

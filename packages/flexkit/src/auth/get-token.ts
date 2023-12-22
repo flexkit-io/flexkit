@@ -2,8 +2,8 @@
 
 import { apiPaths } from '../core/api-paths';
 
-export async function getToken(code: string): Promise<{ sid: string }> {
-  const token: { sid: string } = await fetch(new URL(apiPaths.sessionId).href, {
+export async function getToken(code: string, projectId: string): Promise<{ sid: string }> {
+  const token: { sid: string } = await fetch(new URL(apiPaths(projectId).sessionId).href, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

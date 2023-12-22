@@ -3,7 +3,8 @@ import { getToken } from '@flexkit/studio/server';
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code') ?? '';
-  const token = await getToken(code);
+  const projectId = searchParams.get('projectId') ?? '';
+  const token = await getToken(code, projectId);
   const redirect = searchParams.get('redirect') ?? '/';
 
   return new Response('Redirecting...', {

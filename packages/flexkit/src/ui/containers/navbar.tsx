@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Logo } from '../components/logo';
 import { UserNav } from '../components/user-nav';
 import { Search } from '../components/search';
@@ -14,6 +15,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
   const [selectedProject, setSelectedProject] = useState(
     projects.find((project) => project.projectId === projectId) ?? projects[0]
   );
+  const navigate = useNavigate();
 
   return (
     <div className="flex basis-14 min-h-[3.5rem] px-3 border-b">
@@ -22,7 +24,11 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
         <Select
           defaultValue={selectedProject.projectId}
           onValueChange={(id) => {
-            setSelectedProject(projects.find((project) => project.projectId === id) ?? projects[0]);
+            const currentProject = projects.find((project) => project.projectId === id) ?? projects[0];
+            const { basePath } = currentProject;
+
+            setSelectedProject(currentProject);
+            navigate(`${basePath}/${currentProject.projectId}`);
           }}
         >
           <SelectTrigger className="w-[12rem] h-9 py-1" id="project">

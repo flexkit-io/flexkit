@@ -26,10 +26,10 @@ type Provider = {
   };
 };
 
-export function Login(): JSX.Element {
+export function Login({ projectId }: { projectId: string }): JSX.Element {
   const { projects } = useConfig();
   const [selectedProject, setSelectedProject] = useState(projects[0]);
-  const { data, error, isLoading } = useSWR(apiPaths.authProviders, (url: string) =>
+  const { data, error, isLoading } = useSWR(apiPaths(projectId).authProviders, (url: string) =>
     fetch(url, { mode: 'cors' }).then((res) => res.json() as Promise<{ providers: Provider[] }>)
   );
   const [isAuthLoading, auth] = useAuth();
@@ -65,8 +65,8 @@ export function Login(): JSX.Element {
                 </Label>
                 <Select
                   defaultValue={selectedProject.projectId}
-                  onValueChange={(projectId) => {
-                    setSelectedProject(projects.find((project) => project.projectId === projectId) ?? projects[0]);
+                  onValueChange={(id) => {
+                    setSelectedProject(projects.find((project) => project.projectId === id) ?? projects[0]);
                   }}
                 >
                   <SelectTrigger className="mb-4 w-full h-9 py-1" id="project">

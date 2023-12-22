@@ -1,17 +1,26 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { AuthProvider } from '../../auth/auth-context';
+import { ConfigProvider } from '../../core/config/config-context';
+import type { ProjectOptions } from '../../core/config/types';
 
-export function Root(): JSX.Element {
+export function Root({ config }: { config: ProjectOptions[] }): JSX.Element {
   // TODO: config must come via prop from flexkit-studio.tsx
-  const config = {
+  const configTmp = {
     basePath: '/studio',
     projectId: 'abcdefghij',
   };
   const location = useLocation();
   const currentPathname = location.pathname;
 
-  if (currentPathname === config.basePath) {
-    window.location.href = `${config.basePath}/${config.projectId}`;
+  if (currentPathname === configTmp.basePath) {
+    window.location.href = `${configTmp.basePath}/${configTmp.projectId}`;
   }
 
-  return <Outlet />;
+  return (
+    <AuthProvider>
+      <ConfigProvider config={config}>
+        <Outlet />
+      </ConfigProvider>
+    </AuthProvider>
+  );
 }
