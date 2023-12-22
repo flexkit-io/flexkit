@@ -4,16 +4,13 @@ import { ConfigProvider } from '../../core/config/config-context';
 import type { ProjectOptions } from '../../core/config/types';
 
 export function Root({ config }: { config: ProjectOptions[] }): JSX.Element {
-  // TODO: config must come via prop from flexkit-studio.tsx
-  const configTmp = {
-    basePath: '/studio',
-    projectId: 'abcdefghij',
-  };
+  const [defaultApp] = config;
+  const { basePath, projectId } = defaultApp;
   const location = useLocation();
   const currentPathname = location.pathname;
 
-  if (currentPathname === configTmp.basePath) {
-    window.location.href = `${configTmp.basePath}/${configTmp.projectId}`;
+  if (currentPathname === basePath) {
+    window.location.href = `${basePath}/${projectId}`;
   }
 
   return (

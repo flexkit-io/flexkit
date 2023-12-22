@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, MoreHorizontal, PackageCheck, PackageX, Palette, Settings, Wrench } from 'lucide-react';
-import { NavLink, useLocation, useParams } from 'react-router-dom';
+import { NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../primitives/button';
 import type { AppOptions } from '../../core/config/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../primitives/tooltip';
@@ -29,6 +29,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
   const appBar = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { projectId } = useParams();
+  const currentAppSegmentPath = apps.find((app) => location.pathname.includes(`/${projectId}/${app.name}`))?.name;
   const activeApp = apps.find((app) => location.pathname.includes(`/${projectId}/${app.name}`))?.name ?? apps[0].name;
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
     return function cleanup() {
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [currentAppSegmentPath]);
 
   useEffect(() => {
     const availableAppSlots = Math.floor(appBarHeight / 48) - 2;
@@ -63,6 +64,10 @@ export function AppBar({ apps, version }: Props): JSX.Element {
     setVisibleApps(_visibleApps);
     setAdditionalApps(_additionalApps);
   }, [apps, activeApp, appBarHeight]);
+
+  if (currentAppSegmentPath === undefined) {
+    return <Navigate to={`${location.pathname}/${activeApp}`} />;
+  }
 
   return (
     <TooltipProvider>

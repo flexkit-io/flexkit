@@ -6,7 +6,7 @@ import { Login } from '../../auth/login';
 import { apiPaths } from '../../core/api-paths';
 import { useConfig } from '../../core/config/config-context';
 import { Loading } from '../components/loading';
-import { AppBar } from './app-bar';
+import { AppBar } from './appbar';
 import { Navbar } from './navbar';
 
 type Props = {
@@ -46,9 +46,9 @@ export function Layout({ version }: Props): JSX.Element {
   return (
     <div className="flex flex-col h-full">
       <Navbar projectId={projectId ?? ''} projects={projects} />
-      <div className="flex h-full border-t grow shrink">
+      <div className="flex h-full max-h-[calc(100%-3.5rem)] border-t grow shrink">
         <AppBar apps={apps} version={version} />
-        <div className="w-full focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
+        <div className="w-full focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 overflow-x-hidden overflow-y-auto">
           {JSON.stringify(schema)}
           <Outlet />
         </div>
