@@ -1,11 +1,12 @@
 import { Layout as LayoutIcon } from 'lucide-react';
-import type { AppOptions } from '../core/config/types';
+import { DeskApp } from './desk';
+import type { AppOptions } from '@flexkit/studio';
 
 export function Desk(): AppOptions {
   return {
     name: 'desk',
     icon: <LayoutIcon strokeWidth={1.5} />,
     title: 'Desk Test',
-    component: <div>Desk</div>,
+    component: <DeskApp />,
   } as AppOptions;
 }

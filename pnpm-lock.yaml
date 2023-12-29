@@ -23,9 +23,12 @@ importers:
 
   apps/studio:
     dependencies:
+      '@flexkit/desk':
+        specifier: workspace:*
+        version: link:../../packages/flexkit-desk
       '@flexkit/studio':
         specifier: workspace:*
-        version: link:../../packages/flexkit
+        version: link:../../packages/flexkit-studio
       geist:
         specifier: ^1.1.0
         version: 1.1.0(next@13.4.19)
@@ -103,7 +106,71 @@ importers:
         specifier: ^4.5.3
         version: 4.9.5
 
-  packages/flexkit:
+  packages/flexkit-desk:
+    dependencies:
+      '@flexkit/studio':
+        specifier: workspace:*
+        version: link:../flexkit-studio
+      debug:
+        specifier: ^4.3.4
+        version: 4.3.4
+      lucide-react:
+        specifier: ^0.292.0
+        version: 0.292.0(react@18.2.0)
+      ramda:
+        specifier: ^0.29.1
+        version: 0.29.1
+      swr:
+        specifier: ^2.2.4
+        version: 2.2.4(react@18.2.0)
+    devDependencies:
+      '@types/debug':
+        specifier: ^4.1.12
+        version: 4.1.12
+      '@types/node':
+        specifier: ^20.5.2
+        version: 20.5.2
+      '@types/ramda':
+        specifier: ^0.29.7
+        version: 0.29.7
+      '@types/react':
+        specifier: ^18.2.0
+        version: 18.2.5
+      '@types/react-dom':
+        specifier: ^18.2.0
+        version: 18.2.3
+      autoprefixer:
+        specifier: ^10.4.16
+        version: 10.4.16(postcss@8.4.31)
+      eslint-config-custom:
+        specifier: workspace:*
+        version: link:../eslint-config-custom
+      postcss:
+        specifier: ^8.4.31
+        version: 8.4.31
+      react:
+        specifier: ^18.2.0
+        version: 18.2.0
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.2.0(react@18.2.0)
+      tailwind-config:
+        specifier: workspace:*
+        version: link:../tailwind-config
+      tailwindcss:
+        specifier: ^3.3.3
+        version: 3.3.5
+      tsconfig:
+        specifier: workspace:*
+        version: link:../tsconfig
+      tsup:
+        specifier: ^7.2.0
+        version: 7.2.0(postcss@8.4.31)(typescript@4.9.5)
+      typescript:
+        specifier: ^4.5.2
+        version: 4.9.5
+
+  packages/flexkit-studio:
     dependencies:
       '@apollo/client':
         specifier: ^3.8.6
@@ -218,7 +285,7 @@ importers:
         version: 2.0.0
       tailwindcss-animate:
         specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@3.3.3)
+        version: 1.0.7(tailwindcss@3.3.5)
       uuid:
         specifier: ^9.0.1
         version: 9.0.1
@@ -250,9 +317,6 @@ importers:
       '@types/react-router-dom':
         specifier: ^5.3.3
         version: 5.3.3
-      '@types/serviceworker':
-        specifier: ^0.0.76
-        version: 0.0.76
       '@types/uuid':
         specifier: ^9.0.6
         version: 9.0.6
@@ -262,9 +326,6 @@ importers:
       eslint-config-custom:
         specifier: workspace:*
         version: link:../eslint-config-custom
-      next:
-        specifier: 13.5.6
-        version: 13.5.6(react-dom@18.2.0)(react@18.2.0)
       postcss:
         specifier: ^8.4.31
         version: 8.4.31
@@ -279,7 +340,7 @@ importers:
         version: link:../tailwind-config
       tailwindcss:
         specifier: ^3.3.3
-        version: 3.3.3
+        version: 3.3.5
       tsconfig:
         specifier: workspace:*
         version: link:../tsconfig
@@ -1139,6 +1200,7 @@ packages:
 
   /@next/env@13.5.6:
     resolution: {integrity: sha512-Yac/bV5sBGkkEXmAX5FWPS9Mmo2rthrOPRQQNfycJPkjUAUclomCPH7QFVCDQ4Mp2k2K1SSM6m0zrxYrOwtFQw==}
+    dev: false
 
   /@next/eslint-plugin-next@13.4.19:
     resolution: {integrity: sha512-N/O+zGb6wZQdwu6atMZHbR7T9Np5SUFUjZqCbj0sXm+MwQO35M8TazVB4otm87GkXYs2l6OPwARd3/PUWhZBVQ==}
@@ -1161,6 +1223,7 @@ packages:
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@next/swc-darwin-x64@13.4.19:
@@ -1178,6 +1241,7 @@ packages:
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@next/swc-linux-arm64-gnu@13.4.19:
@@ -1195,6 +1259,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@next/swc-linux-arm64-musl@13.4.19:
@@ -1212,6 +1277,7 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@next/swc-linux-x64-gnu@13.4.19:
@@ -1229,6 +1295,7 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@next/swc-linux-x64-musl@13.4.19:
@@ -1246,6 +1313,7 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@next/swc-win32-arm64-msvc@13.4.19:
@@ -1263,6 +1331,7 @@ packages:
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@next/swc-win32-ia32-msvc@13.4.19:
@@ -1280,6 +1349,7 @@ packages:
     cpu: [ia32]
     os: [win32]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@next/swc-win32-x64-msvc@13.4.19:
@@ -1297,6 +1367,7 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
+    dev: false
     optional: true
 
   /@nicolo-ribaudo/eslint-scope-5-internals@5.1.1-v1:
@@ -2306,6 +2377,7 @@ packages:
     resolution: {integrity: sha512-E4KcWTpoLHqwPHLxidpOqQbcrZVgi0rsmmZXUle1jXmJfuIf/UWpczUJ7MZZ5tlxytgJXyp0w4PGkkeLiuIdZw==}
     dependencies:
       tslib: 2.5.0
+    dev: false
 
   /@types/debug@4.1.12:
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
@@ -2386,10 +2458,6 @@ packages:
 
   /@types/semver@7.5.0:
     resolution: {integrity: sha512-G8hZ6XJiHnuhQKR7ZmysCeJWE08o8T0AXtk5darsCaTVsYZhhgUrq53jizaR2FvsoeCwJhlmwTjkXBY5Pn/ZHw==}
-    dev: true
-
-  /@types/serviceworker@0.0.76:
-    resolution: {integrity: sha512-IAG9uWxdAkWwWBdptN7+e/aQRb3zWBuaFQhxGmDW3GyDruFuG4VRtW14Hntp1AfMM1MMD/bX+1gLo6QAsyjgzQ==}
     dev: true
 
   /@types/uuid@9.0.6:
@@ -2915,6 +2983,7 @@ packages:
     engines: {node: '>=10.16.0'}
     dependencies:
       streamsearch: 1.1.0
+    dev: false
 
   /cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
@@ -2939,10 +3008,10 @@ packages:
 
   /caniuse-lite@1.0.30001522:
     resolution: {integrity: sha512-TKiyTVZxJGhsTszLuzb+6vUZSjVOAhClszBr2Ta2k9IwtNBT/4dzmL6aywt0HCgEZlmwJzXJd8yNiob6HgwTRg==}
+    dev: false
 
   /caniuse-lite@1.0.30001561:
     resolution: {integrity: sha512-NTt0DNoKe958Q0BE0j0c1V9jbUzhBxHIEJy7asmGrpE0yG63KTV7PLHPnK2E1O9RsQrQ081I3NLuXGS6zht3cw==}
-    dev: true
 
   /chalk@2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
@@ -2995,6 +3064,7 @@ packages:
 
   /client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
+    dev: false
 
   /clsx@2.0.0:
     resolution: {integrity: sha512-rQ1+kcj+ttHG0MKVGBUXwayCCF1oh39BF5COIpRzuCEv8Mwjv0XucrI2ExNTOn9IlLifGClWQcU9BrZORvtw6Q==}
@@ -4019,6 +4089,7 @@ packages:
 
   /glob-to-regexp@0.4.1:
     resolution: {integrity: sha512-lkX1HJXwyMcprw/5YUZc2s7DrpAiHB21/V+E1rHUrVNokkvB6bqMzT0VfV6/86ZNabt1k14YOIaT7nDvOX3Iiw==}
+    dev: false
 
   /glob@7.1.6:
     resolution: {integrity: sha512-LwaxwyZ72Lk7vZINtNNrywX0ZuLyStrdDtabefZKAY5ZGJhVtgdznluResxNmPitE0SAO+O26sWTHeKSI2wMBA==}
@@ -4772,7 +4843,7 @@ packages:
       '@next/env': 13.5.6
       '@swc/helpers': 0.5.2
       busboy: 1.6.0
-      caniuse-lite: 1.0.30001522
+      caniuse-lite: 1.0.30001561
       postcss: 8.4.31
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
@@ -4791,6 +4862,7 @@ packages:
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
+    dev: false
 
   /node-releases@2.0.13:
     resolution: {integrity: sha512-uYr7J37ae/ORWdZeQ1xxMJe3NtdmqMC/JZK+geofDrkLUApKRHPd18/TxtBOJ4A0/+uUIliorNrfYV6s1b02eQ==}
@@ -5626,6 +5698,7 @@ packages:
   /streamsearch@1.1.0:
     resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}
     engines: {node: '>=10.0.0'}
+    dev: false
 
   /string.prototype.matchall@4.0.8:
     resolution: {integrity: sha512-6zOCOcJ+RJAQshcTvXPHoxoQGONa3e/Lqx90wUA+wEzX78sg5Bo+1tQo4N0pohS0erG9qtCqJDjNCQBjeWVxyg==}
@@ -5714,6 +5787,7 @@ packages:
     dependencies:
       client-only: 0.0.1
       react: 18.2.0
+    dev: false
 
   /sucrase@3.34.0:
     resolution: {integrity: sha512-70/LQEZ07TEcxiU2dz51FKaE6hCTWC6vr7FOk3Gr0U60C3shtAN+H+BFr9XlYe5xqf3RA8nrc+VIwzCfnxuXJw==}
@@ -5775,12 +5849,12 @@ packages:
       '@babel/runtime': 7.23.2
     dev: false
 
-  /tailwindcss-animate@1.0.7(tailwindcss@3.3.3):
+  /tailwindcss-animate@1.0.7(tailwindcss@3.3.5):
     resolution: {integrity: sha512-bl6mpH3T7I3UFxuvDEXLxy/VuFxBk5bbzplh7tXI68mwMokNYd1t9qPBHlnyTwfa4JGC4zP516I1hYYtQ/vspA==}
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders'
     dependencies:
-      tailwindcss: 3.3.3
+      tailwindcss: 3.3.5
     dev: false
 
   /tailwindcss@3.3.3:
@@ -5812,6 +5886,7 @@ packages:
       sucrase: 3.34.0
     transitivePeerDependencies:
       - ts-node
+    dev: true
 
   /tailwindcss@3.3.5:
     resolution: {integrity: sha512-5SEZU4J7pxZgSkv7FP1zY8i2TIAOooNZ1e/OGtxIEv6GltpoiXUqWvLy89+a10qYTB1N5Ifkuw9lqQkN9sscvA==}
@@ -5842,7 +5917,6 @@ packages:
       sucrase: 3.34.0
     transitivePeerDependencies:
       - ts-node
-    dev: true
 
   /tapable@2.2.1:
     resolution: {integrity: sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==}
@@ -6235,6 +6309,7 @@ packages:
     dependencies:
       glob-to-regexp: 0.4.1
       graceful-fs: 4.2.11
+    dev: false
 
   /webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}

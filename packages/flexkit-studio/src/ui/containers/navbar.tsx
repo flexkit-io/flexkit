@@ -1,4 +1,3 @@
-import { UserNav } from '../components/user-nav';
 import type { ProjectOptions } from '../../core/config/types';
 import { useMiddlewareComponent } from '../../core/use-middleware-component';
 
@@ -11,6 +10,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
   const Logo = useMiddlewareComponent({ contributionPoint: 'navbar.logo' });
   const ProjectSelector = useMiddlewareComponent({ contributionPoint: 'navbar.projectSelector' });
   const Search = useMiddlewareComponent({ contributionPoint: 'navbar.search' });
+  const UserNav = useMiddlewareComponent({ contributionPoint: 'navbar.userNav' });
 
   return (
     <div className="fk-flex fk-basis-14 fk-min-h-[3.5rem] fk-px-3 fk-gap-x-4 fk-border-b fk-border-border">
@@ -20,7 +20,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
         <Search />
       </div>
       <div className="fk-flex fk-items-center">
-        <UserNav />
+        <UserNav projectId={projectId} />
       </div>
     </div>
   );

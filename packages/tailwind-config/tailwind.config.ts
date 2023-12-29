@@ -4,7 +4,8 @@ const config: Config = {
   content: [
     './src/**/*.{js,ts,jsx,tsx,mdx}',
     '../../apps/**/app/**/*.{js,ts,jsx,tsx}',
-    '../../packages/flexkit/src/**/*.{js,ts,jsx,tsx,mdx}',
+    '../../packages/flexkit-studio/src/**/*.{js,ts,jsx,tsx,mdx}',
+    '../../packages/flexkit-desk/src/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {},

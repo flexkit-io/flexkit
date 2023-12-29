@@ -2,9 +2,10 @@ import type { JsonSchema, Scopes } from '../core/types';
 
 export type User = {
   id: string;
+  email: string;
   first_name: string;
   last_name: string;
-  email: string;
+  avatar_url: string;
   role: string;
 };
 

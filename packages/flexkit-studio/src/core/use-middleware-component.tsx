@@ -4,7 +4,7 @@ import { useConfig } from './config/config-context';
 import type { ProjectOptions } from './config/types';
 
 type Props = {
-  contributionPoint: 'navbar.logo' | 'navbar.projectSelector' | 'navbar.search';
+  contributionPoint: 'navbar.logo' | 'navbar.projectSelector' | 'navbar.search' | 'navbar.userNav';
 };
 
 interface LogoProps {
@@ -20,14 +20,19 @@ type SearchProps = {
   /**/
 };
 
+type UserNavProps = {
+  projectId: string;
+};
+
 type MiddlewareProps = {
-  renderDefault?: (props: LogoProps | ProjectSelectorProps | SearchProps) => ReactNode;
-} & (LogoProps & ProjectSelectorProps & SearchProps);
+  renderDefault?: (props: LogoProps | ProjectSelectorProps | SearchProps | UserNavProps) => ReactNode;
+} & (LogoProps & ProjectSelectorProps & SearchProps & UserNavProps);
 
 interface ContributionPointMap {
   'navbar.logo': LazyExoticComponent<ComponentType<LogoProps>>;
   'navbar.projectSelector': LazyExoticComponent<ComponentType<ProjectSelectorProps>>;
   'navbar.search': LazyExoticComponent<ComponentType<SearchProps>>;
+  'navbar.userNav': LazyExoticComponent<ComponentType<UserNavProps>>;
 }
 
 const contributionPointMap: ContributionPointMap = {
@@ -36,6 +41,7 @@ const contributionPointMap: ContributionPointMap = {
     import('../ui/components/project-selector.js').then(({ ProjectSelector }) => ({ 'default': ProjectSelector }))
   ),
   'navbar.search': lazy(() => import('../ui/components/search.js').then(({ Search }) => ({ 'default': Search }))),
+  'navbar.userNav': lazy(() => import('../ui/components/user-nav.js').then(({ UserNav }) => ({ 'default': UserNav }))),
 };
 
 function createMiddlewareComponent<T extends MiddlewareProps>(
@@ -47,7 +53,7 @@ function createMiddlewareComponent<T extends MiddlewareProps>(
 
     for (const middleware of middlewareComponents) {
       const Next = renderDefault;
-      //renderDefault = (innerProps: T): ReactElement => <Middleware.component {...innerProps} renderDefault={Next} />;
+
       renderDefault = (innerProps: T): ReactElement =>
         createElement(middleware.component, { ...innerProps, renderDefault: Next });
     }
@@ -58,10 +64,10 @@ function createMiddlewareComponent<T extends MiddlewareProps>(
 
 export function useMiddlewareComponent({
   contributionPoint,
-}: Props): ComponentType<LogoProps | ProjectSelectorProps | SearchProps> {
+}: Props): ComponentType<LogoProps | ProjectSelectorProps | SearchProps | UserNavProps> {
   const { getContributionPointConfig } = useConfig();
   const contributionPointConfig = getContributionPointConfig(contributionPoint.split('.'));
   const result = createMiddlewareComponent(contributionPointMap[contributionPoint], contributionPointConfig);
 
-  return result as unknown as ComponentType<LogoProps | ProjectSelectorProps | SearchProps>;
+  return result as unknown as ComponentType<LogoProps | ProjectSelectorProps | SearchProps | UserNavProps>;
 }

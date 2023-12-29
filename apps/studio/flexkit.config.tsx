@@ -1,5 +1,5 @@
 import { defineConfig } from '@flexkit/studio/server';
-import { Desk } from '@flexkit/studio';
+import { Desk } from '@flexkit/desk';
 import { Image, Layers3, Tag } from 'lucide-react';
 
 export default defineConfig([

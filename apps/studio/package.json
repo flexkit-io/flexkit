@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@flexkit/desk": "workspace:*",
     "@flexkit/studio": "workspace:*",
     "geist": "^1.1.0",
     "lucide-react": "^0.292.0",
