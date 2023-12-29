@@ -7,7 +7,8 @@
     "config": "tailwind.config.ts",
     "css": "src/styles.css",
     "baseColor": "slate",
-    "cssVariables": true
+    "cssVariables": true,
+    "prefix": "fk-"
   },
   "aliases": {
     "components": "src/ui/primitives",

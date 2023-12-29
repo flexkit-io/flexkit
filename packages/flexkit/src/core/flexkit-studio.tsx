@@ -7,6 +7,7 @@ import { ThemeProvider } from '../ui/theme-context';
 import { Layout } from '../ui/containers/layout';
 import { Root } from '../ui/containers/root';
 import { getApps } from './config/config-context';
+import { GlobalError } from './global-error';
 import type { Config, ProjectOptions, SingleProject } from './config/types';
 
 /**
@@ -48,6 +49,7 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
     {
       path: '/studio',
       element: <Root config={configArray} />,
+      errorElement: <GlobalError />,
       children: [
         {
           path: '/studio/:projectId',

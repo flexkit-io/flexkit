@@ -20,14 +20,14 @@ export function UserNav(): JSX.Element {
   const [isLoading, auth] = useAuth();
 
   if (isLoading) {
-    return <Skeleton className="h-8 w-8 rounded-full" />;
+    return <Skeleton className="fk-h-8 fk-w-8 fk-rounded-full" />;
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="relative h-8 w-8 rounded-full" variant="ghost">
-          <Avatar className="h-8 w-8">
+        <Button className="fk-relative fk-h-8 fk-w-8 fk-rounded-full" variant="ghost">
+          <Avatar className="fk-h-8 fk-w-8">
             <AvatarImage
               alt="@shadcn"
               src="https://lh3.googleusercontent.com/a/AAcHTtdxfb6tIXPkNg6UqFwPT3Bvdr67jzrvzco0C5FDx9LBQw=s96-c"
@@ -36,11 +36,11 @@ export function UserNav(): JSX.Element {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56" forceMount>
+      <DropdownMenuContent align="end" className="fk-w-56" forceMount>
         <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Daniel Kratohvil</p>
-            <p className="text-xs leading-none text-muted-foreground">danielkratohvil@gmail.com</p>
+          <div className="fk-flex fk-flex-col fk-space-y-1">
+            <p className="fk-text-sm fk-font-medium fk-leading-none">Daniel Kratohvil</p>
+            <p className="fk-text-xs fk-leading-none fk-text-muted-foreground">danielkratohvil@gmail.com</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -51,7 +51,7 @@ export function UserNav(): JSX.Element {
             setTheme('system');
           }}
         >
-          <Monitor className="mr-2 h-4 w-4" />
+          <Monitor className="fk-mr-2 fk-h-4 fk-w-4" />
           <span>System</span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
@@ -60,7 +60,7 @@ export function UserNav(): JSX.Element {
             setTheme('dark');
           }}
         >
-          <Moon className="mr-2 h-4 w-4" />
+          <Moon className="fk-mr-2 fk-h-4 fk-w-4" />
           <span>Dark</span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
@@ -69,7 +69,7 @@ export function UserNav(): JSX.Element {
             setTheme('light');
           }}
         >
-          <Sun className="mr-2 h-4 w-4" />
+          <Sun className="fk-mr-2 fk-h-4 fk-w-4" />
           <span>Light</span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />

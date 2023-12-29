@@ -1,5 +1,20 @@
 import type { ComponentType, ReactNode } from 'react';
 
+export interface LogoProps {
+  title: string;
+  renderDefault: (props: Omit<LogoProps, 'renderDefault'>) => JSX.Element;
+}
+
+interface ProjectSelectorProps {
+  projectId: string;
+  projects: ProjectOptions[];
+  renderDefault: (props: Omit<ProjectSelectorProps, 'renderDefault'>) => JSX.Element;
+}
+
+export interface SearchProps {
+  renderDefault: (props: Omit<SearchProps, 'renderDefault'>) => JSX.Element;
+}
+
 export interface AppOptions {
   name: string;
   title: string;
@@ -14,10 +29,23 @@ export interface PluginOptions {
     apps?: AppOptions[];
     formFields?: { [key: string]: unknown };
     commands?: CommandOptions[];
+    navbar?: {
+      logo?: {
+        component: (Props: LogoProps) => JSX.Element;
+      };
+      projectSelector?: {
+        component: (Props: ProjectSelectorProps) => JSX.Element;
+      };
+      search?: {
+        component: (Props: SearchProps) => JSX.Element;
+      };
+    };
   };
   plugins?: PluginOptions[];
   schema?: SchemaPluginOptions;
 }
+
+// ({ title, next, ...props }: { [x: string]: any; title: any; next: any; }) => Element
 
 export interface ProjectOptions {
   title?: string;

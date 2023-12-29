@@ -44,11 +44,11 @@ export function Layout({ version }: Props): JSX.Element {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="fk-flex fk-flex-col fk-h-full">
       <Navbar projectId={projectId ?? ''} projects={projects} />
-      <div className="flex h-full max-h-[calc(100%-3.5rem)] border-t grow shrink">
+      <div className="fk-flex fk-h-full fk-max-h-[calc(100%-3.5rem)] fk-border-t fk-border-border fk-grow shrink">
         <AppBar apps={apps} version={version} />
-        <div className="w-full focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 overflow-x-hidden overflow-y-auto">
+        <div className="fk-w-full focus-visible:fk-outline-none focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0 fk-overflow-x-hidden fk-overflow-y-auto">
           {JSON.stringify(schema)}
           <Outlet />
         </div>

@@ -4,22 +4,22 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'fk-inline-flex fk-items-center fk-justify-center fk-whitespace-nowrap fk-rounded-md fk-text-sm fk-font-medium fk-ring-offset-background fk-transition-colors focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 disabled:fk-pointer-events-none disabled:fk-opacity-50',
   {
     variants: {
       variant: {
-        'default': 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+        'default': 'fk-bg-primary fk-text-primary-foreground hover:fk-bg-primary/90',
+        destructive: 'fk-bg-destructive fk-text-destructive-foreground hover:fk-bg-destructive/90',
+        outline: 'fk-border fk-border-input fk-bg-background hover:fk-bg-accent hover:fk-text-accent-foreground',
+        secondary: 'fk-bg-secondary fk-text-secondary-foreground hover:fk-bg-secondary/80',
+        ghost: 'hover:fk-bg-accent hover:fk-text-accent-foreground',
+        link: 'fk-text-primary fk-underline-offset-4 hover:fk-underline',
       },
       size: {
-        'default': 'h-10 px-4 py-2',
-        sm: 'h-9 rounded-md px-3',
-        lg: 'h-11 rounded-md px-8',
-        icon: 'h-10 w-10',
+        'default': 'fk-h-10 fk-px-4 fk-py-2',
+        sm: 'fk-h-9 fk-rounded-md fk-px-3',
+        lg: 'fk-h-11 fk-rounded-md fk-px-8',
+        icon: 'fk-h-10 fk-w-10',
       },
     },
     defaultVariants: {

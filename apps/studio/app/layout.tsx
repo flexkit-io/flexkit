@@ -1,4 +1,5 @@
 import '@flexkit/studio/styles.css';
+import './global.css';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 

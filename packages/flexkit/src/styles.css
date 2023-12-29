@@ -73,9 +73,9 @@ body {
 
 @layer base {
   * {
-    @apply border-border;
+    @apply fk-border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply fk-bg-background fk-text-foreground;
   }
 }

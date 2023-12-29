@@ -3,14 +3,15 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'src/ui/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'fk-inline-flex fk-items-center fk-rounded-full fk-border fk-border-border fk-px-2.5 fk-py-0.5 fk-text-xs fk-font-semibold fk-transition-colors focus:fk-outline-none focus:fk-ring-2 focus:fk-ring-ring focus:fk-ring-offset-2',
   {
     variants: {
       variant: {
-        'default': 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
-        outline: 'text-foreground',
+        'default': 'fk-border-transparent fk-bg-primary fk-text-primary-foreground hover:fk-bg-primary/80',
+        secondary: 'fk-border-transparent fk-bg-secondary fk-text-secondary-foreground hover:fk-bg-secondary/80',
+        destructive:
+          'fk-border-transparent fk-bg-destructive fk-text-destructive-foreground hover:fk-bg-destructive/80',
+        outline: 'fk-text-foreground',
       },
     },
     defaultVariants: {

@@ -41,6 +41,18 @@ export default defineConfig([
               component: 'someCustomFieldComponent',
             },
           },
+          navbar: {
+            logo: {
+              component: ({ renderDefault, ...props }) => {
+                return <>{renderDefault({ ...props, title: 'Title overwritten from a plugin' })}</>;
+              },
+            },
+            // search: {
+            //   component: ({ renderDefault, ...props }) => {
+            //     return <div className="border border-red-500">{renderDefault(props)}</div>;
+            //   },
+            // },
+          },
         },
         plugins: [
           // nested plugins are allowed. For example, the `desk` plugin could have a `gridList` plugin.
@@ -88,6 +100,20 @@ export default defineConfig([
     title: 'Demo 2',
     projectId: 'uwerfsxskp',
     basePath: '/studio',
-    plugins: [],
+    plugins: [
+      {
+        name: 'demo.2.plugin',
+        title: 'Demo 2 plugin',
+        contributes: {
+          // navbar: {
+          //   logo: {
+          //     component: ({ title, next, ...props }) => {
+          //       return <div title={title}>{next({ ...props, title: '🚀 🌈 🦄 💀' })}</div>;
+          //     },
+          //   },
+          // },
+        },
+      },
+    ],
   },
 ]);

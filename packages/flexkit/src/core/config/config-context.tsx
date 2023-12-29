@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'react';
 import { has, path } from 'ramda';
+import { useParams } from 'react-router-dom';
 import type { AppOptions, PluginOptions, ProjectOptions } from './types';
 
 interface ConfigContext {
@@ -10,6 +11,9 @@ interface ConfigContext {
   contributions: {
     apps: AppOptions[];
   };
+  getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
+    contributionPoint: string | string[]
+  ) => PluginOptions['contributes'][T][];
 }
 
 const ConfigContext = createContext<ConfigContext>({
@@ -18,6 +22,7 @@ const ConfigContext = createContext<ConfigContext>({
   contributions: {
     apps: [] as AppOptions[],
   },
+  getContributionPointConfig: () => [],
 });
 const hasProjectIdProperty = (configItem: ProjectOptions | PluginOptions): boolean =>
   Object.prototype.hasOwnProperty.call(configItem, 'projectId');
@@ -31,18 +36,29 @@ export function ConfigProvider({
   config: ProjectOptions[];
   children: React.ReactNode;
 }): JSX.Element {
-  const flattenedConfig = flattenConfigByProperty(['plugins'], config);
-  const plugins = flattenedConfig.filter(
+  const { projectId: currentProjectId } = useParams<{ projectId: string }>();
+  const globalFlattenedConfig = flattenConfigByProperty(['plugins'], config);
+  const currentProjectFlattenedConfig = flattenConfigByProperty(
+    ['plugins'],
+    config.filter((item) => item.projectId === currentProjectId)
+  );
+  const allPlugins = globalFlattenedConfig.filter(
+    (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
+  ) as PluginOptions[];
+  const currentProjectPlugins = currentProjectFlattenedConfig.filter(
     (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
   ) as PluginOptions[];
   const globalConfig = {
-    projects: flattenedConfig.filter((item: ProjectOptions | PluginOptions) =>
+    projects: globalFlattenedConfig.filter((item: ProjectOptions | PluginOptions) =>
       hasProjectIdProperty(item)
     ) as ProjectOptions[],
-    plugins,
+    plugins: allPlugins,
     contributions: {
-      apps: getContributionPoint('apps', plugins),
+      apps: _getContributionPointConfig('apps', allPlugins),
     },
+    getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
+      contributionPoint: string | string[]
+    ): PluginOptions['contributes'][T][] => _getContributionPointConfig(contributionPoint, currentProjectPlugins),
   };
 
   return <ConfigContext.Provider value={globalConfig}>{children}</ConfigContext.Provider>;
@@ -56,6 +72,10 @@ function flattenConfigByProperty(
   property: string[],
   config: (ProjectOptions | PluginOptions)[]
 ): (ProjectOptions | PluginOptions)[] {
+  if (!Array.isArray(config)) {
+    return [config];
+  }
+
   return config.reduce<(ProjectOptions | PluginOptions)[]>((acc, curr) => {
     if (path(property, curr)) {
       return [...acc, curr, ...flattenConfigByProperty(property, path(property, curr) ?? [])];
@@ -65,11 +85,11 @@ function flattenConfigByProperty(
   }, []);
 }
 
-function getContributionPoint<T extends keyof PluginOptions['contributes']>(
-  contributionPoint: string,
+function _getContributionPointConfig<T extends keyof PluginOptions['contributes']>(
+  contributionPoint: string | string[],
   config: PluginOptions[]
 ): PluginOptions['contributes'][T][] {
-  return flattenConfigByProperty(['contributes', contributionPoint], config).filter((item) =>
+  return flattenConfigByProperty(['contributes', contributionPoint].flat(), config).filter((item) =>
     has('component', item)
   ) as PluginOptions['contributes'][T][];
 }
@@ -79,5 +99,5 @@ export function getApps(config: ProjectOptions[]): AppOptions[] {
   const plugins = flattenedConfig.filter(
     (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
   ) as PluginOptions[];
-  return getContributionPoint('apps', plugins);
+  return _getContributionPointConfig('apps', plugins);
 }

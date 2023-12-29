@@ -71,18 +71,18 @@ export function AppBar({ apps, version }: Props): JSX.Element {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-full w-12 bg-muted" ref={appBar}>
-        <div className="grow">
-          <div className="grid grid-cols-1 w-12 h-auto">
+      <div className="fk-flex fk-flex-col fk-h-full fk-w-12 fk-bg-muted" ref={appBar}>
+        <div className="fk-grow">
+          <div className="fk-grid fk-grid-cols-1 fk-w-12 fk-h-auto">
             {visibleApps.map((app) => (
-              <Button asChild className="h-12 w-12" key={app.name} variant="ghost">
+              <Button asChild className="fk-h-12 fk-w-12" key={app.name} variant="ghost">
                 <Tooltip>
                   <TooltipTrigger
                     asChild
-                    className="h-12 p-2 rounded-none border-2 border-transparent data-[state=active]:border-l-current focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-2 focus-visible:border-ring focus-visible:rounded-sm"
+                    className="fk-h-12 fk-p-2 fk-rounded-none fk-border-2 fk-border-transparent data-[state=active]:fk-border-l-current focus-visible:fk-outline-none focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0 focus-visible:fk-border-2 focus-visible:fk-border-ring focus-visible:fk-rounded-sm"
                   >
                     <NavLink
-                      className="text-muted-foreground aria-[current]:text-foreground aria-[current]:bg-background aria-[current]:border-l-white"
+                      className="fk-text-muted-foreground aria-[current]:fk-text-foreground aria-[current]:fk-bg-background aria-[current]:fk-border-l-white"
                       to={app.name}
                     >
                       {app.icon}
@@ -100,16 +100,16 @@ export function AppBar({ apps, version }: Props): JSX.Element {
             <DropdownMenu>
               <Tooltip>
                 <DropdownMenuTrigger asChild>
-                  <TooltipTrigger className="flex justify-center items-center h-12 w-12 p-0 data-[state=open]:bg-muted text-muted-foreground transition-colors focus-visible:outline-none focus-visible:border-2 focus-visible:border-ring focus-visible:rounded-sm">
-                    <MoreHorizontal className="w-5 h-5" strokeWidth={1.5} />
-                    <span className="sr-only">View additional apps</span>
+                  <TooltipTrigger className="fk-flex justify-center fk-items-center fk-h-12 fk-w-12 p-0 fk-data-[state=open]:bg-muted fk-text-muted-foreground fk-transition-colors fk-focus-visible:outline-none fk-focus-visible:border-2 fk-focus-visible:border-ring fk-focus-visible:rounded-sm">
+                    <MoreHorizontal className="fk-w-5 fk-h-5" strokeWidth={1.5} />
+                    <span className="fk-sr-only">View additional apps</span>
                     <TooltipContent side="right">
                       <p>Additional apps</p>
                     </TooltipContent>
                   </TooltipTrigger>
                 </DropdownMenuTrigger>
               </Tooltip>
-              <DropdownMenuContent align="start" className="w-56" side="right">
+              <DropdownMenuContent align="start" className="fk-w-56" side="right">
                 {additionalApps.map((app) => (
                   <DropdownMenuItem asChild key={app.name}>
                     <NavLink to={app.name}>{app.title}</NavLink>
@@ -123,22 +123,22 @@ export function AppBar({ apps, version }: Props): JSX.Element {
         <DropdownMenu>
           <Tooltip>
             <DropdownMenuTrigger asChild>
-              <TooltipTrigger className="flex justify-center items-center h-12 w-12 p-0 data-[state=open]:bg-muted text-muted-foreground transition-colors focus-visible:outline-none focus-visible:border-2 focus-visible:border-ring focus-visible:rounded-sm">
-                <Settings className="w-5 h-5" strokeWidth={1.5} />
-                <span className="sr-only">Settings menu</span>
+              <TooltipTrigger className="fk-flex fk-justify-center fk-items-center fk-h-12 fk-w-12 fk-p-0 fk-data-[state=open]:bg-muted fk-text-muted-foreground fk-transition-colors fk-focus-visible:outline-none fk-focus-visible:border-2 fk-focus-visible:border-ring fk-focus-visible:rounded-sm">
+                <Settings className="fk-w-5 fk-h-5" strokeWidth={1.5} />
+                <span className="fk-sr-only">Settings menu</span>
                 <TooltipContent side="right">
                   <p>Settings menu</p>
                 </TooltipContent>
               </TooltipTrigger>
             </DropdownMenuTrigger>
           </Tooltip>
-          <DropdownMenuContent align="start" className="w-60" side="right">
+          <DropdownMenuContent align="start" className="fk-w-60" side="right">
             <DropdownMenuItem
               onSelect={() => {
                 //
               }}
             >
-              <Keyboard className="mr-2 h-4 w-4" />
+              <Keyboard className="fk-mr-2 fk-h-4 fk-w-4" />
               <span>Command Menu</span>
               <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
             </DropdownMenuItem>
@@ -148,7 +148,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
                 //
               }}
             >
-              <Palette className="mr-2 h-4 w-4" />
+              <Palette className="fk-mr-2 fk-h-4 fk-w-4" />
               <span>Theme</span>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -156,7 +156,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
                 //
               }}
             >
-              <Wrench className="mr-2 h-4 w-4" />
+              <Wrench className="fk-mr-2 fk-h-4 fk-w-4" />
               <span>Manage project</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -170,12 +170,12 @@ export function AppBar({ apps, version }: Props): JSX.Element {
             >
               {version.isCurrent ? (
                 <>
-                  <PackageCheck className="mr-2 h-4 w-4" />
+                  <PackageCheck className="fk-mr-2 fk-h-4 fk-w-4" />
                   <span>Version {version.current}</span>
                 </>
               ) : (
                 <>
-                  <PackageX className="mr-2 h-4 w-4" />
+                  <PackageX className="fk-mr-2 fk-h-4 fk-w-4" />
                   <span>
                     Version {version.current}.<br />
                     Upgrade to {version.latest}

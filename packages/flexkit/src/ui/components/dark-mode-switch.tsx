@@ -24,7 +24,7 @@ export function DarkModeSwitch(): JSX.Element | null {
         }}
         value="dark"
       >
-        <Moon className="h-4 w-4" />
+        <Moon className="fk-h-4 fk-w-4" />
       </ToggleGroupItem>
       <ToggleGroupItem
         aria-label="Set light mode"
@@ -33,7 +33,7 @@ export function DarkModeSwitch(): JSX.Element | null {
         }}
         value="light"
       >
-        <Sun className="h-4 w-4" />
+        <Sun className="fk-h-4 fk-w-4" />
       </ToggleGroupItem>
       <ToggleGroupItem
         aria-label="Set system mode"
@@ -42,7 +42,7 @@ export function DarkModeSwitch(): JSX.Element | null {
         }}
         value="system"
       >
-        <Monitor className="h-4 w-4" />
+        <Monitor className="fk-h-4 fk-w-4" />
       </ToggleGroupItem>
     </ToggleGroup>
   );
