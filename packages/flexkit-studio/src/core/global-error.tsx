@@ -12,19 +12,19 @@ export function GlobalError(): JSX.Element {
       if (error.status === 404) {
         return (
           <>
-            <h1 className="mb-4 text-7xl text-center font-bold tracking-tight">404</h1>
-            <p className="mt-2 mb-2 text-base text-center text-muted-foreground">Page not found</p>
+            <h1 className="fk-mb-4 fk-text-7xl fk-text-center fk-font-bold fk-tracking-tight">404</h1>
+            <p className="fk-mt-2 fk-mb-2 fk-text-base fk-text-center fk-text-muted-foreground">Page not found</p>
           </>
         );
       }
 
       return (
         <>
-          <h1 className="mb-4 text-4xl text-center font-bold tracking-tight">Oops!</h1>
-          <p className="mt-2 mb-2 text-base text-center text-muted-foreground">
+          <h1 className="fk-mb-4 fk-text-4xl fk-text-center fk-font-bold fk-tracking-tight">Oops!</h1>
+          <p className="fk-mt-2 fk-mb-2 fk-text-base fk-text-center fk-text-muted-foreground">
             Sorry, an unexpected error has occurred:
           </p>
-          <p className="text-base text-center">
+          <p className="fk-text-base fk-text-center">
             <i>{error.statusText}</i>
           </p>
         </>
@@ -34,11 +34,11 @@ export function GlobalError(): JSX.Element {
     if (error instanceof Error) {
       return (
         <>
-          <h1 className="mb-4 text-4xl text-center font-bold tracking-tight">Oops!</h1>
-          <p className="mt-2 mb-2 text-base text-center text-muted-foreground">
+          <h1 className="fk-mb-4 fk-text-4xl fk-text-center fk-font-bold fk-tracking-tight">Oops!</h1>
+          <p className="fk-mt-2 fk-mb-2 fk-text-base fk-text-center fk-text-muted-foreground">
             Sorry, an unexpected error has occurred:
           </p>
-          <p className="text-base text-center">
+          <p className="fk-text-base fk-text-center">
             <i>{error.message}</i>
           </p>
         </>
@@ -50,16 +50,18 @@ export function GlobalError(): JSX.Element {
 
   return (
     <>
-      <div className="container relative h-[calc(100vh-3rem)] flex items-center justify-center lg:px-0">
-        <div className="w-full lg:p-8">
-          <div className="mx-auto flex w-full flex-col justify-center sm:w-[350px]">{errorMessage()}</div>
+      <div className="fk-container fk-relative fk-h-[calc(100vh-3rem)] fk-flex fk-items-center fk-justify-center lg:fk-px-0">
+        <div className="fk-w-full lg:fk-p-8">
+          <div className="fk-mx-auto fk-flex fk-w-full fk-flex-col fk-justify-center sm:fk-w-[350px]">
+            {errorMessage()}
+          </div>
         </div>
       </div>
-      <div className="flex justify-center items-center h-12 text-xs text-muted-foreground border-t border-accent">
-        <div className="container flex">
-          <div className="flex items-center mr-auto">
+      <div className="fk-flex fk-justify-center fk-items-center fk-h-12 fk-text-xs fk-text-muted-foreground fk-border-t fk-border-accent">
+        <div className="fk-container fk-flex">
+          <div className="fk-flex fk-items-center fk-mr-auto">
             <svg
-              className="h-5 w-5 mr-3 text-black dark:text-white"
+              className="fk-h-5 fk-w-5 fk-mr-3 fk-text-black dark:fk-text-white"
               fill="none"
               height="48"
               viewBox="0 0 48 48"
@@ -72,7 +74,7 @@ export function GlobalError(): JSX.Element {
                 fill="currentColor"
               />
             </svg>
-            <p className="flex items-center">© {copyrightYear}</p>
+            <p className="fk-flex fk-items-center">© {copyrightYear}</p>
           </div>
           <DarkModeSwitch />
         </div>
