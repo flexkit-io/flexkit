@@ -30,7 +30,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
   const location = useLocation();
   const { projectId } = useParams();
   const currentAppSegmentPath = apps.find((app) => location.pathname.includes(`/${projectId}/${app.name}`))?.name;
-  const activeApp = apps.find((app) => location.pathname.includes(`/${projectId}/${app.name}`))?.name ?? apps[0].name;
+  const activeApp = apps.find((app) => location.pathname.includes(`/${projectId}/${app.name}`))?.name ?? apps[0]?.name;
 
   useEffect(() => {
     if (appBar.current === null) {
@@ -65,7 +65,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
     setAdditionalApps(_additionalApps);
   }, [apps, activeApp, appBarHeight]);
 
-  if (currentAppSegmentPath === undefined) {
+  if (currentAppSegmentPath === undefined && activeApp) {
     return <Navigate to={`${location.pathname}/${activeApp}`} />;
   }
 

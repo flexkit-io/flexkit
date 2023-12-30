@@ -8,14 +8,13 @@ export default defineConfig([
     projectId: 'abcdefghij',
     basePath: '/studio',
     plugins: [
+      Desk(),
       {
         // <-- this is a plugin. It's a function that returns a plugin object. Required fields are `name` and `contributes`.
         name: 'flexkit.desk',
-        title: 'Desk',
         contributes: {
           apps: [
             // <-- this is a list of apps that will be shown in the sidebar. It's an array, because existing apps can't be overwritten.
-            Desk(),
             {
               name: 'images',
               icon: <Image strokeWidth={1.5} />,
@@ -105,6 +104,15 @@ export default defineConfig([
         name: 'demo.2.plugin',
         title: 'Demo 2 plugin',
         contributes: {
+          // apps: [
+          //   // <-- this is a list of apps that will be shown in the sidebar. It's an array, because existing apps can't be overwritten.
+          //   {
+          //     name: 'images',
+          //     icon: <Image strokeWidth={1.5} />,
+          //     title: 'Images',
+          //     component: <div>Images</div>,
+          //   },
+          // ],
           // navbar: {
           //   logo: {
           //     component: ({ title, next, ...props }) => {

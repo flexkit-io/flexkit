@@ -54,7 +54,7 @@ export function ConfigProvider({
     ) as ProjectOptions[],
     plugins: allPlugins,
     contributions: {
-      apps: _getContributionPointConfig('apps', allPlugins),
+      apps: _getContributionPointConfig('apps', currentProjectPlugins),
     },
     getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
       contributionPoint: string | string[]
