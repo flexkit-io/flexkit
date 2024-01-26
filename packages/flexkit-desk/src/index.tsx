@@ -1,5 +1,7 @@
 import { Layout as LayoutIcon } from 'lucide-react';
-import { DeskApp } from './desk';
+import { Root } from './root';
+import { List } from './list';
+import { EditEntity } from './edit-entity';
 import type { PluginOptions } from '@flexkit/studio';
 
 export function Desk(): PluginOptions {
@@ -10,8 +12,20 @@ export function Desk(): PluginOptions {
         {
           name: 'desk',
           icon: <LayoutIcon strokeWidth={1.5} />,
-          title: 'Desk Test',
-          component: <DeskApp />,
+          title: 'Desk',
+          component: <Root />,
+          routes: [
+            {
+              path: 'list/:entity',
+              component: <List />,
+              children: [
+                {
+                  path: 'edit/:id',
+                  component: <EditEntity />,
+                },
+              ],
+            },
+          ],
         },
       ],
     },

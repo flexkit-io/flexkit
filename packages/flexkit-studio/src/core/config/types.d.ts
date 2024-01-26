@@ -20,6 +20,13 @@ export interface AppOptions {
   title: string;
   icon?: JSX.Element;
   component: ReactNode;
+  routes?: AppRoute[];
+}
+
+export interface AppRoute {
+  path: string;
+  component: ReactNode;
+  children?: AppRoute[];
 }
 
 export interface PluginOptions {

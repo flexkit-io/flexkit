@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
  * The first-party auth cookie is grabbed and sent along as a bearer token.
  */
 
+// TODO: This should be simplified by importing some function from @flexkit/studio that abstracts away most of this
 export const runtime = 'edge';
 const domain = 'api.flexkit.io';
 

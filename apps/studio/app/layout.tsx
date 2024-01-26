@@ -29,6 +29,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
   return (
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Seems like a bug in the Geist font types
     <html className={GeistSans.className} lang="en">
       <body>{children}</body>
     </html>

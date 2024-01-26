@@ -1,11 +1,12 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { has, path } from 'ramda';
 import { useParams } from 'react-router-dom';
 import type { AppOptions, PluginOptions, ProjectOptions } from './types';
 
 interface ConfigContext {
+  currentProjectId?: string;
   projects: ProjectOptions[];
   plugins: PluginOptions[];
   contributions: {
@@ -17,6 +18,7 @@ interface ConfigContext {
 }
 
 const ConfigContext = createContext<ConfigContext>({
+  currentProjectId: undefined,
   projects: [] as ProjectOptions[],
   plugins: [] as PluginOptions[],
   contributions: {
@@ -36,11 +38,20 @@ export function ConfigProvider({
   config: ProjectOptions[];
   children: React.ReactNode;
 }): JSX.Element {
+  /**
+   * Getting the projectId from the URL via react-router-dom's useParams hook triggers a rerender of this Context
+   * every time the URL changes.
+   */
   const { projectId: currentProjectId } = useParams<{ projectId: string }>();
-  const globalFlattenedConfig = flattenConfigByProperty(['plugins'], config);
-  const currentProjectFlattenedConfig = flattenConfigByProperty(
-    ['plugins'],
-    config.filter((item) => item.projectId === currentProjectId)
+
+  const globalFlattenedConfig = useMemo(() => flattenConfigByProperty(['plugins'], config), [config]);
+  const currentProjectFlattenedConfig = useMemo(
+    () =>
+      flattenConfigByProperty(
+        ['plugins'],
+        config.filter((item) => item.projectId === currentProjectId)
+      ),
+    [config, currentProjectId]
   );
   const allPlugins = globalFlattenedConfig.filter(
     (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
@@ -48,18 +59,23 @@ export function ConfigProvider({
   const currentProjectPlugins = currentProjectFlattenedConfig.filter(
     (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
   ) as PluginOptions[];
-  const globalConfig = {
-    projects: globalFlattenedConfig.filter((item: ProjectOptions | PluginOptions) =>
-      hasProjectIdProperty(item)
-    ) as ProjectOptions[],
-    plugins: allPlugins,
-    contributions: {
-      apps: _getContributionPointConfig('apps', currentProjectPlugins),
-    },
-    getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
-      contributionPoint: string | string[]
-    ): PluginOptions['contributes'][T][] => _getContributionPointConfig(contributionPoint, currentProjectPlugins),
-  };
+
+  const globalConfig = useMemo(
+    () => ({
+      currentProjectId,
+      projects: globalFlattenedConfig.filter((item: ProjectOptions | PluginOptions) =>
+        hasProjectIdProperty(item)
+      ) as ProjectOptions[],
+      plugins: allPlugins,
+      contributions: {
+        apps: _getContributionPointConfig('apps', currentProjectPlugins),
+      },
+      getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
+        contributionPoint: string | string[]
+      ): PluginOptions['contributes'][T][] => _getContributionPointConfig(contributionPoint, currentProjectPlugins),
+    }),
+    [allPlugins, currentProjectId, currentProjectPlugins, globalFlattenedConfig]
+  );
 
   return <ConfigContext.Provider value={globalConfig}>{children}</ConfigContext.Provider>;
 }

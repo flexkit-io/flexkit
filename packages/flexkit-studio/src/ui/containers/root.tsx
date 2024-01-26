@@ -1,22 +1,23 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { AuthProvider } from '../../auth/auth-context';
 import { ConfigProvider } from '../../core/config/config-context';
+import { GraphQLProvider } from '../../graphql-client/graphql-context';
 import type { ProjectOptions } from '../../core/config/types';
 
 export function Root({ config }: { config: ProjectOptions[] }): JSX.Element {
   const [defaultApp] = config;
   const { basePath, projectId } = defaultApp;
-  const location = useLocation();
-  const currentPathname = location.pathname;
 
-  if (currentPathname === basePath) {
+  if (window.location.pathname === basePath) {
     window.location.href = `${basePath}/${projectId}`;
   }
 
   return (
     <AuthProvider>
       <ConfigProvider config={config}>
-        <Outlet />
+        <GraphQLProvider>
+          <Outlet />
+        </GraphQLProvider>
       </ConfigProvider>
     </AuthProvider>
   );

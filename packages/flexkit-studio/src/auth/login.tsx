@@ -34,20 +34,21 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
   );
   const [isAuthLoading, auth] = useAuth();
   const copyrightYear = new Date().getFullYear();
-  const location = useLocation();
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- generic "any" typing comes from react-router-dom
-  let fromPath: string = location.state?.from?.pathname ?? `${selectedProject.basePath}/${selectedProject.projectId}`;
+  const currentRouterLocation = useLocation();
+  const referal: string =
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- generic "any" typing comes from react-router-dom
+    currentRouterLocation.state?.from?.pathname ?? currentRouterLocation.pathname;
 
-  if (!fromPath.includes(selectedProject.projectId)) {
-    fromPath = `${selectedProject.basePath}/${selectedProject.projectId}`;
-  }
+  const fromPath = referal.includes(selectedProject.projectId)
+    ? `${location.origin}${referal}`
+    : `${location.origin}${selectedProject.basePath}/${selectedProject.projectId}`;
 
   if (isLoading || isAuthLoading || !data) {
     return <Loading />;
   }
 
   if (auth.user?.id) {
-    return <Navigate replace state={{ from: location }} to={`${selectedProject.basePath}`} />;
+    return <Navigate replace state={{ from: currentRouterLocation }} to={`${selectedProject.basePath}`} />;
   }
 
   if (error) throw error;

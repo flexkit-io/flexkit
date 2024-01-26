@@ -79,3 +79,7 @@ body {
     @apply fk-bg-background fk-text-foreground;
   }
 }
+
+[data-radix-scroll-area-viewport] > div {
+  height: 100%;
+}

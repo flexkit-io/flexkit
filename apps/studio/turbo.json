@@ -3,11 +3,11 @@
   "pipeline": {
     "build": {
       "dotEnv": [".env.local", ".env"],
-      "env": ["NEXT_PUBLIC_FLEXKIT_PROJECT_ID"]
+      "env": []
     },
     "dev": {
       "dotEnv": [".env.local", ".env"],
-      "env": ["NEXT_PUBLIC_FLEXKIT_PROJECT_ID", "DEBUG"]
+      "env": ["DEBUG"]
     }
   }
 }

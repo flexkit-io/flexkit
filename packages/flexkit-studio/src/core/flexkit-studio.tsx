@@ -57,6 +57,11 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
           children: apps.map((app) => ({
             path: app.name,
             element: app.component,
+            children: app.routes?.map((route) => ({
+              path: route.path,
+              element: route.component,
+              children: route.children?.map((child) => ({ path: child.path, element: child.component })),
+            })),
           })),
         },
       ],
