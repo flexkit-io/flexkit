@@ -41,7 +41,7 @@ export type EntityQueryResults = [boolean, MappedEntityQueryResults];
 export type FormEntityQueryResults = [boolean, MappedFormEntityQueryResults];
 
 export type UseEntityQueryParams = {
-  entityName: string;
+  entityNamePlural: string;
   jsonSchema: JsonSchema;
   scope: string;
   variables?: OperationVariables;

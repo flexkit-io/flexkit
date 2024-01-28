@@ -22,9 +22,7 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 });
 
 function additiveLink(currentProjectId: string): ApolloLink {
-  const domain = 'flexkit.io';
-
-  return from([errorLink, new HttpLink({ uri: `https://${currentProjectId}.api.${domain}/graphql` })]);
+  return from([errorLink, new HttpLink({ uri: `/api/flexkit/${currentProjectId}/graphql` })]);
 }
 
 function client(currentProjectId: string | undefined): ApolloClient<unknown> {

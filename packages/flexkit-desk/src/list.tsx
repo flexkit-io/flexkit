@@ -7,7 +7,7 @@ export function List() {
   const { entity } = useParams();
   const [, { projectConfig }] = useAuth();
   const [loading, { count, results }] = useEntityQuery({
-    entityName: entity ?? '',
+    entityNamePlural: entity ?? '',
     jsonSchema: projectConfig?.jsonSchema || [],
     scope: 'default', // TODO: this should be obtained from a global state persisted somewehere
     variables: { options: { offset: page * pageSize, limit: pageSize } },

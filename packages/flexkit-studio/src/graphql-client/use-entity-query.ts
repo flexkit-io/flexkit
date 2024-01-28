@@ -5,7 +5,7 @@ import { getEntityQuery, mapQueryResult, mapQueryResultForFormFields } from './q
 import type { EntityList, MappedEntityQueryResults, MappedFormEntityQueryResults, UseEntityQueryParams } from './types';
 
 export function useEntityQuery({
-  entityName,
+  entityNamePlural,
   jsonSchema,
   scope,
   variables,
@@ -31,7 +31,7 @@ export function useEntityQuery({
   useEffect(() => {
     if (jsonSchema.length === 0) return;
 
-    const entityQuery = getEntityQuery(entityName, scope, jsonSchema);
+    const entityQuery = getEntityQuery(entityNamePlural, scope, jsonSchema);
 
     entityQuery.query &&
       setLazyQuery(gql`
@@ -42,8 +42,8 @@ export function useEntityQuery({
 
     if (data) {
       const mappedResults = isForm
-        ? mapQueryResultForFormFields(entityName, scope, data as EntityList, jsonSchema)
-        : mapQueryResult(entityName, scope, data as EntityList, jsonSchema);
+        ? mapQueryResultForFormFields(entityNamePlural, scope, data as EntityList, jsonSchema)
+        : mapQueryResult(entityNamePlural, scope, data as EntityList, jsonSchema);
       setResult(mappedResults);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- some deps intentionally left out to prevent infinite loop

@@ -72,7 +72,7 @@ export type Attribute = {
 
 export type Entity = {
   name: string;
-  plural?: string;
+  plural: string;
   attributes: Attribute[];
 };
 

@@ -51,7 +51,7 @@ async function handler(request: NextRequest): Promise<NextResponse> {
   const response = await fetch(`${apiUrl}${path}${search}`, {
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `${token}`,
       'Content-Type': 'application/json',
     },
     method: request.method,

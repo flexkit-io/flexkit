@@ -20,9 +20,10 @@ type EntityQuery = {
 
 const stringTypes: DataType[] = ['date', 'datetime', 'duration', 'id', 'string', 'time'];
 
-export function getEntityQuery(entityName: string, scope: string, jsonSchema: JsonSchema): EntityQuery {
+export function getEntityQuery(entityNamePlural: string, scope: string, jsonSchema: JsonSchema): EntityQuery {
   const filters = `(where: $where, options: $options)`;
-  const entitySchema = find(propEq(entityName, 'name'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(jsonSchema) as Entity | undefined;
+  const entityName = entitySchema?.name ?? entityNamePlural;
   const attributes = entitySchema?.attributes ?? [];
   const heading = `$where: ${entityName}Where, $options: ${entityName}Options`;
 
@@ -87,7 +88,7 @@ export function getEntityQuery(entityName: string, scope: string, jsonSchema: Js
     );
   }, '');
 
-  const queryEntityName = entitySchema.plural ?? pluralize(entityName).toLowerCase();
+  const queryEntityName = entityNamePlural.toLowerCase();
 
   return {
     queryEntityName,
@@ -110,12 +111,12 @@ export function getEntityQuery(entityName: string, scope: string, jsonSchema: Js
  * Map the GraphQl results JSON to a key-value pair array. The values inside the scopedAttributes key are flattened to the first level.
  */
 export function mapQueryResult(
-  entityName: string,
+  entityNamePlural: string,
   scope: string,
   results: EntityList,
   jsonSchema: JsonSchema
 ): MappedEntityQueryResults {
-  const entitySchema = find(propEq(entityName, 'name'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(jsonSchema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
 
   if (attributes.length === 0) {
@@ -125,7 +126,7 @@ export function mapQueryResult(
     };
   }
 
-  const queryEntityName = pluralize(entityName).toLowerCase();
+  const queryEntityName = entityNamePlural.toLowerCase();
   const count = results[`${queryEntityName}Aggregate`]?.count ?? 0;
   const sliceFirstThreeItems = (values: unknown[], primaryAttributeName: string): string =>
     values
@@ -157,7 +158,7 @@ export function mapQueryResult(
       const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
         (acc, attributeName) => {
           const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
-          const relatedEntityName = relationshipAttribute?.relationship?.entity ?? '';
+          const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
           const relatedEntity = find(propEq(relatedEntityName, 'name'))(jsonSchema) as Entity | undefined;
           const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
           const localValue = entity[attributeName];
@@ -187,12 +188,12 @@ export function mapQueryResult(
  * \{_id: string, value: string, disabled: boolean, scope: string\}.
  */
 export function mapQueryResultForFormFields(
-  entityName: string,
+  entityNamePlural: string,
   scope: string,
   results: EntityList,
   jsonSchema: JsonSchema
 ): MappedFormEntityQueryResults {
-  const entitySchema = find(propEq(entityName, 'name'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(jsonSchema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
 
   if (attributes.length === 0) {
@@ -202,7 +203,7 @@ export function mapQueryResultForFormFields(
     };
   }
 
-  const queryEntityName = pluralize(entityName).toLowerCase();
+  const queryEntityName = entityNamePlural.toLowerCase();
   const count = results[`${queryEntityName}Aggregate`] ? results[`${queryEntityName}Aggregate`].count : 0;
   const mappedQueryResult =
     Array.isArray(results[queryEntityName]) &&
@@ -295,15 +296,16 @@ function getValueByScope(
  * Returns a string with the GraphQl query needed to mutate the dataToMutate object for the given entity and scope.
  */
 export function getEntityUpdateMutation(
-  entityName: string,
+  entityNamePlural: string,
   scope: string,
   jsonSchema: JsonSchema,
   originalData: FormEntityItem,
   dataToMutate: EntityData
 ): string {
-  const entitySchema = find(propEq(entityName, 'name'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(jsonSchema) as Entity | undefined;
+  const entityName = entitySchema?.name ?? entityNamePlural;
   const attributes = entitySchema?.attributes ?? [];
-  const pluralizedEntityName = capitalize(entitySchema?.plural ?? '') ?? capitalize(pluralize(entityName));
+  const pluralizedEntityName = capitalize(entityNamePlural);
 
   if (attributes.length === 0) {
     return '';
@@ -314,7 +316,7 @@ export function getEntityUpdateMutation(
   const localAttributes = localAttributesUpdate(attributes, data, scope);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
   const responseType = pluralizedEntityName.toLowerCase();
-  const attributeNamesList = formatResponseFieldsForMutation(jsonSchema, entityName, scope);
+  const attributeNamesList = formatResponseFieldsForMutation(jsonSchema, entityNamePlural, scope);
 
   return (
     `mutation updateEntity($where: ${entityName}Where) {\n` +
