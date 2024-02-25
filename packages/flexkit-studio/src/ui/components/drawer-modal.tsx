@@ -36,11 +36,26 @@ export default function DrawerModal({
   const [isOpen, setIsOpen] = useState(false);
   const [hasFormChanged, setHasFormChanged] = useState(false);
   const disabled = isActionButtonEnabledByDefault === true ? false : !hasFormChanged;
-  const onEscapeKeyPressed = useCallback((event: KeyboardEvent): void => {
-    if (event.key === 'Escape') {
-      setIsOpen(false);
-    }
-  }, []);
+
+  const handleClose = useCallback(() => {
+    const shouldClose = beforeClose ? beforeClose() : true;
+
+    if (!shouldClose) return;
+
+    setIsOpen(false);
+    setTimeout(() => {
+      onClose();
+    }, 300);
+  }, [beforeClose, onClose, setIsOpen]);
+
+  const onEscapeKeyPressed = useCallback(
+    (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        handleClose();
+      }
+    },
+    [handleClose]
+  );
 
   useEffect(() => {
     setIsOpen(true);
@@ -60,17 +75,6 @@ export default function DrawerModal({
     onSave();
   }, [onSave]);
 
-  const handleClose = useCallback(() => {
-    const shouldClose = beforeClose ? beforeClose() : true;
-
-    if (!shouldClose) return;
-
-    setIsOpen(false);
-    setTimeout(() => {
-      onClose();
-    }, 300);
-  }, [beforeClose, onClose, setIsOpen]);
-
   const isDirty = useCallback((flag: boolean) => {
     setHasFormChanged(flag);
   }, []);
@@ -81,6 +85,7 @@ export default function DrawerModal({
         handleClose();
       }}
       open={isOpen}
+      preventScrollRestoration={false}
     >
       <DrawerContent>
         <DrawerHeader>

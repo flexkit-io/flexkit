@@ -27,6 +27,8 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   const attributes = entitySchema?.attributes ?? [];
   const heading = `$where: ${entityName}Where, $options: ${entityName}Options`;
 
+  console.log({ entityNamePlural }, { scope }, { schema }, { entitySchema });
+
   if (!entitySchema) {
     throw new Error(`Entity ${entityName} not found in the schema`);
   }

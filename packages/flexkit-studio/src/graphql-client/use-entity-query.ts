@@ -6,7 +6,7 @@ import type { EntityList, MappedEntityQueryResults, MappedFormEntityQueryResults
 
 export function useEntityQuery({
   entityNamePlural,
-  jsonSchema,
+  schema,
   scope,
   variables,
   isForm,
@@ -29,9 +29,9 @@ export function useEntityQuery({
   const [getData, { loading, data }] = useLazyQuery(lazyQuery);
 
   useEffect(() => {
-    if (jsonSchema.length === 0) return;
+    if (schema.length === 0) return;
 
-    const entityQuery = getEntityQuery(entityNamePlural, scope, jsonSchema);
+    const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
 
     entityQuery.query &&
       setLazyQuery(gql`
@@ -42,12 +42,12 @@ export function useEntityQuery({
 
     if (data) {
       const mappedResults = isForm
-        ? mapQueryResultForFormFields(entityNamePlural, scope, data as EntityList, jsonSchema)
-        : mapQueryResult(entityNamePlural, scope, data as EntityList, jsonSchema);
+        ? mapQueryResultForFormFields(entityNamePlural, scope, data as EntityList, schema)
+        : mapQueryResult(entityNamePlural, scope, data as EntityList, schema);
       setResult(mappedResults);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- some deps intentionally left out to prevent infinite loop
-  }, [jsonSchema, scope, JSON.stringify(variables), data, lazyQuery]);
+  }, [schema, scope, JSON.stringify(variables), data, lazyQuery]);
 
   return [loading, result];
 }

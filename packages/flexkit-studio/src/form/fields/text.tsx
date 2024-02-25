@@ -4,7 +4,7 @@ import { Input } from '../../ui/primitives/input';
 import type { FormFieldParams } from '../types';
 import UseDefault from './use-default';
 
-export default function Text({ control, defaultValue, fieldSchema, error, setValue }: FormFieldParams): JSX.Element {
+export default function Text({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(
@@ -24,8 +24,6 @@ export default function Text({ control, defaultValue, fieldSchema, error, setVal
     });
   }
 
-  console.log({ control }, { defaultValue });
-
   return (
     <FormField
       control={control}
@@ -41,12 +39,11 @@ export default function Text({ control, defaultValue, fieldSchema, error, setVal
                   !field?.value?.scope || field?.value?.scope === 'default' ? 'fk-mb-3' : ''
                 }`}
                 disabled={isEditable === false || field?.value?.disabled}
-                // error={!!error?.value}
-                // helperText={error?.value?.message}
                 {...field}
                 onChange={(event) => {
                   handleInput(event, field?.value);
                 }}
+                value={field?.value?.value || ''}
               />
               <UseDefault
                 checked={field?.value?.disabled}

@@ -46,7 +46,7 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
   const validationSchema = formSchema.reduce((acc, fieldSchema) => {
     if (typeof fieldSchema.validation === 'undefined') return acc;
 
-    return { ...acc, [fieldSchema.name]: fieldSchema.validation(z) };
+    return { ...acc, [fieldSchema.name]: z.object({ value: fieldSchema.validation(z) }) };
   }, {});
 
   const form = useForm({ resolver: zodResolver(z.object(validationSchema)) });
@@ -90,7 +90,7 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
   if (!entitySchema || entitySchema.attributes.length === 0) {
     return (
       <Alert variant="destructive">
-        <AlertTriangle className="h-4 w-4" />
+        <AlertTriangle className="fk-h-4 fk-w-4" />
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
           No attributes found in the schema for entity <strong>{entityName}</strong>
@@ -105,7 +105,7 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
 
   return (
     <Form {...form}>
-      <form className="flex flex-col">
+      <form className="fk-flex fk-flex-col fk-gap-y-5">
         {formSchema.map((field) => {
           if (field.name === '_id') {
             return null;

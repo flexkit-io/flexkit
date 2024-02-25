@@ -15,7 +15,7 @@ export function List() {
   const columnsDefinition = gridColumnsDefinition(entitySchema?.attributes || []);
   const [loading, { count, results }] = useEntityQuery({
     entityNamePlural: entity ?? '',
-    jsonSchema: schema,
+    schema,
     scope: 'default', // TODO: this should be obtained from a global state persisted somewehere
     variables: { options: { offset: page * pageSize, limit: pageSize } },
   });

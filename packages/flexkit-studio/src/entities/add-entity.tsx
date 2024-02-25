@@ -27,6 +27,7 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
   const ref = useRef<SubmitHandle>(null);
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const entityNamePlural = find(propEq(entityName, 'name'))(schema)?.plural ?? entityName;
   const { scope } = useAppContext();
   const dispatch = useDispatch();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
@@ -95,7 +96,7 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
       const _id = uuidv4();
       const mutation = getEntityCreateMutation(entityName ?? '', schema, newData, _id);
       console.log({ mutation });
-      const entityQuery = getEntityQuery(entityName, scope, schema);
+      const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
       const refreshQuery = gql`
         ${entityQuery.query}
       `;
@@ -108,7 +109,7 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
       });
       runMutation(true);
     },
-    [entityName, runMutation, schema, setMutation, scope, setOptions]
+    [entityName, entityNamePlural, runMutation, schema, setMutation, scope, setOptions]
   );
 
   return (
