@@ -1,6 +1,6 @@
 import { filter, find, pick, propEq, toPairs, omit } from 'ramda';
 import pluralize from 'pluralize';
-import type { Attribute, Entity, DataType, JsonSchema, ScopeType } from '../core/types';
+import type { Attribute, Entity, DataType, Schema, ScopeType } from '../core/types';
 import type {
   EntityData,
   EntityItem,
@@ -20,9 +20,9 @@ type EntityQuery = {
 
 const stringTypes: DataType[] = ['date', 'datetime', 'duration', 'id', 'string', 'time'];
 
-export function getEntityQuery(entityNamePlural: string, scope: string, jsonSchema: JsonSchema): EntityQuery {
+export function getEntityQuery(entityNamePlural: string, scope: string, schema: Schema): EntityQuery {
   const filters = `(where: $where, options: $options)`;
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const entityName = entitySchema?.name ?? entityNamePlural;
   const attributes = entitySchema?.attributes ?? [];
   const heading = `$where: ${entityName}Where, $options: ${entityName}Options`;
@@ -53,7 +53,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, jsonSche
 
   const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
-    const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(jsonSchema) as Entity | undefined;
+    const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
     const primaryAttributeName =
       relatedEntity?.attributes.find((attr) => attr.isPrimary)?.name ?? relatedEntity?.attributes[0]?.name ?? '';
 
@@ -114,9 +114,9 @@ export function mapQueryResult(
   entityNamePlural: string,
   scope: string,
   results: EntityList,
-  jsonSchema: JsonSchema
+  schema: Schema
 ): MappedEntityQueryResults {
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
 
   if (attributes.length === 0) {
@@ -159,7 +159,7 @@ export function mapQueryResult(
         (acc, attributeName) => {
           const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
           const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
-          const relatedEntity = find(propEq(relatedEntityName, 'name'))(jsonSchema) as Entity | undefined;
+          const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
           const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
           const localValue = entity[attributeName];
           const value = Array.isArray(localValue)
@@ -191,9 +191,9 @@ export function mapQueryResultForFormFields(
   entityNamePlural: string,
   scope: string,
   results: EntityList,
-  jsonSchema: JsonSchema
+  schema: Schema
 ): MappedFormEntityQueryResults {
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
 
   if (attributes.length === 0) {
@@ -298,11 +298,11 @@ function getValueByScope(
 export function getEntityUpdateMutation(
   entityNamePlural: string,
   scope: string,
-  jsonSchema: JsonSchema,
+  schema: Schema,
   originalData: FormEntityItem,
   dataToMutate: EntityData
 ): string {
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const entityName = entitySchema?.name ?? entityNamePlural;
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entityNamePlural);
@@ -316,7 +316,7 @@ export function getEntityUpdateMutation(
   const localAttributes = localAttributesUpdate(attributes, data, scope);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
   const responseType = pluralizedEntityName.toLowerCase();
-  const attributeNamesList = formatResponseFieldsForMutation(jsonSchema, entityNamePlural, scope);
+  const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
 
   return (
     `mutation updateEntity($where: ${entityName}Where) {\n` +
@@ -453,8 +453,8 @@ function stringifyValue(type: DataType, value: string | number | boolean): strin
   return stringTypes.includes(type) ? `"${value}"` : value;
 }
 
-function formatResponseFieldsForMutation(jsonSchema: JsonSchema, entityName: string, scope: string): string {
-  const entitySchema = find(propEq(entityName, 'name'))(jsonSchema) as Entity | undefined;
+function formatResponseFieldsForMutation(schema: Schema, entityName: string, scope: string): string {
+  const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const schemaAttributes = entitySchema?.attributes ?? [];
   const globalAttributesArray = getAttributeListByScope('global', schemaAttributes);
   const localAttributesArray = getAttributeListByScope('local', schemaAttributes);
@@ -476,7 +476,7 @@ function formatResponseFieldsForMutation(jsonSchema: JsonSchema, entityName: str
     const relationshipAttribute = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute | undefined;
     const relationshipMode = relationshipAttribute?.relationship?.mode || 'single';
     const relationshipEntityName = relationshipAttribute?.relationship?.entity || '';
-    const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(jsonSchema) as Entity | undefined;
+    const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
     const relationshipEntityAttributes = relationshipEntitySchema?.attributes ?? [];
     const primaryAttributeName = getPrimaryAttributeName(schemaAttributes);
 
@@ -532,8 +532,8 @@ export function getAttributeFulltextSearchQuery(attributeName: string, scope: st
 /**
  * Returns a string with the GraphQl mutation needed to delete an entity.
  */
-export function getEntityDeleteMutation(entityName: string, jsonSchema: JsonSchema, _id: string): string {
-  const entitySchema = find(propEq(entityName, 'name'))(jsonSchema) as Entity | undefined;
+export function getEntityDeleteMutation(entityName: string, schema: Schema, _id: string): string {
+  const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '') ?? capitalize(pluralize(entityName));
   const localAttributes = localAttributesDelete(attributes, _id);
@@ -574,11 +574,11 @@ function localAttributesDelete(schemaAttributes: Attribute[], _id: string): stri
 
 export function getEntityCreateMutation(
   entityName: string,
-  jsonSchema: JsonSchema,
+  schema: Schema,
   entityData: EntityData,
   _id: string
 ): string {
-  const entitySchema = find(propEq(entityName, 'name'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '') ?? capitalize(pluralize(entityName));
 
@@ -591,7 +591,7 @@ export function getEntityCreateMutation(
   const localAttributes = localAttributesCreate(attributes, data, 'default', _id); // TODO: calculate default scope
   const relationshipAttributes = relationshipAttributesCreate(attributes, data);
   const responseType = pluralizedEntityName.toLowerCase();
-  const attributeNamesList = formatResponseFieldsForMutation(jsonSchema, entityName, 'default'); // TODO: calculate default scope
+  const attributeNamesList = formatResponseFieldsForMutation(schema, entityName, 'default'); // TODO: calculate default scope
 
   return (
     `mutation {\n` +
@@ -699,10 +699,10 @@ export function getRelatedItemsQuery(
   mainEntityName: string,
   relatedEntityName: string,
   scope: string,
-  jsonSchema: JsonSchema
+  schema: Schema
 ): EntityQuery {
   const filters = `(where: $where, options: {limit: 25, offset: 0})`;
-  const entitySchema = find(propEq(mainEntityName, 'name'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(mainEntityName, 'name'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
   const heading = `$where: ${mainEntityName}Where, $options: ${relatedEntityName}Options`;
 
@@ -716,7 +716,7 @@ export function getRelatedItemsQuery(
   const relationshipAttributesList = () => {
     const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute | undefined;
     const relationshipMode = relationshipAttribute?.relationship?.mode || 'single';
-    const relatedEntity = find(propEq(relatedEntityName, 'name'))(jsonSchema) as Entity | undefined;
+    const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
     const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
 
     if (relationshipMode === 'single') {
@@ -768,9 +768,9 @@ export function mapRelatedItemsQueryResult(
   relationshipEntityName: string,
   scope: string,
   results: EntityList,
-  jsonSchema: JsonSchema
+  schema: Schema
 ): MappedEntityQueryResults {
-  const entitySchema = find(propEq(relationshipEntityName, 'name'))(jsonSchema) as Entity | undefined;
+  const entitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
 
   if (attributes.length === 0) {
@@ -814,7 +814,7 @@ export function mapRelatedItemsQueryResult(
       (acc, attributeName) => {
         const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
         const relatedEntityName = attributeSchema.relationship?.entity ?? '';
-        const relatedEntity = find(propEq(relatedEntityName, 'name'))(jsonSchema) as Entity | undefined;
+        const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
         const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
         const localValue = entity[attributeName];
         const value = Array.isArray(localValue)

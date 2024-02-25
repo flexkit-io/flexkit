@@ -1,5 +1,5 @@
 import type { OperationVariables } from '@apollo/client';
-import type { JsonSchema } from '../core/types';
+import type { Schema } from '../core/types';
 
 export type ScopedAttributeValue = {
   _id: string;
@@ -42,7 +42,7 @@ export type FormEntityQueryResults = [boolean, MappedFormEntityQueryResults];
 
 export type UseEntityQueryParams = {
   entityNamePlural: string;
-  jsonSchema: JsonSchema;
+  schema: Schema;
   scope: string;
   variables?: OperationVariables;
   isForm?: boolean;

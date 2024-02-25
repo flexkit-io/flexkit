@@ -18,6 +18,8 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
+    --overlay: 222.2 84% 4.9%;
+
     --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
 
@@ -49,6 +51,8 @@ body {
 
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
+
+    --overlay: 222.2 84% 4.9%;
 
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 11.2%;
@@ -82,4 +86,9 @@ body {
 
 [data-radix-scroll-area-viewport] > div {
   height: 100%;
+}
+
+.fk-drawer-fix {
+  background: hsl(var(--background)) !important;
+  bottom: 0;
 }

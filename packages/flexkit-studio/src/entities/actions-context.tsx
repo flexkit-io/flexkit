@@ -9,6 +9,7 @@ const ActionsContext = createContext<Action[] | []>([]);
 const EntityDispatchContext = createContext<Dispatch<Action>>(() => undefined);
 
 function actionsReducer(actions: Action[], action: Action): Action[] {
+  console.log(action);
   if (!action._id) {
     action._id = `${Date.now()}`;
   }

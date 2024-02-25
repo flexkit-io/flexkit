@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import { AuthProvider } from '../../auth/auth-context';
 import { ConfigProvider } from '../../core/config/config-context';
 import { GraphQLProvider } from '../../graphql-client/graphql-context';
+import { ActionsManager } from '../../entities/actions-manager';
 import type { ProjectOptions } from '../../core/config/types';
 
 export function Root({ config }: { config: ProjectOptions[] }): JSX.Element {
@@ -16,6 +17,7 @@ export function Root({ config }: { config: ProjectOptions[] }): JSX.Element {
     <AuthProvider>
       <ConfigProvider config={config}>
         <GraphQLProvider>
+          <ActionsManager />
           <Outlet />
         </GraphQLProvider>
       </ConfigProvider>

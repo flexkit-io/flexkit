@@ -1,6 +1,6 @@
 import { find, propEq } from 'ramda';
-import { useAuth, useParams, Outlet, Skeleton, useEntityQuery } from '@flexkit/studio';
-import type { Entity } from '@flexkit/studio';
+import { useConfig, useParams, Outlet, Skeleton, useEntityQuery, type Entity } from '@flexkit/studio';
+import type { SingleProject } from '@flexkit/studio';
 import { gridColumnsDefinition } from './data-grid/columns';
 import { DataTable } from './data-grid/data-table';
 
@@ -9,12 +9,13 @@ const pageSize = 20; // TODO: this should be obtained from a global state persis
 
 export function List() {
   const { entity } = useParams();
-  const [, { projectConfig }] = useAuth();
-  const entitySchema = find(propEq(entity, 'plural'))(projectConfig?.jsonSchema || []) as Entity | undefined;
+  const { projects, currentProjectId } = useConfig();
+  const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const entitySchema = find(propEq(entity, 'plural'))(schema) as Entity | undefined;
   const columnsDefinition = gridColumnsDefinition(entitySchema?.attributes || []);
   const [loading, { count, results }] = useEntityQuery({
     entityNamePlural: entity ?? '',
-    jsonSchema: projectConfig?.jsonSchema || [],
+    jsonSchema: schema,
     scope: 'default', // TODO: this should be obtained from a global state persisted somewehere
     variables: { options: { offset: page * pageSize, limit: pageSize } },
   });
@@ -26,8 +27,19 @@ export function List() {
 
   return (
     <div className="fk-flex fk-flex-col">
-      <DataTable data={loading ? loadingData : results} columns={loading ? loadingColumns : columnsDefinition} />
+      <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">
+        {capitalize(entitySchema?.plural ?? '')}
+      </h2>
+      <DataTable
+        data={loading ? loadingData : results}
+        columns={loading ? loadingColumns : columnsDefinition}
+        entityName={entitySchema?.name || ''}
+      />
       <Outlet />
     </div>
   );
+}
+
+function capitalize(str: string) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }

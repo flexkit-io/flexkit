@@ -6,6 +6,8 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from '../ui/theme-context';
 import { Layout } from '../ui/containers/layout';
 import { Root } from '../ui/containers/root';
+import { ActionsProvider } from '../entities/actions-context';
+import { AppProvider } from './app-context';
 import { getApps } from './config/config-context';
 import { GlobalError } from './global-error';
 import type { Config, ProjectOptions, SingleProject } from './config/types';
@@ -72,7 +74,11 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" disableTransitionOnChange enableSystem>
-      <RouterProvider router={router} />
+      <AppProvider>
+        <ActionsProvider>
+          <RouterProvider router={router} />
+        </ActionsProvider>
+      </AppProvider>
     </ThemeProvider>
   );
 }
@@ -84,5 +90,6 @@ function mapConfig(project: SingleProject | ProjectOptions): ProjectOptions {
     plugins: project.plugins,
     projectId: project.projectId,
     title: project.title,
+    schema: project.schema,
   };
 }

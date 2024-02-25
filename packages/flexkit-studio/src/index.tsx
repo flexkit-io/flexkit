@@ -115,6 +115,9 @@ export {
   useReactTable,
 } from '@tanstack/react-table';
 
+// Entities
+export { useDispatch } from './entities/actions-context';
+
 export type {
   ColumnDef,
   ColumnFiltersState,
@@ -125,5 +128,5 @@ export type {
 } from '@tanstack/react-table';
 
 // Types
-export type { AppOptions, PluginOptions, LogoProps } from './core/config/types';
-export type { Attribute, Entity, DataType, JsonSchema, ScopeType } from './core/types';
+export type { AppOptions, LogoProps, PluginOptions, SingleProject } from './core/config/types';
+export type { Attribute, Entity, DataType, Schema, ScopeType } from './core/types';

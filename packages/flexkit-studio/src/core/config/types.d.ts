@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
+import type { Attribute } from '../types';
 
 export interface LogoProps {
   title: string;
@@ -49,7 +50,6 @@ export interface PluginOptions {
     };
   };
   plugins?: PluginOptions[];
-  schema?: SchemaPluginOptions;
 }
 
 // ({ title, next, ...props }: { [x: string]: any; title: any; next: any; }) => Element
@@ -60,6 +60,11 @@ export interface ProjectOptions {
   basePath: string;
   icon?: ComponentType;
   plugins?: PluginOptions[];
+  schema: {
+    name: string;
+    plural: string;
+    attributes: Attribute[];
+  }[]; // TODO: Add schema type
   // theme?: StudioTheme;
 }
 

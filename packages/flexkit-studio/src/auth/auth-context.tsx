@@ -2,13 +2,12 @@
 
 import { createContext, useContext } from 'react';
 import useAuthService from './use-auth-service';
-import type { Auth, AuthService, User, ProjectConfig } from './types';
+import type { Auth, AuthService, User } from './types';
 
 const AuthContext = createContext([
   true,
   {
     user: null as User | null,
-    projectConfig: null as ProjectConfig | null,
     logout: () => Promise.resolve(),
   } as Auth,
 ]);

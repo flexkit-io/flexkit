@@ -19,7 +19,7 @@ export type AppContextType = {
   relationships: Relationships;
 };
 
-type ActionType = 'SET_TITLE' | 'SET_BREADCRUMBS' | 'IS_ROUTE_LOADING' | 'SET_SCOPE' | 'SET_RELATIONSHIP';
+type ActionType = 'set_scope' | 'set_relationship';
 
 export type AppAction = {
   type: ActionType;
@@ -67,7 +67,7 @@ export type Attribute = {
     field: string;
   };
   scope: ScopeType;
-  validation?: string;
+  validation?: (z) => unknown;
 };
 
 export type Entity = {
@@ -76,7 +76,7 @@ export type Entity = {
   attributes: Attribute[];
 };
 
-export type JsonSchema = Entity[];
+export type Schema = Entity[];
 
 type Scope = {
   name: string;

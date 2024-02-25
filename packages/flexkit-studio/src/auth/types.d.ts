@@ -1,5 +1,3 @@
-import type { JsonSchema, Scopes } from '../core/types';
-
 export type User = {
   id: string;
   email: string;
@@ -9,11 +7,6 @@ export type User = {
   role: string;
 };
 
-export type ProjectConfig = {
-  jsonSchema: JsonSchema;
-  scopes: Scopes;
-};
-
 export type Credentials = {
   email: string;
   password: string;
@@ -21,7 +14,6 @@ export type Credentials = {
 
 export type Auth = {
   user: User | undefined;
-  projectConfig: ProjectConfig | null;
   logout: (projectId: string) => Promise<void>;
 };
 

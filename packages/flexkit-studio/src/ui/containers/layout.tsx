@@ -30,7 +30,8 @@ export function Layout({ version }: Props): JSX.Element {
   }
 
   return (
-    <div className="fk-flex fk-flex-col fk-h-full">
+    /* eslint-disable-next-line react/no-unknown-property -- vaul-drawer-wrapper custom property required by Vaul component */
+    <div className="fk-flex fk-flex-col fk-h-full" vaul-drawer-wrapper="">
       <Navbar projectId={projectId ?? ''} projects={projects} />
       <div className="fk-flex fk-h-full fk-max-h-[calc(100%-3.5rem)] fk-border-t fk-border-border fk-grow shrink">
         <AppBar apps={apps} version={version} />
