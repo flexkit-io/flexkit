@@ -1,12 +1,12 @@
 type ActionType =
   | 'addEntity'
+  | 'alertDialog'
   | 'delete'
   | 'dismiss'
   | 'editEntity'
   | 'editRelationship'
   | 'notify'
-  | 'pickRelationship'
-  | 'modalDialog';
+  | 'pickRelationship';
 
 export type Action = {
   _id?: string;

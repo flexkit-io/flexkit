@@ -47,7 +47,7 @@ const DrawerContent = React.forwardRef<
     >
       <div className="fk-flex fk-w-full fk-h-full fk-pr-4">
         <div className="fk-my-auto fk-ml-2 fk-h-[100px] fk-w-2 fk-rounded-full fk-bg-muted" />
-        <div className="fk-flex fk-flex-col fk-w-full">{children}</div>
+        <div className="fk-flex fk-flex-col fk-w-full fk-pb-12">{children}</div>
       </div>
     </DrawerPrimitive.Content>
   </DrawerPortal>

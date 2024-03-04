@@ -47,7 +47,7 @@ export function useEntityQuery({
       setResult(mappedResults);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- some deps intentionally left out to prevent infinite loop
-  }, [schema, scope, JSON.stringify(variables), data, lazyQuery]);
+  }, [schema, scope, JSON.stringify(variables), data]);
 
   return [loading, result];
 }

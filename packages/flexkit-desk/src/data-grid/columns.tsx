@@ -1,7 +1,7 @@
 import type { Attribute } from '@flexkit/studio';
 import { DataTableRowActions } from './data-table-row-actions';
 
-export function gridColumnsDefinition(attributesSchema: Attribute[]) {
+export function gridColumnsDefinition(entityNamePlural, attributesSchema: Attribute[]) {
   const cols = attributesSchema.map((attribute) => ({
     accessorKey: attribute.name,
     header: ({ column }) => <div>{attribute.label}</div>,
@@ -13,7 +13,7 @@ export function gridColumnsDefinition(attributesSchema: Attribute[]) {
 
   const actions = {
     id: 'actions',
-    cell: ({ row }) => <DataTableRowActions row={row} />,
+    cell: ({ row }) => <DataTableRowActions entityNamePlural={entityNamePlural} row={row} />,
     size: 60,
   };
 

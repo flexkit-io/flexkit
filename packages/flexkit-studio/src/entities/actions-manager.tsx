@@ -1,10 +1,10 @@
 'use client';
 
-import ModalDialog from '../ui/components/modal-dialog';
+import AlertDialog from '../ui/components/alert-dialog';
 import { useActions } from './actions-context';
 // import Delete from './delete';
 import AddEntity from './add-entity';
-// import EditEntity from './edit-entity';
+import EditEntity from './edit-entity';
 // import EditRelationship from './edit-relationship';
 // import SnackbarNotification from '../ui/SnackbarNotification';
 
@@ -19,6 +19,9 @@ export function ActionsManager(): JSX.Element | null {
     <>
       {actions.map((action) => {
         switch (action.type) {
+          case 'alertDialog': {
+            return <AlertDialog key={action._id} options={action.payload.options} />;
+          }
           case 'delete': {
             return null; //<Delete action={action} key={action._id} />;
           }
@@ -26,13 +29,10 @@ export function ActionsManager(): JSX.Element | null {
             return <AddEntity action={action} isFocused={action._id === latestModalId} key={action._id} />;
           }
           case 'editEntity': {
-            return null; //<EditEntity action={action} isFocused={action._id === latestModalId} key={action._id} />;
+            return <EditEntity action={action} isFocused={action._id === latestModalId} key={action._id} />;
           }
           case 'editRelationship': {
             return null; //<EditRelationship action={action} isFocused={action._id === latestModalId} key={action._id} />;
-          }
-          case 'modalDialog': {
-            return <ModalDialog key={action._id} options={action.payload.options} />;
           }
           case 'notify': {
             return null; //<SnackbarNotification action={action} key={action._id} />;

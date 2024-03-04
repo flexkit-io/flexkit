@@ -9,7 +9,6 @@ const ActionsContext = createContext<Action[] | []>([]);
 const EntityDispatchContext = createContext<Dispatch<Action>>(() => undefined);
 
 function actionsReducer(actions: Action[], action: Action): Action[] {
-  console.log(action);
   if (!action._id) {
     action._id = `${Date.now()}`;
   }
@@ -19,9 +18,9 @@ function actionsReducer(actions: Action[], action: Action): Action[] {
     case 'addEntity':
     case 'editEntity':
     case 'editRelationship':
-    case 'modalDialog':
+    case 'alertDialog':
     case 'notify': {
-      return uniqBy(props(['type' as string, 'payload']), [...actions, action]);
+      return uniqBy(props(['type' as string, '_id']), [...actions, action]);
     }
     case 'dismiss': {
       return actions.filter((item) => item._id !== action._id);

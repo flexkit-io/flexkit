@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { find, propEq } from 'ramda';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { gql } from '@apollo/client';
@@ -10,10 +9,12 @@ import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
 // import EditMenu from './EditMenu';
 import { useConfig } from '../core/config/config-context';
+import { useEntityQuery } from '../graphql-client/use-entity-query';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
+import { getEntityUpdateMutation } from '../graphql-client/queries';
 import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
-import { getEntityCreateMutation, getEntityQuery } from '../graphql-client/queries';
+import type { Entity } from '../core/types';
 import { useDispatch } from './actions-context';
 import type { Action } from './types';
 
@@ -22,12 +23,13 @@ type Props = {
   isFocused: boolean;
 };
 
-export default function AddEntity({ action, isFocused }: Props): JSX.Element {
-  const { entityName } = action.payload;
+export default function EditEntity({ action, isFocused }: Props): JSX.Element {
+  const { entityId, entityNamePlural } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-  const entityNamePlural = find(propEq(entityName, 'name'))(schema)?.plural ?? entityName;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+  const entityName = entitySchema?.name ?? entityNamePlural;
   const { scope } = useAppContext();
   const dispatch = useDispatch();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
@@ -52,8 +54,8 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
     }
   }, [dispatch, mutationData.data, mutationData.loading]);
 
-  function handleBeforeClose(hasFormChanged: boolean): boolean {
-    if (hasFormChanged) {
+  const handleBeforeClose = useCallback(() => {
+    if (ref.current?.hasDataChanged()) {
       dispatch({
         type: 'alertDialog',
         _id: 'unsavedChanges',
@@ -78,7 +80,7 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
     }
 
     return true;
-  }
+  }, [dispatch, action._id]);
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
@@ -92,24 +94,28 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
   }, [ref]);
 
   const saveEntity = useCallback(
-    (_previousData: any, newData: any) => {
-      const _id = uuidv4();
-      const mutation = getEntityCreateMutation(entityName ?? '', schema, newData, _id);
-      const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
-      const refreshQuery = gql`
-        ${entityQuery.query}
-      `;
-
+    (previousData: unknown, newData: unknown) => {
+      const mutation = getEntityUpdateMutation(entityNamePlural, scope, schema, previousData, newData);
       setMutation(gql`
         ${mutation}
       `);
-      setOptions({
-        refetchQueries: [refreshQuery],
-      });
+      setOptions({ variables: { where: { _id: entityId } } });
       runMutation(true);
     },
-    [entityName, entityNamePlural, runMutation, schema, setMutation, scope, setOptions]
+    [entityId, entityNamePlural, schema, runMutation, setMutation, setOptions, scope]
   );
+
+  const [loading, { results }] = useEntityQuery({
+    entityNamePlural,
+    schema,
+    scope,
+    variables: { where: { _id: entityId } },
+    isForm: true,
+  });
+
+  const primaryAttributeName =
+    entitySchema?.attributes.find((attr) => attr.isPrimary)?.name ?? entitySchema?.attributes[0]?.name ?? '';
+  const entityIdentifier = !loading && results.length ? results[0][primaryAttributeName].value : '';
 
   return (
     <DrawerModal
@@ -123,9 +129,15 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
       onSave={() => {
         handleSave();
       }}
-      title={`Add ${entityName}`}
+      title={entityIdentifier.toString()}
     >
-      <FormBuilder entityName={entityName ?? ''} formData={[]} onSubmit={saveEntity} ref={ref} schema={schema} />
+      <FormBuilder
+        entityName={entityName ?? ''}
+        formData={results[0]}
+        onSubmit={saveEntity}
+        ref={ref}
+        schema={schema}
+      />
     </DrawerModal>
   );
 }

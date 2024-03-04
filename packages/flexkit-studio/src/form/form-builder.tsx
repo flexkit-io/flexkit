@@ -147,7 +147,7 @@ const formFieldComponentsMap: FieldComponentsMap = {
 };
 
 function hasDataChanged(originalFormData: unknown, changedData: unknown): boolean {
-  const sortAlphabetically = (a: string, b: string) => (a < b ? -1 : 1);
+  const sortAlphabetically = (a: string, b: string): 1 | -1 => (a < b ? -1 : 1);
   const originalData = Object.keys(originalFormData)
     .sort((a, b) => sortAlphabetically(a, b))
     .filter((field) => field !== 'updatedAt')

@@ -11,7 +11,7 @@ import { Skeleton } from '../primitives/skeleton';
 
 type Props = {
   actionButtonLabel?: string;
-  beforeClose?: () => boolean;
+  beforeClose?: (hasFormChanged: boolean) => boolean;
   children: ReactNode;
   editMenu?: ReactNode;
   isActionButtonEnabledByDefault?: boolean;
@@ -38,7 +38,7 @@ export default function DrawerModal({
   const disabled = isActionButtonEnabledByDefault === true ? false : !hasFormChanged;
 
   const handleClose = useCallback(() => {
-    const shouldClose = beforeClose ? beforeClose() : true;
+    const shouldClose = beforeClose ? beforeClose(hasFormChanged) : true;
 
     if (!shouldClose) return;
 
@@ -46,7 +46,7 @@ export default function DrawerModal({
     setTimeout(() => {
       onClose();
     }, 300);
-  }, [beforeClose, onClose, setIsOpen]);
+  }, [beforeClose, hasFormChanged, onClose, setIsOpen]);
 
   const onEscapeKeyPressed = useCallback(
     (event: KeyboardEvent): void => {
@@ -81,6 +81,7 @@ export default function DrawerModal({
 
   return (
     <Drawer
+      dismissible={false}
       onClose={() => {
         handleClose();
       }}
@@ -109,7 +110,7 @@ export default function DrawerModal({
           {editMenu}
         </DrawerHeader>
         <Separator />
-        <div className="fk-px-4 fk-pt-6 fk-h-full fk-min-h-full fk-overflow-y-auto fk-pb-16">
+        <div className="fk-px-4 fk-pt-6 fk-h-full fk-min-h-full fk-overflow-y-auto fk-pb-16" data-vaul-no-drag>
           <DrawerModalContext.Provider value={{ isDirty }}>{children}</DrawerModalContext.Provider>
         </div>
       </DrawerContent>

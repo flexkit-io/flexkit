@@ -1,5 +1,9 @@
-import '@flexkit/studio/styles.css';
+/**
+ * TODO: Styles should be included as part of the FlexkitStudio component, avoiding this extra import.
+ * Because the ordering matters, and the user could inadvertently override the styles of the Studio and break them.
+ */
 import './global.css';
+import '@flexkit/studio/styles.css';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 
