@@ -5,6 +5,7 @@ export default function Loading(): JSX.Element {
 
   return (
     <>
+      {/* eslint-disable-next-line no-param-reassign -- allowed for simplicity */}
       {Array.from({ length: numberOfSkeletonFields }, (_, i) => i++).map((i) => (
         <div className="fk-mt-3 fk-mb-[1.625rem]" key={i}>
           <Skeleton className="fk-w-full fk-h-[45px]" />

@@ -1,3 +1,5 @@
+import type { ZodTypeAny } from 'zod';
+
 export type RelationshipConnection = {
   _id: string;
   row: {
@@ -67,7 +69,7 @@ export type Attribute = {
     field: string;
   };
   scope: ScopeType;
-  validation?: (z) => unknown;
+  validation?: (z) => ZodTypeAny;
 };
 
 export type Entity = {
@@ -94,7 +96,7 @@ type FormFieldNameAndType = {
   _fieldName: string;
 };
 
-export type FormFieldSchema = FormFieldNameAndType & Attribute;
+export type FormFieldSchema = Attribute;
 
 export type GridEntityRow = {
   [attributeName: string]: string;

@@ -219,7 +219,7 @@ export default defineConfig([
             isPrimary: true,
             isUnique: true,
             inputType: 'text',
-            validation: (z) => z.string(),
+            validation: (z) => z.string().min(1, { message: 'Name is required' }),
             defaultValue: '',
           },
           {

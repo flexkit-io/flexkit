@@ -10,7 +10,7 @@ export function useEntityQuery({
   scope,
   variables,
   isForm,
-}: UseEntityQueryParams): [boolean, MappedEntityQueryResults | MappedFormEntityQueryResults] {
+}: UseEntityQueryParams): [boolean, MappedFormEntityQueryResults] {
   const [result, setResult] = useState<MappedEntityQueryResults | MappedFormEntityQueryResults>({
     count: 0,
     results: [],

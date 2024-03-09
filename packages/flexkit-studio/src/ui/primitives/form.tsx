@@ -120,10 +120,19 @@ const FormDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
 );
 FormDescription.displayName = 'FormDescription';
 
+type ExtendedError = {
+  error?: {
+    value: {
+      message: string;
+    };
+  };
+  formMessageId: string;
+};
+
 const FormMessage = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, children, ...props }, ref) => {
-    const { error, formMessageId } = useFormField();
-    const body = error ? String(error.message) : children;
+    const { error, formMessageId } = useFormField() as unknown as ExtendedError;
+    const body = error?.value ? String(error.value.message) : children;
 
     if (!body) {
       return null;

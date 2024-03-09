@@ -40,7 +40,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
 
   const globalAttributesList: string = getAttributeListByScope('global', attributes).join('\n  ');
 
-  const localAttributes: string[] = getAttributeListByScope(['local'], attributes);
+  const localAttributes: readonly string[] = getAttributeListByScope(['local'], attributes);
   const defaultScopedAttr = localAttributes.reduce(
     (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n    }\n  `,
     ''
@@ -357,7 +357,7 @@ function filterOutInvalidAttributes(attributes: Attribute[], dataToMutate: Entit
 /**
  * Filter attributes by scope: local, global or relationship.
  */
-function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attribute[]): string[] {
+function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attribute[]): readonly string[] {
   if (Array.isArray(type)) {
     return type.reduce((acc: string[], attributeType: ScopeType) => {
       return acc.concat(getAttributeListByScope(attributeType, attributes));
@@ -370,7 +370,7 @@ function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attr
 }
 
 function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityItem): string {
-  const globalAttributes = pick(getAttributeListByScope('global', schemaAttributes), data);
+  const globalAttributes = pick(getAttributeListByScope('global', schemaAttributes) as [string], data);
   const attributesString = toPairs(globalAttributes).reduce((acc, [attributeName, value]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
     const typedValue = stringTypes.includes(attributeSchema.dataType)
@@ -384,7 +384,7 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
 }
 
 function localAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityItem, scope: string): string {
-  const localAttributes = pick(getAttributeListByScope('local', schemaAttributes), data);
+  const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
   const attributesArray: [string, FormScopedAttributeValue][] = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
@@ -405,7 +405,7 @@ function relationshipAttributesUpdate(
   originalData: FormEntityItem,
   data: FormEntityItem
 ): string {
-  const relationshipAttributes = pick(getAttributeListByScope('relationship', schemaAttributes), data);
+  const relationshipAttributes = pick(getAttributeListByScope('relationship', schemaAttributes) as [string], data);
   const attributesArray: [string, FormRelationshipAttributeValue][] = toPairs(relationshipAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
@@ -617,7 +617,7 @@ function localAttributesCreate(
   defaultScope: string,
   _id: string
 ): string {
-  const localAttributes = pick(getAttributeListByScope('local', schemaAttributes), data);
+  const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
   const attributesArray = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     if (!attributeValue || !attributeValue.value) {
@@ -647,7 +647,7 @@ function localAttributesCreate(
 }
 
 function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormEntityItem): string {
-  const localAttributes = pick(getAttributeListByScope('relationship', schemaAttributes), data);
+  const localAttributes = pick(getAttributeListByScope('relationship', schemaAttributes) as [string], data);
   const attributesArray: [string, FormRelationshipAttributeValue][] = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     if (!attributeValue || !attributeValue.value) {

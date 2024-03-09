@@ -1,7 +1,6 @@
 import { createElement, forwardRef, useEffect, useImperativeHandle } from 'react';
 import type { ForwardedRef } from 'react';
 import { useForm } from 'react-hook-form';
-import type { FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { equals, find, propEq } from 'ramda';
@@ -11,6 +10,7 @@ import { Form } from '../ui/primitives/form';
 import type { Entity, Schema } from '../core/types';
 import { useAppContext } from '../core/app-context';
 import { useDrawerModalContext } from '../ui/drawer-modal-context';
+import type { EntityData, FormEntityItem } from '../graphql-client/types';
 // import NumberField from './fields/number';
 // import DateTimeField from './fields/datetime';
 // import EditorField from './fields/editor';
@@ -20,7 +20,6 @@ import TextField from './fields/text';
 // import SwitchField from './fields/switch';
 // import SelectField from './fields/select';
 import UndefinedFieldTypeError from './fields/undefined-field-type-error';
-import Loading from './loading';
 import type { FormFieldParams } from './types';
 
 export type SubmitHandle = {
@@ -31,33 +30,29 @@ export type SubmitHandle = {
 
 type Props = {
   entityName: string;
-  formData: { [key: string]: any };
+  formData?: FormEntityItem;
   schema: Schema;
-  onSubmit: (_previousData: any, _newData: any) => any;
+  onSubmit: (newData: EntityData, previousData?: FormEntityItem) => void;
 };
 
 type FieldComponentsMap = {
   [type: string]: (_props: FormFieldParams) => JSX.Element;
 };
 
-function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: ForwardedRef<any>): JSX.Element {
+function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: ForwardedRef<SubmitHandle>): JSX.Element {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const formSchema = entitySchema?.attributes ?? [];
-  const validationSchema = formSchema.reduce((acc, fieldSchema) => {
-    if (typeof fieldSchema.validation === 'undefined') return acc;
+  const validationSchema = z.object(
+    formSchema.reduce((acc, fieldSchema) => {
+      if (typeof fieldSchema.validation === 'undefined') return acc;
 
-    return { ...acc, [fieldSchema.name]: z.object({ value: fieldSchema.validation(z) }) };
-  }, {});
+      return { ...acc, [fieldSchema.name]: z.object({ value: fieldSchema.validation(z) }) };
+    }, {})
+  );
+  type UserSchema = z.infer<typeof validationSchema>;
 
-  const form = useForm({ resolver: zodResolver(z.object(validationSchema)) });
-  const {
-    control,
-    formState: { errors },
-    getValues,
-    handleSubmit,
-    setValue,
-    watch,
-  } = form;
+  const form = useForm<UserSchema>({ resolver: zodResolver(validationSchema) });
+  const { control, getValues, handleSubmit, setValue, watch } = form;
   const { scope } = useAppContext();
   const { isDirty } = useDrawerModalContext();
 
@@ -65,21 +60,20 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
     submit() {
       void handleSubmit((data) => {
         isDirty(false);
-
-        return onSubmit(formData, data);
+        onSubmit(data, formData);
       })();
     },
     hasErrors() {
       isDirty(true);
     },
     hasDataChanged() {
-      return hasDataChanged(formData, getValues());
+      return hasDataChanged(getValues(), formData);
     },
   }));
 
   useEffect(() => {
     const formChangesSubscription = watch((changedData) => {
-      isDirty(hasDataChanged(formData, changedData));
+      isDirty(hasDataChanged(changedData, formData));
     });
 
     return () => {
@@ -99,10 +93,6 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
     );
   }
 
-  if (!formSchema || !formData) {
-    return <Loading />;
-  }
-
   return (
     <Form {...form}>
       <form className="fk-flex fk-flex-col fk-gap-y-5">
@@ -111,13 +101,13 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
             return null;
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- required if the user pass an invalid inputType
           return formFieldComponentsMap[field.inputType] ? (
             createElement(formFieldComponentsMap[field.inputType], {
               key: field.name,
               control,
-              defaultValue: formData[field.name],
+              defaultValue: formData ? formData[field.name] : undefined,
               entityName,
-              error: errors[field.name],
               fieldSchema: field,
               getValues,
               schema,
@@ -136,17 +126,22 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
 export default forwardRef(FormBuilder);
 
 const formFieldComponentsMap: FieldComponentsMap = {
-  // 'switch': SwitchField,
-  // datetime: DateTimeField,
-  // editor: EditorField,
-  // number: NumberField,
-  // select: SelectField,
+  'switch': TextField,
+  datetime: TextField,
+  editor: TextField,
+  number: TextField,
+  select: TextField,
   text: TextField,
-  // textarea: TextareaField,
-  // relationship: RelationshipField,
+  textarea: TextField,
+  relationship: TextField,
 };
 
-function hasDataChanged(originalFormData: unknown, changedData: unknown): boolean {
+function hasDataChanged(
+  changedData: FormEntityItem | { [attribute: string]: undefined },
+  originalFormData?: FormEntityItem
+): boolean {
+  if (!originalFormData) return false;
+
   const sortAlphabetically = (a: string, b: string): 1 | -1 => (a < b ? -1 : 1);
   const originalData = Object.keys(originalFormData)
     .sort((a, b) => sortAlphabetically(a, b))
@@ -168,7 +163,6 @@ function hasDataChanged(originalFormData: unknown, changedData: unknown): boolea
       }),
       {}
     );
-  console.log(originalData, newData);
 
   return !equals(originalData, newData);
 }

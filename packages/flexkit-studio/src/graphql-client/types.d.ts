@@ -60,7 +60,7 @@ export type FormRelationshipAttributeValue = {
 
 export type FormScopedAttributeValue = {
   _id: string;
-  value: string | number | boolean | [];
+  value: string | number | readonly string[];
   disabled: boolean;
   scope: string;
 };

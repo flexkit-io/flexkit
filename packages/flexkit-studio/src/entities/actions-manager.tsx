@@ -7,6 +7,7 @@ import AddEntity from './add-entity';
 import EditEntity from './edit-entity';
 // import EditRelationship from './edit-relationship';
 // import SnackbarNotification from '../ui/SnackbarNotification';
+import type { ActionAlertDialog, ActionAddEntity, ActionEditEntity } from './types';
 
 export function ActionsManager(): JSX.Element | null {
   const actions = useActions();
@@ -20,16 +21,26 @@ export function ActionsManager(): JSX.Element | null {
       {actions.map((action) => {
         switch (action.type) {
           case 'alertDialog': {
-            return <AlertDialog key={action._id} options={action.payload.options} />;
+            const { payload } = action as ActionAlertDialog;
+
+            return <AlertDialog key={action._id} options={payload.options} />;
           }
           case 'delete': {
             return null; //<Delete action={action} key={action._id} />;
           }
           case 'addEntity': {
-            return <AddEntity action={action} isFocused={action._id === latestModalId} key={action._id} />;
+            return (
+              <AddEntity action={action as ActionAddEntity} isFocused={action._id === latestModalId} key={action._id} />
+            );
           }
           case 'editEntity': {
-            return <EditEntity action={action} isFocused={action._id === latestModalId} key={action._id} />;
+            return (
+              <EditEntity
+                action={action as ActionEditEntity}
+                isFocused={action._id === latestModalId}
+                key={action._id}
+              />
+            );
           }
           case 'editRelationship': {
             return null; //<EditRelationship action={action} isFocused={action._id === latestModalId} key={action._id} />;

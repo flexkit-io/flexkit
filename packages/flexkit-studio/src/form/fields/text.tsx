@@ -9,16 +9,19 @@ export default function Text({ control, defaultValue, fieldSchema, setValue }: F
 
   function handleInput(
     event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
-    previousValue: FormScopedAttributeValue
+    previousValue: FormScopedAttributeValue | undefined
   ): void {
-    void setValue(name, {
+    setValue(name, {
       ...previousValue,
       value: event.currentTarget.value,
     });
   }
 
-  function handleCheckbox(event: React.ChangeEvent<HTMLInputElement>, value: FormScopedAttributeValue): void {
-    void setValue(name, {
+  function handleCheckbox(
+    event: React.ChangeEvent<HTMLInputElement>,
+    value: FormScopedAttributeValue | undefined
+  ): void {
+    setValue(name, {
       ...value,
       disabled: event.target.checked,
     });
@@ -29,32 +32,32 @@ export default function Text({ control, defaultValue, fieldSchema, setValue }: F
       control={control}
       defaultValue={defaultValue}
       name={name}
-      render={({ field }) => (
+      render={({ field }: { field: { value?: FormScopedAttributeValue } }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
+          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <>
               <Input
                 className={`fk-w-full fk-mt-[0.1875rem] ${
-                  !field?.value?.scope || field?.value?.scope === 'default' ? 'fk-mb-3' : ''
+                  !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
                 }`}
-                disabled={isEditable === false || field?.value?.disabled}
+                disabled={isEditable === false || field.value?.disabled}
                 {...field}
                 onChange={(event) => {
-                  handleInput(event, field?.value);
+                  handleInput(event, field.value);
                 }}
-                value={field?.value?.value || ''}
+                value={field.value?.value || ''}
               />
               <UseDefault
-                checked={field?.value?.disabled}
+                checked={field.value?.disabled ?? false}
                 onChange={(event) => {
-                  handleCheckbox(event, field?.value);
+                  handleCheckbox(event, field.value);
                 }}
-                scope={field?.value?.scope}
+                scope={field.value?.scope}
               />
             </>
           </FormControl>
-          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormMessage />
         </FormItem>
       )}

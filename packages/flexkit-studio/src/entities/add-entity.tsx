@@ -13,12 +13,14 @@ import { useConfig } from '../core/config/config-context';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
+import type { Entity } from '../core/types';
 import { getEntityCreateMutation, getEntityQuery } from '../graphql-client/queries';
+import type { EntityData } from '../graphql-client/types';
 import { useDispatch } from './actions-context';
-import type { Action } from './types';
+import type { Action, ActionAddEntity } from './types';
 
 type Props = {
-  action: Action;
+  action: ActionAddEntity;
   isFocused: boolean;
 };
 
@@ -27,7 +29,8 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
   const ref = useRef<SubmitHandle>(null);
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-  const entityNamePlural = find(propEq(entityName, 'name'))(schema)?.plural ?? entityName;
+  const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
+  const entityNamePlural = entitySchema?.plural ?? entityName;
   const { scope } = useAppContext();
   const dispatch = useDispatch();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
@@ -92,9 +95,9 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
   }, [ref]);
 
   const saveEntity = useCallback(
-    (_previousData: any, newData: any) => {
+    (newData: EntityData) => {
       const _id = uuidv4();
-      const mutation = getEntityCreateMutation(entityName ?? '', schema, newData, _id);
+      const mutation = getEntityCreateMutation(entityName, schema, newData, _id);
       const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
       const refreshQuery = gql`
         ${entityQuery.query}
@@ -125,7 +128,7 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
       }}
       title={`Add ${entityName}`}
     >
-      <FormBuilder entityName={entityName ?? ''} formData={[]} onSubmit={saveEntity} ref={ref} schema={schema} />
+      <FormBuilder entityName={entityName} onSubmit={saveEntity} ref={ref} schema={schema} />
     </DrawerModal>
   );
 }

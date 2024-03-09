@@ -12,14 +12,16 @@ import { useConfig } from '../core/config/config-context';
 import { useEntityQuery } from '../graphql-client/use-entity-query';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityUpdateMutation } from '../graphql-client/queries';
+import type { EntityData, FormEntityItem } from '../graphql-client/types';
 import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
 import type { Entity } from '../core/types';
 import { useDispatch } from './actions-context';
-import type { Action } from './types';
+import Loading from './loading';
+import type { Action, ActionEditEntity } from './types';
 
 type Props = {
-  action: Action;
+  action: ActionEditEntity;
   isFocused: boolean;
 };
 
@@ -94,7 +96,9 @@ export default function EditEntity({ action, isFocused }: Props): JSX.Element {
   }, [ref]);
 
   const saveEntity = useCallback(
-    (previousData: unknown, newData: unknown) => {
+    (newData: EntityData, previousData?: FormEntityItem) => {
+      if (!previousData) return;
+
       const mutation = getEntityUpdateMutation(entityNamePlural, scope, schema, previousData, newData);
       setMutation(gql`
         ${mutation}
@@ -131,13 +135,11 @@ export default function EditEntity({ action, isFocused }: Props): JSX.Element {
       }}
       title={entityIdentifier.toString()}
     >
-      <FormBuilder
-        entityName={entityName ?? ''}
-        formData={results[0]}
-        onSubmit={saveEntity}
-        ref={ref}
-        schema={schema}
-      />
+      {loading || !results.length ? (
+        <Loading />
+      ) : (
+        <FormBuilder entityName={entityName} formData={results[0]} onSubmit={saveEntity} ref={ref} schema={schema} />
+      )}
     </DrawerModal>
   );
 }

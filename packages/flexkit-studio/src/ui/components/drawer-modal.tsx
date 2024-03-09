@@ -91,9 +91,10 @@ export default function DrawerModal({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle className="fk-w-full">
-            {title ? title : <Skeleton className="fk-h-10 fk-w-[120px]" />}
+            {title ? title : <Skeleton className="fk-h-5 fk-w-[120px]" />}
           </DrawerTitle>
           <Button
+            className="fk-px-8"
             disabled={disabled}
             onClick={() => {
               handleSave();

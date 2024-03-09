@@ -10,7 +10,7 @@ const initialState = {
   breadcrumbs: [],
   isRouteLoading: false,
   pageTitle: '',
-  scope: savedScope ?? '',
+  scope: savedScope ?? 'default',
   relationships: {},
 };
 
