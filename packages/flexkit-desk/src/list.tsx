@@ -12,7 +12,11 @@ export function List() {
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entity, 'plural'))(schema) as Entity | undefined;
-  const columnsDefinition = gridColumnsDefinition(entity, entitySchema?.attributes || []);
+  const columnsDefinition = gridColumnsDefinition({
+    entityName: entitySchema?.name ?? '',
+    entityNamePlural: entity ?? '',
+    attributesSchema: entitySchema?.attributes || [],
+  });
   const [loading, { count, results }] = useEntityQuery({
     entityNamePlural: entity ?? '',
     schema,

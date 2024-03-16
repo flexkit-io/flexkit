@@ -2,12 +2,12 @@
 
 import AlertDialog from '../ui/components/alert-dialog';
 import { useActions } from './actions-context';
-// import Delete from './delete';
+import Delete from './delete';
 import AddEntity from './add-entity';
 import EditEntity from './edit-entity';
 // import EditRelationship from './edit-relationship';
 // import SnackbarNotification from '../ui/SnackbarNotification';
-import type { ActionAlertDialog, ActionAddEntity, ActionEditEntity } from './types';
+import type { ActionAlertDialog, ActionAddEntity, ActionEditEntity, ActionDeleteEntity } from './types';
 
 export function ActionsManager(): JSX.Element | null {
   const actions = useActions();
@@ -25,8 +25,8 @@ export function ActionsManager(): JSX.Element | null {
 
             return <AlertDialog key={action._id} options={payload.options} />;
           }
-          case 'delete': {
-            return null; //<Delete action={action} key={action._id} />;
+          case 'deleteEntity': {
+            return <Delete action={action as ActionDeleteEntity} key={action._id} />;
           }
           case 'addEntity': {
             return (

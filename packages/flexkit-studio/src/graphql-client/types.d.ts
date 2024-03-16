@@ -8,6 +8,21 @@ export type ScopedAttributeValue = {
   __typename: string;
 };
 
+export type EntityQueryAggregate = {
+  [aggregateKey: string]: {
+    count: number;
+    __typename: string;
+  };
+};
+
+export type EntityQueryResults = {
+  [entityName: string]: {
+    _id: string;
+    __typename: string;
+    [attributeName: string]: string | ScopedAttributeValue;
+  }[];
+};
+
 export type EntityItem = {
   [attribute: string]: ScopedAttributeValue;
 };
@@ -23,9 +38,14 @@ export type EntityData = {
   [attributeName: string]: EntityItem;
 };
 
+export type MappedEntityItem = {
+  _id: string;
+  [attributeName: string]: string;
+};
+
 export type MappedEntityQueryResults = {
   count: number;
-  results: EntityItem[] | [];
+  results: MappedEntityItem[] | [];
 };
 
 export type MappedFormEntityQueryResults = {

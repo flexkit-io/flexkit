@@ -14,7 +14,7 @@ function actionsReducer(actions: Action[], action: Action): Action[] {
   }
 
   switch (action.type) {
-    case 'delete':
+    case 'deleteEntity':
     case 'addEntity':
     case 'editEntity':
     case 'editRelationship':

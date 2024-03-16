@@ -1,14 +1,20 @@
 type ActionType =
   | 'addEntity'
   | 'alertDialog'
-  | 'delete'
+  | 'deleteEntity'
   | 'dismiss'
   | 'editEntity'
   | 'editRelationship'
   | 'notify'
   | 'pickRelationship';
 
-export type Action = ActionAddEntity | ActionEditEntity | ActionDismiss | ActionNotify | ActionAlertDialog;
+export type Action =
+  | ActionAddEntity
+  | ActionEditEntity
+  | ActionDeleteEntity
+  | ActionDismiss
+  | ActionNotify
+  | ActionAlertDialog;
 
 export type ActionAddEntity = {
   _id?: string;
@@ -24,6 +30,15 @@ export type ActionEditEntity = {
   payload: {
     entityId: string;
     entityNamePlural: string;
+  };
+};
+
+export type ActionDeleteEntity = {
+  _id?: string;
+  type: ActionType['deleteEntity'];
+  payload: {
+    entityId: string;
+    entityName: string;
   };
 };
 

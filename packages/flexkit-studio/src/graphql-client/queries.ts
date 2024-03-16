@@ -5,6 +5,8 @@ import type {
   EntityData,
   EntityItem,
   EntityList,
+  EntityQueryAggregate,
+  EntityQueryResults,
   FormEntityItem,
   FormScopedAttributeValue,
   FormRelationshipAttributeValue,
@@ -113,7 +115,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
 export function mapQueryResult(
   entityNamePlural: string,
   scope: string,
-  results: EntityList,
+  results: EntityQueryResults & EntityQueryAggregate,
   schema: Schema
 ): MappedEntityQueryResults {
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
@@ -127,55 +129,47 @@ export function mapQueryResult(
   }
 
   const queryEntityName = entityNamePlural.toLowerCase();
-  const count = results[`${queryEntityName}Aggregate`]?.count ?? 0;
-  const sliceFirstThreeItems = (values: unknown[], primaryAttributeName: string): string =>
+  const { count } = results[`${queryEntityName}Aggregate`];
+  const items = results[queryEntityName] as EntityQueryResults[typeof queryEntityName];
+  const sliceFirstThreeItems = (values: EntityItem[], primaryAttributeName: string): string =>
     values
       .slice(0, 3)
-      .map((item) =>
-        item?.[primaryAttributeName][scope] !== null
-          ? item?.[primaryAttributeName][scope]
-          : item?.[primaryAttributeName]?.default
-      )
+      .map((item) => item[primaryAttributeName].default)
       .join(', ');
-  const mappedQueryResult =
-    Array.isArray(results[queryEntityName]) &&
-    results[queryEntityName].map((entity: EntityItem) => {
-      const { _id } = entity;
-      const globalAttributes = getAttributeListByScope('global', attributes).reduce(
-        (acc, attribute) => ({ ...acc, [attribute]: entity[attribute] }),
-        {}
-      );
-      const localAttributes = getAttributeListByScope('local', attributes).reduce(
-        (acc, attributeName) => ({
+  const mappedQueryResult = items.map((entity) => {
+    const { _id } = entity;
+    const globalAttributes = getAttributeListByScope('global', attributes).reduce(
+      (acc, attributeName) => ({ ...acc, [attributeName]: entity[attributeName] }),
+      {}
+    );
+    const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
+      const scopedAttribute = entity[attributeName] as ScopedAttributeValue;
+      return {
+        ...acc,
+        [attributeName]: scopedAttribute[scope] ? scopedAttribute[scope] : scopedAttribute.default,
+      };
+    }, {});
+    const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
+      (acc, attributeName) => {
+        const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
+        const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
+        const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
+        const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
+        const localValue = entity[attributeName] as ScopedAttributeValue;
+        const value = Array.isArray(localValue)
+          ? sliceFirstThreeItems(localValue, primaryAttributeName)
+          : localValue[primaryAttributeName];
+
+        return {
           ...acc,
-          [attributeName]:
-            entity[attributeName] && entity[attributeName][scope] !== null
-              ? entity[attributeName][scope]
-              : entity[attributeName].default,
-        }),
-        {}
-      );
-      const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
-        (acc, attributeName) => {
-          const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
-          const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
-          const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
-          const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
-          const localValue = entity[attributeName];
-          const value = Array.isArray(localValue)
-            ? sliceFirstThreeItems(localValue, primaryAttributeName)
-            : localValue[primaryAttributeName];
+          [attributeName]: value,
+        };
+      },
+      {}
+    );
 
-          return {
-            ...acc,
-            [attributeName]: value,
-          };
-        },
-        {}
-      );
-
-      return { _id, ...globalAttributes, ...localAttributes, ...relationshipAttributes };
-    });
+    return { _id, ...globalAttributes, ...localAttributes, ...relationshipAttributes };
+  });
 
   return {
     count,
@@ -190,7 +184,7 @@ export function mapQueryResult(
 export function mapQueryResultForFormFields(
   entityNamePlural: string,
   scope: string,
-  results: EntityList,
+  results: EntityQueryResults & EntityQueryAggregate,
   schema: Schema
 ): MappedFormEntityQueryResults {
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
@@ -204,60 +198,61 @@ export function mapQueryResultForFormFields(
   }
 
   const queryEntityName = entityNamePlural.toLowerCase();
-  const count = results[`${queryEntityName}Aggregate`] ? results[`${queryEntityName}Aggregate`].count : 0;
-  const mappedQueryResult =
-    Array.isArray(results[queryEntityName]) &&
-    results[queryEntityName].map((entity: EntityItem) => {
-      const globalAttributes = getAttributeListByScope('global', attributes).reduce(
-        (acc, attribute) => ({
-          ...acc,
-          [attribute]: {
-            value: entity[attribute],
-            disabled: false,
-            scope: 'default',
-            _id: '',
-          },
-        }),
-        {}
-      );
-      const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
+  const { count } = results[`${queryEntityName}Aggregate`];
+  const items = results[queryEntityName] as EntityQueryResults[typeof queryEntityName];
+  const mappedQueryResult = items.map((entity) => {
+    const globalAttributes = getAttributeListByScope('global', attributes).reduce(
+      (acc, attribute) => ({
+        ...acc,
+        [attribute]: {
+          value: entity[attribute],
+          disabled: false,
+          scope: 'default',
+          _id: '',
+        },
+      }),
+      {}
+    );
+    const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
+      const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
+
+      console.log({ entity }, { attributeName });
+
+      return {
+        ...acc,
+        [attributeName]: {
+          value: entity[attributeName] ? getValueByScope(entity[attributeName], scope) : null,
+          disabled:
+            entity[attributeName] && entity[attributeName][scope] === null && attributeSchema.scope === 'local'
+              ? true
+              : false,
+          scope,
+          _id: entity[attributeName] ? entity[attributeName]._id : null,
+        },
+      };
+    }, {});
+    const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
+      (acc, attributeName) => {
         const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
+        const { field, mode } = attributeSchema.relationship || { field: '' };
+        const value = mode === 'multiple' ? entity[attributeName] : entity[attributeName]?.[field];
+        const _id = entity[attributeName]?._id;
+        const count = entity[`${attributeName}Aggregate`]?.count;
 
         return {
           ...acc,
           [attributeName]: {
-            value: entity[attributeName] ? getValueByScope(entity[attributeName], scope) : null,
-            disabled:
-              entity[attributeName] && entity[attributeName][scope] === null && attributeSchema.scope === 'local'
-                ? true
-                : false,
-            scope,
-            _id: entity[attributeName] ? entity[attributeName]._id : null,
+            count,
+            _id,
+            value,
           },
         };
-      }, {});
-      const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
-        (acc, attributeName) => {
-          const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
-          const { field, mode } = attributeSchema.relationship || { field: '' };
-          const value = mode === 'multiple' ? entity[attributeName] : entity[attributeName]?.[field];
-          const _id = entity[attributeName]?._id;
-          const count = entity[`${attributeName}Aggregate`]?.count;
+      },
+      {}
+    );
 
-          return {
-            ...acc,
-            [attributeName]: {
-              count,
-              _id,
-              value,
-            },
-          };
-        },
-        {}
-      );
-
-      return { ...globalAttributes, ...localAttributes, ...relationshipAttributes };
-    });
+    return { ...globalAttributes, ...localAttributes, ...relationshipAttributes };
+  });
 
   return {
     count,
@@ -268,10 +263,7 @@ export function mapQueryResultForFormFields(
 /**
  * Attribute values can be an object or an array of objects if the attribute is a multi-select.
  */
-function getValueByScope(
-  attribute: ScopedAttributeValue | ScopedAttributeValue[],
-  scope: string
-): FormScopedAttributeValue[] {
+function getValueByScope(attribute: ScopedAttributeValue[], scope: string): FormScopedAttributeValue[] {
   if (Array.isArray(attribute)) {
     return attribute.reduce((result: FormScopedAttributeValue[], attr: ScopedAttributeValue) => {
       if (attr[scope] || attr.default) {
@@ -357,9 +349,9 @@ function filterOutInvalidAttributes(attributes: Attribute[], dataToMutate: Entit
 /**
  * Filter attributes by scope: local, global or relationship.
  */
-function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attribute[]): readonly string[] {
+function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attribute[]): Attribute['name'][] {
   if (Array.isArray(type)) {
-    return type.reduce((acc: string[], attributeType: ScopeType) => {
+    return type.reduce((acc: Attribute['name'][], attributeType: ScopeType) => {
       return acc.concat(getAttributeListByScope(attributeType, attributes));
     }, []);
   }
@@ -515,7 +507,7 @@ function formatResponseFieldsForMutation(schema: Schema, entityName: string, sco
   return fields;
 }
 
-export function getAttributeFulltextSearchQuery(attributeName: string, scope: string, searchText: string) {
+export function getAttributeFulltextSearchQuery(attributeName: string, scope: string, searchText: string): string {
   const pluralizedAttributeName = pluralize(attributeName);
   const scopes = scope === 'default' ? 'default' : `default\n      ${scope}`;
   return `query {
@@ -535,7 +527,7 @@ export function getAttributeFulltextSearchQuery(attributeName: string, scope: st
 export function getEntityDeleteMutation(entityName: string, schema: Schema, _id: string): string {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
-  const pluralizedEntityName = capitalize(entitySchema?.plural ?? '') ?? capitalize(pluralize(entityName));
+  const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
   const localAttributes = localAttributesDelete(attributes, _id);
 
   return (
@@ -546,7 +538,6 @@ export function getEntityDeleteMutation(entityName: string, schema: Schema, _id:
     `     ${localAttributes}\n` +
     `    }\n` +
     `  ) {\n` +
-    `    bookmark\n` +
     `    nodesDeleted\n` +
     `    relationshipsDeleted\n` +
     `  }\n` +
@@ -580,7 +571,7 @@ export function getEntityCreateMutation(
 ): string {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
-  const pluralizedEntityName = capitalize(entitySchema?.plural ?? '') ?? capitalize(pluralize(entityName));
+  const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
 
   if (attributes.length === 0) {
     return '';
@@ -838,6 +829,6 @@ export function mapRelatedItemsQueryResult(
   };
 }
 
-const capitalize = (str: string) => {
+const capitalize = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };

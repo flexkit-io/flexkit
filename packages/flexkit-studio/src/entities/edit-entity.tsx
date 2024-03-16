@@ -115,7 +115,7 @@ export default function EditEntity({ action, isFocused }: Props): JSX.Element {
     scope,
     variables: { where: { _id: entityId } },
     isForm: true,
-  });
+  }) as [boolean, { results: FormEntityItem[] }];
 
   const primaryAttributeName =
     entitySchema?.attributes.find((attr) => attr.isPrimary)?.name ?? entitySchema?.attributes[0]?.name ?? '';

@@ -140,7 +140,10 @@ function hasDataChanged(
   changedData: FormEntityItem | { [attribute: string]: undefined },
   originalFormData?: FormEntityItem
 ): boolean {
-  if (!originalFormData) return false;
+  if (!originalFormData) {
+    // iterate over changedData and check if there are any values
+    return Object.keys(changedData).some((field) => changedData[field]?.value !== undefined);
+  }
 
   const sortAlphabetically = (a: string, b: string): 1 | -1 => (a < b ? -1 : 1);
   const originalData = Object.keys(originalFormData)

@@ -47,7 +47,7 @@
   "dependencies": {
     "@flexkit/studio": "workspace:*",
     "debug": "^4.3.4",
-    "lucide-react": "^0.292.0",
+    "lucide-react": "^0.354.0",
     "ramda": "^0.29.1",
     "swr": "^2.2.4"
   },
