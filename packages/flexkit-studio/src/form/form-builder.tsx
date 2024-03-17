@@ -14,7 +14,7 @@ import type { EntityData, FormEntityItem } from '../graphql-client/types';
 // import NumberField from './fields/number';
 // import DateTimeField from './fields/datetime';
 // import EditorField from './fields/editor';
-// import TextareaField from './fields/textarea';
+import TextareaField from './fields/textarea';
 import TextField from './fields/text';
 // import RelationshipField from './fields/relationship';
 // import SwitchField from './fields/switch';
@@ -132,7 +132,7 @@ const formFieldComponentsMap: FieldComponentsMap = {
   number: TextField,
   select: SelectField,
   text: TextField,
-  textarea: TextField,
+  textarea: TextareaField,
   relationship: TextField,
 };
 

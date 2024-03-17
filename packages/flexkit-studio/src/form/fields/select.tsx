@@ -1,7 +1,7 @@
 import type { FormScopedAttributeValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import {
-  Select as SelectComponent,
+  Select as SelectPrimitive,
   SelectContent,
   SelectGroup,
   SelectItem,
@@ -44,7 +44,7 @@ export default function Select({ control, defaultValue, fieldSchema, setValue }:
         <FormItem>
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-          <SelectComponent
+          <SelectPrimitive
             defaultValue={field.value?.value ? String(field.value.value) : undefined}
             disabled={isEditable === false || field.value?.disabled}
             onValueChange={(value) => {
@@ -80,7 +80,7 @@ export default function Select({ control, defaultValue, fieldSchema, setValue }:
                 );
               })}
             </SelectContent>
-          </SelectComponent>
+          </SelectPrimitive>
           <UseDefault
             checked={field.value?.disabled ?? false}
             onChange={(event) => {
