@@ -8,13 +8,7 @@ type ActionType =
   | 'notify'
   | 'pickRelationship';
 
-export type Action =
-  | ActionAddEntity
-  | ActionEditEntity
-  | ActionDeleteEntity
-  | ActionDismiss
-  | ActionNotify
-  | ActionAlertDialog;
+export type Action = ActionAddEntity | ActionEditEntity | ActionDeleteEntity | ActionDismiss | ActionAlertDialog;
 
 export type ActionAddEntity = {
   _id?: string;
@@ -46,17 +40,6 @@ export type ActionDismiss = {
   _id?: string;
   type: ActionType['dismiss'];
   payload: { [key: string]: never };
-};
-
-export type ActionNotify = {
-  _id?: string;
-  type: ActionType['notify'];
-  payload: {
-    options: {
-      notificationType: 'success' | 'error' | 'warning';
-      notificationMessage: string;
-    };
-  };
 };
 
 export type ActionAlertDialog = {

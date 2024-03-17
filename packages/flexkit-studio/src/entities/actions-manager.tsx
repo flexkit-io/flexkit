@@ -6,8 +6,7 @@ import Delete from './delete';
 import AddEntity from './add-entity';
 import EditEntity from './edit-entity';
 // import EditRelationship from './edit-relationship';
-// import SnackbarNotification from '../ui/SnackbarNotification';
-import type { ActionAlertDialog, ActionAddEntity, ActionEditEntity, ActionDeleteEntity } from './types';
+import type { ActionAddEntity, ActionAlertDialog, ActionEditEntity, ActionDeleteEntity } from './types';
 
 export function ActionsManager(): JSX.Element | null {
   const actions = useActions();
@@ -44,9 +43,6 @@ export function ActionsManager(): JSX.Element | null {
           }
           case 'editRelationship': {
             return null; //<EditRelationship action={action} isFocused={action._id === latestModalId} key={action._id} />;
-          }
-          case 'notify': {
-            return null; //<SnackbarNotification action={action} key={action._id} />;
           }
           default: {
             return null;

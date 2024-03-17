@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { find, propEq } from 'ramda';
+import { toast } from 'sonner';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { gql } from '@apollo/client';
 import { useAppContext } from '../core/app-context';
@@ -41,20 +42,6 @@ export default function EditEntity({ action, isFocused }: Props): JSX.Element {
       ref.current?.hasErrors();
     }
   }, [mutationData.error]);
-
-  useEffect(() => {
-    if (!mutationData.loading && Object.keys(mutationData.data ?? {}).length > 0) {
-      dispatch({
-        type: 'notify',
-        payload: {
-          options: {
-            notificationType: 'success',
-            notificationMessage: 'Your changes have been saved.',
-          },
-        },
-      });
-    }
-  }, [dispatch, mutationData.data, mutationData.loading]);
 
   const handleBeforeClose = useCallback(() => {
     if (ref.current?.hasDataChanged()) {
@@ -103,10 +90,16 @@ export default function EditEntity({ action, isFocused }: Props): JSX.Element {
       setMutation(gql`
         ${mutation}
       `);
-      setOptions({ variables: { where: { _id: entityId } } });
+      setOptions({
+        variables: { where: { _id: entityId } },
+        onCompleted: () => {
+          handleClose(action._id);
+          toast.success('Your changes have been saved.');
+        },
+      });
       runMutation(true);
     },
-    [entityId, entityNamePlural, schema, runMutation, setMutation, setOptions, scope]
+    [action._id, entityId, entityNamePlural, handleClose, schema, runMutation, setMutation, setOptions, scope]
   );
 
   const [loading, { results }] = useEntityQuery({
