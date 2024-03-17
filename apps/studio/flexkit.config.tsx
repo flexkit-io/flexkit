@@ -141,7 +141,22 @@ export default defineConfig([
                   label: 'Configurable',
                   value: 'configurable',
                 },
+                // For grouped lists with a label for each group:
+                // {
+                //   groupLabel: 'Type II',
+                //   items: [
+                //     {
+                //       label: 'Grouped',
+                //       value: 'grouped',
+                //     },
+                //     {
+                //       label: 'Another',
+                //       value: 'another',
+                //     },
+                //   ],
+                // },
               ],
+              placeholder: 'Select a product type',
               size: 260,
               comment: 'Type of Magento product: simple or configurable',
             },

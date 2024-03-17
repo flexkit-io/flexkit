@@ -46,6 +46,16 @@ export type DataType =
 
 export type InputType = 'datetime' | 'number' | 'relationship' | 'select' | 'switch' | 'text' | 'textarea';
 
+type SelectList = {
+  label: string;
+  value: string;
+};
+
+type GroupedSelectList = {
+  groupLabel: string;
+  items: SelectList[];
+};
+
 export type Attribute = {
   dataType: DataType;
   defaultValue?: string;
@@ -57,10 +67,8 @@ export type Attribute = {
   name: string;
   options?: {
     comment?: string;
-    list?: {
-      label: string;
-      value: string;
-    }[];
+    list?: SelectList[] | GroupedSelectList[];
+    placeholder?: string;
     size?: number;
   };
   relationship?: {
