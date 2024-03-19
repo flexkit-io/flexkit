@@ -1,22 +1,25 @@
+import { useId } from 'react';
 import { Checkbox } from '../../ui/primitives/checkbox';
 
 type Props = {
   scope: string | undefined;
   checked: boolean;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (checked: boolean) => void;
 };
 
 export default function UseDefault({ scope, checked, onChange }: Props): JSX.Element | null {
+  const elementId = useId();
+
   if (!scope || scope === 'default') {
     return null;
   }
 
   return (
-    <div className="flex items-center space-x-2 mb-2">
-      <Checkbox checked={checked} id="terms" onCheckedChange={onChange as () => void} />
+    <div className="fk-flex fk-items-center fk-space-x-2 fk-mb-2">
+      <Checkbox checked={checked} id={elementId} onCheckedChange={onChange as () => void} />
       <label
-        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        htmlFor="terms"
+        className="fk-text-xs fk-font-normal fk-leading-none peer-disabled:fk-cursor-not-allowed peer-disabled:fk-opacity-70"
+        htmlFor={elementId}
       >
         Use default value
       </label>

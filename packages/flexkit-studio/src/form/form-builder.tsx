@@ -17,7 +17,7 @@ import type { EntityData, FormEntityItem } from '../graphql-client/types';
 import TextareaField from './fields/textarea';
 import TextField from './fields/text';
 // import RelationshipField from './fields/relationship';
-// import SwitchField from './fields/switch';
+import SwitchField from './fields/switch';
 import SelectField from './fields/select';
 import UndefinedFieldTypeError from './fields/undefined-field-type-error';
 import type { FormFieldParams } from './types';
@@ -126,7 +126,7 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
 export default forwardRef(FormBuilder);
 
 const formFieldComponentsMap: FieldComponentsMap = {
-  'switch': TextField,
+  'switch': SwitchField,
   datetime: TextField,
   editor: TextField,
   number: TextField,

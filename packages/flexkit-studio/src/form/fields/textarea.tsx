@@ -17,13 +17,10 @@ export default function Textarea({ control, defaultValue, fieldSchema, setValue 
     });
   }
 
-  function handleCheckbox(
-    event: React.ChangeEvent<HTMLInputElement>,
-    value: FormScopedAttributeValue | undefined
-  ): void {
+  function handleCheckbox(checked: boolean, value: FormScopedAttributeValue | undefined): void {
     setValue(name, {
       ...value,
-      disabled: event.target.checked,
+      disabled: checked,
     });
   }
 
@@ -51,8 +48,8 @@ export default function Textarea({ control, defaultValue, fieldSchema, setValue 
               />
               <UseDefault
                 checked={field.value?.disabled ?? false}
-                onChange={(event) => {
-                  handleCheckbox(event, field.value);
+                onChange={(checked) => {
+                  handleCheckbox(checked, field.value);
                 }}
                 scope={field.value?.scope}
               />
