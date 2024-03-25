@@ -16,7 +16,7 @@ import type { EntityData, FormEntityItem } from '../graphql-client/types';
 // import EditorField from './fields/editor';
 import TextareaField from './fields/textarea';
 import TextField from './fields/text';
-// import RelationshipField from './fields/relationship';
+import RelationshipField from './fields/relationship';
 import SwitchField from './fields/switch';
 import SelectField from './fields/select';
 import UndefinedFieldTypeError from './fields/undefined-field-type-error';
@@ -106,7 +106,8 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
             createElement(formFieldComponentsMap[field.inputType], {
               key: field.name,
               control,
-              defaultValue: formData ? formData[field.name] : undefined,
+              // TODO: check if default value should be an empty string, depend on the input type or some default value passed by the user in the schema
+              defaultValue: formData ? formData[field.name] : { value: '' },
               entityName,
               fieldSchema: field,
               getValues,
@@ -133,7 +134,7 @@ const formFieldComponentsMap: FieldComponentsMap = {
   select: SelectField,
   text: TextField,
   textarea: TextareaField,
-  relationship: TextField,
+  relationship: RelationshipField,
 };
 
 function hasDataChanged(
@@ -142,7 +143,7 @@ function hasDataChanged(
 ): boolean {
   if (!originalFormData) {
     // iterate over changedData and check if there are any values
-    return Object.keys(changedData).some((field) => changedData[field]?.value !== undefined);
+    return Object.keys(changedData).some((field) => changedData[field]?.value !== '');
   }
 
   const sortAlphabetically = (a: string, b: string): 1 | -1 => (a < b ? -1 : 1);

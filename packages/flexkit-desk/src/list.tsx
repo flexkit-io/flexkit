@@ -1,8 +1,7 @@
 import { find, propEq } from 'ramda';
 import { useConfig, useParams, Outlet, Skeleton, useEntityQuery, type Entity } from '@flexkit/studio';
 import type { SingleProject } from '@flexkit/studio';
-import { gridColumnsDefinition } from './data-grid/columns';
-import { DataTable } from './data-grid/data-table';
+import { DataTable, gridColumnsDefinition } from '@flexkit/studio/data-grid';
 
 const page = 0; // TODO: temporary placeholder, this value must be managed by the data grid
 const pageSize = 20; // TODO: this should be obtained from a global state persisted somewehere
@@ -16,6 +15,7 @@ export function List() {
     entityName: entitySchema?.name ?? '',
     entityNamePlural: entity ?? '',
     attributesSchema: entitySchema?.attributes || [],
+    hasActions: true,
   });
   const [loading, { count, results }] = useEntityQuery({
     entityNamePlural: entity ?? '',
@@ -28,6 +28,7 @@ export function List() {
     ...column,
     cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
   }));
+  console.log(loadingColumns);
 
   return (
     <div className="fk-flex fk-flex-col">
@@ -35,8 +36,8 @@ export function List() {
         {capitalize(entitySchema?.plural ?? '')}
       </h2>
       <DataTable
-        data={loading ? loadingData : results}
         columns={loading ? loadingColumns : columnsDefinition}
+        data={loading ? loadingData : results}
         entityName={entitySchema?.name || ''}
       />
       <Outlet />

@@ -8,7 +8,13 @@ type ActionType =
   | 'notify'
   | 'pickRelationship';
 
-export type Action = ActionAddEntity | ActionEditEntity | ActionDeleteEntity | ActionDismiss | ActionAlertDialog;
+export type Action =
+  | ActionAddEntity
+  | ActionEditEntity
+  | ActionEditRelationship
+  | ActionDeleteEntity
+  | ActionDismiss
+  | ActionAlertDialog;
 
 export type ActionAddEntity = {
   _id?: string;
@@ -54,5 +60,15 @@ export type ActionAlertDialog = {
       dialogActionCancel: () => void;
       dialogActionSubmit: () => void;
     };
+  };
+};
+
+export type ActionEditRelationship = {
+  _id?: string;
+  type: ActionType['editRelationship'];
+  payload: {
+    entityName: string;
+    relationshipId: string;
+    mode: 'single' | 'multiple';
   };
 };

@@ -2,10 +2,6 @@
 
 import * as React from 'react';
 import {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
   flexRender,
   getCoreRowModel,
   getFacetedRowModel,
@@ -14,8 +10,9 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@flexkit/studio';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@flexkit/studio';
+} from '@tanstack/react-table';
+import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from '@tanstack/react-table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/primitives/table';
 import { DataTableToolbar } from './data-table-toolbar';
 
 interface DataTableProps<TData, TValue> {
@@ -24,7 +21,7 @@ interface DataTableProps<TData, TValue> {
   entityName: string;
 }
 
-export function DataTable<TData, TValue>({ columns, data, entityName }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({ columns, data, entityName }: DataTableProps<TData, TValue>): JSX.Element {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -63,8 +60,8 @@ export function DataTable<TData, TValue>({ columns, data, entityName }: DataTabl
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead
-                      key={header.id}
                       colSpan={header.colSpan}
+                      key={header.id}
                       style={header.getSize() ? { width: `${header.getSize()}px` } : {}}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
@@ -75,9 +72,9 @@ export function DataTable<TData, TValue>({ columns, data, entityName }: DataTabl
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                <TableRow data-state={row.getIsSelected() && 'selected'} key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
@@ -85,7 +82,7 @@ export function DataTable<TData, TValue>({ columns, data, entityName }: DataTabl
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="fk-h-24 fk-text-center">
+                <TableCell className="fk-h-24 fk-text-center" colSpan={columns.length}>
                   No results.
                 </TableCell>
               </TableRow>

@@ -5,8 +5,14 @@ import { useActions } from './actions-context';
 import Delete from './delete';
 import AddEntity from './add-entity';
 import EditEntity from './edit-entity';
-// import EditRelationship from './edit-relationship';
-import type { ActionAddEntity, ActionAlertDialog, ActionEditEntity, ActionDeleteEntity } from './types';
+import EditRelationship from './edit-relationship';
+import type {
+  ActionAddEntity,
+  ActionAlertDialog,
+  ActionEditEntity,
+  ActionDeleteEntity,
+  ActionEditRelationship,
+} from './types';
 
 export function ActionsManager(): JSX.Element | null {
   const actions = useActions();
@@ -42,7 +48,13 @@ export function ActionsManager(): JSX.Element | null {
             );
           }
           case 'editRelationship': {
-            return null; //<EditRelationship action={action} isFocused={action._id === latestModalId} key={action._id} />;
+            return (
+              <EditRelationship
+                action={action as ActionEditRelationship}
+                isFocused={action._id === latestModalId}
+                key={action._id}
+              />
+            );
           }
           default: {
             return null;

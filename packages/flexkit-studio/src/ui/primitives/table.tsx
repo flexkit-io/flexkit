@@ -72,7 +72,11 @@ TableHead.displayName = 'TableHead';
 
 const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
   ({ className, ...props }, ref) => (
-    <td className={cn('fk-p-2 fk-align-middle [&:has([role=checkbox])]:fk-pr-0', className)} ref={ref} {...props} />
+    <td
+      className={cn('fk-px-4 fk-py-2 fk-align-middle [&:has([role=checkbox])]:fk-pr-0', className)}
+      ref={ref}
+      {...props}
+    />
   )
 );
 TableCell.displayName = 'TableCell';

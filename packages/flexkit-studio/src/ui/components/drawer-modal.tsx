@@ -24,13 +24,14 @@ type Props = {
 
 export default function DrawerModal({
   actionButtonLabel,
+  beforeClose,
   children,
   editMenu,
   isActionButtonEnabledByDefault,
-  beforeClose,
+  isFocused,
+  isSaving,
   onClose,
   onSave,
-  isSaving,
   title,
 }: Props): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
@@ -45,16 +46,16 @@ export default function DrawerModal({
     setIsOpen(false);
     setTimeout(() => {
       onClose();
-    }, 300);
+    }, 150);
   }, [beforeClose, hasFormChanged, onClose, setIsOpen]);
 
   const onEscapeKeyPressed = useCallback(
     (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && isFocused) {
         handleClose();
       }
     },
-    [handleClose]
+    [handleClose, isFocused]
   );
 
   useEffect(() => {
@@ -88,7 +89,7 @@ export default function DrawerModal({
       open={isOpen}
       preventScrollRestoration={false}
     >
-      <DrawerContent>
+      <DrawerContent className={`${isFocused ? '' : 'fk-max-w-full'}`}>
         <DrawerHeader>
           <DrawerTitle className="fk-w-full">
             {title ? title : <Skeleton className="fk-h-5 fk-w-[120px]" />}

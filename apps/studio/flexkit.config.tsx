@@ -110,7 +110,7 @@ export default defineConfig([
             dataType: 'string',
             inputType: 'text',
             isPrimary: true,
-            validation: (z) => z.string(),
+            validation: (z) => z.string().min(1, { message: 'Name is required' }),
             defaultValue: '',
           },
           {
@@ -124,7 +124,7 @@ export default defineConfig([
             dataType: 'string',
             isUnique: true,
             inputType: 'text',
-            validation: (z) => z.string(),
+            validation: (z) => z.string().min(1, { message: 'SKU is required' }),
             defaultValue: '',
           },
           {
@@ -163,8 +163,25 @@ export default defineConfig([
             dataType: 'string',
             isUnique: false,
             inputType: 'select',
-            validation: (z) => z.string(),
+            validation: (z) => z.string().min(1, { message: 'Product type is required' }),
             defaultValue: 'simple',
+          },
+          {
+            name: 'brand',
+            label: 'Brand',
+            scope: 'relationship',
+            options: {
+              size: 260,
+              comment: 'Brand of the product (i.e. Solgar, Naturitas Essentials, etc)',
+            },
+            dataType: 'string',
+            inputType: 'relationship',
+            defaultValue: '',
+            relationship: {
+              mode: 'single',
+              field: 'name',
+              entity: 'brand',
+            },
           },
           {
             name: 'flags',
@@ -200,7 +217,7 @@ export default defineConfig([
             dataType: 'string',
             inputType: 'text',
             isPrimary: true,
-            validation: (z) => z.string(),
+            validation: (z) => z.string().min(1, { message: 'Name is required' }),
             defaultValue: '',
           },
           {
@@ -213,7 +230,7 @@ export default defineConfig([
             },
             dataType: 'string',
             inputType: 'textarea',
-            validation: (z) => z.string(),
+            validation: (z) => z.string().min(1, { message: 'Tooltip is required' }),
             defaultValue: '',
           },
         ],
@@ -247,7 +264,7 @@ export default defineConfig([
             },
             dataType: 'string',
             inputType: 'text',
-            validation: (z) => z.string(),
+            validation: (z) => z.string().min(1, { message: 'Path is required' }),
             defaultValue: '',
           },
           {

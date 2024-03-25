@@ -21,7 +21,7 @@ export function Desk(): PluginOptions {
               children: [
                 {
                   path: 'edit/:id',
-                  component: <EditEntity />,
+                  component: <EditEntity />, // Not used, left here as an example of how to nest routes in plugins
                 },
               ],
             },

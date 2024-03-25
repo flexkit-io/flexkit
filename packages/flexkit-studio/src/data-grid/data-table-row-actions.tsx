@@ -1,16 +1,16 @@
 'use client';
 
 import { Ellipsis, Pencil } from 'lucide-react';
+import type { Row } from '@tanstack/react-table';
+import { Button } from '../ui/primitives/button';
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Row,
-  useDispatch,
-} from '@flexkit/studio';
+} from '../ui/primitives/dropdown-menu';
+import { useDispatch } from '../entities/actions-context';
 
 interface DataTableRowActionsProps<TData> {
   entityName: string;
@@ -18,16 +18,20 @@ interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
 }
 
-export function DataTableRowActions<TData>({ entityName, entityNamePlural, row }: DataTableRowActionsProps<TData>) {
+export function DataTableRowActions<TData>({
+  entityName,
+  entityNamePlural,
+  row,
+}: DataTableRowActionsProps<TData>): JSX.Element {
   const actionDispatch = useDispatch();
   // @ts-expect-error -- the DataGrid's origina type doesn't know about the _id property
   const entityId = row.original._id;
 
-  function handleEdit() {
+  function handleEdit(): void {
     actionDispatch({ type: 'editEntity', payload: { entityId, entityNamePlural } });
   }
 
-  function handleDelete() {
+  function handleDelete(): void {
     actionDispatch({ type: 'deleteEntity', payload: { entityId, entityName } });
   }
 

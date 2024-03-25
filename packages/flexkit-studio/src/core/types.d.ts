@@ -9,8 +9,8 @@ export type RelationshipConnection = {
 
 export type Relationships = {
   [relationshipId: string]: {
-    connect: RelationshipConnection[];
-    disconnect: string[];
+    connect?: RelationshipConnection[];
+    disconnect?: string[];
   };
 };
 
@@ -21,7 +21,7 @@ export type AppContextType = {
   relationships: Relationships;
 };
 
-type ActionType = 'set_scope' | 'set_relationship';
+type ActionType = 'setScope' | 'setRelationship';
 
 export type AppAction = {
   type: ActionType;

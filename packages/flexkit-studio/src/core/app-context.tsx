@@ -24,14 +24,14 @@ function reducer(state: AppContextType, action: AppAction): AppContextType {
   const { type, payload } = action;
 
   switch (type) {
-    case 'set_scope':
+    case 'setScope':
       typeof localStorage !== 'undefined' && localStorage.setItem(scopeStorageKey, payload as string);
 
       return {
         ...state,
         scope: payload,
       };
-    case 'set_relationship':
+    case 'setRelationship':
       return {
         ...state,
         relationships: payload,
