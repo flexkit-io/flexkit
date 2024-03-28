@@ -35,13 +35,19 @@ export function ActionsManager(): JSX.Element | null {
           }
           case 'addEntity': {
             return (
-              <AddEntity action={action as ActionAddEntity} isFocused={action._id === latestModalId} key={action._id} />
+              <AddEntity
+                action={action as ActionAddEntity}
+                depth={editActions.length - 1}
+                isFocused={action._id === latestModalId}
+                key={action._id}
+              />
             );
           }
           case 'editEntity': {
             return (
               <EditEntity
                 action={action as ActionEditEntity}
+                depth={editActions.length - 1}
                 isFocused={action._id === latestModalId}
                 key={action._id}
               />
@@ -51,6 +57,7 @@ export function ActionsManager(): JSX.Element | null {
             return (
               <EditRelationship
                 action={action as ActionEditRelationship}
+                depth={editActions.length - 1}
                 isFocused={action._id === latestModalId}
                 key={action._id}
               />

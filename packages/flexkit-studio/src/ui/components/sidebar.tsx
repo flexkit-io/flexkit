@@ -42,6 +42,15 @@ export function Sidebar({ className, playlists }: SidebarProps): JSX.Element {
                 Brands
               </NavLink>
             </Button>
+            <Button asChild className="fk-w-full fk-justify-start" variant="ghost">
+              <NavLink
+                className="fk-text-muted-foreground aria-[current]:fk-text-foreground aria-[current]:fk-bg-muted aria-[current]:fk-border-l-white"
+                to="list/flags"
+              >
+                <Archive className="fk-h-4 fk-w-4 fk-mr-2" strokeWidth={2} />
+                Flags
+              </NavLink>
+            </Button>
           </div>
         </div>
       </ScrollArea>

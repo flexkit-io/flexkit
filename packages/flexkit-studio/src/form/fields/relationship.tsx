@@ -12,7 +12,7 @@ import { Input } from '../../ui/primitives/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
 import { Badge } from '../../ui/primitives/badge';
 import { Collapsible, CollapsibleContent } from '../../ui/primitives/collapsible';
-import type { Attribute, Entity, Relationships, RelationshipConnection } from '../../core/types';
+import type { AppAction, Attribute, Entity, Relationships, RelationshipConnection } from '../../core/types';
 import { useDispatch } from '../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../core/app-context';
 import type { Action } from '../../entities/types';
@@ -31,6 +31,7 @@ export default function Relationship({
   scope,
   setValue,
 }: FormFieldParams): JSX.Element {
+  // eslint-disable-next-line no-console -- temporary debug
   console.log('Relationship component reloaded');
   const [isOpen, setIsOpen] = useState(false);
   const [rows, setRows] = useState<EntityItem[] | []>([]);
@@ -103,7 +104,7 @@ export default function Relationship({
 
   // multiple mode
   useEffect(() => {
-    if (relationship.mode !== 'multiple') {
+    if (relationship?.mode !== 'multiple') {
       return;
     }
 
@@ -113,7 +114,7 @@ export default function Relationship({
     const value = connections ? { ...originalValues, value: connections } : defaultValue;
 
     setValue(name, value);
-  }, [name, defaultValue, getValues, relationship.mode, relationships, relationshipId, setValue]);
+  }, [name, defaultValue, getValues, relationship?.mode, relationships, relationshipId, setValue]);
 
   useEffect(() => {
     const connections = relationships[relationshipId]?.connect ?? [];
@@ -126,10 +127,12 @@ export default function Relationship({
 
     // TODO: finish the functionality to merge the existing rows with the new ones and paginate them
     if (limit > 0) {
+      // eslint-disable-next-line no-console -- temporary debug
       console.log('Limit is greater than zero');
     }
 
     if (limit <= 0) {
+      // eslint-disable-next-line no-console -- temporary debug
       console.log('No need to fetch more records');
       setRows((prevRows) =>
         uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]).slice(
@@ -218,9 +221,24 @@ export default function Relationship({
     }
   }
 
-  function handleClearing(event: SyntheticEvent): void {
-    event.stopPropagation();
+  function handleClearingSingle(event: SyntheticEvent): void {
+    const action = {
+      type: 'setRelationship',
+      payload: { connect: [], disconnect: [] },
+    } as AppAction;
+
+    event.preventDefault();
     setValue(name, '');
+
+    if (data) {
+      // this is an edit form, let's disconnect the relationship
+      action.payload = {
+        connect: [],
+        disconnect: relationships[relationshipId]?.connect ?? [],
+      };
+    }
+
+    appDispatch(action);
   }
 
   return (
@@ -238,7 +256,7 @@ export default function Relationship({
                 <>
                   <div className="fk-flex fk-w-full fk-items-start fk-space-x-2">
                     <Button
-                      className="fk-grow fk-h-auto fk-min-h-[2.5rem] fk-border fk-border-input fk-bg-background hover:fk-bg-background fk-ring-offset-background focus:fk-outline-none focus:fk-ring-2 focus:fk-ring-ring focus:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50"
+                      className="fk-grow fk-h-auto fk-min-h-[2.5rem] fk-rounded-md fk-border fk-border-input fk-bg-background hover:fk-bg-background fk-ring-offset-background focus:fk-outline-none focus:fk-ring-2 focus:fk-ring-ring focus:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50"
                       onClick={(e) => {
                         e.preventDefault();
                         setIsOpen((prev) => !prev);
@@ -294,7 +312,7 @@ export default function Relationship({
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button onClick={handleClearing} size="icon" variant="outline">
+                          <Button onClick={handleClearingSingle} size="icon" variant="outline">
                             <Unlink className="fk-h-4 fk-w-4" />
                           </Button>
                         </TooltipTrigger>
@@ -343,38 +361,7 @@ type DataAdapter = {
 };
 
 function dataAdapter({ data, relationshipEntitySchema, scope }: DataAdapter): [] | undefined {
-  return (
-    data &&
-    data.map((row: any) =>
-      map((field) => {
-        if (typeof field === 'object' && field?.__typename) {
-          const relationshipFieldSchema = find(propEq(field.__typename, 'name'))(
-            relationshipEntitySchema?.attributes ?? []
-          ) as Attribute;
-          const relationshipFieldName = relationshipFieldSchema?.relationship?.field ?? '';
-
-          if (relationshipFieldName) {
-            return field[relationshipFieldName];
-          }
-
-          return field?.[scope] ?? field?.default;
-        }
-
-        if (Array.isArray(field)) {
-          return field
-            .slice(0, 3)
-            .map((item) => {
-              const primaryAttributeName = getPrimaryAttributeName(relationshipEntitySchema?.attributes ?? []);
-
-              return item[primaryAttributeName]?.[scope] ?? item[primaryAttributeName]?.default;
-            })
-            .join(', ');
-        }
-
-        return field;
-      }, row)
-    )
-  );
+  return [];
 }
 
 function getRowClassName(_id: string, relationshipId: string, relationships: Relationships) {
@@ -411,10 +398,12 @@ function fetchRelatedRows({ connections, paginationModel, getData, entityName, _
       ? paginationModel.pageSize
       : totalCount - selectedRows.length;
   let offset = paginationModel.pageSize * paginationModel.page - selectedRows.length;
+  // eslint-disable-next-line no-console -- temporary debug
   console.log({ paginationModel }, selectedRows.length);
   offset = offset < 0 ? 0 : offset;
 
   if (limit > 0) {
+    // eslint-disable-next-line no-console -- temporary debug
     console.log(`Fetch ${limit} records starting from ${offset}`);
     getData({
       variables: {
@@ -430,6 +419,7 @@ function fetchRelatedRows({ connections, paginationModel, getData, entityName, _
   }
 
   if (limit <= 0) {
+    // eslint-disable-next-line no-console -- temporary debug
     console.log('No need to fetch more records');
     // setRows((prevRows) =>
     //   uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]).slice(

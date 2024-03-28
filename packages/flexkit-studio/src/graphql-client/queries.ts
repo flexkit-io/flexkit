@@ -155,10 +155,10 @@ export function mapQueryResult(
         const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
         const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
         const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
-        const localValue = entity[attributeName] as ScopedAttributeValue;
+        const localValue = entity[attributeName] as ScopedAttributeValue | null;
         const value = Array.isArray(localValue)
           ? sliceFirstThreeItems(localValue, primaryAttributeName)
-          : localValue[primaryAttributeName];
+          : localValue?.[primaryAttributeName];
 
         return {
           ...acc,

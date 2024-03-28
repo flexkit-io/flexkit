@@ -8,10 +8,12 @@ export type RelationshipConnection = {
 };
 
 export type Relationships = {
-  [relationshipId: string]: {
-    connect?: RelationshipConnection[];
-    disconnect?: string[];
-  };
+  [relationshipId: string]:
+    | {
+        connect?: RelationshipConnection[];
+        disconnect?: string[];
+      }
+    | undefined;
 };
 
 export type AppContextType = {

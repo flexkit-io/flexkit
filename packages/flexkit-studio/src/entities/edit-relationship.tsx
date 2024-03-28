@@ -17,6 +17,7 @@ import type { Action, ActionEditRelationship } from './types';
 
 type Props = {
   action: ActionEditRelationship;
+  depth: number;
   isFocused: boolean;
 };
 
@@ -29,7 +30,7 @@ function getLoadingColumns(columns: object[]): ColumnDef<unknown>[] {
   })) as unknown as ColumnDef<unknown>[];
 }
 
-export default function EditRelationship({ action, isFocused }: Props): JSX.Element {
+export default function EditRelationship({ action, depth, isFocused }: Props): JSX.Element {
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const { relationships, scope } = useAppContext();
@@ -43,10 +44,10 @@ export default function EditRelationship({ action, isFocused }: Props): JSX.Elem
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const entityNamePlural = entitySchema?.plural || '';
   const relationshipContext = relationships[relationshipId];
-  // const initialSelectionState = relationshipContext.connect?.length
-  //   ? relationshipContext.connect.map((item) => item._id)
-  //   : [];
-  // const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>(initialSelectionState);
+  const initialSelectionState = relationshipContext?.connect?.length
+    ? relationshipContext.connect.map((item) => item._id)
+    : [];
+  const [selectedRows, setSelectedRows] = useState(initialSelectionState);
 
   const [loading, { count, results }] = useEntityQuery({
     entityNamePlural: entitySchema?.plural || '',
@@ -68,16 +69,6 @@ export default function EditRelationship({ action, isFocused }: Props): JSX.Elem
   const loadingData = Array(5).fill({});
   const loadingColumns = getLoadingColumns(columns);
 
-  const handleSelection = (selection: GridRowSelectionModel) => {
-    if (mode === 'multiple') {
-      // setRowSelectionModel(selection);
-
-      return;
-    }
-
-    // setRowSelectionModel([selection[selection.length - 1]]);
-  };
-
   const handleClose = useCallback(
     (_id: Action['_id']) => {
       actionDispatch({ type: 'dismiss', _id, payload: {} });
@@ -85,25 +76,30 @@ export default function EditRelationship({ action, isFocused }: Props): JSX.Elem
     [actionDispatch]
   );
 
-  const handleSave = () => {
+  function handleSave(): void {
     appDispatch({
       type: 'setRelationship',
       payload: {
         [relationshipId]: {
-          connect: [] /* rowSelectionModel.map((_id) => ({
+          connect: selectedRows.map((_id) => ({
             _id,
             row: (results as []).find((r: { _id: string }) => r._id === _id),
-          })) */,
-          disconnect: [], //relationshipContext?.disconnect ?? [],
+          })),
+          disconnect: relationshipContext?.disconnect ?? [],
         },
       },
     });
     handleClose(action._id);
-  };
+  }
+
+  function handleSelectionChange(selectedIds: string[]): void {
+    setSelectedRows(selectedIds);
+  }
 
   return (
     <DrawerModal
       actionButtonLabel="Select"
+      depth={depth}
       // editMenu={<EditMenu />}
       isActionButtonEnabledByDefault
       isFocused={isFocused}
@@ -119,37 +115,11 @@ export default function EditRelationship({ action, isFocused }: Props): JSX.Elem
         columns={loading ? loadingColumns : columns}
         data={loading ? loadingData : results}
         entityName={entitySchema?.name || ''}
+        initialSelectionState={
+          selectedRows.reduce((acc, id) => ({ ...acc, [id]: true }), {}) as { [_id: string]: boolean }
+        }
+        onEntitySelectionChange={handleSelectionChange}
       />
-      {/* <Box sx={{ height: 'calc(100% - 5rem)', width: '100%' }}>
-        <StyledDataGrid
-          checkboxSelection={mode === 'multiple'}
-          columns={columns}
-          components={{
-            Toolbar: GridToolbar,
-            LoadingOverlay: LinearProgress,
-            Pagination,
-          }}
-          componentsProps={{
-            toolbar: {
-              showQuickFilter: true,
-              quickFilterProps: { debounceMs: 500 },
-            },
-          }}
-          density="compact"
-          getRowId={(row) => row._id}
-          keepNonExistentRowsSelected
-          loading={isLoading || loading}
-          getRowClassName={(params) => (rowSelectionModel.includes(params.id) ? 'relationship-selected' : '')}
-          onPaginationModelChange={setPaginationModel}
-          onRowSelectionModelChange={(selection) => handleSelection(selection)}
-          paginationModel={paginationModel}
-          pageSizeOptions={AVAILABLE_PAGE_SIZES}
-          paginationMode="server"
-          rowCount={count}
-          rows={results || []}
-          rowSelectionModel={rowSelectionModel}
-        />
-      </Box> */}
     </DrawerModal>
   );
 }

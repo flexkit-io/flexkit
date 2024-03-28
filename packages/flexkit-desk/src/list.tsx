@@ -39,6 +39,7 @@ export function List() {
         columns={loading ? loadingColumns : columnsDefinition}
         data={loading ? loadingData : results}
         entityName={entitySchema?.name || ''}
+        hasToolbar={true}
       />
       <Outlet />
     </div>

@@ -19,10 +19,20 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   entityName: string;
+  hasToolbar?: boolean;
+  onEntitySelectionChange?: (rowSelection: string[]) => void;
+  initialSelectionState?: { [_id: string]: boolean };
 }
 
-export function DataTable<TData, TValue>({ columns, data, entityName }: DataTableProps<TData, TValue>): JSX.Element {
-  const [rowSelection, setRowSelection] = React.useState({});
+export function DataTable<TData, TValue>({
+  columns,
+  data,
+  entityName,
+  hasToolbar,
+  onEntitySelectionChange,
+  initialSelectionState,
+}: DataTableProps<TData, TValue>): JSX.Element {
+  const [rowSelection, setRowSelection] = React.useState(initialSelectionState || {});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -47,11 +57,17 @@ export function DataTable<TData, TValue>({ columns, data, entityName }: DataTabl
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getRowId: (row) => row._id,
   });
+
+  React.useEffect(() => {
+    const selectedIds = Object.keys(rowSelection).map((id) => id);
+    onEntitySelectionChange?.(selectedIds);
+  }, [onEntitySelectionChange, rowSelection]);
 
   return (
     <div className="fk-space-y-4">
-      <DataTableToolbar entityName={entityName} table={table} />
+      {Boolean(hasToolbar) && <DataTableToolbar entityName={entityName} table={table} />}
       <div className="fk-rounded-md fk-border-border fk-border">
         <Table>
           <TableHeader>

@@ -22,10 +22,11 @@ import type { Action, ActionAddEntity } from './types';
 
 type Props = {
   action: ActionAddEntity;
+  depth: number;
   isFocused: boolean;
 };
 
-export default function AddEntity({ action, isFocused }: Props): JSX.Element {
+export default function AddEntity({ action, depth, isFocused }: Props): JSX.Element {
   const { entityName } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const { projects, currentProjectId } = useConfig();
@@ -108,6 +109,7 @@ export default function AddEntity({ action, isFocused }: Props): JSX.Element {
   return (
     <DrawerModal
       beforeClose={handleBeforeClose}
+      depth={depth}
       // editMenu={<EditMenu />}
       isFocused={isFocused}
       isSaving={mutationData.loading}

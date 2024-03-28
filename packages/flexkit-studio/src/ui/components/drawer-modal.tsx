@@ -13,9 +13,10 @@ type Props = {
   actionButtonLabel?: string;
   beforeClose?: (hasFormChanged: boolean) => boolean;
   children: ReactNode;
+  depth: number; // how many drawers are open, to control the width of the drawers
   editMenu?: ReactNode;
   isActionButtonEnabledByDefault?: boolean;
-  isFocused: boolean;
+  isFocused: boolean; // whether the drawer is the last one open
   isSaving?: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -26,6 +27,7 @@ export default function DrawerModal({
   actionButtonLabel,
   beforeClose,
   children,
+  depth,
   editMenu,
   isActionButtonEnabledByDefault,
   isFocused,
@@ -89,7 +91,7 @@ export default function DrawerModal({
       open={isOpen}
       preventScrollRestoration={false}
     >
-      <DrawerContent className={`${isFocused ? '' : 'fk-max-w-full'}`}>
+      <DrawerContent style={isFocused ? {} : { maxWidth: `calc(100% - ${depth * (50 / depth)}px)` }}>
         <DrawerHeader>
           <DrawerTitle className="fk-w-full">
             {title ? title : <Skeleton className="fk-h-5 fk-w-[120px]" />}
