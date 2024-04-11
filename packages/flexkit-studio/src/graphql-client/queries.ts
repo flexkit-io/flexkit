@@ -56,19 +56,13 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
     const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
-    const primaryAttributeName =
-      relatedEntity?.attributes.find((attr) => attr.isPrimary)?.name ?? relatedEntity?.attributes[0]?.name ?? '';
-
-    if (attribute.relationship?.mode === 'single') {
-      return `${acc}\n  ${attribute.name} {    _id\n    ${primaryAttributeName}\n  }\n  `;
-    }
 
     return (
       // eslint-disable-next-line prefer-template -- string concatenation is easier to read here
       `${attribute.name}Aggregate {\n` +
       `      count\n` +
       `    }` +
-      `${acc}\n    ${attribute.name} (options: {limit: 25, offset: 0}) {  ` +
+      `${acc}\n    ${attribute.name} (options: {limit: 25, offset: 0}) {  _id` +
       relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
         const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
@@ -216,8 +210,6 @@ export function mapQueryResultForFormFields(
     const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
       const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
 
-      console.log({ entity }, { attributeName });
-
       return {
         ...acc,
         [attributeName]: {
@@ -234,15 +226,14 @@ export function mapQueryResultForFormFields(
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
       (acc, attributeName) => {
         const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
-        const { field, mode } = attributeSchema.relationship || { field: '' };
-        const value = mode === 'multiple' ? entity[attributeName] : entity[attributeName]?.[field];
+        const value = entity[attributeName];
         const _id = entity[attributeName]?._id;
-        const count = entity[`${attributeName}Aggregate`]?.count;
+        const aggregateCount = entity[`${attributeName}Aggregate`]?.count;
 
         return {
           ...acc,
           [attributeName]: {
-            count,
+            count: aggregateCount,
             _id,
             value,
           },
@@ -307,6 +298,7 @@ export function getEntityUpdateMutation(
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const localAttributes = localAttributesUpdate(attributes, data, scope);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
+  console.log({ relationshipAttributes });
   const responseType = pluralizedEntityName.toLowerCase();
   const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
 
@@ -704,7 +696,7 @@ export function getRelatedItemsQuery(
     };
   }
 
-  const relationshipAttributesList = () => {
+  const relationshipAttributesList = (): string => {
     const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute | undefined;
     const relationshipMode = relationshipAttribute?.relationship?.mode || 'single';
     const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
@@ -715,6 +707,7 @@ export function getRelatedItemsQuery(
     }
 
     return (
+      // eslint-disable-next-line prefer-template -- string concatenation is easier to read here
       `${attributeName}Aggregate {\n` +
       `      count\n` +
       `    }\n` +
@@ -725,8 +718,8 @@ export function getRelatedItemsQuery(
         }
 
         if (attribute.scope === 'relationship') {
-          if (attribute?.relationship?.mode === 'single') {
-            return `    ${acc}\n      ${attribute.name} {\n        ${attribute.relationship?.field}\n      }\n    `;
+          if (attribute.relationship?.mode === 'single') {
+            return `    ${acc}\n      ${attribute.name} {\n        ${attribute.relationship.field}\n      }\n    `;
           }
 
           return `  ${acc}\n      ${attribute.name} (options: {limit: 25, offset: 0}) {\n        ${attribute.relationship?.field}  {\n          default\n          ${scope}\n        }\n      }\n    `;

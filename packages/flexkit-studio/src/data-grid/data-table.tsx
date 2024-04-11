@@ -57,7 +57,7 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    getRowId: (row) => row._id,
+    getRowId: (row: { [key: string]: unknown; _id: string }) => row._id,
   });
 
   React.useEffect(() => {

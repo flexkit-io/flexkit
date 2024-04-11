@@ -1,8 +1,9 @@
+import { disconnect } from 'process';
 import type { ZodTypeAny } from 'zod';
 
 export type RelationshipConnection = {
   _id: string;
-  row: {
+  value: {
     [attributeName: string]: string;
   };
 };
@@ -25,9 +26,19 @@ export type AppContextType = {
 
 type ActionType = 'setScope' | 'setRelationship';
 
-export type AppAction = {
-  type: ActionType;
-  payload: typeof initialState;
+export type ActionSetScope = {
+  type: ActionType['setScope'];
+  payload: string;
+};
+
+export type ActionSetRelationship = {
+  type: ActionType['setScope'];
+  payload: {
+    [relationshipId: string]: {
+      connect: { _id: string; value: { [key: string]: string | number } }[];
+      disconnect: string[];
+    };
+  };
 };
 
 export type ScopeType = 'local' | 'global' | 'relationship';

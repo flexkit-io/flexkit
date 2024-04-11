@@ -182,6 +182,8 @@ export default defineConfig([
               field: 'name',
               entity: 'brand',
             },
+            // TODO: figure out how to validate relationship fields
+            // validation: (z) => z.string().min(1, { message: 'Brand is required' }),
           },
           {
             name: 'flags',

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
-import { useLazyQuery, gql } from '@apollo/client';
+import { useQuery, gql } from '@apollo/client';
 import { getEntityQuery, mapQueryResult, mapQueryResultForFormFields } from './queries';
 import type {
   EntityQueryAggregate,
@@ -21,30 +21,16 @@ export function useEntityQuery({
     count: 0,
     results: [],
   });
-  const [lazyQuery, setLazyQuery] = useState(gql`
-    query {
-      __schema {
-        queryType {
-          fields {
-            name
-          }
-        }
-      }
-    }
-  `);
-  const [getData, { loading, data }] = useLazyQuery(lazyQuery);
+  const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
+  const { loading, data } = useQuery(
+    gql`
+      ${entityQuery.query}
+    `,
+    { variables }
+  );
 
   useEffect(() => {
     if (schema.length === 0) return;
-
-    const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
-
-    entityQuery.query &&
-      setLazyQuery(gql`
-        ${entityQuery.query}
-      `);
-
-    entityQuery.query && void getData({ variables });
 
     const entityData = data as (EntityQueryAggregate & EntityQueryResults) | undefined;
 

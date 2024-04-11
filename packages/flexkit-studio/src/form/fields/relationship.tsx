@@ -5,14 +5,14 @@ import { useLazyQuery, gql } from '@apollo/client';
 import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';
 import { ChevronsUpDown, Link, Unlink } from 'lucide-react';
 import { getRelatedItemsQuery, mapRelatedItemsQueryResult } from '../../graphql-client/queries';
-import type { EntityItem, FormScopedAttributeValue } from '../../graphql-client/types';
+import type { EntityItem, EntityQueryResults, FormScopedAttributeValue } from '../../graphql-client/types';
 import { Button } from '../../ui/primitives/button';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import { Input } from '../../ui/primitives/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
 import { Badge } from '../../ui/primitives/badge';
 import { Collapsible, CollapsibleContent } from '../../ui/primitives/collapsible';
-import type { AppAction, Attribute, Entity, Relationships, RelationshipConnection } from '../../core/types';
+import type { ActionSetRelationship, Attribute, Entity, Relationships, RelationshipConnection } from '../../core/types';
 import { useDispatch } from '../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../core/app-context';
 import type { Action } from '../../entities/types';
@@ -24,6 +24,7 @@ const AVAILABLE_PAGE_SIZES = [25, 50, 100];
 export default function Relationship({
   control,
   defaultValue,
+  entityId,
   entityName,
   fieldSchema,
   getValues,
@@ -47,7 +48,7 @@ export default function Relationship({
   const { relationships } = useAppContext();
   const relationshipId = useId();
   const relationshipEntitySchema = find(propEq(relationshipEntity, 'name'))(schema) as Entity | undefined;
-  const primaryAttributeName = getPrimaryAttributeName(relationshipEntitySchema?.attributes || []);
+  const primaryAttributeName = getPrimaryAttributeName(relationshipEntitySchema?.attributes ?? []);
   const initialRows = useMemo(
     () =>
       relationship.mode === 'multiple'
@@ -60,77 +61,75 @@ export default function Relationship({
   const [getData, { loading, data }] = useLazyQuery(gql`
     ${entityQuery.query}
   `);
-  const resetValues = useCallback(() => {
+
+  useEffect(() => {
+    const scopedValue = (field: { field: { [key: string]: string } | string }): string =>
+      field?.[scope] ?? field?.default ?? field;
+    const preexistentConnections = Array.isArray(defaultValue?.value)
+      ? defaultValue.value.map((row) => ({
+          _id: row._id,
+          value: map(scopedValue, row),
+        }))
+      : { _id: defaultValue._id, value: defaultValue.value };
+
+    // set the initial state of the relationship
     appDispatch({
       type: 'setRelationship',
       payload: {
         [relationshipId]: {
-          connect: [],
+          connect: preexistentConnections,
           disconnect: [],
         },
       },
     });
-  }, [relationshipId, appDispatch]);
-
-  // TODO: this causes an infinite loop - check what is the purpose of this
-  // useEffect(() => {
-  //   resetValues();
-  //   setRows(initialRows);
-  // }, [initialRows, resetValues]);
-
-  // single mode
-  useEffect(() => {
-    if (
-      relationship.mode !== 'single' ||
-      !relationships[relationshipId] ||
-      relationships[relationshipId]?.connect.length === 0
-    ) {
-      return;
-    }
-
-    const [{ _id, row }] = relationships[relationshipId].connect;
-
-    if (_id && row) {
-      setValue(name, { value: row[primaryAttributeName], _id });
-    }
-  }, [primaryAttributeName, relationships, relationshipId, relationship.mode, setValue, name]);
+    setRows(initialRows);
+  }, [appDispatch, initialRows, relationshipId, defaultValue, scope]);
 
   useEffect(() => {
     if (data) {
+      // pagination occured, assign the query results to the rows state
       const mappedResults = mapRelatedItemsQueryResult(entityName, relationshipEntity, scope, data, schema);
       setRows(mappedResults.results); // TODO: merge with existing rows
     }
   }, [data, entityName, schema, relationshipEntity, scope]);
 
-  // multiple mode
+  /**
+   * Update the value of the relationship attribute when the relationshp context value changes
+   * The relationshp context value changes when the user selects a row from the datagrid in the EditRelationship modal
+   */
+  useEffect(() => {
+    if (relationship?.mode === 'single' && relationships[relationshipId]?.connect?._id) {
+      setValue(name, relationships[relationshipId].connect);
+
+      return;
+    }
+
+    if (relationship?.mode === 'multiple' && relationships[relationshipId]?.connect?.length) {
+      setValue(name, relationships[relationshipId].connect);
+    }
+  }, [relationships, relationshipId, relationship?.mode, setValue, name]);
+
+  /**
+   * Multiple mode
+   * Set the value of the rows for the datagrid
+   */
   useEffect(() => {
     if (relationship?.mode !== 'multiple') {
       return;
     }
 
-    const rels = relationships[relationshipId];
-    const originalValues = getValues(name);
-    const connections = rels?.connect?.length || rels?.disconnect?.length ? rels : undefined;
-    const value = connections ? { ...originalValues, value: connections } : defaultValue;
-
-    setValue(name, value);
-  }, [name, defaultValue, getValues, relationship?.mode, relationships, relationshipId, setValue]);
-
-  useEffect(() => {
     const connections = relationships[relationshipId]?.connect ?? [];
-    const selectedRows = connections.map(({ row }) => row);
+    const selectedRows = connections.map(({ value }) => value);
     const totalCount = paginationModel.pageSize * (paginationModel.page + 1);
     const limit =
       totalCount - selectedRows.length > paginationModel.pageSize
         ? paginationModel.pageSize
         : totalCount - selectedRows.length;
-
     // TODO: finish the functionality to merge the existing rows with the new ones and paginate them
     if (limit > 0) {
       // eslint-disable-next-line no-console -- temporary debug
       console.log('Limit is greater than zero');
     }
-
     if (limit <= 0) {
       // eslint-disable-next-line no-console -- temporary debug
       console.log('No need to fetch more records');
@@ -140,12 +139,10 @@ export default function Relationship({
           paginationModel.pageSize
         )
       );
-
       return;
     }
-
     setRowCount(selectedRows.length + (defaultValue?.count ?? 0));
-    setRows((prevRows) => uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]));
+    setRows(selectedRows as []);
   }, [defaultValue?.count, paginationModel.page, paginationModel.pageSize, relationships, relationshipId]);
 
   // const disconnectEntity: ({ _entityId }: Action['payload']) => () => void = useCallback(
@@ -200,7 +197,7 @@ export default function Relationship({
       type: 'editRelationship',
       payload: {
         entityName: relationshipEntity,
-        entityId: defaultValue?._id,
+        entityId,
         relationshipId,
         mode: relationship?.mode ?? 'single',
       },
@@ -225,7 +222,7 @@ export default function Relationship({
     const action = {
       type: 'setRelationship',
       payload: { connect: [], disconnect: [] },
-    } as AppAction;
+    };
 
     event.preventDefault();
     setValue(name, '');
@@ -306,9 +303,9 @@ export default function Relationship({
                     onClick={handleSelection}
                     readOnly
                     type="text"
-                    value={field.value?.value || ''}
+                    value={field.value?.value?.[primaryAttributeName] || ''}
                   />
-                  {field.value?.value ? (
+                  {field.value?.value?.[primaryAttributeName] ? (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -355,16 +352,41 @@ function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
 }
 
 type DataAdapter = {
-  data: any;
+  data?: EntityQueryResults[];
   relationshipEntitySchema: Entity | undefined;
   scope: string;
 };
 
 function dataAdapter({ data, relationshipEntitySchema, scope }: DataAdapter): [] | undefined {
-  return [];
+  return data?.map((row) =>
+    map((field) => {
+      if (typeof field === 'object' && field.__typename) {
+        const relationshipFieldSchema = find(propEq(field.__typename, 'name'))(
+          relationshipEntitySchema?.attributes ?? []
+        ) as Attribute;
+        const relationshipFieldName = relationshipFieldSchema?.relationship?.field ?? '';
+
+        console.log({ field }, { relationshipFieldName });
+        if (relationshipFieldName) {
+          return field[relationshipFieldName];
+        }
+
+        return field?.[scope] ?? field?.default;
+      }
+
+      if (Array.isArray(field)) {
+        return field
+          .slice(0, 3)
+          .map((item) => item[primaryAttributeName]?.[scope] ?? item[primaryAttributeName]?.default)
+          .join(', ');
+      }
+
+      return field;
+    }, row)
+  );
 }
 
-function getRowClassName(_id: string, relationshipId: string, relationships: Relationships) {
+function getRowClassName(_id: string, relationshipId: string, relationships: Relationships): string {
   const isAdding = find(propEq('_id', _id))(relationships[relationshipId]?.connect || []);
   const isRemoving = relationships[relationshipId]?.disconnect?.includes(_id);
 

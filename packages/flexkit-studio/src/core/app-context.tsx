@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useReducer } from 'react';
 import type { Dispatch, ReactNode } from 'react';
-import type { AppAction, AppContextType } from './types';
+import type { ActionSetRelationship, ActionSetScope, AppContextType } from './types';
 
 const scopeStorageKey = 'core.context.scope';
 const savedScope = typeof localStorage !== 'undefined' ? localStorage.getItem(scopeStorageKey) : '';
@@ -16,11 +16,11 @@ const initialState = {
 
 const AppContext = createContext<AppContextType>(initialState);
 
-const AppDispatchContext = createContext<Dispatch<AppAction>>(() => {
+const AppDispatchContext = createContext<Dispatch<ActionSetRelationship | ActionSetScope>>(() => {
   /* void */
 });
 
-function reducer(state: AppContextType, action: AppAction): AppContextType {
+function reducer(state: AppContextType, action: ActionSetRelationship | ActionSetScope): AppContextType {
   const { type, payload } = action;
 
   switch (type) {
@@ -29,12 +29,12 @@ function reducer(state: AppContextType, action: AppAction): AppContextType {
 
       return {
         ...state,
-        scope: payload,
+        scope: payload as ActionSetScope['payload'],
       };
     case 'setRelationship':
       return {
         ...state,
-        relationships: payload,
+        relationships: { ...state.relationships, ...(payload as ActionSetRelationship['payload']) },
       };
     default:
       throw Error(`Unknown action: ${type as string}`);
@@ -55,6 +55,6 @@ export function useAppContext(): AppContextType {
   return useContext(AppContext);
 }
 
-export function useAppDispatch(): Dispatch<AppAction> {
+export function useAppDispatch(): Dispatch<ActionSetRelationship | ActionSetScope> {
   return useContext(AppDispatchContext);
 }

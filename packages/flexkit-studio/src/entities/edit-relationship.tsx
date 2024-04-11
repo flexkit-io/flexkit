@@ -38,7 +38,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     pageSize: AVAILABLE_PAGE_SIZES[0],
     page: 0,
   });
-  const { entityName, relationshipId, mode } = action.payload;
+  const { entityId, entityName, relationshipId, mode } = action.payload;
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
@@ -46,14 +46,26 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const relationshipContext = relationships[relationshipId];
   const initialSelectionState = relationshipContext?.connect?.length
     ? relationshipContext.connect.map((item) => item._id)
-    : [];
+    : [relationshipContext?.connect?._id];
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
 
   const [loading, { count, results }] = useEntityQuery({
     entityNamePlural: entitySchema?.plural || '',
     schema,
     scope,
-    variables: { options: { offset: paginationModel.page, limit: paginationModel.pageSize } },
+    variables: {
+      options: {
+        offset: paginationModel.page,
+        limit: paginationModel.pageSize,
+      },
+      where: {
+        productsConnection_NONE: {
+          node: {
+            _id: entityId,
+          },
+        },
+      },
+    },
   });
 
   const columns = useMemo(
@@ -77,14 +89,30 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   );
 
   function handleSave(): void {
+    let connect;
+
+    if (mode === 'single') {
+      const _id = selectedRows[0];
+
+      connect = {
+        _id,
+        value: results.find((row) => row._id === _id),
+      };
+    }
+
+    console.log({ selectedRows });
+    if (mode === 'multiple') {
+      connect = selectedRows.map((_id) => ({
+        _id,
+        value: results.find((row) => row._id === _id),
+      }));
+    }
+
     appDispatch({
       type: 'setRelationship',
       payload: {
         [relationshipId]: {
-          connect: selectedRows.map((_id) => ({
-            _id,
-            row: (results as []).find((r: { _id: string }) => r._id === _id),
-          })),
+          connect,
           disconnect: relationshipContext?.disconnect ?? [],
         },
       },
@@ -116,7 +144,9 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
         data={loading ? loadingData : results}
         entityName={entitySchema?.name || ''}
         initialSelectionState={
-          selectedRows.reduce((acc, id) => ({ ...acc, [id]: true }), {}) as { [_id: string]: boolean }
+          selectedRows.reduce((acc, id) => ({ ...acc, ...(id ? { [id]: true } : {}) }), {}) as {
+            [_id: string]: boolean;
+          }
         }
         onEntitySelectionChange={handleSelectionChange}
       />

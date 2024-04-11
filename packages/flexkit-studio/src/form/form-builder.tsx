@@ -29,6 +29,7 @@ export type SubmitHandle = {
 };
 
 type Props = {
+  entityId: string;
   entityName: string;
   formData?: FormEntityItem;
   schema: Schema;
@@ -39,7 +40,10 @@ type FieldComponentsMap = {
   [type: string]: (_props: FormFieldParams) => JSX.Element;
 };
 
-function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: ForwardedRef<SubmitHandle>): JSX.Element {
+function FormBuilder(
+  { entityId, entityName, formData, schema, onSubmit }: Props,
+  ref: ForwardedRef<SubmitHandle>
+): JSX.Element {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const formSchema = entitySchema?.attributes ?? [];
   const validationSchema = z.object(
@@ -58,9 +62,13 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
 
   useImperativeHandle(ref, () => ({
     submit() {
-      void handleSubmit((data) => {
+      void handleSubmit(() => {
         isDirty(false);
-        onSubmit(data, formData);
+        /**
+         * TODO: Investigate this further.
+         * The issue is that the data from the callback does not include the relationship fields, so we are using getValues() instead
+         */
+        onSubmit(getValues(), formData);
       })();
     },
     hasErrors() {
@@ -108,6 +116,7 @@ function FormBuilder({ entityName, formData, schema, onSubmit }: Props, ref: For
               control,
               // TODO: check if default value should be an empty string, depend on the input type or some default value passed by the user in the schema
               defaultValue: formData ? formData[field.name] : { value: '' },
+              entityId,
               entityName,
               fieldSchema: field,
               getValues,

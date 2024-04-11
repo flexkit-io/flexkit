@@ -5,6 +5,7 @@ import type { FormFieldSchema, Schema } from '../core/types';
 export type FormFieldParams = {
   control: Control | undefined;
   defaultValue: FieldPathValue;
+  entityId: string;
   entityName: string;
   fieldSchema: FormFieldSchema;
   getValues: (_payload?: string | string[]) => FormEntityItem;

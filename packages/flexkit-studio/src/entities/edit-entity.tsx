@@ -133,7 +133,14 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       {loading || !results.length ? (
         <Loading />
       ) : (
-        <FormBuilder entityName={entityName} formData={results[0]} onSubmit={saveEntity} ref={ref} schema={schema} />
+        <FormBuilder
+          entityId={entityId}
+          entityName={entityName}
+          formData={results[0]}
+          onSubmit={saveEntity}
+          ref={ref}
+          schema={schema}
+        />
       )}
     </DrawerModal>
   );
