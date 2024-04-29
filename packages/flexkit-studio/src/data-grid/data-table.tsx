@@ -11,20 +11,27 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import type { ColumnDef, ColumnFiltersState, SortingState, VisibilityState } from '@tanstack/react-table';
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  Updater,
+  RowSelectionState,
+  SortingState,
+  VisibilityState,
+} from '@tanstack/react-table';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/primitives/table';
 import { DataTableToolbar } from './data-table-toolbar';
 
-interface DataTableProps<TData, TValue> {
+interface DataTableProps<TData extends { [key: string]: unknown; _id: string }, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   entityName: string;
   hasToolbar?: boolean;
   onEntitySelectionChange?: (rowSelection: string[]) => void;
-  initialSelectionState?: { [_id: string]: boolean };
+  initialSelectionState?: RowSelectionState;
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends { [key: string]: unknown; _id: string }, TValue>({
   columns,
   data,
   entityName,
@@ -47,7 +54,7 @@ export function DataTable<TData, TValue>({
       columnFilters,
     },
     enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
@@ -60,10 +67,11 @@ export function DataTable<TData, TValue>({
     getRowId: (row: { [key: string]: unknown; _id: string }) => row._id,
   });
 
-  React.useEffect(() => {
-    const selectedIds = Object.keys(rowSelection).map((id) => id);
+  function handleRowSelectionChange(updaterFn: Updater<RowSelectionState>): void {
+    setRowSelection(updaterFn);
+    const selectedIds = typeof updaterFn === 'function' ? Object.keys(updaterFn({})) : Object.keys(updaterFn);
     onEntitySelectionChange?.(selectedIds);
-  }, [onEntitySelectionChange, rowSelection]);
+  }
 
   return (
     <div className="fk-space-y-4">

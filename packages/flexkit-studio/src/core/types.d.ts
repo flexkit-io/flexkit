@@ -1,4 +1,3 @@
-import { disconnect } from 'process';
 import type { ZodTypeAny } from 'zod';
 
 export type RelationshipConnection = {
@@ -32,7 +31,7 @@ export type ActionSetScope = {
 };
 
 export type ActionSetRelationship = {
-  type: ActionType['setScope'];
+  type: ActionType['setRelationship'];
   payload: {
     [relationshipId: string]: {
       connect: { _id: string; value: { [key: string]: string | number } }[];

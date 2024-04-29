@@ -2,8 +2,8 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import type { SyntheticEvent } from 'react';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { useLazyQuery, gql } from '@apollo/client';
-import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';
-import { ChevronsUpDown, Link, Unlink } from 'lucide-react';
+import { find, map, prop, propEq, set, uniq, uniqBy } from 'ramda';
+import { ChevronsUpDown, Link, X as ClearIcon } from 'lucide-react';
 import { getRelatedItemsQuery, mapRelatedItemsQueryResult } from '../../graphql-client/queries';
 import type { EntityItem, EntityQueryResults, FormScopedAttributeValue } from '../../graphql-client/types';
 import { Button } from '../../ui/primitives/button';
@@ -35,6 +35,8 @@ export default function Relationship({
   // eslint-disable-next-line no-console -- temporary debug
   console.log('Relationship component reloaded');
   const [isOpen, setIsOpen] = useState(false);
+  const [isHover, setIsHover] = useState(false);
+  const [hasFocus, setHasFocus] = useState(false);
   const [rows, setRows] = useState<EntityItem[] | []>([]);
   const [rowCount, setRowCount] = useState(defaultValue?.count ?? 0);
   const [paginationModel, setPaginationModel] = useState({
@@ -51,7 +53,7 @@ export default function Relationship({
   const primaryAttributeName = getPrimaryAttributeName(relationshipEntitySchema?.attributes ?? []);
   const initialRows = useMemo(
     () =>
-      relationship.mode === 'multiple'
+      relationship.mode === 'multiple' && defaultValue?.value
         ? dataAdapter({ data: defaultValue?.value, relationshipEntitySchema, scope }) || []
         : [],
     [defaultValue, relationshipEntitySchema, relationship.mode, scope]
@@ -63,6 +65,10 @@ export default function Relationship({
   `);
 
   useEffect(() => {
+    setRows(initialRows);
+
+    if (!data) return;
+
     const scopedValue = (field: { field: { [key: string]: string } | string }): string =>
       field?.[scope] ?? field?.default ?? field;
     const preexistentConnections = Array.isArray(defaultValue?.value)
@@ -82,8 +88,7 @@ export default function Relationship({
         },
       },
     });
-    setRows(initialRows);
-  }, [appDispatch, initialRows, relationshipId, defaultValue, scope]);
+  }, [appDispatch, data, initialRows, relationshipId, defaultValue, scope]);
 
   useEffect(() => {
     if (data) {
@@ -98,6 +103,7 @@ export default function Relationship({
    * The relationshp context value changes when the user selects a row from the datagrid in the EditRelationship modal
    */
   useEffect(() => {
+    console.log({ relationships });
     if (relationship?.mode === 'single' && relationships[relationshipId]?.connect?._id) {
       setValue(name, relationships[relationshipId].connect);
 
@@ -118,7 +124,9 @@ export default function Relationship({
       return;
     }
 
-    const connections = relationships[relationshipId]?.connect ?? [];
+    const connections = Array.isArray(relationships[relationshipId]?.connect)
+      ? relationships[relationshipId]?.connect
+      : [];
     const selectedRows = connections.map(({ value }) => value);
     const totalCount = paginationModel.pageSize * (paginationModel.page + 1);
     const limit =
@@ -142,8 +150,8 @@ export default function Relationship({
       return;
     }
     setRowCount(selectedRows.length + (defaultValue?.count ?? 0));
-    setRows(selectedRows as []);
-  }, [defaultValue?.count, paginationModel.page, paginationModel.pageSize, relationships, relationshipId]);
+    setRows((prevRows) => uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]));
+  }, [defaultValue?.count, initialRows, paginationModel.page, paginationModel.pageSize, relationships, relationshipId]);
 
   // const disconnectEntity: ({ _entityId }: Action['payload']) => () => void = useCallback(
   //   ({ entityId }: Action['payload']) =>
@@ -219,9 +227,14 @@ export default function Relationship({
   }
 
   function handleClearingSingle(event: SyntheticEvent): void {
-    const action = {
+    const action: ActionSetRelationship = {
       type: 'setRelationship',
-      payload: { connect: [], disconnect: [] },
+      payload: {
+        [relationshipId]: {
+          connect: [],
+          disconnect: [],
+        },
+      },
     };
 
     event.preventDefault();
@@ -229,9 +242,9 @@ export default function Relationship({
 
     if (data) {
       // this is an edit form, let's disconnect the relationship
-      action.payload = {
+      action.payload[relationshipId] = {
         connect: [],
-        disconnect: relationships[relationshipId]?.connect ?? [],
+        disconnect: relationships[relationshipId]?.disconnect ?? [],
       };
     }
 
@@ -297,10 +310,56 @@ export default function Relationship({
               <FormLabel>{label}</FormLabel>
               {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
               <FormControl className="fk-flex fk-w-full fk-items-center fk-space-x-2">
-                <div className="fk-flex fk-w-full fk-items-start fk-space-x-2">
+                {/* <Button
+                  className="fk-grow fk-h-auto fk-min-h-[2.5rem] fk-rounded-md fk-border fk-border-input fk-bg-background hover:fk-bg-background fk-ring-offset-background focus:fk-outline-none focus:fk-ring-2 focus:fk-ring-ring focus:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50"
+                  onClick={handleSelection}
+                  size="sm"
+                  variant="ghost"
+                >
+                  <span className="fk-flex fk-flex-wrap fk-grow">
+                    {field.value?.value?.[primaryAttributeName] || ''}
+                  </span>
+                  {field.value?.value?.[primaryAttributeName] ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            className="fk-h-8 fk-w-8 fk-rounded"
+                            onClick={handleClearingSingle}
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <ClearIcon className="fk-h-4 fk-w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Clear</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : null}
+                  <ChevronsUpDown className="fk-h-4 fk-w-4 fk-stroke-muted-foreground" />
+                </Button> */}
+                <div
+                  className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background ${
+                    hasFocus ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
+                  }`}
+                >
                   <Input
-                    className="fk-caret-transparent fk-cursor-pointer"
+                    className="fk-caret-transparent fk-border-0 focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0"
+                    onBlur={() => {
+                      setHasFocus(false);
+                    }}
                     onClick={handleSelection}
+                    onFocus={() => {
+                      setHasFocus(true);
+                    }}
+                    onMouseEnter={() => {
+                      setIsHover(true);
+                    }}
+                    onMouseLeave={() => {
+                      setIsHover(false);
+                    }}
                     readOnly
                     type="text"
                     value={field.value?.value?.[primaryAttributeName] || ''}
@@ -309,29 +368,41 @@ export default function Relationship({
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button onClick={handleClearingSingle} size="icon" variant="outline">
-                            <Unlink className="fk-h-4 fk-w-4" />
+                          <Button
+                            className="fk-absolute fk-right-10 fk-top-1 fk-h-8 fk-w-8 fk-rounded"
+                            onClick={handleClearingSingle}
+                            onMouseEnter={() => {
+                              setIsHover(true);
+                            }}
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <ClearIcon className="fk-h-4 fk-w-4" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{`Unselect ${name}`}</p>
+                          <p>Clear</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button onClick={handleSelection} size="icon" variant="outline">
-                            <Link className="fk-h-4 fk-w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{`Select ${name}`}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                  ) : null}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          className="fk-absolute fk-right-1 fk-top-1 fk-h-8 fk-w-8 fk-rounded"
+                          onClick={handleSelection}
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <ChevronsUpDown className="fk-h-4 fk-w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Open</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </FormControl>
               <FormMessage />
@@ -412,7 +483,7 @@ type FetchRelatedRowsParams = {
   _id: string | number | boolean | [];
 };
 
-function fetchRelatedRows({ connections, paginationModel, getData, entityName, _id }: FetchRelatedRowsParams) {
+function fetchRelatedRows({ connections, paginationModel, getData, entityName, _id }: FetchRelatedRowsParams): void {
   const selectedRows = connections.map(({ row }) => row);
   const totalCount = paginationModel.pageSize * (paginationModel.page + 1);
   const limit =
