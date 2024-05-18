@@ -58,13 +58,14 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
         offset: paginationModel.page,
         limit: paginationModel.pageSize,
       },
-      // where: { // filter out the connected entities
-      //   productsConnection_NONE: {
-      //     node: {
-      //       _id: entityId,
-      //     },
-      //   },
-      // },
+      where: {
+        // filter out the connected entities
+        productsConnection_NONE: {
+          node: {
+            _id: entityId,
+          },
+        },
+      },
     },
   });
 

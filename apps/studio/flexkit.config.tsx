@@ -297,6 +297,23 @@ export default defineConfig([
             validation: (z) => z.string().optional(),
             defaultValue: '',
           },
+          {
+            name: 'products',
+            label: 'Products',
+            scope: 'relationship',
+            options: {
+              size: 260,
+              comment: 'Products of this brand',
+            },
+            dataType: 'string',
+            inputType: 'relationship',
+            defaultValue: '',
+            relationship: {
+              mode: 'multiple',
+              field: 'name',
+              entity: 'product',
+            },
+          },
         ],
       },
     ],

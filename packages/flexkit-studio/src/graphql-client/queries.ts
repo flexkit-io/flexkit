@@ -298,7 +298,6 @@ export function getEntityUpdateMutation(
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const localAttributes = localAttributesUpdate(attributes, data, scope);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
-  console.log({ relationshipAttributes });
   const responseType = pluralizedEntityName.toLowerCase();
   const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
 
@@ -396,27 +395,28 @@ function relationshipAttributesUpdate(
     const { inputType, relationship } = attributeSchema;
 
     if (inputType === 'relationship' && relationship?.mode === 'single') {
-      const disconnect = `disconnect: {\n          where: {\n            node: {\n              _id: "${originalData[attributeName]._id}"\n            }\n          }\n        }\n`;
+      const relatedEntityName = relationship.entity;
+      const disconnect = `disconnect: {\n          where: {\n            node: {\n              _id: "${originalData[relatedEntityName]._id}"\n            }\n          }\n        }\n`;
       const connect = `connect: {\n          where: {\n            node: {\n              _id: "${attributeValue._id}"\n            }\n          }\n        }\n`;
 
-      return `${acc}\n      ${attributeName}: {\n        ${connect}        ${disconnect}      }`;
+      return `${acc}\n      ${relatedEntityName}: {\n        ${connect}        ${disconnect}      }`;
     }
 
     if (inputType === 'relationship' && relationship?.mode === 'multiple') {
+      console.log('DEBUG: multiple relationship');
       if (Array.isArray(attributeValue.value)) {
         return `${acc}\n`;
       }
 
-      const nodesToDisconnect: string | undefined =
-        attributeValue.value?.['disconnect'] &&
-        attributeValue.value['disconnect'].reduce((acc: string, _id: string) => {
+      const nodesToDisconnect: string | undefined = attributeValue?.['disconnect'].reduce(
+        (acc: string, _id: string) => {
           return `${acc}              {\n                node: {\n                  _id: "${_id}"\n                }\n              }\n`;
-        }, '');
-      const nodesToConnect: string | undefined =
-        attributeValue.value?.['connect'] &&
-        attributeValue.value['connect'].reduce((acc: string, node: any) => {
-          return `${acc}                {\n                  _id: "${node._id}"\n                }\n`;
-        }, '');
+        },
+        ''
+      );
+      const nodesToConnect: string | undefined = attributeValue?.['connect'].reduce((acc: string, node: any) => {
+        return `${acc}                {\n                  _id: "${node._id}"\n                }\n`;
+      }, '');
       const disconnect = nodesToDisconnect
         ? `disconnect: {\n          where: {\n            OR: [\n${nodesToDisconnect}            ]\n          }\n        }\n`
         : '';
@@ -467,7 +467,6 @@ function formatResponseFieldsForMutation(schema: Schema, entityName: string, sco
     if (relationshipMode === 'single') {
       list += `  ${attributeName} {\n      _id\n    ${primaryAttributeName}\n    }\n  `;
     }
-    console.log({ relationshipEntityAttributes });
 
     if (relationshipMode === 'multiple' && relationshipEntityAttributes.length) {
       list +=

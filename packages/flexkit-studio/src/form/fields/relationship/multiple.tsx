@@ -4,24 +4,29 @@ import type { SyntheticEvent } from 'react';
 import { useLazyQuery, gql } from '@apollo/client';
 import { find, map, prop, propEq, set, uniq, uniqBy } from 'ramda';
 import { ChevronsUpDown, Link, X as ClearIcon } from 'lucide-react';
-import { getRelatedItemsQuery, mapRelatedItemsQueryResult } from '../../graphql-client/queries';
-import type { EntityItem, EntityQueryResults, FormScopedAttributeValue } from '../../graphql-client/types';
-import { Button } from '../../ui/primitives/button';
-import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
-import { Input } from '../../ui/primitives/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
-import { Badge } from '../../ui/primitives/badge';
-import { Collapsible, CollapsibleContent } from '../../ui/primitives/collapsible';
-import type { ActionSetRelationship, Attribute, Entity, Relationships, RelationshipConnection } from '../../core/types';
-import { useDispatch } from '../../entities/actions-context';
-import { useAppContext, useAppDispatch } from '../../core/app-context';
-import type { Action } from '../../entities/types';
-import type { FormFieldParams } from '../types';
+import { getRelatedItemsQuery, mapRelatedItemsQueryResult } from '../../../graphql-client/queries';
+import type { EntityItem, EntityQueryResults, FormScopedAttributeValue } from '../../../graphql-client/types';
+import { Button } from '../../../ui/primitives/button';
+import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
+import { Input } from '../../../ui/primitives/input';
+import { Badge } from '../../../ui/primitives/badge';
+import { Collapsible, CollapsibleContent } from '../../../ui/primitives/collapsible';
+import type {
+  ActionSetRelationship,
+  Attribute,
+  Entity,
+  Relationships,
+  RelationshipConnection,
+} from '../../../core/types';
+import { useDispatch } from '../../../entities/actions-context';
+import { useAppContext, useAppDispatch } from '../../../core/app-context';
+import type { Action } from '../../../entities/types';
+import type { FormFieldParams } from '../../types';
 
 const PAGE_SIZE = 25;
 const AVAILABLE_PAGE_SIZES = [25, 50, 100];
 
-export default function Relationship({
+export default function MultipleRelationship({
   control,
   defaultValue,
   entityId,
@@ -38,11 +43,12 @@ export default function Relationship({
   const [isHover, setIsHover] = useState(false);
   const [hasFocus, setHasFocus] = useState(false);
   const [rows, setRows] = useState<EntityItem[] | []>([]);
-  const [rowCount, setRowCount] = useState(defaultValue?.count ?? 0);
+  const [rowCount, setRowCount] = useState(defaultValue.count ?? 0);
   const [paginationModel, setPaginationModel] = useState({
     pageSize: PAGE_SIZE,
     page: 0,
   });
+  console.log({ defaultValue });
   const { name, label, options, relationship } = fieldSchema;
   const relationshipEntity: string = relationship?.entity ?? name;
   const actionDispatch = useDispatch();
@@ -53,10 +59,10 @@ export default function Relationship({
   const primaryAttributeName = getPrimaryAttributeName(relationshipEntitySchema?.attributes ?? []);
   const initialRows = useMemo(
     () =>
-      relationship.mode === 'multiple' && defaultValue?.value
-        ? dataAdapter({ data: defaultValue?.value, relationshipEntitySchema, scope }) || []
+      relationship && relationship.mode === 'multiple' && defaultValue?.value
+        ? dataAdapter({ data: defaultValue?.value, primaryAttributeName, relationshipEntitySchema, scope }) || []
         : [],
-    [defaultValue, relationshipEntitySchema, relationship.mode, scope]
+    [defaultValue, primaryAttributeName, relationshipEntitySchema, relationship, scope]
   );
   const entityQuery = getRelatedItemsQuery(name, entityName, relationshipEntity, scope, schema);
   const previewItems = rows.length ? rows.slice(0, 12).map((row) => row[primaryAttributeName]) : [];
@@ -64,19 +70,30 @@ export default function Relationship({
     ${entityQuery.query}
   `);
 
+  type Field =
+    | string
+    | {
+        default: string;
+        [key: string]: string | undefined;
+      };
+
   useEffect(() => {
     setRows(initialRows);
 
-    if (!data) return;
+    if (defaultValue.value === '') {
+      return;
+    }
 
-    const scopedValue = (field: { field: { [key: string]: string } | string }): string =>
-      field?.[scope] ?? field?.default ?? field;
-    const preexistentConnections = Array.isArray(defaultValue?.value)
-      ? defaultValue.value.map((row) => ({
-          _id: row._id,
-          value: map(scopedValue, row),
-        }))
-      : { _id: defaultValue._id, value: defaultValue.value };
+    const scopedValue = (field: Field): string => {
+      if (typeof field === 'string') {
+        return field;
+      }
+
+      return field[scope] ?? field.default;
+    };
+    const preexistentConnections = Array.isArray(defaultValue.value)
+      ? defaultValue.value.map((row) => ({ _id: String(row._id), value: map(scopedValue, row) }))
+      : { _id: String(defaultValue._id), value: defaultValue.value };
 
     // set the initial state of the relationship
     appDispatch({
@@ -103,27 +120,35 @@ export default function Relationship({
    * The relationshp context value changes when the user selects a row from the datagrid in the EditRelationship modal
    */
   useEffect(() => {
-    console.log({ relationships });
-    if (relationship?.mode === 'single' && relationships[relationshipId]?.connect?._id) {
-      setValue(name, relationships[relationshipId].connect);
+    setValue(name, relationships[relationshipId]);
 
-      return;
-    }
-
-    if (relationship?.mode === 'multiple' && relationships[relationshipId]?.connect?.length) {
-      setValue(name, relationships[relationshipId].connect);
-    }
-  }, [relationships, relationshipId, relationship?.mode, setValue, name]);
+    // const connectedRows = relationships[relationshipId]?.connect?.map(({ value }) => value) ?? [];
+    // const initialValues = defaultValue?.value?.map((row) => ({
+    //   ...row,
+    //   [primaryAttributeName]: row?.[primaryAttributeName]?.[scope] ?? '',
+    // }));
+    // const updatedRows = uniqBy(prop('_id'), [...connectedRows, ...initialValues]).filter(
+    //   (row) => !relationships[relationshipId]?.disconnect?.includes(row._id)
+    // );
+    // console.log('disconnect', relationships[relationshipId]?.disconnect);
+    // console.log({ updatedRows });
+    // setRows(updatedRows);
+  }, [
+    defaultValue.value,
+    primaryAttributeName,
+    relationships,
+    relationshipId,
+    relationship?.mode,
+    scope,
+    setValue,
+    name,
+  ]);
 
   /**
    * Multiple mode
    * Set the value of the rows for the datagrid
    */
   useEffect(() => {
-    if (relationship?.mode !== 'multiple') {
-      return;
-    }
-
     const connections = Array.isArray(relationships[relationshipId]?.connect)
       ? relationships[relationshipId]?.connect
       : [];
@@ -151,7 +176,7 @@ export default function Relationship({
     }
     setRowCount(selectedRows.length + (defaultValue?.count ?? 0));
     setRows((prevRows) => uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]));
-  }, [defaultValue?.count, initialRows, paginationModel.page, paginationModel.pageSize, relationships, relationshipId]);
+  }, [defaultValue.count, initialRows, paginationModel.page, paginationModel.pageSize, relationships, relationshipId]);
 
   // const disconnectEntity: ({ _entityId }: Action['payload']) => () => void = useCallback(
   //   ({ entityId }: Action['payload']) =>
@@ -207,7 +232,7 @@ export default function Relationship({
         entityName: relationshipEntity,
         entityId,
         relationshipId,
-        mode: relationship?.mode ?? 'single',
+        mode: relationship?.mode ?? 'multiple',
       },
     });
   }
@@ -252,165 +277,52 @@ export default function Relationship({
   }
 
   return (
-    <>
-      {relationship?.mode === 'multiple' ? (
-        <FormField
-          control={control}
-          defaultValue={defaultValue}
-          name={name}
-          render={() => (
-            <FormItem>
-              <FormLabel>{label}</FormLabel>
-              {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-              <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-10 fk-px-3 fk-py-1 fk-text-sm">
-                <>
-                  <div className="fk-flex fk-w-full fk-items-start fk-space-x-2">
-                    <Button
-                      className="fk-grow fk-h-auto fk-min-h-[2.5rem] fk-rounded-md fk-border fk-border-input fk-bg-background hover:fk-bg-background fk-ring-offset-background focus:fk-outline-none focus:fk-ring-2 focus:fk-ring-ring focus:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setIsOpen((prev) => !prev);
-                      }}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      <span className="fk-flex fk-flex-wrap fk-grow fk-pb-1.5">
-                        {previewItems.map((item) => (
-                          <Badge className="fk-mr-2 fk-mt-1.5 fk-rounded-sm" key={item} variant="secondary">
-                            {item}
-                          </Badge>
-                        ))}
-                      </span>
-                      <ChevronsUpDown className="fk-h-4 fk-w-4 fk-stroke-muted-foreground" />
-                    </Button>
-                    <Button className="fk-h-10 fk-w-10" onClick={handleSelection} size="icon" variant="outline">
-                      <Link className="fk-h-4 fk-w-4" />
-                    </Button>
-                  </div>
-                  <Collapsible className="fk-w-full fk-space-y-2" onOpenChange={setIsOpen} open={isOpen}>
-                    <CollapsibleContent>
-                      <div className="fk-flex fk-w-full">
-                        <div>Datagrid here...</div>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      ) : (
-        <FormField
-          control={control}
-          defaultValue={defaultValue}
-          name={name}
-          render={({ field }: { field: { value?: FormScopedAttributeValue } }) => (
-            <FormItem>
-              <FormLabel>{label}</FormLabel>
-              {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-              <FormControl className="fk-flex fk-w-full fk-items-center fk-space-x-2">
-                {/* <Button
+    <FormField
+      control={control}
+      defaultValue={defaultValue}
+      name={name}
+      render={() => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-10 fk-px-3 fk-py-1 fk-text-sm">
+            <>
+              <div className="fk-flex fk-w-full fk-items-start fk-space-x-2">
+                <Button
                   className="fk-grow fk-h-auto fk-min-h-[2.5rem] fk-rounded-md fk-border fk-border-input fk-bg-background hover:fk-bg-background fk-ring-offset-background focus:fk-outline-none focus:fk-ring-2 focus:fk-ring-ring focus:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50"
-                  onClick={handleSelection}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setIsOpen((prev) => !prev);
+                  }}
                   size="sm"
                   variant="ghost"
                 >
-                  <span className="fk-flex fk-flex-wrap fk-grow">
-                    {field.value?.value?.[primaryAttributeName] || ''}
+                  <span className="fk-flex fk-flex-wrap fk-grow fk-pb-1.5">
+                    {previewItems.map((item) => (
+                      <Badge className="fk-mr-2 fk-mt-1.5 fk-rounded-sm" key={item} variant="secondary">
+                        {item}
+                      </Badge>
+                    ))}
                   </span>
-                  {field.value?.value?.[primaryAttributeName] ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            className="fk-h-8 fk-w-8 fk-rounded"
-                            onClick={handleClearingSingle}
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <ClearIcon className="fk-h-4 fk-w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Clear</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : null}
                   <ChevronsUpDown className="fk-h-4 fk-w-4 fk-stroke-muted-foreground" />
-                </Button> */}
-                <div
-                  className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background ${
-                    hasFocus ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
-                  }`}
-                >
-                  <Input
-                    className="fk-caret-transparent fk-border-0 focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0"
-                    onBlur={() => {
-                      setHasFocus(false);
-                    }}
-                    onClick={handleSelection}
-                    onFocus={() => {
-                      setHasFocus(true);
-                    }}
-                    onMouseEnter={() => {
-                      setIsHover(true);
-                    }}
-                    onMouseLeave={() => {
-                      setIsHover(false);
-                    }}
-                    readOnly
-                    type="text"
-                    value={field.value?.value?.[primaryAttributeName] || ''}
-                  />
-                  {field.value?.value?.[primaryAttributeName] ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            className="fk-absolute fk-right-10 fk-top-1 fk-h-8 fk-w-8 fk-rounded"
-                            onClick={handleClearingSingle}
-                            onMouseEnter={() => {
-                              setIsHover(true);
-                            }}
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <ClearIcon className="fk-h-4 fk-w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Clear</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : null}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          className="fk-absolute fk-right-1 fk-top-1 fk-h-8 fk-w-8 fk-rounded"
-                          onClick={handleSelection}
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <ChevronsUpDown className="fk-h-4 fk-w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Open</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                </Button>
+                <Button className="fk-h-10 fk-w-10" onClick={handleSelection} size="icon" variant="outline">
+                  <Link className="fk-h-4 fk-w-4" />
+                </Button>
+              </div>
+              <Collapsible className="fk-w-full fk-space-y-2" onOpenChange={setIsOpen} open={isOpen}>
+                <CollapsibleContent>
+                  <div className="fk-flex fk-w-full">
+                    <div>{JSON.stringify(rows)}</div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </>
+          </FormControl>
+          <FormMessage />
+        </FormItem>
       )}
-    </>
+    />
   );
 }
 
@@ -424,11 +336,12 @@ function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
 
 type DataAdapter = {
   data?: EntityQueryResults[];
+  primaryAttributeName: string;
   relationshipEntitySchema: Entity | undefined;
   scope: string;
 };
 
-function dataAdapter({ data, relationshipEntitySchema, scope }: DataAdapter): [] | undefined {
+function dataAdapter({ data, primaryAttributeName, relationshipEntitySchema, scope }: DataAdapter): [] | undefined {
   return data?.map((row) =>
     map((field) => {
       if (typeof field === 'object' && field.__typename) {
@@ -437,7 +350,6 @@ function dataAdapter({ data, relationshipEntitySchema, scope }: DataAdapter): []
         ) as Attribute;
         const relationshipFieldName = relationshipFieldSchema?.relationship?.field ?? '';
 
-        console.log({ field }, { relationshipFieldName });
         if (relationshipFieldName) {
           return field[relationshipFieldName];
         }

@@ -30,11 +30,19 @@ export type ActionSetScope = {
   payload: string;
 };
 
+type Connection = {
+  _id: string;
+  value:
+    | string
+    | { [key: string]: string | number | readonly string[] | undefined }
+    | { [key: string]: string | number | boolean | { [key: string]: string | number | boolean } }[];
+};
+
 export type ActionSetRelationship = {
   type: ActionType['setRelationship'];
   payload: {
     [relationshipId: string]: {
-      connect: { _id: string; value: { [key: string]: string | number } }[];
+      connect: Connection | Connection[];
       disconnect: string[];
     };
   };
