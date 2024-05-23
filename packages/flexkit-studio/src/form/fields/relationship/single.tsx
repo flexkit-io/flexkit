@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 import type { ActionSetRelationship, Attribute, Entity } from '../../../core/types';
 import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
+import { ActionType } from '../../../entities/types';
 import type { FormFieldParams } from '../../types';
 
 export default function SingleRelationship({
@@ -60,7 +61,7 @@ export default function SingleRelationship({
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
     actionDispatch({
-      type: 'editRelationship',
+      type: ActionType.EditRelationship,
       payload: {
         entityName: relationshipEntity,
         entityId,
@@ -107,7 +108,7 @@ export default function SingleRelationship({
                 }`}
               >
                 <Input
-                  className="fk-caret-transparent fk-border-0 focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0"
+                  className="fk-h-[2.375rem] fk-py-[0.4375rem] fk-caret-transparent fk-border-0 focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0"
                   onBlur={() => {
                     setHasFocus(false);
                   }}
@@ -115,16 +116,21 @@ export default function SingleRelationship({
                   onFocus={() => {
                     setHasFocus(true);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSelection(e);
+                    }
+                  }}
                   readOnly
                   type="text"
-                  value={displayValue}
+                  value={displayValue as string}
                 />
                 {displayValue ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk-absolute fk-right-10 fk-top-1 fk-h-8 fk-w-8 fk-rounded"
+                          className="fk-absolute fk-right-10 fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
                           onClick={handleClearingSingle}
                           size="icon"
                           variant="ghost"
@@ -142,7 +148,7 @@ export default function SingleRelationship({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        className="fk-absolute fk-right-1 fk-top-1 fk-h-8 fk-w-8 fk-rounded"
+                        className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
                         onClick={handleSelection}
                         size="icon"
                         variant="ghost"

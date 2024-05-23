@@ -1,12 +1,11 @@
-type ActionType =
-  | 'addEntity'
-  | 'alertDialog'
-  | 'deleteEntity'
-  | 'dismiss'
-  | 'editEntity'
-  | 'editRelationship'
-  | 'notify'
-  | 'pickRelationship';
+export enum ActionType {
+  AddEntity = 'addEntity',
+  AlertDialog = 'alertDialog',
+  DeleteEntity = 'deleteEntity',
+  Dismiss = 'dismiss',
+  EditEntity = 'editEntity',
+  EditRelationship = 'editRelationship',
+}
 
 export type Action =
   | ActionAddEntity
@@ -18,7 +17,7 @@ export type Action =
 
 export type ActionAddEntity = {
   _id?: string;
-  type: ActionType['addEntity'];
+  type: ActionType.AddEntity;
   payload: {
     entityName: string;
   };
@@ -26,16 +25,27 @@ export type ActionAddEntity = {
 
 export type ActionEditEntity = {
   _id?: string;
-  type: ActionType['editEntity'];
+  type: ActionType.EditEntity;
   payload: {
     entityId: string;
     entityNamePlural: string;
   };
 };
 
+export type ActionEditRelationship = {
+  _id?: string;
+  type: ActionType.EditRelationship;
+  payload: {
+    entityId?: string;
+    entityName: string;
+    relationshipId: string;
+    mode: 'single' | 'multiple';
+  };
+};
+
 export type ActionDeleteEntity = {
   _id?: string;
-  type: ActionType['deleteEntity'];
+  type: ActionType.DeleteEntity;
   payload: {
     entityId: string;
     entityName: string;
@@ -44,13 +54,13 @@ export type ActionDeleteEntity = {
 
 export type ActionDismiss = {
   _id?: string;
-  type: ActionType['dismiss'];
+  type: ActionType.Dismiss;
   payload: { [key: string]: never };
 };
 
 export type ActionAlertDialog = {
   _id?: string;
-  type: ActionType['alertDialog'];
+  type: ActionType.AlertDialog;
   payload: {
     options: {
       dialogTitle: string;
@@ -60,15 +70,5 @@ export type ActionAlertDialog = {
       dialogActionCancel: () => void;
       dialogActionSubmit: () => void;
     };
-  };
-};
-
-export type ActionEditRelationship = {
-  _id?: string;
-  type: ActionType['editRelationship'];
-  payload: {
-    entityName: string;
-    relationshipId: string;
-    mode: 'single' | 'multiple';
   };
 };

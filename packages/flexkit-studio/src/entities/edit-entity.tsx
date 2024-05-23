@@ -19,7 +19,7 @@ import type { SubmitHandle } from '../form/form-builder';
 import type { Entity } from '../core/types';
 import { useDispatch } from './actions-context';
 import Loading from './loading';
-import type { Action, ActionEditEntity } from './types';
+import { type Action, ActionType, type ActionEditEntity } from './types';
 
 type Props = {
   action: ActionEditEntity;
@@ -47,7 +47,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const handleBeforeClose = useCallback(() => {
     if (ref.current?.hasDataChanged()) {
       dispatch({
-        type: 'alertDialog',
+        type: ActionType.AlertDialog,
         _id: 'unsavedChanges',
         payload: {
           options: {
@@ -57,10 +57,10 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
             dialogCancelTitle: 'Stay Here',
             dialogActionLabel: 'Discard Changes',
             dialogActionCancel: () => {
-              dispatch({ type: 'dismiss', _id: 'unsavedChanges', payload: {} });
+              dispatch({ type: ActionType.Dismiss, _id: 'unsavedChanges', payload: {} });
             },
             dialogActionSubmit: () => {
-              dispatch({ type: 'dismiss', _id: action._id, payload: {} });
+              dispatch({ type: ActionType.Dismiss, _id: action._id, payload: {} });
             },
           },
         },
@@ -74,7 +74,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
-      dispatch({ type: 'dismiss', _id, payload: {} });
+      dispatch({ type: ActionType.Dismiss, _id, payload: {} });
     },
     [dispatch]
   );
@@ -128,7 +128,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       onSave={() => {
         handleSave();
       }}
-      title={entityIdentifier.toString()}
+      title={entityIdentifier as string}
     >
       {loading || !results.length ? (
         <Loading />
@@ -136,6 +136,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
         <FormBuilder
           entityId={entityId}
           entityName={entityName}
+          entityNamePlural={entityNamePlural}
           formData={results[0]}
           onSubmit={saveEntity}
           ref={ref}

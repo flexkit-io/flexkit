@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/primitives/dropdown-menu';
+import { ActionType } from '../entities/types';
 import { useDispatch } from '../entities/actions-context';
 
 interface DataTableRowActionsProps<TData> {
@@ -28,11 +29,11 @@ export function DataTableRowActions<TData>({
   const entityId = row.original._id;
 
   function handleEdit(): void {
-    actionDispatch({ type: 'editEntity', payload: { entityId, entityNamePlural } });
+    actionDispatch({ type: ActionType.EditEntity, payload: { entityId, entityNamePlural } });
   }
 
   function handleDelete(): void {
-    actionDispatch({ type: 'deleteEntity', payload: { entityId, entityName } });
+    actionDispatch({ type: ActionType.DeleteEntity, payload: { entityId, entityName } });
   }
 
   return (

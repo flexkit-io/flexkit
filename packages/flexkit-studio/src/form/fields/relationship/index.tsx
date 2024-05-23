@@ -5,8 +5,6 @@ import MultipleRelationship from './multiple';
 import SingleRelationship from './single';
 
 export default function Relationship(formFieldParams: FormFieldParams): JSX.Element {
-  // eslint-disable-next-line no-console -- temporary debug
-  console.log('Main Relationship component reloaded');
   const { fieldSchema } = formFieldParams;
   const { relationship } = fieldSchema;
 

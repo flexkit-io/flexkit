@@ -64,7 +64,7 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    getRowId: (row: { [key: string]: unknown; _id: string }) => row._id,
+    getRowId: (row) => row._id,
   });
 
   function handleRowSelectionChange(updaterFn: Updater<RowSelectionState>): void {
@@ -74,7 +74,7 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
   }
 
   return (
-    <div className="fk-space-y-4">
+    <div className="fk-w-full fk-space-y-4">
       {Boolean(hasToolbar) && <DataTableToolbar entityName={entityName} table={table} />}
       <div className="fk-rounded-md fk-border-border fk-border">
         <Table>

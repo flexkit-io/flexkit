@@ -2,15 +2,16 @@ import type { ZodTypeAny } from 'zod';
 
 export type RelationshipConnection = {
   _id: string;
-  value: {
-    [attributeName: string]: string;
-  };
+  value:
+    | string
+    | { [key: string]: string | number | boolean | readonly string[] | undefined }
+    | { [key: string]: string | number | boolean | readonly string[] | { [key: string]: string | number | boolean } }[];
 };
 
 export type Relationships = {
   [relationshipId: string]:
     | {
-        connect?: RelationshipConnection[];
+        connect?: RelationshipConnection | RelationshipConnection[];
         disconnect?: string[];
       }
     | undefined;
@@ -28,14 +29,6 @@ type ActionType = 'setScope' | 'setRelationship';
 export type ActionSetScope = {
   type: ActionType['setScope'];
   payload: string;
-};
-
-type Connection = {
-  _id: string;
-  value:
-    | string
-    | { [key: string]: string | number | readonly string[] | undefined }
-    | { [key: string]: string | number | boolean | { [key: string]: string | number | boolean } }[];
 };
 
 export type ActionSetRelationship = {

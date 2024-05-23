@@ -48,6 +48,14 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     ? relationshipContext.connect.map((item) => item._id)
     : [relationshipContext?.connect?._id];
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
+  const filterOutConnectedEntities = {
+    productsConnection_NONE: {
+      node: {
+        _id: entityId,
+      },
+    },
+  };
+  const conditionalWhereClause = mode === 'multiple' ? filterOutConnectedEntities : {};
 
   const [loading, { count, results }] = useEntityQuery({
     entityNamePlural: entitySchema?.plural || '',
@@ -58,14 +66,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
         offset: paginationModel.page,
         limit: paginationModel.pageSize,
       },
-      where: {
-        // filter out the connected entities
-        productsConnection_NONE: {
-          node: {
-            _id: entityId,
-          },
-        },
-      },
+      where: conditionalWhereClause,
     },
   });
 
@@ -101,7 +102,6 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       };
     }
 
-    console.log({ selectedRows });
     if (mode === 'multiple') {
       connect = selectedRows.map((_id) => ({
         _id,
@@ -122,7 +122,6 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   }
 
   function handleSelectionChange(selectedIds: string[]): void {
-    console.log({ selectedIds });
     setSelectedRows(selectedIds);
   }
 

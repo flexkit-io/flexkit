@@ -8,7 +8,7 @@ import type {
   EntityQueryAggregate,
   EntityQueryResults,
   FormEntityItem,
-  FormScopedAttributeValue,
+  FormAttributeValue,
   FormRelationshipAttributeValue,
   MappedEntityQueryResults,
   MappedFormEntityQueryResults,
@@ -236,6 +236,8 @@ export function mapQueryResultForFormFields(
             count: aggregateCount,
             _id,
             value,
+            disabled: false,
+            scope,
           },
         };
       },
@@ -254,11 +256,11 @@ export function mapQueryResultForFormFields(
 /**
  * Attribute values can be an object or an array of objects if the attribute is a multi-select.
  */
-function getValueByScope(attribute: ScopedAttributeValue[], scope: string): FormScopedAttributeValue[] {
+function getValueByScope(attribute: ScopedAttributeValue[], scope: string): FormAttributeValue[] {
   if (Array.isArray(attribute)) {
-    return attribute.reduce((result: FormScopedAttributeValue[], attr: ScopedAttributeValue) => {
+    return attribute.reduce((result: FormAttributeValue[], attr: ScopedAttributeValue) => {
       if (attr[scope] || attr.default) {
-        const option: FormScopedAttributeValue | null = {
+        const option: FormAttributeValue | null = {
           _id: attr._id,
           disabled: attr.scope === null ? true : false,
           scope,
@@ -368,7 +370,7 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
 
 function localAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityItem, scope: string): string {
   const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
-  const attributesArray: [string, FormScopedAttributeValue][] = toPairs(localAttributes);
+  const attributesArray: [string, FormAttributeValue][] = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
     const { dataType } = attributeSchema;

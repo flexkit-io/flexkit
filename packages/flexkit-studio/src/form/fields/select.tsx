@@ -1,4 +1,4 @@
-import type { FormScopedAttributeValue } from '../../graphql-client/types';
+import type { FormAttributeValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import {
   Select as SelectPrimitive,
@@ -15,7 +15,7 @@ import UseDefault from './use-default';
 export default function Select({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
-  function handleInput(value: string, previousValue: FormScopedAttributeValue | undefined): void {
+  function handleInput(value: string, previousValue: FormAttributeValue | undefined): void {
     const shouldCastToNumber = fieldSchema.dataType === 'int' && !isNaN(Number(value));
     const castedValue = shouldCastToNumber ? Number(value) : value;
 
@@ -25,7 +25,7 @@ export default function Select({ control, defaultValue, fieldSchema, setValue }:
     });
   }
 
-  function handleCheckbox(checked: boolean, value: FormScopedAttributeValue | undefined): void {
+  function handleCheckbox(checked: boolean, value: FormAttributeValue | undefined): void {
     setValue(name, {
       ...value,
       disabled: checked,
@@ -37,7 +37,7 @@ export default function Select({ control, defaultValue, fieldSchema, setValue }:
       control={control}
       defaultValue={defaultValue}
       name={name}
-      render={({ field }: { field: { value?: FormScopedAttributeValue } }) => (
+      render={({ field }: { field: { value?: FormAttributeValue } }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}

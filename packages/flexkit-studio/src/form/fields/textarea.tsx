@@ -1,4 +1,4 @@
-import type { FormScopedAttributeValue } from '../../graphql-client/types';
+import type { FormAttributeValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import { Textarea as TextareaPrimitive } from '../../ui/primitives/textarea';
 import type { FormFieldParams } from '../types';
@@ -9,7 +9,7 @@ export default function Textarea({ control, defaultValue, fieldSchema, setValue 
 
   function handleInput(
     event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
-    previousValue: FormScopedAttributeValue | undefined
+    previousValue: FormAttributeValue | undefined
   ): void {
     setValue(name, {
       ...previousValue,
@@ -17,7 +17,7 @@ export default function Textarea({ control, defaultValue, fieldSchema, setValue 
     });
   }
 
-  function handleCheckbox(checked: boolean, value: FormScopedAttributeValue | undefined): void {
+  function handleCheckbox(checked: boolean, value: FormAttributeValue | undefined): void {
     setValue(name, {
       ...value,
       disabled: checked,
@@ -29,7 +29,7 @@ export default function Textarea({ control, defaultValue, fieldSchema, setValue 
       control={control}
       defaultValue={defaultValue}
       name={name}
-      render={({ field }: { field: { value?: FormScopedAttributeValue } }) => (
+      render={({ field }: { field: { value?: FormAttributeValue } }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
@@ -44,7 +44,7 @@ export default function Textarea({ control, defaultValue, fieldSchema, setValue 
                 onChange={(event) => {
                   handleInput(event, field.value);
                 }}
-                value={field.value?.value || ''}
+                value={(field.value?.value as string) || ''}
               />
               <UseDefault
                 checked={field.value?.disabled ?? false}

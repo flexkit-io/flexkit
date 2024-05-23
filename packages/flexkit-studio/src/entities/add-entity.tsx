@@ -18,7 +18,7 @@ import type { Entity } from '../core/types';
 import { getEntityCreateMutation, getEntityQuery } from '../graphql-client/queries';
 import type { EntityData } from '../graphql-client/types';
 import { useDispatch } from './actions-context';
-import type { Action, ActionAddEntity } from './types';
+import { type Action, ActionType, type ActionAddEntity } from './types';
 
 type Props = {
   action: ActionAddEntity;
@@ -46,7 +46,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   function handleBeforeClose(hasFormChanged: boolean): boolean {
     if (hasFormChanged) {
       dispatch({
-        type: 'alertDialog',
+        type: ActionType.AlertDialog,
         _id: 'unsavedChanges',
         payload: {
           options: {
@@ -56,10 +56,10 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
             dialogCancelTitle: 'Stay Here',
             dialogActionLabel: 'Discard Changes',
             dialogActionCancel: () => {
-              dispatch({ type: 'dismiss', _id: 'unsavedChanges', payload: {} });
+              dispatch({ type: ActionType.Dismiss, _id: 'unsavedChanges', payload: {} });
             },
             dialogActionSubmit: () => {
-              dispatch({ type: 'dismiss', _id: action._id, payload: {} });
+              dispatch({ type: ActionType.Dismiss, _id: action._id, payload: {} });
             },
           },
         },
@@ -73,7 +73,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
-      dispatch({ type: 'dismiss', _id, payload: {} });
+      dispatch({ type: ActionType.Dismiss, _id, payload: {} });
     },
     [dispatch]
   );
@@ -121,7 +121,13 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       }}
       title={`Add ${entityName}`}
     >
-      <FormBuilder entityName={entityName} onSubmit={saveEntity} ref={ref} schema={schema} />
+      <FormBuilder
+        entityName={entityName}
+        entityNamePlural={entityNamePlural}
+        onSubmit={saveEntity}
+        ref={ref}
+        schema={schema}
+      />
     </DrawerModal>
   );
 }

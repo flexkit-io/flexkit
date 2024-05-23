@@ -54,7 +54,7 @@ export type MappedFormEntityQueryResults = {
 };
 
 export type FormEntityItem = {
-  [attributeName: string]: FormScopedAttributeValue;
+  [attributeName: string]: FormAttributeValue;
 };
 
 export type EntityQueryResults = [boolean, MappedEntityQueryResults];
@@ -78,9 +78,13 @@ export type FormRelationshipAttributeValue = {
   value: [] | RelationshipConnections;
 };
 
-export type FormScopedAttributeValue = {
-  _id: string;
-  value: string | number | readonly string[];
+export type FormAttributeValue = {
+  _id?: string;
+  count?: number;
+  value:
+    | string
+    | { [key: string]: string | number | boolean | readonly string[] | undefined }
+    | { [key: string]: string | number | boolean | readonly string[] | { [key: string]: string | number | boolean } }[];
   disabled: boolean;
   scope: string;
 };

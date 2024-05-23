@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
-import type { SyntheticEvent } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { RefObject, SyntheticEvent } from 'react';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { useLazyQuery, gql } from '@apollo/client';
 import { find, map, prop, propEq, set, uniq, uniqBy } from 'ramda';
-import { ChevronsUpDown, Link, X as ClearIcon } from 'lucide-react';
+import { Link, Maximize2, X as ClearIcon } from 'lucide-react';
 import { getRelatedItemsQuery, mapRelatedItemsQueryResult } from '../../../graphql-client/queries';
-import type { EntityItem, EntityQueryResults, FormScopedAttributeValue } from '../../../graphql-client/types';
+import type { EntityItem, EntityQueryResults } from '../../../graphql-client/types';
+import { gridColumnsDefinition } from '../../../data-grid/columns';
+import { DataTable } from '../../../data-grid/data-table';
 import { Button } from '../../../ui/primitives/button';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
-import { Input } from '../../../ui/primitives/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../ui/primitives/tooltip';
 import { Badge } from '../../../ui/primitives/badge';
 import { Collapsible, CollapsibleContent } from '../../../ui/primitives/collapsible';
 import type {
@@ -26,11 +28,19 @@ import type { FormFieldParams } from '../../types';
 const PAGE_SIZE = 25;
 const AVAILABLE_PAGE_SIZES = [25, 50, 100];
 
+function getLoadingColumns(columns: object[]): ColumnDef<unknown>[] {
+  return columns.map((column) => ({
+    ...column,
+    cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
+  })) as unknown as ColumnDef<unknown>[];
+}
+
 export default function MultipleRelationship({
   control,
   defaultValue,
   entityId,
   entityName,
+  entityNamePlural,
   fieldSchema,
   getValues,
   schema,
@@ -40,15 +50,14 @@ export default function MultipleRelationship({
   // eslint-disable-next-line no-console -- temporary debug
   console.log('Relationship component reloaded');
   const [isOpen, setIsOpen] = useState(false);
-  const [isHover, setIsHover] = useState(false);
-  const [hasFocus, setHasFocus] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  useOuterClick(wrapperRef, setIsOpen);
   const [rows, setRows] = useState<EntityItem[] | []>([]);
   const [rowCount, setRowCount] = useState(defaultValue.count ?? 0);
   const [paginationModel, setPaginationModel] = useState({
     pageSize: PAGE_SIZE,
     page: 0,
   });
-  console.log({ defaultValue });
   const { name, label, options, relationship } = fieldSchema;
   const relationshipEntity: string = relationship?.entity ?? name;
   const actionDispatch = useDispatch();
@@ -69,6 +78,37 @@ export default function MultipleRelationship({
   const [getData, { loading, data }] = useLazyQuery(gql`
     ${entityQuery.query}
   `);
+
+  const columns = useMemo(
+    () =>
+      gridColumnsDefinition({
+        entityName,
+        entityNamePlural,
+        attributesSchema: relationshipEntitySchema?.attributes || [],
+        checkboxSelect: 'multiple',
+      }),
+    [entityName, entityNamePlural, relationshipEntitySchema?.attributes]
+  );
+  const loadingData = Array(5).fill({});
+  const loadingColumns = getLoadingColumns(columns);
+
+  // const columns = useMemo(
+  //   () =>
+  //     [][
+  // gridColumnsDefinitions({
+  //   entityName: name,
+  //   actions: [
+  //     {
+  //       action: disconnectEntity,
+  //       icon: <CloseIcon />,
+  //       label: 'Disconnect',
+  //     },
+  //   ],
+  //   entitySchema: relationshipEntitySchema?.attributes ?? [],
+  // }),
+  //       (name, relationshipEntitySchema)
+  //     ]
+  // );
 
   type Field =
     | string
@@ -206,24 +246,6 @@ export default function MultipleRelationship({
   //   [appDispatch, relationshipId, relationships]
   // );
 
-  const columns = useMemo(
-    () =>
-      [][
-        // gridColumnsDefinitions({
-        //   entityName: name,
-        //   actions: [
-        //     {
-        //       action: disconnectEntity,
-        //       icon: <CloseIcon />,
-        //       label: 'Disconnect',
-        //     },
-        //   ],
-        //   entitySchema: relationshipEntitySchema?.attributes ?? [],
-        // }),
-        (name, relationshipEntitySchema)
-      ]
-  );
-
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
     actionDispatch({
@@ -285,18 +307,27 @@ export default function MultipleRelationship({
         <FormItem>
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-10 fk-px-3 fk-py-1 fk-text-sm">
-            <>
-              <div className="fk-flex fk-w-full fk-items-start fk-space-x-2">
-                <Button
-                  className="fk-grow fk-h-auto fk-min-h-[2.5rem] fk-rounded-md fk-border fk-border-input fk-bg-background hover:fk-bg-background fk-ring-offset-background focus:fk-outline-none focus:fk-ring-2 focus:fk-ring-ring focus:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setIsOpen((prev) => !prev);
-                  }}
-                  size="sm"
-                  variant="ghost"
-                >
+          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-[2.375rem] fk-px-3 fk-py-0.5 fk-text-sm">
+            <div
+              aria-controls="relationship-dropdown"
+              aria-expanded={isOpen}
+              className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
+                isOpen ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
+              }`}
+              onClick={() => {
+                setIsOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setIsOpen(true);
+                }
+              }}
+              ref={wrapperRef}
+              role="combobox"
+              tabIndex={0}
+            >
+              <div className="fk-flex fk-w-full fk-space-x-2">
+                {!isOpen ? (
                   <span className="fk-flex fk-flex-wrap fk-grow fk-pb-1.5">
                     {previewItems.map((item) => (
                       <Badge className="fk-mr-2 fk-mt-1.5 fk-rounded-sm" key={item} variant="secondary">
@@ -304,20 +335,93 @@ export default function MultipleRelationship({
                       </Badge>
                     ))}
                   </span>
-                  <ChevronsUpDown className="fk-h-4 fk-w-4 fk-stroke-muted-foreground" />
-                </Button>
-                <Button className="fk-h-10 fk-w-10" onClick={handleSelection} size="icon" variant="outline">
-                  <Link className="fk-h-4 fk-w-4" />
-                </Button>
+                ) : (
+                  <Button className="fk-h-8 fk-mr-auto fk-mt-2" onClick={handleSelection} variant="outline">
+                    <Link className="fk-h-4 fk-w-4 fk-mr-2" /> Link to a record from {relationshipEntitySchema?.plural}
+                  </Button>
+                )}
+                {!isOpen ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            wrapperRef.current?.focus();
+                            wrapperRef.current?.click();
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              wrapperRef.current?.focus();
+                              wrapperRef.current?.click();
+                            }
+                          }}
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <Maximize2 className="fk-h-4 fk-w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Expand field</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            wrapperRef.current?.blur();
+                            setIsOpen(false);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              wrapperRef.current?.blur();
+                              setIsOpen(false);
+                            }
+                          }}
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <ClearIcon className="fk-h-4 fk-w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Close</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
-              <Collapsible className="fk-w-full fk-space-y-2" onOpenChange={setIsOpen} open={isOpen}>
-                <CollapsibleContent>
-                  <div className="fk-flex fk-w-full">
-                    <div>{JSON.stringify(rows)}</div>
+              <Collapsible className="fk-w-full fk-space-y-2 !fk-ml-0" onOpenChange={setIsOpen} open={isOpen}>
+                <CollapsibleContent className="fk-w-full">
+                  <div className="fk-flex fk-w-full fk-mt-3 fk-mb-2" id="relationship-dropdown">
+                    <DataTable
+                      columns={loading ? loadingColumns : columns}
+                      data={loading ? loadingData : rows}
+                      entityName={entityName}
+                      // initialSelectionState={
+                      //   selectedRows.reduce((acc, id) => ({ ...acc, ...(id ? { [id]: true } : {}) }), {}) as {
+                      //     [_id: string]: boolean;
+                      //   }
+                      // }
+                      // onEntitySelectionChange={handleSelectionChange}
+                    />
                   </div>
                 </CollapsibleContent>
               </Collapsible>
-            </>
+            </div>
           </FormControl>
           <FormMessage />
         </FormItem>
@@ -438,4 +542,34 @@ function fetchRelatedRows({ connections, paginationModel, getData, entityName, _
 
   // setRowCount(selectedRows.length + defaultValue?.count);
   // setRows((prevRows) => uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]));
+}
+
+function useOuterClick(ref: RefObject<HTMLDivElement>, callback: React.Dispatch<React.SetStateAction<boolean>>): void {
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent): void {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        callback(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [callback, ref]);
+
+  useEffect(() => {
+    function handleFocusOutside(event: FocusEvent): void {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        callback(false);
+      }
+    }
+
+    document.addEventListener('focusin', handleFocusOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleFocusOutside);
+    };
+  }, [callback, ref]);
 }

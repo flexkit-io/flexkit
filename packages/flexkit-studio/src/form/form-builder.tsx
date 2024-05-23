@@ -29,8 +29,9 @@ export type SubmitHandle = {
 };
 
 type Props = {
-  entityId: string;
+  entityId?: string;
   entityName: string;
+  entityNamePlural: string;
   formData?: FormEntityItem;
   schema: Schema;
   onSubmit: (newData: EntityData, previousData?: FormEntityItem) => void;
@@ -41,7 +42,7 @@ type FieldComponentsMap = {
 };
 
 function FormBuilder(
-  { entityId, entityName, formData, schema, onSubmit }: Props,
+  { entityId, entityName, entityNamePlural, formData, schema, onSubmit }: Props,
   ref: ForwardedRef<SubmitHandle>
 ): JSX.Element {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
@@ -115,9 +116,10 @@ function FormBuilder(
               key: field.name,
               control,
               // TODO: check if default value should be an empty string, depend on the input type or some default value passed by the user in the schema
-              defaultValue: formData ? formData[field.name] : { value: '' },
+              defaultValue: formData ? formData[field.name] : { value: '', disabled: false, scope: 'default' },
               entityId,
               entityName,
+              entityNamePlural,
               fieldSchema: field,
               getValues,
               schema,

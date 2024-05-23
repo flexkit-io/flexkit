@@ -3,6 +3,7 @@
 import type { Table } from '@tanstack/react-table';
 import { Button } from '../ui/primitives/button';
 import { useDispatch } from '../entities/actions-context';
+import { ActionType } from '../entities/types';
 import { DataTableViewOptions } from './data-table-view-options';
 
 interface DataTableToolbarProps<TData> {
@@ -15,7 +16,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   const actionDispatch = useDispatch();
 
   function handleCreate(): void {
-    actionDispatch({ type: 'addEntity', payload: { entityName } });
+    actionDispatch({ type: ActionType.AddEntity, payload: { entityName } });
   }
 
   return (
