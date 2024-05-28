@@ -85,6 +85,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
 
   const saveEntity = useCallback(
     (newData: EntityData, previousData?: FormEntityItem) => {
+      console.log('OJOOO', { newData });
       if (!previousData) return;
 
       const mutation = getEntityUpdateMutation(entityNamePlural, scope, schema, previousData, newData);

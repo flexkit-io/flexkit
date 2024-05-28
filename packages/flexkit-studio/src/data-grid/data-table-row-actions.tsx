@@ -25,7 +25,7 @@ export function DataTableRowActions<TData>({
   row,
 }: DataTableRowActionsProps<TData>): JSX.Element {
   const actionDispatch = useDispatch();
-  // @ts-expect-error -- the DataGrid's origina type doesn't know about the _id property
+  // @ts-expect-error -- the DataGrid's original type doesn't know about the _id property
   const entityId = row.original._id;
 
   function handleEdit(): void {

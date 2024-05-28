@@ -391,7 +391,7 @@ function relationshipAttributesUpdate(
   data: FormEntityItem
 ): string {
   const relationshipAttributes = pick(getAttributeListByScope('relationship', schemaAttributes) as [string], data);
-  const attributesArray: [string, FormRelationshipAttributeValue][] = toPairs(relationshipAttributes);
+  const attributesArray = toPairs(relationshipAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
     const { inputType, relationship } = attributeSchema;
@@ -405,18 +405,17 @@ function relationshipAttributesUpdate(
     }
 
     if (inputType === 'relationship' && relationship?.mode === 'multiple') {
-      console.log('DEBUG: multiple relationship');
       if (Array.isArray(attributeValue.value)) {
         return `${acc}\n`;
       }
 
-      const nodesToDisconnect: string | undefined = attributeValue?.['disconnect'].reduce(
+      const nodesToDisconnect: string | undefined = attributeValue.value?.['disconnect'].reduce(
         (acc: string, _id: string) => {
           return `${acc}              {\n                node: {\n                  _id: "${_id}"\n                }\n              }\n`;
         },
         ''
       );
-      const nodesToConnect: string | undefined = attributeValue?.['connect'].reduce((acc: string, node: any) => {
+      const nodesToConnect: string | undefined = attributeValue.value?.['connect'].reduce((acc: string, node: any) => {
         return `${acc}                {\n                  _id: "${node._id}"\n                }\n`;
       }, '');
       const disconnect = nodesToDisconnect
@@ -439,8 +438,8 @@ function stringifyValue(type: DataType, value: string | number | boolean): strin
   return stringTypes.includes(type) ? `"${value}"` : value;
 }
 
-function formatResponseFieldsForMutation(schema: Schema, entityName: string, scope: string): string {
-  const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
+function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: string, scope: string): string {
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const schemaAttributes = entitySchema?.attributes ?? [];
   const globalAttributesArray = getAttributeListByScope('global', schemaAttributes);
   const localAttributesArray = getAttributeListByScope('local', schemaAttributes);
@@ -557,12 +556,12 @@ function localAttributesDelete(schemaAttributes: Attribute[], _id: string): stri
 }
 
 export function getEntityCreateMutation(
-  entityName: string,
+  entityNamePlural: string,
   schema: Schema,
   entityData: EntityData,
   _id: string
 ): string {
-  const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
+  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
 
@@ -575,7 +574,7 @@ export function getEntityCreateMutation(
   const localAttributes = localAttributesCreate(attributes, data, 'default', _id); // TODO: calculate default scope
   const relationshipAttributes = relationshipAttributesCreate(attributes, data);
   const responseType = pluralizedEntityName.toLowerCase();
-  const attributeNamesList = formatResponseFieldsForMutation(schema, entityName, 'default'); // TODO: calculate default scope
+  const attributeNamesList = formatResponseFieldsForMutation(schema, responseType, 'default'); // TODO: calculate default scope
 
   return (
     `mutation {\n` +
@@ -631,8 +630,8 @@ function localAttributesCreate(
 }
 
 function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormEntityItem): string {
-  const localAttributes = pick(getAttributeListByScope('relationship', schemaAttributes) as [string], data);
-  const attributesArray: [string, FormRelationshipAttributeValue][] = toPairs(localAttributes);
+  const relationshipAttributes = pick(getAttributeListByScope('relationship', schemaAttributes) as [string], data);
+  const attributesArray = toPairs(relationshipAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     if (!attributeValue || !attributeValue.value) {
       return acc;

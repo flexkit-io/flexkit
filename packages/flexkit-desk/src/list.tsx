@@ -1,7 +1,7 @@
 import { find, propEq } from 'ramda';
 import { useConfig, useParams, Outlet, Skeleton, useEntityQuery, type Entity } from '@flexkit/studio';
 import type { SingleProject } from '@flexkit/studio';
-import { DataTable, gridColumnsDefinition } from '@flexkit/studio/data-grid';
+import { DataTable, DataTableRowActions, gridColumnsDefinition } from '@flexkit/studio/data-grid';
 
 const page = 0; // TODO: temporary placeholder, this value must be managed by the data grid
 const pageSize = 20; // TODO: this should be obtained from a global state persisted somewehere
@@ -12,10 +12,10 @@ export function List() {
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entity, 'plural'))(schema) as Entity | undefined;
   const columnsDefinition = gridColumnsDefinition({
-    entityName: entitySchema?.name ?? '',
-    entityNamePlural: entity ?? '',
     attributesSchema: entitySchema?.attributes || [],
-    hasActions: true,
+    actionsComponent: (row) => (
+      <DataTableRowActions entityName={entitySchema?.name ?? ''} entityNamePlural={entity ?? ''} row={row} />
+    ),
   });
   const [loading, { count, results }] = useEntityQuery({
     entityNamePlural: entity ?? '',

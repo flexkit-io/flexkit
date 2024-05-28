@@ -24,6 +24,7 @@ export type EntityQueryResults = {
 };
 
 export type EntityItem = {
+  _id: string;
   [attribute: string]: ScopedAttributeValue;
 };
 

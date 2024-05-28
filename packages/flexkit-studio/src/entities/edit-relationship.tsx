@@ -11,9 +11,9 @@ import { useEntityQuery } from '../graphql-client/use-entity-query';
 import { gridColumnsDefinition } from '../data-grid/columns';
 import { DataTable } from '../data-grid/data-table';
 import { Skeleton } from '../ui/primitives/skeleton';
-import type { Entity } from '../core/types';
+import type { Entity, RelationshipConnection } from '../core/types';
 import { useDispatch } from './actions-context';
-import type { Action, ActionEditRelationship } from './types';
+import { type Action, ActionType, type ActionEditRelationship } from './types';
 
 type Props = {
   action: ActionEditRelationship;
@@ -44,9 +44,16 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const entityNamePlural = entitySchema?.plural || '';
   const relationshipContext = relationships[relationshipId];
-  const initialSelectionState = relationshipContext?.connect?.length
-    ? relationshipContext.connect.map((item) => item._id)
-    : [relationshipContext?.connect?._id];
+
+  // const initialSelectionState = relationshipContext?.connect?.length
+  //   ? relationshipContext.connect.map((item) => item._id)
+  //   : [relationshipContext?.connect?._id];
+
+  const initialSelectionState =
+    mode === 'single'
+      ? [(relationshipContext?.connect as RelationshipConnection | undefined)?._id]
+      : (relationshipContext?.connect as RelationshipConnection[] | undefined)?.map((item) => item._id);
+
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
   const filterOutConnectedEntities = {
     productsConnection_NONE: {
@@ -85,16 +92,16 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
-      actionDispatch({ type: 'dismiss', _id, payload: {} });
+      actionDispatch({ type: ActionType.Dismiss, _id, payload: {} });
     },
     [actionDispatch]
   );
 
-  function handleSave(): void {
+  function handleSelection(): void {
     let connect;
 
     if (mode === 'single') {
-      const _id = selectedRows[0];
+      const _id = selectedRows?.[0];
 
       connect = {
         _id,
@@ -103,7 +110,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     }
 
     if (mode === 'multiple') {
-      connect = selectedRows.map((_id) => ({
+      connect = selectedRows?.map((_id) => ({
         _id,
         value: results.find((row) => row._id === _id),
       }));
@@ -122,7 +129,14 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   }
 
   function handleSelectionChange(selectedIds: string[]): void {
-    setSelectedRows(selectedIds);
+    if (mode === 'multiple') {
+      setSelectedRows(selectedIds);
+
+      return;
+    }
+
+    // if single, get only the last selected row
+    setSelectedRows([selectedIds.pop()]);
   }
 
   return (
@@ -136,7 +150,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
         handleClose(action._id);
       }}
       onSave={() => {
-        handleSave();
+        handleSelection();
       }}
       title={`Select ${entityName.toLowerCase()}`}
     >
@@ -145,7 +159,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
         data={loading ? loadingData : results}
         entityName={entitySchema?.name || ''}
         initialSelectionState={
-          selectedRows.reduce((acc, id) => ({ ...acc, ...(id ? { [id]: true } : {}) }), {}) as {
+          selectedRows?.reduce((acc, id) => ({ ...acc, ...(id ? { [id]: true } : {}) }), {}) as {
             [_id: string]: boolean;
           }
         }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { RefObject, SyntheticEvent } from 'react';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { useLazyQuery, gql } from '@apollo/client';
+import type { ColumnDef } from '@tanstack/react-table';
 import { find, map, prop, propEq, set, uniq, uniqBy } from 'ramda';
 import { Link, Maximize2, X as ClearIcon } from 'lucide-react';
 import { getRelatedItemsQuery, mapRelatedItemsQueryResult } from '../../../graphql-client/queries';
@@ -10,6 +11,7 @@ import { gridColumnsDefinition } from '../../../data-grid/columns';
 import { DataTable } from '../../../data-grid/data-table';
 import { Button } from '../../../ui/primitives/button';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
+import { Skeleton } from '../../../ui/primitives/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../ui/primitives/tooltip';
 import { Badge } from '../../../ui/primitives/badge';
 import { Collapsible, CollapsibleContent } from '../../../ui/primitives/collapsible';
@@ -24,23 +26,16 @@ import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
 import type { Action } from '../../../entities/types';
 import type { FormFieldParams } from '../../types';
+import { DataTableRowActions } from './data-table-row-actions';
 
 const PAGE_SIZE = 25;
 const AVAILABLE_PAGE_SIZES = [25, 50, 100];
-
-function getLoadingColumns(columns: object[]): ColumnDef<unknown>[] {
-  return columns.map((column) => ({
-    ...column,
-    cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
-  })) as unknown as ColumnDef<unknown>[];
-}
 
 export default function MultipleRelationship({
   control,
   defaultValue,
   entityId,
   entityName,
-  entityNamePlural,
   fieldSchema,
   getValues,
   schema,
@@ -68,47 +63,27 @@ export default function MultipleRelationship({
   const primaryAttributeName = getPrimaryAttributeName(relationshipEntitySchema?.attributes ?? []);
   const initialRows = useMemo(
     () =>
-      relationship && relationship.mode === 'multiple' && defaultValue?.value
-        ? dataAdapter({ data: defaultValue?.value, primaryAttributeName, relationshipEntitySchema, scope }) || []
+      relationship && relationship.mode === 'multiple' && defaultValue.value
+        ? dataAdapter({ data: defaultValue.value, primaryAttributeName, relationshipEntitySchema, scope }) || []
         : [],
     [defaultValue, primaryAttributeName, relationshipEntitySchema, relationship, scope]
   );
   const entityQuery = getRelatedItemsQuery(name, entityName, relationshipEntity, scope, schema);
   const previewItems = rows.length ? rows.slice(0, 12).map((row) => row[primaryAttributeName]) : [];
-  const [getData, { loading, data }] = useLazyQuery(gql`
+  const [getData, { loading, data }] = useLazyQuery<EntityItem[] | []>(gql`
     ${entityQuery.query}
   `);
 
   const columns = useMemo(
     () =>
       gridColumnsDefinition({
-        entityName,
-        entityNamePlural,
         attributesSchema: relationshipEntitySchema?.attributes || [],
-        checkboxSelect: 'multiple',
+        actionsComponent: (row) => dataRowActions({ appDispatch, relationshipId, relationships, row, setRows }),
       }),
-    [entityName, entityNamePlural, relationshipEntitySchema?.attributes]
+    [appDispatch, relationshipEntitySchema?.attributes, relationshipId, relationships]
   );
   const loadingData = Array(5).fill({});
   const loadingColumns = getLoadingColumns(columns);
-
-  // const columns = useMemo(
-  //   () =>
-  //     [][
-  // gridColumnsDefinitions({
-  //   entityName: name,
-  //   actions: [
-  //     {
-  //       action: disconnectEntity,
-  //       icon: <CloseIcon />,
-  //       label: 'Disconnect',
-  //     },
-  //   ],
-  //   entitySchema: relationshipEntitySchema?.attributes ?? [],
-  // }),
-  //       (name, relationshipEntitySchema)
-  //     ]
-  // );
 
   type Field =
     | string
@@ -140,7 +115,7 @@ export default function MultipleRelationship({
       type: 'setRelationship',
       payload: {
         [relationshipId]: {
-          connect: preexistentConnections,
+          connect: [],
           disconnect: [],
         },
       },
@@ -160,7 +135,7 @@ export default function MultipleRelationship({
    * The relationshp context value changes when the user selects a row from the datagrid in the EditRelationship modal
    */
   useEffect(() => {
-    setValue(name, relationships[relationshipId]);
+    setValue(name, { value: relationships[relationshipId] });
 
     // const connectedRows = relationships[relationshipId]?.connect?.map(({ value }) => value) ?? [];
     // const initialValues = defaultValue?.value?.map((row) => ({
@@ -214,9 +189,25 @@ export default function MultipleRelationship({
       );
       return;
     }
-    setRowCount(selectedRows.length + (defaultValue?.count ?? 0));
-    setRows((prevRows) => uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]));
-  }, [defaultValue.count, initialRows, paginationModel.page, paginationModel.pageSize, relationships, relationshipId]);
+
+    if (data) {
+      const updatedRows = uniqBy(prop('_id'), [...(selectedRows as []), ...data]);
+      setRows(updatedRows);
+      setRowCount(updatedRows.length);
+
+      return;
+    }
+
+    setRows(uniqBy(prop('_id'), [...(selectedRows as []), ...initialRows]));
+  }, [
+    data,
+    defaultValue.count,
+    initialRows,
+    paginationModel.page,
+    paginationModel.pageSize,
+    relationships,
+    relationshipId,
+  ]);
 
   // const disconnectEntity: ({ _entityId }: Action['payload']) => () => void = useCallback(
   //   ({ entityId }: Action['payload']) =>
@@ -307,14 +298,18 @@ export default function MultipleRelationship({
         <FormItem>
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-[2.375rem] fk-px-3 fk-py-0.5 fk-text-sm">
+          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-[2.375rem] fk-pl-3 fk-pr-10 fk-py-0.5 fk-text-sm">
             <div
               aria-controls="relationship-dropdown"
               aria-expanded={isOpen}
               className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
                 isOpen ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
               }`}
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                wrapperRef.current?.focus();
+                wrapperRef.current?.click();
                 setIsOpen(true);
               }}
               onKeyDown={(e) => {
@@ -346,16 +341,8 @@ export default function MultipleRelationship({
                       <TooltipTrigger asChild>
                         <Button
                           className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            wrapperRef.current?.focus();
-                            wrapperRef.current?.click();
-                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                              e.preventDefault();
-                              e.stopPropagation();
                               wrapperRef.current?.focus();
                               wrapperRef.current?.click();
                             }
@@ -411,12 +398,7 @@ export default function MultipleRelationship({
                       columns={loading ? loadingColumns : columns}
                       data={loading ? loadingData : rows}
                       entityName={entityName}
-                      // initialSelectionState={
-                      //   selectedRows.reduce((acc, id) => ({ ...acc, ...(id ? { [id]: true } : {}) }), {}) as {
-                      //     [_id: string]: boolean;
-                      //   }
-                      // }
-                      // onEntitySelectionChange={handleSelectionChange}
+                      rowDeletionState={relationships[relationshipId]?.disconnect}
                     />
                   </div>
                 </CollapsibleContent>
@@ -428,6 +410,43 @@ export default function MultipleRelationship({
       )}
     />
   );
+}
+
+function dataRowActions({ appDispatch, relationshipId, relationships, row, setRows }): JSX.Element {
+  function disconnectEntity(entityId: string): void {
+    const rowToDeleteWasJustConnected =
+      typeof find(propEq(entityId, '_id'), relationships[relationshipId]?.connect ?? []) === 'object';
+
+    const shouldUndoDisconnection = relationships[relationshipId]?.disconnect?.includes(entityId);
+    const disconnection = rowToDeleteWasJustConnected
+      ? relationships[relationshipId]?.disconnect
+      : uniq([...(relationships[relationshipId]?.disconnect ?? []), entityId]);
+
+    if (rowToDeleteWasJustConnected) {
+      setRows((rows) => rows.filter((row) => row?._id !== entityId));
+    }
+
+    appDispatch({
+      type: 'setRelationship',
+      payload: {
+        [relationshipId]: {
+          connect: relationships[relationshipId]?.connect?.filter((row) => row?._id !== entityId) ?? [],
+          disconnect: shouldUndoDisconnection
+            ? relationships[relationshipId]?.disconnect?.filter((_id) => _id !== entityId) ?? []
+            : disconnection,
+        },
+      },
+    });
+  }
+
+  return <DataTableRowActions action={disconnectEntity} row={row} />;
+}
+
+function getLoadingColumns(columns: object[]): ColumnDef<unknown>[] {
+  return columns.map((column) => ({
+    ...column,
+    cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
+  })) as unknown as ColumnDef<unknown>[];
 }
 
 /**

@@ -51,7 +51,7 @@
     "typescript": "^4.5.2"
   },
   "dependencies": {
-    "@apollo/client": "^3.8.8",
+    "@apollo/client": "^3.10.4",
     "@hookform/resolvers": "^3.3.2",
     "@lexical/code": "^0.12.2",
     "@lexical/html": "^0.12.2",

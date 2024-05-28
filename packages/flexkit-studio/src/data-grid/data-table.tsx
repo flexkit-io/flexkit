@@ -15,8 +15,11 @@ import type {
   ColumnDef,
   ColumnFiltersState,
   Updater,
+  Row,
+  RowData,
   RowSelectionState,
   SortingState,
+  TableMeta,
   VisibilityState,
 } from '@tanstack/react-table';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/primitives/table';
@@ -27,8 +30,13 @@ interface DataTableProps<TData extends { [key: string]: unknown; _id: string }, 
   data: TData[];
   entityName: string;
   hasToolbar?: boolean;
-  onEntitySelectionChange?: (rowSelection: string[]) => void;
   initialSelectionState?: RowSelectionState;
+  onEntitySelectionChange?: (rowSelection: string[]) => void;
+  rowDeletionState?: string[];
+}
+
+interface ExtendedDataTable extends TableMeta<unknown> {
+  getRowBackground: (row: Row<RowData>) => string;
 }
 
 export function DataTable<TData extends { [key: string]: unknown; _id: string }, TValue>({
@@ -36,8 +44,9 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
   data,
   entityName,
   hasToolbar,
-  onEntitySelectionChange,
   initialSelectionState,
+  onEntitySelectionChange,
+  rowDeletionState,
 }: DataTableProps<TData, TValue>): JSX.Element {
   const [rowSelection, setRowSelection] = React.useState(initialSelectionState || {});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -65,11 +74,16 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getRowId: (row) => row._id,
+    meta: {
+      getRowBackground: (row: Row<TData>) =>
+        rowDeletionState?.includes(row.original._id) ? 'fk-bg-red-200 hover:fk-bg-red-300' : '',
+    },
   });
 
   function handleRowSelectionChange(updaterFn: Updater<RowSelectionState>): void {
+    const selectedIds = typeof updaterFn === 'function' ? Object.keys(updaterFn(rowSelection)) : Object.keys(updaterFn);
+
     setRowSelection(updaterFn);
-    const selectedIds = typeof updaterFn === 'function' ? Object.keys(updaterFn({})) : Object.keys(updaterFn);
     onEntitySelectionChange?.(selectedIds);
   }
 
@@ -98,7 +112,11 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow data-state={row.getIsSelected() && 'selected'} key={row.id}>
+                <TableRow
+                  className={(table.options.meta as ExtendedDataTable).getRowBackground(row)}
+                  data-state={row.getIsSelected() && 'selected'}
+                  key={row.id}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}

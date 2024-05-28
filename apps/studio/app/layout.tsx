@@ -10,10 +10,6 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Flexkit Studio',
   description: 'Empower Your Business with Effortless Data Management and Workflow Automation',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-  },
   icons: {
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     icon: [
@@ -28,7 +24,6 @@ export const metadata: Metadata = {
     ],
   },
   manifest: '/site.webmanifest',
-  themeColor: '#ffffff',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {

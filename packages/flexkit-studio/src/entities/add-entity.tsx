@@ -85,7 +85,8 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const saveEntity = useCallback(
     (newData: EntityData) => {
       const _id = uuidv4();
-      const mutation = getEntityCreateMutation(entityName, schema, newData, _id);
+      console.log('OJOOO', { newData });
+      const mutation = getEntityCreateMutation(entityNamePlural, schema, newData, _id);
       const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
       const refreshQuery = gql`
         ${entityQuery.query}

@@ -1,24 +1,19 @@
 import type { CellContext, ColumnDef, Table } from '@tanstack/react-table';
 import type { Attribute } from '../core/types';
 import { Checkbox } from '../ui/primitives/checkbox';
-import { DataTableRowActions } from './data-table-row-actions';
 
 type Props = {
-  entityName: string;
-  entityNamePlural: string;
   attributesSchema: Attribute[];
   checkboxSelect?: 'single' | 'multiple'; // whether to include a checkbox column for row selection
-  hasActions?: boolean; // whether to include an actions column
+  actionsComponent?: (row: unknown) => JSX.Element; // a component to be displayed in the actions column of the grid
 };
 
 type ColumnDefinition<TData, TValue> = ColumnDef<TData, TValue> & { id?: string; size: number };
 
 export function gridColumnsDefinition<TData, TValue>({
-  entityName,
-  entityNamePlural,
   attributesSchema,
   checkboxSelect,
-  hasActions,
+  actionsComponent,
 }: Props): ColumnDefinition<TData, TValue>[] {
   const cols = attributesSchema.map((attribute) => ({
     accessorKey: attribute.name,
@@ -31,9 +26,7 @@ export function gridColumnsDefinition<TData, TValue>({
 
   const actions = {
     id: 'actions',
-    cell: ({ row }: CellContext<TData, TValue>) => (
-      <DataTableRowActions entityName={entityName} entityNamePlural={entityNamePlural} row={row} />
-    ),
+    cell: ({ row }: CellContext<TData, TValue>) => (actionsComponent ? actionsComponent(row) : null),
     size: 50,
   };
 
@@ -82,7 +75,7 @@ export function gridColumnsDefinition<TData, TValue>({
   return [
     ...(checkboxSelect === 'single' ? [singleCheckboxSelect] : []),
     ...(checkboxSelect === 'multiple' ? [multipleCheckboxSelect] : []),
-    ...(hasActions ? [actions] : []),
+    ...(actionsComponent ? [actions] : []),
     ...cols,
   ];
 }
