@@ -38,11 +38,11 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     pageSize: AVAILABLE_PAGE_SIZES[0],
     page: 0,
   });
-  const { entityId, entityName, relationshipId, mode } = action.payload;
+  const { entityId, entityName, connectionName, relationshipId, mode } = action.payload;
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
-  const entityNamePlural = entitySchema?.plural || '';
+  const entityNamePlural = entitySchema?.plural ?? '';
   const relationshipContext = relationships[relationshipId];
 
   // const initialSelectionState = relationshipContext?.connect?.length
@@ -56,7 +56,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
 
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
   const filterOutConnectedEntities = {
-    productsConnection_NONE: {
+    [connectionName ?? '']: {
       node: {
         _id: entityId,
       },
@@ -65,7 +65,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const conditionalWhereClause = mode === 'multiple' ? filterOutConnectedEntities : {};
 
   const [loading, { count, results }] = useEntityQuery({
-    entityNamePlural: entitySchema?.plural || '',
+    entityNamePlural,
     schema,
     scope,
     variables: {
@@ -80,12 +80,10 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const columns = useMemo(
     () =>
       gridColumnsDefinition({
-        entityName,
-        entityNamePlural,
-        attributesSchema: entitySchema?.attributes || [],
+        attributesSchema: entitySchema?.attributes ?? [],
         checkboxSelect: mode,
       }),
-    [entityName, entityNamePlural, entitySchema?.attributes, mode]
+    [entitySchema?.attributes, mode]
   );
   const loadingData = Array(5).fill({});
   const loadingColumns = getLoadingColumns(columns);

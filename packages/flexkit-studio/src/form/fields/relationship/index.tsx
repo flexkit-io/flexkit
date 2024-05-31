@@ -8,12 +8,16 @@ export default function Relationship(formFieldParams: FormFieldParams): JSX.Elem
   const { fieldSchema } = formFieldParams;
   const { relationship } = fieldSchema;
 
+  console.log({ formFieldParams }, { fieldSchema });
+
   if (relationship?.mode === 'single') {
     return <SingleRelationship {...formFieldParams} />;
   }
 
   if (relationship?.mode === 'multiple') {
-    return <MultipleRelationship {...formFieldParams} />;
+    const props = { relationshipEntityName: fieldSchema.relationship?.entity, ...formFieldParams };
+
+    return <MultipleRelationship {...props} />;
   }
 
   return (

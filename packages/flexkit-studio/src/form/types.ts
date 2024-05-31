@@ -10,6 +10,7 @@ export type FormFieldParams = {
   entityNamePlural: string;
   fieldSchema: FormFieldSchema;
   getValues: (_payload?: string | string[]) => FormEntityItem;
+  relationshipEntityName?: string;
   schema: Schema;
   scope: string;
   setValue: UseFormSetValue<FieldValues>;

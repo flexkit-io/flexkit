@@ -24,7 +24,7 @@ import type {
 } from '../../../core/types';
 import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
-import type { Action } from '../../../entities/types';
+import { ActionType, type Action } from '../../../entities/types';
 import type { FormFieldParams } from '../../types';
 import { DataTableRowActions } from './data-table-row-actions';
 
@@ -36,6 +36,7 @@ export default function MultipleRelationship({
   defaultValue,
   entityId,
   entityName,
+  entityNamePlural,
   fieldSchema,
   getValues,
   schema,
@@ -54,21 +55,35 @@ export default function MultipleRelationship({
     page: 0,
   });
   const { name, label, options, relationship } = fieldSchema;
-  const relationshipEntity: string = relationship?.entity ?? name;
+  const relationshipEntityName: string = relationship?.entity ?? name;
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const { relationships } = useAppContext();
   const relationshipId = useId();
-  const relationshipEntitySchema = find(propEq(relationshipEntity, 'name'))(schema) as Entity | undefined;
-  const primaryAttributeName = getPrimaryAttributeName(relationshipEntitySchema?.attributes ?? []);
+  const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
+  const relationshipEntityAttributesSchema = relationshipEntitySchema?.attributes ?? [];
+  const baseEntitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
+  const baseEntityAttributesSchema = baseEntitySchema?.attributes ?? [];
+  const relationshipMode = find<Attribute>(propEq(entityName, 'name'))(relationshipEntityAttributesSchema)?.relationship
+    ?.mode;
+  const parentEntityRelationshipMode = find<Attribute>(propEq(name, 'name'))(baseEntityAttributesSchema)?.relationship
+    ?.mode;
+
+  // name of the entity used to filter out the related items already connected when showing the list (i.e. productsConnection_NONE)
+  const connectionName =
+    (relationshipMode ?? parentEntityRelationshipMode) === 'single'
+      ? `${entityName}Connection_NOT`
+      : `${entityNamePlural}Connection_NONE`;
+
+  const primaryAttributeName = getPrimaryAttributeName(relationshipEntityAttributesSchema);
   const initialRows = useMemo(
     () =>
       relationship && relationship.mode === 'multiple' && defaultValue.value
-        ? dataAdapter({ data: defaultValue.value, primaryAttributeName, relationshipEntitySchema, scope }) || []
+        ? dataAdapter({ data: defaultValue.value, primaryAttributeName, relationshipEntitySchema, scope }) ?? []
         : [],
     [defaultValue, primaryAttributeName, relationshipEntitySchema, relationship, scope]
   );
-  const entityQuery = getRelatedItemsQuery(name, entityName, relationshipEntity, scope, schema);
+  const entityQuery = getRelatedItemsQuery(name, entityName, relationshipEntityName, scope, schema);
   const previewItems = rows.length ? rows.slice(0, 12).map((row) => row[primaryAttributeName]) : [];
   const [getData, { loading, data }] = useLazyQuery<EntityItem[] | []>(gql`
     ${entityQuery.query}
@@ -77,7 +92,7 @@ export default function MultipleRelationship({
   const columns = useMemo(
     () =>
       gridColumnsDefinition({
-        attributesSchema: relationshipEntitySchema?.attributes || [],
+        attributesSchema: relationshipEntitySchema?.attributes ?? [],
         actionsComponent: (row) => dataRowActions({ appDispatch, relationshipId, relationships, row, setRows }),
       }),
     [appDispatch, relationshipEntitySchema?.attributes, relationshipId, relationships]
@@ -125,10 +140,10 @@ export default function MultipleRelationship({
   useEffect(() => {
     if (data) {
       // pagination occured, assign the query results to the rows state
-      const mappedResults = mapRelatedItemsQueryResult(entityName, relationshipEntity, scope, data, schema);
+      const mappedResults = mapRelatedItemsQueryResult(entityName, relationshipEntityName, scope, data, schema);
       setRows(mappedResults.results); // TODO: merge with existing rows
     }
-  }, [data, entityName, schema, relationshipEntity, scope]);
+  }, [data, entityName, schema, relationshipEntityName, scope]);
 
   /**
    * Update the value of the relationship attribute when the relationshp context value changes
@@ -240,11 +255,12 @@ export default function MultipleRelationship({
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
     actionDispatch({
-      type: 'editRelationship',
+      type: ActionType.EditRelationship,
       payload: {
-        entityName: relationshipEntity,
+        entityName: relationshipEntityName,
         entityId,
         relationshipId,
+        connectionName,
         mode: relationship?.mode ?? 'multiple',
       },
     });

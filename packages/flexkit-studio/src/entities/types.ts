@@ -36,6 +36,7 @@ export type ActionEditRelationship = {
   _id?: string;
   type: ActionType.EditRelationship;
   payload: {
+    connectionName?: string;
     entityId?: string;
     entityName: string;
     relationshipId: string;
