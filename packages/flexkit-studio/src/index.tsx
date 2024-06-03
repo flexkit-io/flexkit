@@ -1,6 +1,7 @@
 'use client';
 
 // Core
+export { useAppContext } from './core/app-context';
 export { FlexkitStudio } from './core/flexkit-studio';
 export { useConfig } from './core/config/config-context';
 

@@ -9,7 +9,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 import type { ActionSetRelationship, Attribute, Entity } from '../../../core/types';
 import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
-import { ActionType } from '../../../entities/types';
 import type { FormFieldParams } from '../../types';
 
 export default function SingleRelationship({
@@ -61,7 +60,7 @@ export default function SingleRelationship({
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
     actionDispatch({
-      type: ActionType.EditRelationship,
+      type: 'EditRelationship',
       payload: {
         entityName: relationshipEntity,
         entityId,
@@ -71,7 +70,7 @@ export default function SingleRelationship({
     });
   }
 
-  function handleClearingSingle(event: SyntheticEvent): void {
+  function handleClearing(event: SyntheticEvent): void {
     const action: ActionSetRelationship = {
       type: 'setRelationship',
       payload: {
@@ -95,7 +94,8 @@ export default function SingleRelationship({
       name={name}
       render={({ field }: { field: { value?: FormFieldParams['defaultValue'] } }) => {
         const value = field.value?.value;
-        const displayValue = typeof value === 'object' && !Array.isArray(value) ? value[primaryAttributeName] : '';
+        const displayValue =
+          value && typeof value === 'object' && !Array.isArray(value) ? value[primaryAttributeName] : '';
 
         return (
           <FormItem>
@@ -131,7 +131,7 @@ export default function SingleRelationship({
                       <TooltipTrigger asChild>
                         <Button
                           className="fk-absolute fk-right-10 fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
-                          onClick={handleClearingSingle}
+                          onClick={handleClearing}
                           size="icon"
                           variant="ghost"
                         >

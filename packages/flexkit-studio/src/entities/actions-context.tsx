@@ -3,7 +3,6 @@
 import { createContext, useContext, useReducer } from 'react';
 import type { Dispatch, ReactNode } from 'react';
 import { props, uniqBy } from 'ramda';
-import { ActionType } from './types';
 import type {
   Action,
   ActionAddEntity,
@@ -17,38 +16,29 @@ const ActionsContext = createContext<Action[] | []>([]);
 const EntityDispatchContext = createContext<Dispatch<Action>>(() => undefined);
 
 function actionsReducer(actions: Action[], action: Action): Action[] {
-  const actionType = action.type as ActionType;
+  const actionType = action.type;
 
   if (!action._id) {
-    action._id = `${Date.now()}`;
+    action._id = Date.now().toString();
   }
 
   switch (actionType) {
-    case ActionType.DeleteEntity: {
-      return uniqBy(props(['type' as string, '_id']), [
-        ...(actions as ActionDeleteEntity[]),
-        action as ActionDeleteEntity,
-      ]);
+    case 'DeleteEntity': {
+      return uniqBy(props(['type' as string, '_id']), [...(actions as ActionDeleteEntity[]), action]);
     }
-    case ActionType.AddEntity: {
-      return uniqBy(props(['type' as string, '_id']), [...(actions as ActionAddEntity[]), action as ActionAddEntity]);
+    case 'AddEntity': {
+      return uniqBy(props(['type' as string, '_id']), [...(actions as ActionAddEntity[]), action]);
     }
-    case ActionType.EditEntity: {
-      return uniqBy(props(['type' as string, '_id']), [...(actions as ActionEditEntity[]), action as ActionEditEntity]);
+    case 'EditEntity': {
+      return uniqBy(props(['type' as string, '_id']), [...(actions as ActionEditEntity[]), action]);
     }
-    case ActionType.EditRelationship: {
-      return uniqBy(props(['type' as string, '_id']), [
-        ...(actions as ActionEditRelationship[]),
-        action as ActionEditRelationship,
-      ]);
+    case 'EditRelationship': {
+      return uniqBy(props(['type' as string, '_id']), [...(actions as ActionEditRelationship[]), action]);
     }
-    case ActionType.AlertDialog: {
-      return uniqBy(props(['type' as string, '_id']), [
-        ...(actions as ActionAlertDialog[]),
-        action as ActionAlertDialog,
-      ]);
+    case 'AlertDialog': {
+      return uniqBy(props(['type' as string, '_id']), [...(actions as ActionAlertDialog[]), action]);
     }
-    case ActionType.Dismiss: {
+    case 'Dismiss': {
       return actions.filter((item) => item._id !== action._id);
     }
     default: {

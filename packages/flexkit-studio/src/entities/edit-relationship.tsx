@@ -13,7 +13,7 @@ import { DataTable } from '../data-grid/data-table';
 import { Skeleton } from '../ui/primitives/skeleton';
 import type { Entity, RelationshipConnection } from '../core/types';
 import { useDispatch } from './actions-context';
-import { type Action, ActionType, type ActionEditRelationship } from './types';
+import { type Action, type ActionEditRelationship } from './types';
 
 type Props = {
   action: ActionEditRelationship;
@@ -90,7 +90,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
-      actionDispatch({ type: ActionType.Dismiss, _id, payload: {} });
+      actionDispatch({ type: 'Dismiss', _id, payload: {} });
     },
     [actionDispatch]
   );
@@ -155,7 +155,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       <DataTable
         columns={loading ? loadingColumns : columns}
         data={loading ? loadingData : results}
-        entityName={entitySchema?.name || ''}
+        entityName={entitySchema?.name ?? ''}
         initialSelectionState={
           selectedRows?.reduce((acc, id) => ({ ...acc, ...(id ? { [id]: true } : {}) }), {}) as {
             [_id: string]: boolean;

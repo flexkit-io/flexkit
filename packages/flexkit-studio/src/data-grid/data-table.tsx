@@ -48,7 +48,7 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
   onEntitySelectionChange,
   rowDeletionState,
 }: DataTableProps<TData, TValue>): JSX.Element {
-  const [rowSelection, setRowSelection] = React.useState(initialSelectionState || {});
+  const [rowSelection, setRowSelection] = React.useState(initialSelectionState ?? {});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -100,7 +100,7 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
                     <TableHead
                       colSpan={header.colSpan}
                       key={header.id}
-                      style={header.getSize() ? { width: `${header.getSize()}px` } : {}}
+                      style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>

@@ -18,7 +18,7 @@ import type { Entity } from '../core/types';
 import { getEntityCreateMutation, getEntityQuery } from '../graphql-client/queries';
 import type { EntityData } from '../graphql-client/types';
 import { useDispatch } from './actions-context';
-import { type Action, ActionType, type ActionAddEntity } from './types';
+import { type Action, type ActionAddEntity } from './types';
 
 type Props = {
   action: ActionAddEntity;
@@ -46,7 +46,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   function handleBeforeClose(hasFormChanged: boolean): boolean {
     if (hasFormChanged) {
       dispatch({
-        type: ActionType.AlertDialog,
+        type: 'AlertDialog',
         _id: 'unsavedChanges',
         payload: {
           options: {
@@ -56,10 +56,10 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
             dialogCancelTitle: 'Stay Here',
             dialogActionLabel: 'Discard Changes',
             dialogActionCancel: () => {
-              dispatch({ type: ActionType.Dismiss, _id: 'unsavedChanges', payload: {} });
+              dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
             },
             dialogActionSubmit: () => {
-              dispatch({ type: ActionType.Dismiss, _id: action._id, payload: {} });
+              dispatch({ type: 'Dismiss', _id: action._id, payload: {} });
             },
           },
         },
@@ -73,7 +73,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
-      dispatch({ type: ActionType.Dismiss, _id, payload: {} });
+      dispatch({ type: 'Dismiss', _id, payload: {} });
     },
     [dispatch]
   );
@@ -85,7 +85,6 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const saveEntity = useCallback(
     (newData: EntityData) => {
       const _id = uuidv4();
-      console.log('OJOOO', { newData });
       const mutation = getEntityCreateMutation(entityNamePlural, schema, newData, _id);
       const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
       const refreshQuery = gql`
@@ -104,7 +103,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       });
       runMutation(true);
     },
-    [action._id, entityName, entityNamePlural, handleClose, runMutation, schema, setMutation, scope, setOptions]
+    [action._id, entityNamePlural, handleClose, runMutation, schema, setMutation, scope, setOptions]
   );
 
   return (

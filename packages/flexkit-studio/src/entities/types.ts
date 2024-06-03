@@ -1,11 +1,13 @@
-export enum ActionType {
-  AddEntity = 'addEntity',
-  AlertDialog = 'alertDialog',
-  DeleteEntity = 'deleteEntity',
-  Dismiss = 'dismiss',
-  EditEntity = 'editEntity',
-  EditRelationship = 'editRelationship',
-}
+const ACTION_TYPE = {
+  AddEntity: 'addEntity',
+  AlertDialog: 'alertDialog',
+  DeleteEntity: 'deleteEntity',
+  Dismiss: 'dismiss',
+  EditEntity: 'editEntity',
+  EditRelationship: 'editRelationship',
+} as const;
+
+export type ActionType = keyof typeof ACTION_TYPE;
 
 export type Action =
   | ActionAddEntity
@@ -17,7 +19,7 @@ export type Action =
 
 export type ActionAddEntity = {
   _id?: string;
-  type: ActionType.AddEntity;
+  type: 'AddEntity';
   payload: {
     entityName: string;
   };
@@ -25,7 +27,7 @@ export type ActionAddEntity = {
 
 export type ActionEditEntity = {
   _id?: string;
-  type: ActionType.EditEntity;
+  type: 'EditEntity';
   payload: {
     entityId: string;
     entityNamePlural: string;
@@ -34,7 +36,7 @@ export type ActionEditEntity = {
 
 export type ActionEditRelationship = {
   _id?: string;
-  type: ActionType.EditRelationship;
+  type: 'EditRelationship';
   payload: {
     connectionName?: string;
     entityId?: string;
@@ -46,7 +48,7 @@ export type ActionEditRelationship = {
 
 export type ActionDeleteEntity = {
   _id?: string;
-  type: ActionType.DeleteEntity;
+  type: 'DeleteEntity';
   payload: {
     entityId: string;
     entityName: string;
@@ -55,13 +57,13 @@ export type ActionDeleteEntity = {
 
 export type ActionDismiss = {
   _id?: string;
-  type: ActionType.Dismiss;
+  type: 'Dismiss';
   payload: { [key: string]: never };
 };
 
 export type ActionAlertDialog = {
   _id?: string;
-  type: ActionType.AlertDialog;
+  type: 'AlertDialog';
   payload: {
     options: {
       dialogTitle: string;

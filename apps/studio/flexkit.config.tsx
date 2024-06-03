@@ -94,6 +94,21 @@ export default defineConfig([
         },
       },
     ],
+    scopes: [
+      {
+        name: 'default',
+        label: 'Default',
+        'default': true,
+      },
+      {
+        name: 'en',
+        label: 'EN',
+      },
+      {
+        name: 'es',
+        label: 'ES',
+      },
+    ],
     schema: [
       {
         name: 'product',

@@ -6,18 +6,11 @@ import Delete from './delete';
 import AddEntity from './add-entity';
 import EditEntity from './edit-entity';
 import EditRelationship from './edit-relationship';
-import type {
-  ActionAddEntity,
-  ActionAlertDialog,
-  ActionEditEntity,
-  ActionDeleteEntity,
-  ActionEditRelationship,
-} from './types';
 
 export function ActionsManager(): JSX.Element | null {
   const actions = useActions();
   const editActions = actions.filter((item) =>
-    ['addEntity', 'editEntity', 'editRelationship'].some((actionType) => actionType === item.type)
+    ['AddEntity', 'EditEntity', 'EditRelationship'].some((actionType) => actionType === item.type)
   );
   const latestModalId = editActions[editActions.length - 1]?._id;
 
@@ -25,38 +18,38 @@ export function ActionsManager(): JSX.Element | null {
     <>
       {actions.map((action) => {
         switch (action.type) {
-          case 'alertDialog': {
-            const { payload } = action as ActionAlertDialog;
+          case 'AlertDialog': {
+            const { payload } = action;
 
             return <AlertDialog key={action._id} options={payload.options} />;
           }
-          case 'deleteEntity': {
-            return <Delete action={action as ActionDeleteEntity} key={action._id} />;
+          case 'DeleteEntity': {
+            return <Delete action={action} key={action._id} />;
           }
-          case 'addEntity': {
+          case 'AddEntity': {
             return (
               <AddEntity
-                action={action as ActionAddEntity}
+                action={action}
                 depth={editActions.length - 1}
                 isFocused={action._id === latestModalId}
                 key={action._id}
               />
             );
           }
-          case 'editEntity': {
+          case 'EditEntity': {
             return (
               <EditEntity
-                action={action as ActionEditEntity}
+                action={action}
                 depth={editActions.length - 1}
                 isFocused={action._id === latestModalId}
                 key={action._id}
               />
             );
           }
-          case 'editRelationship': {
+          case 'EditRelationship': {
             return (
               <EditRelationship
-                action={action as ActionEditRelationship}
+                action={action}
                 depth={editActions.length - 1}
                 isFocused={action._id === latestModalId}
                 key={action._id}

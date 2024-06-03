@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { RefObject, SyntheticEvent } from 'react';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { useLazyQuery, gql } from '@apollo/client';
 import type { ColumnDef } from '@tanstack/react-table';
-import { find, map, prop, propEq, set, uniq, uniqBy } from 'ramda';
+import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';
 import { Link, Maximize2, X as ClearIcon } from 'lucide-react';
 import { getRelatedItemsQuery, mapRelatedItemsQueryResult } from '../../../graphql-client/queries';
 import type { EntityItem, EntityQueryResults } from '../../../graphql-client/types';
@@ -15,21 +15,13 @@ import { Skeleton } from '../../../ui/primitives/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../ui/primitives/tooltip';
 import { Badge } from '../../../ui/primitives/badge';
 import { Collapsible, CollapsibleContent } from '../../../ui/primitives/collapsible';
-import type {
-  ActionSetRelationship,
-  Attribute,
-  Entity,
-  Relationships,
-  RelationshipConnection,
-} from '../../../core/types';
+import type { Attribute, Entity, Relationships, RelationshipConnection } from '../../../core/types';
 import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
-import { ActionType, type Action } from '../../../entities/types';
 import type { FormFieldParams } from '../../types';
 import { DataTableRowActions } from './data-table-row-actions';
 
 const PAGE_SIZE = 25;
-const AVAILABLE_PAGE_SIZES = [25, 50, 100];
 
 export default function MultipleRelationship({
   control,
@@ -38,7 +30,6 @@ export default function MultipleRelationship({
   entityName,
   entityNamePlural,
   fieldSchema,
-  getValues,
   schema,
   scope,
   setValue,
@@ -100,30 +91,12 @@ export default function MultipleRelationship({
   const loadingData = Array(5).fill({});
   const loadingColumns = getLoadingColumns(columns);
 
-  type Field =
-    | string
-    | {
-        default: string;
-        [key: string]: string | undefined;
-      };
-
   useEffect(() => {
     setRows(initialRows);
 
     if (defaultValue.value === '') {
       return;
     }
-
-    const scopedValue = (field: Field): string => {
-      if (typeof field === 'string') {
-        return field;
-      }
-
-      return field[scope] ?? field.default;
-    };
-    const preexistentConnections = Array.isArray(defaultValue.value)
-      ? defaultValue.value.map((row) => ({ _id: String(row._id), value: map(scopedValue, row) }))
-      : { _id: String(defaultValue._id), value: defaultValue.value };
 
     // set the initial state of the relationship
     appDispatch({
@@ -224,38 +197,10 @@ export default function MultipleRelationship({
     relationshipId,
   ]);
 
-  // const disconnectEntity: ({ _entityId }: Action['payload']) => () => void = useCallback(
-  //   ({ entityId }: Action['payload']) =>
-  //     () => {
-  //       const rowToDeleteWasJustConnected = find(propEq('_id', entityId), relationships[relationshipId]?.connect ?? []);
-  //       const shouldUndoDisconnection = relationships[relationshipId]?.disconnect?.includes(entityId);
-  //       const disconnection = rowToDeleteWasJustConnected
-  //         ? relationships[relationshipId]?.disconnect
-  //         : uniq([...(relationships[relationshipId]?.disconnect ?? []), entityId]);
-
-  //       if (rowToDeleteWasJustConnected) {
-  //         setRows((rows) => rows.filter((row) => row?._id !== entityId));
-  //       }
-
-  //       appDispatch({
-  //         type: 'setRelationship',
-  //         payload: {
-  //           [relationshipId]: {
-  //             connect: relationships[relationshipId]?.connect?.filter((row) => row?._id !== entityId) ?? [],
-  //             disconnect: shouldUndoDisconnection
-  //               ? relationships[relationshipId]?.disconnect?.filter((_id) => _id !== entityId) ?? []
-  //               : disconnection,
-  //           },
-  //         },
-  //       });
-  //     },
-  //   [appDispatch, relationshipId, relationships]
-  // );
-
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
     actionDispatch({
-      type: ActionType.EditRelationship,
+      type: 'EditRelationship',
       payload: {
         entityName: relationshipEntityName,
         entityId,
@@ -264,45 +209,6 @@ export default function MultipleRelationship({
         mode: relationship?.mode ?? 'multiple',
       },
     });
-  }
-
-  function handlePaginationChange(model: GridPaginationModel): void {
-    setPaginationModel(model);
-
-    if (relationship.mode === 'multiple') {
-      fetchRelatedRows({
-        connections: relationships[relationshipId]?.connect ?? [],
-        paginationModel: model,
-        getData,
-        entityName,
-        _id: getValues()._id.value,
-      });
-    }
-  }
-
-  function handleClearingSingle(event: SyntheticEvent): void {
-    const action: ActionSetRelationship = {
-      type: 'setRelationship',
-      payload: {
-        [relationshipId]: {
-          connect: [],
-          disconnect: [],
-        },
-      },
-    };
-
-    event.preventDefault();
-    setValue(name, '');
-
-    if (data) {
-      // this is an edit form, let's disconnect the relationship
-      action.payload[relationshipId] = {
-        connect: [],
-        disconnect: relationships[relationshipId]?.disconnect ?? [],
-      };
-    }
-
-    appDispatch(action);
   }
 
   return (

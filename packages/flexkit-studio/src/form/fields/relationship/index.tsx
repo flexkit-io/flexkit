@@ -8,8 +8,6 @@ export default function Relationship(formFieldParams: FormFieldParams): JSX.Elem
   const { fieldSchema } = formFieldParams;
   const { relationship } = fieldSchema;
 
-  console.log({ formFieldParams }, { fieldSchema });
-
   if (relationship?.mode === 'single') {
     return <SingleRelationship {...formFieldParams} />;
   }

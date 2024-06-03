@@ -60,6 +60,11 @@ export interface ProjectOptions {
   basePath: string;
   icon?: ComponentType;
   plugins?: PluginOptions[];
+  scopes?: {
+    name: string;
+    label: string;
+    default?: boolean;
+  }[];
   schema: {
     name: string;
     plural: string;

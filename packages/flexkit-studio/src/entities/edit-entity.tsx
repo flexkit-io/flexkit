@@ -19,7 +19,7 @@ import type { SubmitHandle } from '../form/form-builder';
 import type { Entity } from '../core/types';
 import { useDispatch } from './actions-context';
 import Loading from './loading';
-import { type Action, ActionType, type ActionEditEntity } from './types';
+import { type Action, type ActionEditEntity } from './types';
 
 type Props = {
   action: ActionEditEntity;
@@ -47,7 +47,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const handleBeforeClose = useCallback(() => {
     if (ref.current?.hasDataChanged()) {
       dispatch({
-        type: ActionType.AlertDialog,
+        type: 'AlertDialog',
         _id: 'unsavedChanges',
         payload: {
           options: {
@@ -57,10 +57,10 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
             dialogCancelTitle: 'Stay Here',
             dialogActionLabel: 'Discard Changes',
             dialogActionCancel: () => {
-              dispatch({ type: ActionType.Dismiss, _id: 'unsavedChanges', payload: {} });
+              dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
             },
             dialogActionSubmit: () => {
-              dispatch({ type: ActionType.Dismiss, _id: action._id, payload: {} });
+              dispatch({ type: 'Dismiss', _id: action._id, payload: {} });
             },
           },
         },
@@ -74,7 +74,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
-      dispatch({ type: ActionType.Dismiss, _id, payload: {} });
+      dispatch({ type: 'Dismiss', _id, payload: {} });
     },
     [dispatch]
   );
@@ -85,7 +85,6 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
 
   const saveEntity = useCallback(
     (newData: EntityData, previousData?: FormEntityItem) => {
-      console.log('OJOOO', { newData });
       if (!previousData) return;
 
       const mutation = getEntityUpdateMutation(entityNamePlural, scope, schema, previousData, newData);

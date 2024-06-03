@@ -91,5 +91,6 @@ function mapConfig(project: SingleProject | ProjectOptions): ProjectOptions {
     projectId: project.projectId,
     title: project.title,
     schema: project.schema,
+    scopes: project.scopes,
   };
 }
