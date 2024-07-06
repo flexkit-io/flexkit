@@ -1,3 +1,4 @@
+// @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import type { OperationVariables } from '@apollo/client';
 import type { Schema } from '../core/types';
 
@@ -15,16 +16,15 @@ export type EntityQueryAggregate = {
   };
 };
 
-export type EntityQueryResults = {
-  [entityName: string]: {
-    _id: string;
-    __typename: string;
-    [attributeName: string]: string | ScopedAttributeValue;
-  }[];
-};
+// export type EntityQueryResults = {
+//   [entityName: string]: {
+//     _id: string;
+//     __typename: string;
+//     [attributeName: string]: string | ScopedAttributeValue;
+//   }[];
+// };
 
 export type EntityItem = {
-  _id: string;
   [attribute: string]: ScopedAttributeValue;
 };
 

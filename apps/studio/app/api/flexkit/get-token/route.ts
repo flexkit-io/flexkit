@@ -1,4 +1,4 @@
-import { getToken } from '@flexkit/studio/server';
+import { getToken } from '@flexkit/studio/ssr';
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);

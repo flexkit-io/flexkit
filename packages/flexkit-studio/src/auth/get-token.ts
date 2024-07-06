@@ -11,7 +11,7 @@ export async function getToken(code: string, projectId: string): Promise<{ sid: 
     body: JSON.stringify({ code }),
   })
     .then((res) => res.json())
-    .catch((_error) => {
+    .catch((_error: unknown) => {
       return '';
     });
 

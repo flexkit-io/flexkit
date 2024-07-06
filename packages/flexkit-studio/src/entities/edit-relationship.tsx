@@ -102,14 +102,14 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       const _id = selectedRows?.[0];
 
       connect = {
-        _id,
+        _id: _id ?? '',
         value: results.find((row) => row._id === _id),
       };
     }
 
     if (mode === 'multiple') {
       connect = selectedRows?.map((_id) => ({
-        _id,
+        _id: _id ?? '',
         value: results.find((row) => row._id === _id),
       }));
     }

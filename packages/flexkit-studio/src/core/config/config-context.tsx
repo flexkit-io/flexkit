@@ -6,25 +6,25 @@ import { useParams } from 'react-router-dom';
 import type { AppOptions, PluginOptions, ProjectOptions } from './types';
 
 interface ConfigContext {
-  currentProjectId?: string;
-  projects: ProjectOptions[];
-  plugins: PluginOptions[];
   contributions: {
     apps: AppOptions[];
   };
+  currentProjectId?: string;
   getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
     contributionPoint: string | string[]
   ) => PluginOptions['contributes'][T][];
+  plugins: PluginOptions[];
+  projects: ProjectOptions[];
 }
 
 const ConfigContext = createContext<ConfigContext>({
-  currentProjectId: undefined,
-  projects: [] as ProjectOptions[],
-  plugins: [] as PluginOptions[],
   contributions: {
     apps: [] as AppOptions[],
   },
+  currentProjectId: undefined,
   getContributionPointConfig: () => [],
+  plugins: [] as PluginOptions[],
+  projects: [] as ProjectOptions[],
 });
 const hasProjectIdProperty = (configItem: ProjectOptions | PluginOptions): boolean =>
   Object.prototype.hasOwnProperty.call(configItem, 'projectId');
@@ -62,17 +62,17 @@ export function ConfigProvider({
 
   const globalConfig = useMemo(
     () => ({
-      currentProjectId,
-      projects: globalFlattenedConfig.filter((item: ProjectOptions | PluginOptions) =>
-        hasProjectIdProperty(item)
-      ) as ProjectOptions[],
-      plugins: allPlugins,
       contributions: {
         apps: _getContributionPointConfig('apps', currentProjectPlugins),
       },
+      currentProjectId,
       getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
         contributionPoint: string | string[]
       ): PluginOptions['contributes'][T][] => _getContributionPointConfig(contributionPoint, currentProjectPlugins),
+      plugins: allPlugins,
+      projects: globalFlattenedConfig.filter((item: ProjectOptions | PluginOptions) =>
+        hasProjectIdProperty(item)
+      ) as ProjectOptions[],
     }),
     [allPlugins, currentProjectId, currentProjectPlugins, globalFlattenedConfig]
   );

@@ -48,7 +48,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
   }
 
   if (auth.user?.id) {
-    return <Navigate replace state={{ from: currentRouterLocation }} to={`${selectedProject.basePath}`} />;
+    return <Navigate replace state={{ from: currentRouterLocation }} to={selectedProject.basePath} />;
   }
 
   if (error) throw error;

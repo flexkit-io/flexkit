@@ -376,10 +376,10 @@ function localAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityIt
     const { dataType } = attributeSchema;
     const typedValue =
       attributeValue.disabled || Array.isArray(attributeValue.value)
-        ? null
+        ? ''
         : stringifyValue(dataType, attributeValue.value);
 
-    return `${acc}\n      ${attributeName}: {\n        update: {\n          node: {\n            ${scope}: ${typedValue}\n          }\n        }\n      }`;
+    return `${acc}\n      ${attributeName}: {\n        update: {\n          node: {\n            ${scope}: ${typedValue.toString()}\n          }\n        }\n      }`;
   }, '');
 
   return attributesString;

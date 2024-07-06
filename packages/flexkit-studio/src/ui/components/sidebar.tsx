@@ -5,10 +5,10 @@ import { Button } from '../primitives/button';
 import { ScrollArea } from '../primitives/scroll-area';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
-  playlists: [];
+  className?: string;
 }
 
-export function Sidebar({ className, playlists }: SidebarProps): JSX.Element {
+export function Sidebar({ className }: SidebarProps): JSX.Element {
   return (
     <div className={cn('fk-w-full fk-h-full', className)}>
       <ScrollArea className="fk-h-full">

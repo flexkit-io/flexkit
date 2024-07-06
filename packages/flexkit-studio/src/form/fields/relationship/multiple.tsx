@@ -376,7 +376,7 @@ function getLoadingColumns(columns: object[]): ColumnDef<unknown>[] {
  * The value of that attribute is returned as the value for the relationship attribute
  */
 function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
-  return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes?.[0]?.name ?? '';
+  return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes[0]?.name;
 }
 
 type DataAdapter = {

@@ -39,6 +39,7 @@ export default function DrawerModal({
   const [isOpen, setIsOpen] = useState(false);
   const [hasFormChanged, setHasFormChanged] = useState(false);
   const disabled = isActionButtonEnabledByDefault === true ? false : !hasFormChanged;
+  const gutter = depth * (50 / depth);
 
   const handleClose = useCallback(() => {
     const shouldClose = beforeClose ? beforeClose(hasFormChanged) : true;
@@ -91,7 +92,7 @@ export default function DrawerModal({
       open={isOpen}
       preventScrollRestoration={false}
     >
-      <DrawerContent style={isFocused ? {} : { maxWidth: `calc(100% - ${depth * (50 / depth)}px)` }}>
+      <DrawerContent style={isFocused ? {} : { maxWidth: `calc(100% - ${gutter.toString()}px)` }}>
         <DrawerHeader>
           <DrawerTitle className="fk-w-full">
             {title ? title : <Skeleton className="fk-h-5 fk-w-[120px]" />}

@@ -1,4 +1,4 @@
-import { defineConfig } from '@flexkit/studio/server';
+import { defineConfig } from '@flexkit/studio/ssr';
 import { Desk } from '@flexkit/desk';
 import { Image, Layers3, Tag } from 'lucide-react';
 
@@ -137,6 +137,7 @@ export default defineConfig([
               comment: 'Unique SKU identifier',
             },
             dataType: 'string',
+            isSearchable: true,
             isUnique: true,
             inputType: 'text',
             validation: (z) => z.string().min(1, { message: 'SKU is required' }),
@@ -191,6 +192,7 @@ export default defineConfig([
             },
             dataType: 'string',
             inputType: 'relationship',
+            isSearchable: true,
             defaultValue: '',
             relationship: {
               mode: 'single',

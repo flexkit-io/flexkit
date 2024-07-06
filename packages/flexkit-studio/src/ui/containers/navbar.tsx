@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import type { ProjectOptions } from '../../core/config/types';
 import { useMiddlewareComponent } from '../../core/use-middleware-component';
 
@@ -11,13 +12,21 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
   const ProjectSelector = useMiddlewareComponent({ contributionPoint: 'navbar.projectSelector' });
   const Search = useMiddlewareComponent({ contributionPoint: 'navbar.search' });
   const UserNav = useMiddlewareComponent({ contributionPoint: 'navbar.userNav' });
+  const currentProject = projects.find((project) => project.projectId === projectId) ?? projects[0];
+  const { basePath } = currentProject;
+  const navigate = useNavigate();
+
+  function handleSearchSelection(item: { entityName: string; entityNamePlural: string; entityId: string }) {
+    console.log({ item });
+    navigate(`${basePath}/${projectId}/desk/list/${item.entityNamePlural}?id=${item.entityId}`);
+  }
 
   return (
     <div className="fk-flex fk-basis-14 fk-min-h-[3.5rem] fk-px-3 fk-gap-x-4 fk-border-b fk-border-border">
       <Logo title="Flexkit Studio" />
       <div className="fk-flex fk-grow fk-shrink fk-items-center fk-gap-x-4 px-4">
         <ProjectSelector projectId={projectId} projects={projects} />
-        <Search />
+        <Search onSelect={handleSearchSelection} projectId={projectId} />
       </div>
       <div className="fk-flex fk-items-center">
         <UserNav projectId={projectId} />

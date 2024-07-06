@@ -1,5 +1,6 @@
 import { createElement, lazy } from 'react';
 import type { ComponentType, LazyExoticComponent, ReactElement, ReactNode } from 'react';
+import type { SearchProps } from '../ui/components/search';
 import { useConfig } from './config/config-context';
 import type { ProjectOptions } from './config/types';
 
@@ -15,10 +16,6 @@ interface ProjectSelectorProps {
   projectId: string;
   projects: ProjectOptions[];
 }
-
-type SearchProps = {
-  /**/
-};
 
 type UserNavProps = {
   projectId: string;

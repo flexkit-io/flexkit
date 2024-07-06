@@ -25,16 +25,16 @@ function reducer(state: AppContextType, action: ActionSetRelationship | ActionSe
 
   switch (type) {
     case 'setScope':
-      typeof localStorage !== 'undefined' && localStorage.setItem(scopeStorageKey, payload as string);
+      typeof localStorage !== 'undefined' && localStorage.setItem(scopeStorageKey, payload);
 
       return {
         ...state,
-        scope: payload as ActionSetScope['payload'],
+        scope: payload,
       };
     case 'setRelationship':
       return {
         ...state,
-        relationships: { ...state.relationships, ...(payload as ActionSetRelationship['payload']) },
+        relationships: { ...state.relationships, ...payload },
       };
     default:
       throw Error(`Unknown action: ${type as string}`);

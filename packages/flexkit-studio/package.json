@@ -7,14 +7,14 @@
   "exports": {
     ".": "./dist/index.js",
     "./data-grid": "./dist/data-grid/index.js",
-    "./server": "./dist/server/index.js",
+    "./ssr": "./dist/ssr.js",
     "./tailwind.config": "./tailwind.config.ts",
     "./styles.css": "./dist/index.css"
   },
   "typesVersions": {
     "*": {
-      "server": [
-        "./dist/server/index.d.ts"
+      "ssr": [
+        "./dist/ssr.d.ts"
       ]
     }
   },
@@ -23,8 +23,8 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup src/index.tsx src/server/index.tsx src/data-grid/index.tsx --format esm,cjs --dts --external react & tailwindcss -i ./src/styles.css -o dist/index.css",
-    "dev": "tsup src/index.tsx src/server/index.tsx src/data-grid/index.tsx --format esm,cjs --watch --dts --external react & tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
+    "build": "tsup src/index.tsx src/ssr.tsx src/data-grid/index.tsx --format esm,cjs --dts --external react & tailwindcss -i ./src/styles.css -o dist/index.css",
+    "dev": "tsup src/index.tsx src/ssr.tsx src/data-grid/index.tsx --format esm,cjs --watch --dts --external react & tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "ui:add": "pnpm dlx shadcn-ui@latest add"
@@ -70,6 +70,7 @@
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-popover": "^1.1.1",
     "@radix-ui/react-scroll-area": "^1.0.5",
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-separator": "^1.0.3",
@@ -82,7 +83,7 @@
     "@tanstack/react-table": "^8.11.7",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
-    "cmdk": "^0.2.0",
+    "cmdk": "^1.0.0",
     "debug": "^4.3.4",
     "graphql": "^16.8.1",
     "lexical": "^0.12.2",

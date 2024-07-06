@@ -1,4 +1,4 @@
-import type { ZodTypeAny } from 'zod';
+import type { z, ZodTypeAny } from 'zod';
 
 export type RelationshipConnection = {
   _id: string;
@@ -24,18 +24,16 @@ export type AppContextType = {
   relationships: Relationships;
 };
 
-type ActionType = 'setScope' | 'setRelationship';
-
 export type ActionSetScope = {
-  type: ActionType['setScope'];
+  type: 'setScope';
   payload: string;
 };
 
 export type ActionSetRelationship = {
-  type: ActionType['setRelationship'];
+  type: 'setRelationship';
   payload: {
     [relationshipId: string]: {
-      connect: Connection | Connection[];
+      connect?: RelationshipConnection | RelationshipConnection[];
       disconnect: string[];
     };
   };
@@ -69,6 +67,8 @@ type GroupedSelectList = {
   items: SelectList[];
 };
 
+type ZodType = typeof z;
+
 export type Attribute = {
   dataType: DataType;
   defaultValue?: string;
@@ -76,6 +76,7 @@ export type Attribute = {
   isEditable?: boolean;
   isPrimary?: boolean;
   isUnique?: boolean;
+  isSearchable?: boolean;
   label: string;
   name: string;
   options?: {
@@ -90,7 +91,7 @@ export type Attribute = {
     field: string;
   };
   scope: ScopeType;
-  validation?: (z) => ZodTypeAny;
+  validation?: (z: ZodType) => ZodTypeAny;
 };
 
 export type Entity = {
@@ -112,13 +113,59 @@ export type Scopes = {
   [code: string]: Scope;
 };
 
-type FormFieldNameAndType = {
-  _typename: string;
-  _fieldName: string;
-};
-
 export type FormFieldSchema = Attribute;
 
 export type GridEntityRow = {
   [attributeName: string]: string;
 };
+
+export type RawResultItem = {
+  facet_counts: [];
+  found: number;
+  hits: {
+    document: {
+      id: string;
+      [key: string]: string | { [key: string]: string };
+    };
+    highlight: {
+      [key: string]: string | { [key: string]: string };
+    };
+    id: string;
+    text_match: number;
+  }[];
+  out_of: number;
+  page: number;
+  request_params: {
+    collection_name: string;
+    per_page: number;
+    q: string;
+  };
+  search_cutoff: boolean;
+  search_time_ms: number;
+};
+
+type RawResultError = {
+  code: number;
+  error: string;
+};
+
+export type RawSearchResultItems = Array<RawResultItem | RawResultError>;
+
+export interface SearchResultItem {
+  _id: string;
+  _entityName: string;
+  _entityNamePlural: string;
+  [key: string]: string;
+}
+
+export interface SearchRequestProps {
+  searchRequests: {
+    searches: {
+      collection: string;
+      query_by: string;
+    }[];
+  };
+  commonParams: {
+    q: string;
+  };
+}
