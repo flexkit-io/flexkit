@@ -1,5 +1,14 @@
 import { find, propEq } from 'ramda';
-import { useAppContext, useConfig, useParams, Outlet, Skeleton, useEntityQuery, type Entity } from '@flexkit/studio';
+import {
+  useAppContext,
+  useConfig,
+  useLocation,
+  useParams,
+  Outlet,
+  Skeleton,
+  useEntityQuery,
+  type Entity,
+} from '@flexkit/studio';
 import type { SingleProject } from '@flexkit/studio';
 import { DataTable, DataTableRowActions, gridColumnsDefinition } from '@flexkit/studio/data-grid';
 
@@ -7,22 +16,27 @@ const page = 0; // TODO: temporary placeholder, this value must be managed by th
 const pageSize = 20; // TODO: this should be obtained from a global state persisted somewehere
 
 export function List() {
-  const { entity } = useParams();
+  const { entity: entityName } = useParams();
+  const { search } = useLocation();
+  const query = new URLSearchParams(search);
+  const entityId = query.get('id');
   const { scope } = useAppContext();
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-  const entitySchema = find(propEq(entity, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = find(propEq(entityName, 'plural'))(schema) as Entity | undefined;
   const columnsDefinition = gridColumnsDefinition({
     attributesSchema: entitySchema?.attributes || [],
     actionsComponent: (row) => (
-      <DataTableRowActions entityName={entitySchema?.name ?? ''} entityNamePlural={entity ?? ''} row={row} />
+      <DataTableRowActions entityName={entitySchema?.name ?? ''} entityNamePlural={entityName ?? ''} row={row} />
     ),
   });
+  const variables = entityId ? { where: { _id: entityId } } : { options: { offset: page * pageSize, limit: pageSize } };
+
   const [loading, { count, results }] = useEntityQuery({
-    entityNamePlural: entity ?? '',
+    entityNamePlural: entityName ?? '',
     schema,
     scope,
-    variables: { options: { offset: page * pageSize, limit: pageSize } },
+    variables,
   });
   const loadingData = Array(20).fill({});
   const loadingColumns = columnsDefinition.map((column) => ({
