@@ -30,14 +30,11 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   const heading = `$where: ${entityName}Where, $options: ${entityName}Options`;
 
   if (!entitySchema) {
-    throw new Error(`Entity ${entityName} not found in the schema`);
+    throw new Error(`Entity '${entityName}' not found in the schema`);
   }
 
   if (attributes.length === 0) {
-    return {
-      queryEntityName: '',
-      query: '',
-    };
+    throw new Error(`Entity '${entityName}' has no attributes defined in the schema`);
   }
 
   const globalAttributesList: string = getAttributeListByScope('global', attributes).join('\n  ');

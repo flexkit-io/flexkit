@@ -1,15 +1,6 @@
 import { find, propEq } from 'ramda';
-import {
-  useAppContext,
-  useConfig,
-  useLocation,
-  useParams,
-  Outlet,
-  Skeleton,
-  useEntityQuery,
-  type Entity,
-} from '@flexkit/studio';
-import type { SingleProject } from '@flexkit/studio';
+import { useAppContext, useConfig, useLocation, useParams, Outlet, Skeleton, useEntityQuery } from '@flexkit/studio';
+import type { Entity, SingleProject } from '@flexkit/studio';
 import { DataTable, DataTableRowActions, gridColumnsDefinition } from '@flexkit/studio/data-grid';
 
 const page = 0; // TODO: temporary placeholder, this value must be managed by the data grid

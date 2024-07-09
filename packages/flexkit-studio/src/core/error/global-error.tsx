@@ -1,7 +1,7 @@
 'use client';
 
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
-import { DarkModeSwitch } from '../ui/components/dark-mode-switch';
+import { DarkModeSwitch } from '../../ui/components/dark-mode-switch';
 
 export function GlobalError(): JSX.Element {
   const error = useRouteError();

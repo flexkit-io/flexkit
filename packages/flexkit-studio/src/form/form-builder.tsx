@@ -179,5 +179,8 @@ function hasDataChanged(
       {}
     );
 
+  // TODO: even when the form data has not changed, the function returns true because for relationship fields the original
+  // value is replaced. It goes from an array with the rows to an object with connect and disconnect keys.
+  console.log({ originalData }, { newData });
   return !equals(originalData, newData);
 }

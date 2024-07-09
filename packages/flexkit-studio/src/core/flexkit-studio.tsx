@@ -9,7 +9,8 @@ import { Root } from '../ui/containers/root';
 import { ActionsProvider } from '../entities/actions-context';
 import { AppProvider } from './app-context';
 import { getApps } from './config/config-context';
-import { GlobalError } from './global-error';
+import { GlobalError } from './error/global-error';
+import { ErrorBoundary } from './error/error-boundary';
 import type { Config, ProjectOptions, SingleProject } from './config/types';
 
 /**
@@ -59,9 +60,11 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
           children: apps.map((app) => ({
             path: app.name,
             element: app.component,
+            errorElement: <ErrorBoundary />,
             children: app.routes?.map((route) => ({
               path: route.path,
               element: route.component,
+              errorElement: <ErrorBoundary />,
               children: route.children?.map((child) => ({ path: child.path, element: child.component })),
             })),
           })),
