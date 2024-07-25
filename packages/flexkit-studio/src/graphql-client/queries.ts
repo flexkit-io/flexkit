@@ -9,7 +9,6 @@ import type {
   EntityQueryResults,
   FormEntityItem,
   FormAttributeValue,
-  FormRelationshipAttributeValue,
   MappedEntityQueryResults,
   MappedFormEntityQueryResults,
   ScopedAttributeValue,
@@ -399,26 +398,29 @@ function relationshipAttributesUpdate(
 
     if (inputType === 'relationship' && relationship?.mode === 'single') {
       const relatedEntityName = relationship.entity;
-      const disconnect = `disconnect: {\n          where: {\n            node: {\n              _id: "${originalData[relatedEntityName]._id}"\n            }\n          }\n        }\n`;
-      const connect = `connect: {\n          where: {\n            node: {\n              _id: "${attributeValue._id}"\n            }\n          }\n        }\n`;
+      const disconnect = `disconnect: {\n          where: {\n            node: {\n              _id: "${
+        originalData[relatedEntityName]._id ?? ''
+      }"\n            }\n          }\n        }\n`;
+      const connect = `connect: {\n          where: {\n            node: {\n              _id: "${
+        attributeValue._id ?? ''
+      }"\n            }\n          }\n        }\n`;
 
       return `${acc}\n      ${relatedEntityName}: {\n        ${connect}        ${disconnect}      }`;
     }
 
     if (inputType === 'relationship' && relationship?.mode === 'multiple') {
-      if (Array.isArray(attributeValue.value)) {
-        return `${acc}\n`;
-      }
-
-      const nodesToDisconnect: string | undefined = attributeValue.value?.['disconnect'].reduce(
-        (acc: string, _id: string) => {
-          return `${acc}              {\n                node: {\n                  _id: "${_id}"\n                }\n              }\n`;
+      const nodesToDisconnect: string | undefined = attributeValue.relationships?.disconnect?.reduce(
+        (disconnectString: string, _id: string) => {
+          return `${disconnectString}              {\n                node: {\n                  _id: "${_id}"\n                }\n              }\n`;
         },
         ''
       );
-      const nodesToConnect: string | undefined = attributeValue.value?.['connect'].reduce((acc: string, node: any) => {
-        return `${acc}                {\n                  _id: "${node._id}"\n                }\n`;
-      }, '');
+      const nodesToConnect: string | undefined = attributeValue.relationships?.connect?.reduce(
+        (connectString: string, node) => {
+          return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
+        },
+        ''
+      );
       const disconnect = nodesToDisconnect
         ? `disconnect: {\n          where: {\n            OR: [\n${nodesToDisconnect}            ]\n          }\n        }\n`
         : '';
@@ -634,7 +636,7 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
   const relationshipAttributes = pick(getAttributeListByScope('relationship', schemaAttributes) as [string], data);
   const attributesArray = toPairs(relationshipAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
-    if (!attributeValue || !attributeValue.value) {
+    if (!attributeValue.value) {
       return acc;
     }
 
@@ -642,21 +644,20 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
     const { inputType, relationship } = attributeSchema;
 
     if (inputType === 'relationship' && relationship?.mode === 'single') {
-      const connect = `connect: {\n          where: {\n            node: {\n              _id: "${attributeValue._id}"\n            }\n          }\n        }\n`;
+      const connect = `connect: {\n          where: {\n            node: {\n              _id: "${
+        attributeValue._id ?? ''
+      }"\n            }\n          }\n        }\n`;
 
       return `${acc}\n      ${attributeName}: {\n        ${connect}      }`;
     }
 
     if (inputType === 'relationship' && relationship?.mode === 'multiple') {
-      if (Array.isArray(attributeValue.value)) {
-        return `${acc}\n`;
-      }
-
-      const nodesToConnect: string | undefined =
-        attributeValue.value?.['connect'] &&
-        attributeValue.value['connect'].reduce((acc: string, node: any) => {
-          return `${acc}                {\n                  _id: "${node._id}"\n                }\n`;
-        }, '');
+      const nodesToConnect: string | undefined = attributeValue.relationships?.connect?.reduce(
+        (connectString: string, node) => {
+          return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
+        },
+        ''
+      );
       const connect = nodesToConnect
         ? `connect: {\n          where: {\n            node: {\n              OR: [\n${nodesToConnect}              ]\n            }\n          }\n        }\n`
         : '';

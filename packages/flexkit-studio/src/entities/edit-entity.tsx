@@ -31,7 +31,8 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const { entityId, entityNamePlural } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const { projects, currentProjectId } = useConfig();
-  const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const entityName = entitySchema?.name ?? entityNamePlural;
   const { scope } = useAppContext();
@@ -135,6 +136,8 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
         <Loading />
       ) : (
         <FormBuilder
+          currentScope={scope}
+          defaultScope={defaultScope}
           entityId={entityId}
           entityName={entityName}
           entityNamePlural={entityNamePlural}

@@ -35,7 +35,6 @@ export default function MultipleRelationship({
   setValue,
 }: FormFieldParams): JSX.Element {
   // eslint-disable-next-line no-console -- temporary debug
-  console.log('Relationship component reloaded', { defaultValue });
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   useOuterClick(wrapperRef, setIsOpen);
@@ -118,34 +117,13 @@ export default function MultipleRelationship({
   }, [data, entityName, schema, relationshipEntityName, scope]);
 
   /**
-   * Update the value of the relationship attribute when the relationshp context value changes
+   * Update the value of the field when the relationshp context value changes
    * The relationshp context value changes when the user selects a row from the datagrid in the EditRelationship modal
+   * or when the user ticks one of the pre-existing relationships for deletion
    */
   useEffect(() => {
-    setValue(name, { value: relationships[relationshipId] });
-    console.log({ value: relationships[relationshipId] });
-
-    // const connectedRows = relationships[relationshipId]?.connect?.map(({ value }) => value) ?? [];
-    // const initialValues = defaultValue?.value?.map((row) => ({
-    //   ...row,
-    //   [primaryAttributeName]: row?.[primaryAttributeName]?.[scope] ?? '',
-    // }));
-    // const updatedRows = uniqBy(prop('_id'), [...connectedRows, ...initialValues]).filter(
-    //   (row) => !relationships[relationshipId]?.disconnect?.includes(row._id)
-    // );
-    // console.log('disconnect', relationships[relationshipId]?.disconnect);
-    // console.log({ updatedRows });
-    // setRows(updatedRows);
-  }, [
-    defaultValue.value,
-    primaryAttributeName,
-    relationships,
-    relationshipId,
-    relationship?.mode,
-    scope,
-    setValue,
-    name,
-  ]);
+    setValue(name, { ...defaultValue, relationships: relationships[relationshipId] });
+  }, [defaultValue, relationships, relationshipId, setValue, name]);
 
   /**
    * Set the value of the rows for the datagrid
@@ -421,7 +399,6 @@ function getRowClassName(_id: string, relationshipId: string, relationships: Rel
 type FetchRelatedRowsParams = {
   connections: RelationshipConnection[];
   paginationModel: {
-    pageSize: number;
     page: number;
   };
   getData: Function;
@@ -459,8 +436,8 @@ function fetchRelatedRows({ connections, paginationModel, getData, entityName, _
     console.log('No need to fetch more records');
     // setRows((prevRows) =>
     //   uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]).slice(
-    //     pageIndex * pageSize,
-    //     pageSize
+    //     pageIndex * PAGE_SIZE,
+    //     PAGE_SIZE
     //   )
     // );
 

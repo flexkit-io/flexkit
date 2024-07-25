@@ -20,8 +20,6 @@ export default function SingleRelationship({
   scope,
   setValue,
 }: FormFieldParams): JSX.Element {
-  // eslint-disable-next-line no-console -- temporary debug
-  console.log('Relationship component reloaded');
   const [hasFocus, setHasFocus] = useState(false);
   const { name, label, options, relationship } = fieldSchema;
   const relationshipEntity: string = relationship?.entity ?? name;
@@ -54,8 +52,8 @@ export default function SingleRelationship({
    * The relationshp context value changes when the user selects a row from the datagrid in the EditRelationship modal
    */
   useEffect(() => {
-    setValue(name, relationships[relationshipId]?.connect ?? '');
-  }, [relationships, relationshipId, relationship?.mode, setValue, name]);
+    setValue(name, { ...defaultValue, ...(relationships[relationshipId]?.connect ?? '') });
+  }, [defaultValue, name, relationships, relationshipId, setValue]);
 
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();

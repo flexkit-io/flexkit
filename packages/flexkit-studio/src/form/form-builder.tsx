@@ -8,7 +8,6 @@ import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
 import type { Entity, Schema } from '../core/types';
-import { useAppContext } from '../core/app-context';
 import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import type { EntityData, FormEntityItem } from '../graphql-client/types';
 // import NumberField from './fields/number';
@@ -29,6 +28,8 @@ export type SubmitHandle = {
 };
 
 type Props = {
+  currentScope: string;
+  defaultScope: string;
   entityId?: string;
   entityName: string;
   entityNamePlural: string;
@@ -42,7 +43,7 @@ type FieldComponentsMap = {
 };
 
 function FormBuilder(
-  { entityId, entityName, entityNamePlural, formData, schema, onSubmit }: Props,
+  { currentScope, defaultScope, entityId, entityName, entityNamePlural, formData, schema, onSubmit }: Props,
   ref: ForwardedRef<SubmitHandle>
 ): JSX.Element {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
@@ -58,7 +59,6 @@ function FormBuilder(
 
   const form = useForm<UserSchema>({ resolver: zodResolver(validationSchema) });
   const { control, getValues, handleSubmit, setValue, watch } = form;
-  const { scope } = useAppContext();
   const { isDirty } = useDrawerModalContext();
 
   useImperativeHandle(ref, () => ({
@@ -116,14 +116,14 @@ function FormBuilder(
               key: field.name,
               control,
               // TODO: check if default value should be an empty string, depend on the input type or some default value passed by the user in the schema
-              defaultValue: formData ? formData[field.name] : { value: '', disabled: false, scope: 'default' },
+              defaultValue: formData ? formData[field.name] : { value: '', disabled: false, scope: defaultScope },
               entityId,
               entityName,
               entityNamePlural,
               fieldSchema: field,
               getValues,
               schema,
-              scope,
+              scope: currentScope,
               setValue,
             })
           ) : (
@@ -164,7 +164,11 @@ function hasDataChanged(
     .reduce(
       (acc, field) => ({
         ...acc,
-        [field]: { value: originalFormData[field].value, disabled: originalFormData[field].disabled },
+        [field]: {
+          value: originalFormData[field].value,
+          disabled: originalFormData[field].disabled,
+          relationships: originalFormData[field].relationships,
+        },
       }),
       {}
     );
@@ -174,13 +178,18 @@ function hasDataChanged(
     .reduce(
       (acc, field) => ({
         ...acc,
-        [field]: { value: changedData[field]?.value, disabled: changedData[field]?.disabled },
+        [field]: {
+          value: changedData[field]?.value,
+          disabled: changedData[field]?.disabled,
+          relationships:
+            Boolean(changedData[field]?.relationships?.connect?.length) ||
+            Boolean(changedData[field]?.relationships?.disconnect?.length)
+              ? changedData[field]?.relationships
+              : undefined,
+        },
       }),
       {}
     );
 
-  // TODO: even when the form data has not changed, the function returns true because for relationship fields the original
-  // value is replaced. It goes from an array with the rows to an object with connect and disconnect keys.
-  console.log({ originalData }, { newData });
   return !equals(originalData, newData);
 }

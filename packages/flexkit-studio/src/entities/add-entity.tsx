@@ -30,7 +30,8 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const { entityName } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const { projects, currentProjectId } = useConfig();
-  const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const entityNamePlural = entitySchema?.plural ?? entityName;
   const { scope } = useAppContext();
@@ -122,6 +123,8 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       title={`Add ${entityName}`}
     >
       <FormBuilder
+        currentScope={scope}
+        defaultScope={defaultScope}
         entityName={entityName}
         entityNamePlural={entityNamePlural}
         onSubmit={saveEntity}

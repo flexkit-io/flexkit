@@ -69,22 +69,18 @@ export type UseEntityQueryParams = {
 };
 
 type RelationshipConnections = {
-  connect?: string[];
-  disconnect?: string[];
-};
-
-export type FormRelationshipAttributeValue = {
-  _id: string;
-  value: [] | RelationshipConnections;
+  connect?: MappedEntityItem[] | [];
+  disconnect?: string[] | [];
 };
 
 export type FormAttributeValue = {
   _id?: string;
   count?: number;
+  disabled: boolean;
+  relationships?: RelationshipConnections;
+  scope: string;
   value:
     | string
     | { [key: string]: string | number | boolean | readonly string[] | undefined }
     | { [key: string]: string | number | boolean | readonly string[] | { [key: string]: string | number | boolean } }[];
-  disabled: boolean;
-  scope: string;
 };
