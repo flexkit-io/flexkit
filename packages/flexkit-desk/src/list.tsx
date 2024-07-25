@@ -1,10 +1,10 @@
+import { useCallback } from 'react';
 import { find, propEq } from 'ramda';
 import { useAppContext, useConfig, useLocation, useParams, Outlet, Skeleton, useEntityQuery } from '@flexkit/studio';
 import type { Entity, SingleProject } from '@flexkit/studio';
 import { DataTable, DataTableRowActions, gridColumnsDefinition } from '@flexkit/studio/data-grid';
 
-const page = 0; // TODO: temporary placeholder, this value must be managed by the data grid
-const pageSize = 20; // TODO: this should be obtained from a global state persisted somewehere
+const pageSize = 25;
 
 export function List() {
   const { entity: entityName } = useParams();
@@ -21,30 +21,58 @@ export function List() {
       <DataTableRowActions entityName={entitySchema?.name ?? ''} entityNamePlural={entityName ?? ''} row={row} />
     ),
   });
-  const variables = entityId ? { where: { _id: entityId } } : { options: { offset: page * pageSize, limit: pageSize } };
+  const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };
 
-  const [loading, { count, results }] = useEntityQuery({
+  const { isLoading, fetchMore, count, data } = useEntityQuery({
     entityNamePlural: entityName ?? '',
     schema,
     scope,
     variables,
   });
-  const loadingData = Array(20).fill({});
+
+  // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
+  const fetchMoreOnBottomReached = useCallback(
+    (containerRefElement?: HTMLDivElement | null) => {
+      const rowsCount = data?.length ?? 0;
+
+      if (containerRefElement && count > 0 && rowsCount > 0) {
+        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+        //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
+        if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < count) {
+          fetchMore({
+            variables: {
+              options: {
+                offset: data?.length,
+                limit: pageSize,
+              },
+            },
+          });
+        }
+      }
+    },
+    [count, data?.length, isLoading]
+  );
+
+  const loadingData = Array(pageSize).fill({});
   const loadingColumns = columnsDefinition.map((column) => ({
     ...column,
-    cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
+    cell: () => <Skeleton className="fk-h-6 fk-w-full" />,
   }));
 
   return (
-    <div className="fk-flex fk-flex-col">
+    <div className="fk-flex fk-flex-col fk-h-full">
       <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">
         {capitalize(entitySchema?.plural ?? '')}
       </h2>
       <DataTable
-        columns={loading ? loadingColumns : columnsDefinition}
-        data={loading ? loadingData : results}
+        columns={isLoading ? loadingColumns : columnsDefinition}
+        data={isLoading ? loadingData : data ?? []}
         entityName={entitySchema?.name || ''}
         hasToolbar={true}
+        pageSize={pageSize}
+        onScroll={(e) => {
+          fetchMoreOnBottomReached(e.target as HTMLDivElement);
+        }}
       />
       <Outlet />
     </div>

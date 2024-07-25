@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useRef, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -22,6 +22,7 @@ import type {
   TableMeta,
   VisibilityState,
 } from '@tanstack/react-table';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/primitives/table';
 import { DataTableToolbar } from './data-table-toolbar';
 
@@ -32,6 +33,8 @@ interface DataTableProps<TData extends { [key: string]: unknown; _id: string }, 
   hasToolbar?: boolean;
   initialSelectionState?: RowSelectionState;
   onEntitySelectionChange?: (rowSelection: string[]) => void;
+  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
+  pageSize?: number;
   rowDeletionState?: string[];
 }
 
@@ -46,12 +49,15 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
   hasToolbar,
   initialSelectionState,
   onEntitySelectionChange,
+  onScroll,
+  pageSize,
   rowDeletionState,
 }: DataTableProps<TData, TValue>): JSX.Element {
-  const [rowSelection, setRowSelection] = React.useState(initialSelectionState ?? {});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [rowSelection, setRowSelection] = useState(initialSelectionState ?? {});
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const table = useReactTable({
     data,
@@ -61,6 +67,11 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
       columnVisibility,
       rowSelection,
       columnFilters,
+    },
+    initialState: {
+      pagination: {
+        pageSize: pageSize ?? 25,
+      },
     },
     enableRowSelection: true,
     onRowSelectionChange: handleRowSelectionChange,
@@ -74,10 +85,24 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getRowId: (row) => row._id,
+    manualPagination: true,
     meta: {
       getRowBackground: (row: Row<TData>) =>
         rowDeletionState?.includes(row.original._id) ? 'fk-bg-red-200 hover:fk-bg-red-300' : '',
     },
+  });
+
+  const { rows } = table.getRowModel();
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    estimateSize: () => 45, //estimate row height for accurate scrollbar dragging
+    getScrollElement: () => scrollRef.current,
+    //measure dynamic row height, except in firefox because it measures table border height incorrectly
+    measureElement:
+      typeof window !== 'undefined' && navigator.userAgent.includes('Firefox')
+        ? (element) => element.getBoundingClientRect().height
+        : undefined,
+    overscan: 5,
   });
 
   function handleRowSelectionChange(updaterFn: Updater<RowSelectionState>): void {
@@ -88,50 +113,73 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
   }
 
   return (
-    <div className="fk-w-full fk-space-y-4">
+    <div className="fk-w-full fk-h-full fk-space-y-4 fk-pb-[4.375rem]">
       {Boolean(hasToolbar) && <DataTableToolbar entityName={entityName} table={table} />}
-      <div className="fk-rounded-md fk-border-border fk-border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead
-                      colSpan={header.colSpan}
-                      key={header.id}
-                      style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
+      <Table className="fk-grid" onScroll={onScroll} ref={scrollRef}>
+        <TableHeader className="fk-grid">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow className="fk-flex fk-w-full" key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                return (
+                  <TableHead
+                    className="fk-flex fk-items-center"
+                    colSpan={header.colSpan}
+                    key={header.id}
+                    style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
+                  >
+                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody
+          className="fk-grid fk-relative"
+          style={{
+            height: `${rowVirtualizer.getTotalSize().toString()}px`, //tells scrollbar how big the table is
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().length ? (
+            rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const row = rows[virtualRow.index];
+
+              return (
                 <TableRow
-                  className={(table.options.meta as ExtendedDataTable).getRowBackground(row)}
+                  className={`${(table.options.meta as ExtendedDataTable).getRowBackground(
+                    row
+                  )} fk-flex fk-absolute fk-w-full`}
+                  data-index={virtualRow.index}
                   data-state={row.getIsSelected() && 'selected'}
-                  key={row.id}
+                  key={virtualRow.key}
+                  ref={rowVirtualizer.measureElement}
+                  style={{
+                    transform: `translateY(${virtualRow.start.toString()}px)`,
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell
+                      className="fk-flex fk-items-center"
+                      key={cell.id}
+                      style={{
+                        width: cell.column.getSize(),
+                      }}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell className="fk-h-24 fk-text-center" colSpan={columns.length}>
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              );
+            })
+          ) : (
+            <TableRow>
+              <TableCell className="fk-h-24 fk-text-center" colSpan={columns.length}>
+                No results.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

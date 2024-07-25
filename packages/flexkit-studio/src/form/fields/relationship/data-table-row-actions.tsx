@@ -18,7 +18,7 @@ export function DataTableRowActions<TData>({ action, row }: DataTableRowActionsP
   }
 
   return (
-    <div className="fk-flex">
+    <div className="fk-flex fk-items-center">
       <Button className="fk-flex fk-h-7 fk-w-7 fk-p-0 fk-mr-1" onClick={handleDelete} variant="ghost">
         <Trash2 className="fk-h-4 fk-w-4" />
         <span className="fk-sr-only">Delete</span>

@@ -104,14 +104,12 @@ export type Schema = Entity[];
 
 type Scope = {
   name: string;
+  label: string;
   isDefault?: boolean;
-  sortOrder: number;
-  enabled: boolean;
+  sortOrder?: number;
 };
 
-export type Scopes = {
-  [code: string]: Scope;
-};
+export type Scopes = Scope[];
 
 export type FormFieldSchema = Attribute;
 
@@ -149,7 +147,7 @@ type RawResultError = {
   error: string;
 };
 
-export type RawSearchResultItems = Array<RawResultItem | RawResultError>;
+export type RawSearchResultItems = (RawResultItem | RawResultError)[];
 
 export interface SearchResultItem {
   _id: string;

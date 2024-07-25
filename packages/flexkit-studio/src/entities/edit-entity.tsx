@@ -103,17 +103,18 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     [action._id, entityId, entityNamePlural, handleClose, schema, runMutation, setMutation, setOptions, scope]
   );
 
-  const [loading, { results }] = useEntityQuery({
+  const { isLoading, data: results } = useEntityQuery({
     entityNamePlural,
     schema,
     scope,
     variables: { where: { _id: entityId } },
     isForm: true,
-  }) as [boolean, { results: FormEntityItem[] }];
+  });
+  const data = results as FormEntityItem[];
 
   const primaryAttributeName =
     entitySchema?.attributes.find((attr) => attr.isPrimary)?.name ?? entitySchema?.attributes[0]?.name ?? '';
-  const entityIdentifier = !loading && results.length ? results[0][primaryAttributeName].value : '';
+  const entityIdentifier = !isLoading && data.length ? data[0][primaryAttributeName].value : '';
 
   return (
     <DrawerModal
@@ -130,14 +131,14 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       }}
       title={entityIdentifier as string}
     >
-      {loading || !results.length ? (
+      {isLoading || !data.length ? (
         <Loading />
       ) : (
         <FormBuilder
           entityId={entityId}
           entityName={entityName}
           entityNamePlural={entityNamePlural}
-          formData={results[0]}
+          formData={data[0]}
           onSubmit={saveEntity}
           ref={ref}
           schema={schema}

@@ -35,14 +35,13 @@ export default function MultipleRelationship({
   setValue,
 }: FormFieldParams): JSX.Element {
   // eslint-disable-next-line no-console -- temporary debug
-  console.log('Relationship component reloaded');
+  console.log('Relationship component reloaded', { defaultValue });
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   useOuterClick(wrapperRef, setIsOpen);
   const [rows, setRows] = useState<EntityItem[] | []>([]);
   const [rowCount, setRowCount] = useState(defaultValue.count ?? 0);
   const [paginationModel, setPaginationModel] = useState({
-    pageSize: PAGE_SIZE,
     page: 0,
   });
   const { name, label, options, relationship } = fieldSchema;
@@ -124,6 +123,7 @@ export default function MultipleRelationship({
    */
   useEffect(() => {
     setValue(name, { value: relationships[relationshipId] });
+    console.log({ value: relationships[relationshipId] });
 
     // const connectedRows = relationships[relationshipId]?.connect?.map(({ value }) => value) ?? [];
     // const initialValues = defaultValue?.value?.map((row) => ({
@@ -148,7 +148,6 @@ export default function MultipleRelationship({
   ]);
 
   /**
-   * Multiple mode
    * Set the value of the rows for the datagrid
    */
   useEffect(() => {
@@ -156,11 +155,8 @@ export default function MultipleRelationship({
       ? relationships[relationshipId]?.connect
       : [];
     const selectedRows = connections.map(({ value }) => value);
-    const totalCount = paginationModel.pageSize * (paginationModel.page + 1);
-    const limit =
-      totalCount - selectedRows.length > paginationModel.pageSize
-        ? paginationModel.pageSize
-        : totalCount - selectedRows.length;
+    const totalCount = PAGE_SIZE * (paginationModel.page + 1);
+    const limit = totalCount - selectedRows.length > PAGE_SIZE ? PAGE_SIZE : totalCount - selectedRows.length;
     // TODO: finish the functionality to merge the existing rows with the new ones and paginate them
     if (limit > 0) {
       // eslint-disable-next-line no-console -- temporary debug
@@ -170,10 +166,7 @@ export default function MultipleRelationship({
       // eslint-disable-next-line no-console -- temporary debug
       console.log('No need to fetch more records');
       setRows((prevRows) =>
-        uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]).slice(
-          paginationModel.page * paginationModel.pageSize,
-          paginationModel.pageSize
-        )
+        uniqBy(prop('_id'), [...(selectedRows as []), ...prevRows]).slice(paginationModel.page * PAGE_SIZE, PAGE_SIZE)
       );
       return;
     }
@@ -187,15 +180,7 @@ export default function MultipleRelationship({
     }
 
     setRows(uniqBy(prop('_id'), [...(selectedRows as []), ...initialRows]));
-  }, [
-    data,
-    defaultValue.count,
-    initialRows,
-    paginationModel.page,
-    paginationModel.pageSize,
-    relationships,
-    relationshipId,
-  ]);
+  }, [data, defaultValue.count, initialRows, paginationModel.page, relationships, relationshipId]);
 
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
@@ -320,6 +305,10 @@ export default function MultipleRelationship({
                       columns={loading ? loadingColumns : columns}
                       data={loading ? loadingData : rows}
                       entityName={entityName}
+                      onScroll={(e) => {
+                        //TODO: add the fetchMoreOnBottomReached functionality like in the list.tsx component
+                        console.log('scrolled');
+                      }}
                       rowDeletionState={relationships[relationshipId]?.disconnect}
                     />
                   </div>
@@ -442,12 +431,9 @@ type FetchRelatedRowsParams = {
 
 function fetchRelatedRows({ connections, paginationModel, getData, entityName, _id }: FetchRelatedRowsParams): void {
   const selectedRows = connections.map(({ row }) => row);
-  const totalCount = paginationModel.pageSize * (paginationModel.page + 1);
-  const limit =
-    totalCount - selectedRows.length > paginationModel.pageSize
-      ? paginationModel.pageSize
-      : totalCount - selectedRows.length;
-  let offset = paginationModel.pageSize * paginationModel.page - selectedRows.length;
+  const totalCount = PAGE_SIZE * (paginationModel.page + 1);
+  const limit = totalCount - selectedRows.length > PAGE_SIZE ? PAGE_SIZE : totalCount - selectedRows.length;
+  let offset = PAGE_SIZE * paginationModel.page - selectedRows.length;
   // eslint-disable-next-line no-console -- temporary debug
   console.log({ paginationModel }, selectedRows.length);
   offset = offset < 0 ? 0 : offset;

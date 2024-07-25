@@ -17,8 +17,10 @@ export function gridColumnsDefinition<TData, TValue>({
 }: Props<TData>): ColumnDefinition<TData, TValue>[] {
   const cols = attributesSchema.map((attribute) => ({
     accessorKey: attribute.name,
-    header: () => <div>{attribute.label}</div>,
-    cell: ({ row }: CellContext<TData, TValue>) => <div className="">{row.getValue(attribute.name)}</div>,
+    header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
+    cell: ({ row }: CellContext<TData, TValue>) => (
+      <div className="fk-flex fk-items-center">{row.getValue(attribute.name)}</div>
+    ),
     enableSorting: false,
     enableHiding: true,
     size: attribute.options?.size ?? 150,
@@ -27,7 +29,7 @@ export function gridColumnsDefinition<TData, TValue>({
   const actions = {
     id: 'actions',
     cell: ({ row }: CellContext<TData, TValue>) => (actionsComponent ? actionsComponent(row) : null),
-    size: 50,
+    size: 80,
   };
 
   const singleCheckboxSelect = {

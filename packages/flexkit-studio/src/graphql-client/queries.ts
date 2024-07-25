@@ -376,6 +376,10 @@ function localAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityIt
         ? ''
         : stringifyValue(dataType, attributeValue.value);
 
+    if (!typedValue) {
+      return acc;
+    }
+
     return `${acc}\n      ${attributeName}: {\n        update: {\n          node: {\n            ${scope}: ${typedValue.toString()}\n          }\n        }\n      }`;
   }, '');
 

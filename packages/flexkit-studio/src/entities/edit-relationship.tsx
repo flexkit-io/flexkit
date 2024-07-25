@@ -21,7 +21,7 @@ type Props = {
   isFocused: boolean;
 };
 
-const AVAILABLE_PAGE_SIZES = [25, 50, 100];
+const PAGE_SIZE = 25;
 
 function getLoadingColumns(columns: object[]): ColumnDef<unknown>[] {
   return columns.map((column) => ({
@@ -34,10 +34,6 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const { relationships, scope } = useAppContext();
-  const [paginationModel, setPaginationModel] = useState({
-    pageSize: AVAILABLE_PAGE_SIZES[0],
-    page: 0,
-  });
   const { entityId, entityName, connectionName, relationshipId, mode } = action.payload;
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
@@ -64,14 +60,14 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   };
   const conditionalWhereClause = mode === 'multiple' ? filterOutConnectedEntities : {};
 
-  const [loading, { count, results }] = useEntityQuery({
+  const { count, data, fetchMore, isLoading } = useEntityQuery({
     entityNamePlural,
     schema,
     scope,
     variables: {
       options: {
-        offset: paginationModel.page,
-        limit: paginationModel.pageSize,
+        offset: 0,
+        limit: PAGE_SIZE,
       },
       where: conditionalWhereClause,
     },
@@ -95,6 +91,29 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     [actionDispatch]
   );
 
+  // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
+  const fetchMoreOnBottomReached = useCallback(
+    (containerRefElement?: HTMLDivElement | null) => {
+      const rowsCount = data?.length ?? 0;
+
+      if (containerRefElement && count > 0 && rowsCount > 0) {
+        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+        //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
+        if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < count) {
+          fetchMore({
+            variables: {
+              options: {
+                offset: data?.length,
+                limit: PAGE_SIZE,
+              },
+            },
+          });
+        }
+      }
+    },
+    [count, data?.length, fetchMore, isLoading]
+  );
+
   function handleSelection(): void {
     let connect;
 
@@ -103,14 +122,14 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
 
       connect = {
         _id: _id ?? '',
-        value: results.find((row) => row._id === _id),
+        value: data?.find((row) => row._id === _id),
       };
     }
 
     if (mode === 'multiple') {
       connect = selectedRows?.map((_id) => ({
         _id: _id ?? '',
-        value: results.find((row) => row._id === _id),
+        value: data?.find((row) => row._id === _id),
       }));
     }
 
@@ -153,8 +172,8 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       title={`Select ${entityName.toLowerCase()}`}
     >
       <DataTable
-        columns={loading ? loadingColumns : columns}
-        data={loading ? loadingData : results}
+        columns={isLoading ? loadingColumns : columns}
+        data={isLoading ? loadingData : data ?? []}
         entityName={entitySchema?.name ?? ''}
         initialSelectionState={
           selectedRows?.reduce((acc, id) => ({ ...acc, ...(id ? { [id]: true } : {}) }), {}) as {
@@ -162,6 +181,9 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
           }
         }
         onEntitySelectionChange={handleSelectionChange}
+        onScroll={(e) => {
+          fetchMoreOnBottomReached(e.target as HTMLDivElement);
+        }}
       />
     </DrawerModal>
   );

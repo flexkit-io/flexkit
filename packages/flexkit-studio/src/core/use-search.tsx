@@ -20,7 +20,7 @@ export function useSearch(
   const { scope } = useAppContext();
   const { projects, currentProjectId } = useConfig();
   const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-  const defaultScope = scopes?.find((s) => s.default)?.name ?? 'default';
+  const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const swrKey = searchRequest?.commonParams.q ? JSON.stringify(searchRequest) : null;
   const { data, error, isLoading } = useSWR(swrKey, () =>
     fetch(apiPaths(projectId).search, { body: JSON.stringify(searchRequest), method: 'POST', mode: 'cors' }).then(
@@ -48,7 +48,7 @@ function mapResults(
   defaultScope: string
 ): SearchResultItem[] {
   return results
-    .filter((result) => (result as RawResultItem).hits?.length > 0)
+    .filter((result) => (result as RawResultItem).hits.length > 0)
     .map((result) => {
       const item = result as RawResultItem;
       const entityNamePlural = item.request_params.collection_name.replace(`${projectId}_`, '');
@@ -62,21 +62,24 @@ function mapResults(
         const scopedPrimaryAttribute =
           typeof primaryAttribute !== 'string' ? primaryAttribute[scope] ?? primaryAttribute[defaultScope] : null;
         const primaryAttributeValue = scopedPrimaryAttribute ?? document[primaryAttributeName];
-        const attributes = Object.entries(document).reduce((acc: { [key: string]: any }, [key, value]) => {
-          if (key !== primaryAttributeName && key !== 'id' && key !== '_updatedAt') {
-            const scopedValue = typeof value !== 'string' ? value[scope] ?? value[defaultScope] : value;
+        const attributes = Object.entries(document).reduce(
+          (acc: Omit<SearchResultItem, '_id' | '_entityName' | '_entityNamePlural'>, [key, value]) => {
+            if (key !== primaryAttributeName && key !== 'id' && key !== '_updatedAt') {
+              const scopedValue = typeof value !== 'string' ? value[scope] ?? value[defaultScope] : value;
 
-            acc[key] = scopedValue;
-          }
+              acc[key] = scopedValue;
+            }
 
-          return acc;
-        }, {});
+            return acc;
+          },
+          {}
+        );
 
         return {
           _id: document.id,
           _entityName: entityName,
           _entityNamePlural: entityNamePlural,
-          [primaryAttributeName]: primaryAttributeValue,
+          [primaryAttributeName]: primaryAttributeValue as string,
           ...attributes,
         };
       });

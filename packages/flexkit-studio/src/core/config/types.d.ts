@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import type { Attribute } from '../types';
+import type { Attribute, Scopes } from '../types';
 
 export interface LogoProps {
   title: string;
@@ -52,19 +52,13 @@ export interface PluginOptions {
   plugins?: PluginOptions[];
 }
 
-// ({ title, next, ...props }: { [x: string]: any; title: any; next: any; }) => Element
-
 export interface ProjectOptions {
   title?: string;
   projectId: string;
   basePath: string;
   icon?: ComponentType;
   plugins?: PluginOptions[];
-  scopes?: {
-    name: string;
-    label: string;
-    default?: boolean;
-  }[];
+  scopes?: Scopes;
   schema: {
     name: string;
     plural: string;

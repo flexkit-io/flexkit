@@ -1,10 +1,14 @@
 import * as React from 'react';
 import { cn } from 'src/ui/lib/utils';
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="fk-relative fk-w-full fk-overflow-auto">
-      <table className={cn('fk-w-full fk-caption-bottom fk-text-sm', className)} ref={ref} {...props} />
+const Table = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLTableElement>>(
+  ({ className, onScroll, ...props }, ref) => (
+    <div
+      className="fk-relative fk-h-full fk-w-full fk-overflow-x-auto fk-rounded-md fk-border-border fk-border"
+      onScroll={onScroll}
+      ref={ref}
+    >
+      <table className={cn('fk-w-full fk-caption-bottom fk-text-sm', className)} {...props} />
     </div>
   )
 );
@@ -13,7 +17,10 @@ Table.displayName = 'Table';
 const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
   ({ className, ...props }, ref) => (
     <thead
-      className={cn('[&_tr]:fk-border-border [&_tr]:fk-border-border [&_tr]:fk-border-b', className)}
+      className={cn(
+        'fk-sticky fk-z-[1] fk-top-0 fk-bg-background/90 fk-backdrop-blur-[1px] [&_tr]:fk-border-border [&_tr]:fk-border-border [&_tr]:fk-border-b',
+        className
+      )}
       ref={ref}
       {...props}
     />

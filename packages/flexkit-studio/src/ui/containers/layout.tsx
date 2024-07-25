@@ -3,7 +3,6 @@ import { useAuth } from '../../auth/auth-context';
 import { Login } from '../../auth/login';
 import { useConfig } from '../../core/config/config-context';
 import { Loading } from '../components/loading';
-import { ScrollArea } from '../primitives/scroll-area';
 import { Toaster } from '../primitives/sonner';
 import { AppBar } from './appbar';
 import { Navbar } from './navbar';
@@ -37,9 +36,7 @@ export function Layout({ version }: Props): JSX.Element {
         <Navbar projectId={projectId ?? ''} projects={projects} />
         <div className="fk-flex fk-h-full fk-max-h-[calc(100%-3.5rem)] fk-border-t fk-border-border fk-grow shrink">
           <AppBar apps={apps} version={version} />
-          <ScrollArea className="fk-w-full fk-h-full focus-visible:fk-outline-none focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0">
-            <Outlet />
-          </ScrollArea>
+          <Outlet />
         </div>
       </div>
       <Toaster />

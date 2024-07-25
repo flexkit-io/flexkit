@@ -4,7 +4,6 @@ import type { Schema } from '../core/types';
 
 export type ScopedAttributeValue = {
   _id: string;
-  default: string;
   [key: string]: string;
   __typename: string;
 };

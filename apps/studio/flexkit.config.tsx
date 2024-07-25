@@ -98,7 +98,7 @@ export default defineConfig([
       {
         name: 'default',
         label: 'Default',
-        'default': true,
+        isDefault: true,
       },
       {
         name: 'en',
@@ -244,13 +244,30 @@ export default defineConfig([
             label: 'Tooltip',
             scope: 'local',
             options: {
-              size: 260,
+              size: 360,
               comment: 'The tooltip text to display when hovering over the flag',
             },
             dataType: 'string',
             inputType: 'textarea',
             validation: (z) => z.string().min(1, { message: 'Tooltip is required' }),
             defaultValue: '',
+          },
+          {
+            name: 'products',
+            label: 'Products',
+            scope: 'relationship',
+            options: {
+              size: 260,
+              comment: 'Products related to this flag',
+            },
+            dataType: 'string',
+            inputType: 'relationship',
+            defaultValue: '',
+            relationship: {
+              mode: 'multiple',
+              field: 'name',
+              entity: 'product',
+            },
           },
         ],
       },

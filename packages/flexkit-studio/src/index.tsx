@@ -103,6 +103,7 @@ export { Sidebar } from './ui/components/sidebar';
 
 // GraphQL client
 export { useEntityQuery } from './graphql-client/use-entity-query';
+export type { MappedEntityItem } from './graphql-client/types';
 
 // Data Grid
 export {
@@ -115,6 +116,7 @@ export {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+export { useVirtualizer } from '@tanstack/react-virtual';
 
 // Entities
 export { useDispatch } from './entities/actions-context';
