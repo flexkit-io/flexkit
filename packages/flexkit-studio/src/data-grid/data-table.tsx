@@ -24,10 +24,16 @@ import type {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/primitives/table';
+import { cn } from '../ui/lib/utils';
+import type { AttributeValue } from '../graphql-client/types';
 import { DataTableToolbar } from './data-table-toolbar';
 
-interface DataTableProps<TData extends { [key: string]: unknown; _id: string }, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+interface DataTableProps<TData extends AttributeValue, TValue> {
+  classNames?: {
+    wrapper?: string;
+    table?: string;
+  };
+  columns: ColumnDef<AttributeValue, TValue>[];
   data: TData[];
   entityName: string;
   hasToolbar?: boolean;
@@ -39,10 +45,11 @@ interface DataTableProps<TData extends { [key: string]: unknown; _id: string }, 
 }
 
 interface ExtendedDataTable extends TableMeta<unknown> {
-  getRowBackground: (row: Row<RowData>) => string;
+  getRowBackground: (row: Row<AttributeValue>) => string;
 }
 
-export function DataTable<TData extends { [key: string]: unknown; _id: string }, TValue>({
+export function DataTable<TData extends AttributeValue, TValue>({
+  classNames,
   columns,
   data,
   entityName,
@@ -113,9 +120,9 @@ export function DataTable<TData extends { [key: string]: unknown; _id: string },
   }
 
   return (
-    <div className="fk-w-full fk-h-full fk-space-y-4 fk-pb-[4.375rem]">
+    <div className={cn('fk-w-full fk-h-full fk-space-y-4', classNames?.wrapper)}>
       {Boolean(hasToolbar) && <DataTableToolbar entityName={entityName} table={table} />}
-      <Table className="fk-grid" onScroll={onScroll} ref={scrollRef}>
+      <Table className={cn('fk-grid fk-pb-[5rem]', classNames?.table)} onScroll={onScroll} ref={scrollRef}>
         <TableHeader className="fk-grid">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow className="fk-flex fk-w-full" key={headerGroup.id}>

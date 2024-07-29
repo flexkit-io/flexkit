@@ -1,17 +1,20 @@
 import type { z, ZodTypeAny } from 'zod';
+import type { MappedEntityItem, FormEntityItem } from '../graphql-client/types';
 
-export type RelationshipConnection = {
+export type SingleRelationshipConnection = {
   _id: string;
-  value:
-    | string
-    | { [key: string]: string | number | boolean | readonly string[] | undefined }
-    | { [key: string]: string | number | boolean | readonly string[] | { [key: string]: string | number | boolean } }[];
+  value: string | MappedEntityItem | FormEntityItem | undefined;
 };
+
+export type MultipleRelationshipConnection = {
+  _id: string;
+  value: string | MappedEntityItem | FormEntityItem | undefined;
+}[];
 
 export type Relationships = {
   [relationshipId: string]:
     | {
-        connect?: RelationshipConnection | RelationshipConnection[];
+        connect?: SingleRelationshipConnection | MultipleRelationshipConnection;
         disconnect?: string[];
       }
     | undefined;
@@ -33,7 +36,7 @@ export type ActionSetRelationship = {
   type: 'setRelationship';
   payload: {
     [relationshipId: string]: {
-      connect?: RelationshipConnection | RelationshipConnection[];
+      connect?: SingleRelationshipConnection | MultipleRelationshipConnection;
       disconnect: string[];
     };
   };

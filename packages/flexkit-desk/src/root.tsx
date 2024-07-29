@@ -8,7 +8,7 @@ export function Root() {
     <ResizablePanelGroup direction="horizontal" className="fk-h-full">
       <ResizablePanel defaultSize={18} minSize={10}>
         <div className="fk-flex fk-w-full fk-h-full">
-          <Sidebar playlists={[]} />
+          <Sidebar />
         </div>
       </ResizablePanel>
       <ResizableHandle className="hover:fk-bg-blue-500 transition-colors" withHandle />

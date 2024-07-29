@@ -38,6 +38,7 @@ export type ActionEditRelationship = {
   _id?: string;
   type: 'EditRelationship';
   payload: {
+    connectedEntitiesCount: number;
     connectionName?: string;
     entityId?: string;
     entityName: string;

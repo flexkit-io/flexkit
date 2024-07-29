@@ -2,6 +2,7 @@ import { filter, find, pick, propEq, toPairs, omit } from 'ramda';
 import pluralize from 'pluralize';
 import type { Attribute, Entity, DataType, Schema, ScopeType } from '../core/types';
 import type {
+  AttributeValue,
   EntityData,
   EntityItem,
   EntityList,
@@ -11,7 +12,6 @@ import type {
   FormAttributeValue,
   MappedEntityQueryResults,
   MappedFormEntityQueryResults,
-  ScopedAttributeValue,
 } from './types';
 
 type EntityQuery = {
@@ -133,7 +133,7 @@ export function mapQueryResult(
       {}
     );
     const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
-      const scopedAttribute = entity[attributeName] as ScopedAttributeValue;
+      const scopedAttribute = entity[attributeName] as AttributeValue;
       return {
         ...acc,
         [attributeName]: scopedAttribute[scope] ? scopedAttribute[scope] : scopedAttribute.default,
@@ -145,7 +145,7 @@ export function mapQueryResult(
         const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
         const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
         const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
-        const localValue = entity[attributeName] as ScopedAttributeValue | null;
+        const localValue = entity[attributeName] as AttributeValue | null;
         const value = Array.isArray(localValue)
           ? sliceFirstThreeItems(localValue, primaryAttributeName)
           : localValue?.[primaryAttributeName];
@@ -221,7 +221,6 @@ export function mapQueryResultForFormFields(
     }, {});
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
       (acc, attributeName) => {
-        const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
         const value = entity[attributeName];
         const _id = entity[attributeName]?._id;
         const aggregateCount = entity[`${attributeName}Aggregate`]?.count;
@@ -252,9 +251,9 @@ export function mapQueryResultForFormFields(
 /**
  * Attribute values can be an object or an array of objects if the attribute is a multi-select.
  */
-function getValueByScope(attribute: ScopedAttributeValue[], scope: string): FormAttributeValue[] {
+function getValueByScope(attribute: AttributeValue[], scope: string): FormAttributeValue[] {
   if (Array.isArray(attribute)) {
-    return attribute.reduce((result: FormAttributeValue[], attr: ScopedAttributeValue) => {
+    return attribute.reduce((result: FormAttributeValue[], attr: AttributeValue) => {
       if (attr[scope] || attr.default) {
         const option: FormAttributeValue | null = {
           _id: attr._id,

@@ -115,7 +115,7 @@ function FormBuilder(
             createElement(formFieldComponentsMap[field.inputType], {
               key: field.name,
               control,
-              // TODO: check if default value should be an empty string, depend on the input type or some default value passed by the user in the schema
+              defaultScope,
               defaultValue: formData ? formData[field.name] : { value: '', disabled: false, scope: defaultScope },
               entityId,
               entityName,
@@ -182,7 +182,7 @@ function hasDataChanged(
           value: changedData[field]?.value,
           disabled: changedData[field]?.disabled,
           relationships:
-            Boolean(changedData[field]?.relationships?.connect?.length) ||
+            Boolean(Object.keys(changedData[field]?.relationships?.connect ?? {}).length) ||
             Boolean(changedData[field]?.relationships?.disconnect?.length)
               ? changedData[field]?.relationships
               : undefined,

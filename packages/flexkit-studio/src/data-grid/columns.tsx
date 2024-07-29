@@ -1,5 +1,6 @@
 import type { CellContext, ColumnDef, Row, Table } from '@tanstack/react-table';
 import type { Attribute } from '../core/types';
+import type { AttributeValue } from '../graphql-client/types';
 import { Checkbox } from '../ui/primitives/checkbox';
 
 type Props<TData> = {
@@ -8,9 +9,9 @@ type Props<TData> = {
   actionsComponent?: (row: Row<TData>) => JSX.Element; // a component to be displayed in the actions column of the grid
 };
 
-type ColumnDefinition<TData, TValue> = ColumnDef<TData, TValue> & { id?: string; size: number };
+type ColumnDefinition<TData extends AttributeValue, TValue> = ColumnDef<TData, TValue> & { id?: string; size: number };
 
-export function gridColumnsDefinition<TData, TValue>({
+export function gridColumnsDefinition<TData extends AttributeValue, TValue>({
   attributesSchema,
   checkboxSelect,
   actionsComponent,

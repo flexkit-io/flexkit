@@ -8,10 +8,11 @@ import DrawerModal from '../ui/components/drawer-modal';
 import { useConfig } from '../core/config/config-context';
 import type { SingleProject } from '../core/config/types';
 import { useEntityQuery } from '../graphql-client/use-entity-query';
+import type { AttributeValue } from '../graphql-client/types';
 import { gridColumnsDefinition } from '../data-grid/columns';
 import { DataTable } from '../data-grid/data-table';
 import { Skeleton } from '../ui/primitives/skeleton';
-import type { Entity, RelationshipConnection } from '../core/types';
+import type { Entity, SingleRelationshipConnection, MultipleRelationshipConnection } from '../core/types';
 import { useDispatch } from './actions-context';
 import { type Action, type ActionEditRelationship } from './types';
 
@@ -23,32 +24,28 @@ type Props = {
 
 const PAGE_SIZE = 25;
 
-function getLoadingColumns(columns: object[]): ColumnDef<unknown>[] {
+function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue, unknown>[] {
   return columns.map((column) => ({
     ...column,
     cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
-  })) as unknown as ColumnDef<unknown>[];
+  })) as unknown as ColumnDef<AttributeValue, unknown>[];
 }
 
 export default function EditRelationship({ action, depth, isFocused }: Props): JSX.Element {
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const { relationships, scope } = useAppContext();
-  const { entityId, entityName, connectionName, relationshipId, mode } = action.payload;
+  const { connectedEntitiesCount, connectionName, entityId, entityName, mode, relationshipId } = action.payload;
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const entityNamePlural = entitySchema?.plural ?? '';
   const relationshipContext = relationships[relationshipId];
 
-  // const initialSelectionState = relationshipContext?.connect?.length
-  //   ? relationshipContext.connect.map((item) => item._id)
-  //   : [relationshipContext?.connect?._id];
-
   const initialSelectionState =
     mode === 'single'
-      ? [(relationshipContext?.connect as RelationshipConnection | undefined)?._id]
-      : (relationshipContext?.connect as RelationshipConnection[] | undefined)?.map((item) => item._id);
+      ? [(relationshipContext?.connect as SingleRelationshipConnection | undefined)?._id]
+      : (relationshipContext?.connect as MultipleRelationshipConnection | undefined)?.map((item) => item._id);
 
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
   const filterOutConnectedEntities = {
@@ -95,15 +92,16 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const fetchMoreOnBottomReached = useCallback(
     (containerRefElement?: HTMLDivElement | null) => {
       const rowsCount = data?.length ?? 0;
+      const totalCount = count - connectedEntitiesCount;
 
-      if (containerRefElement && count > 0 && rowsCount > 0) {
+      if (containerRefElement && totalCount > 0 && rowsCount > 0) {
         const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
         //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < count) {
+        if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < totalCount) {
           fetchMore({
             variables: {
               options: {
-                offset: data?.length,
+                offset: rowsCount,
                 limit: PAGE_SIZE,
               },
             },
@@ -111,7 +109,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
         }
       }
     },
-    [count, data?.length, fetchMore, isLoading]
+    [connectedEntitiesCount, count, data?.length, fetchMore, isLoading]
   );
 
   function handleSelection(): void {

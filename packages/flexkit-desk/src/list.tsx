@@ -42,7 +42,7 @@ export function List() {
           fetchMore({
             variables: {
               options: {
-                offset: data?.length,
+                offset: data?.length ?? 0,
                 limit: pageSize,
               },
             },

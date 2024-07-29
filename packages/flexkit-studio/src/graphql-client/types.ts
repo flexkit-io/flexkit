@@ -1,8 +1,8 @@
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import type { OperationVariables } from '@apollo/client';
-import type { Schema } from '../core/types';
+import type { SingleRelationshipConnection, MultipleRelationshipConnection, Schema } from '../core/types';
 
-export type ScopedAttributeValue = {
+export type AttributeValue = {
   _id: string;
   [key: string]: string;
   __typename: string;
@@ -19,12 +19,12 @@ export type EntityQueryAggregate = {
 //   [entityName: string]: {
 //     _id: string;
 //     __typename: string;
-//     [attributeName: string]: string | ScopedAttributeValue;
+//     [attributeName: string]: string | AttributeValue;
 //   }[];
 // };
 
 export type EntityItem = {
-  [attribute: string]: ScopedAttributeValue;
+  [attribute: string]: AttributeValue;
 };
 
 export type EntityList = {
@@ -68,19 +68,14 @@ export type UseEntityQueryParams = {
   isForm?: boolean;
 };
 
-type RelationshipConnections = {
-  connect?: MappedEntityItem[] | [];
-  disconnect?: string[] | [];
-};
-
 export type FormAttributeValue = {
   _id?: string;
   count?: number;
   disabled: boolean;
-  relationships?: RelationshipConnections;
+  relationships?: {
+    connect?: SingleRelationshipConnection | MultipleRelationshipConnection;
+    disconnect?: string[];
+  };
   scope: string;
-  value:
-    | string
-    | { [key: string]: string | number | boolean | readonly string[] | undefined }
-    | { [key: string]: string | number | boolean | readonly string[] | { [key: string]: string | number | boolean } }[];
+  value: string | MappedEntityItem | FormEntityItem | undefined;
 };

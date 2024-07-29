@@ -60,6 +60,7 @@ export default function SingleRelationship({
     actionDispatch({
       type: 'EditRelationship',
       payload: {
+        connectedEntitiesCount: 0,
         entityName: relationshipEntity,
         entityId,
         relationshipId,
