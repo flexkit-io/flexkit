@@ -1,12 +1,17 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { Dispatch, RefObject, SyntheticEvent } from 'react';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { useLazyQuery, gql } from '@apollo/client';
 import type { ColumnDef, Row } from '@tanstack/react-table';
 import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';
 import { Link, Maximize2, X as ClearIcon } from 'lucide-react';
-import { getRelatedItemsQuery, mapRelatedItemsQueryResult } from '../../../graphql-client/queries';
-import type { AttributeValue, EntityItem, FormAttributeValue } from '../../../graphql-client/types';
+import { getRelatedItemsQuery, mapQueryResult } from '../../../graphql-client/queries';
+import type {
+  AttributeValue,
+  EntityQueryAggregate,
+  EntityQueryResults,
+  FormAttributeValue,
+} from '../../../graphql-client/types';
 import { gridColumnsDefinition } from '../../../data-grid/columns';
 import { DataTable } from '../../../data-grid/data-table';
 import { Button } from '../../../ui/primitives/button';
@@ -26,7 +31,6 @@ import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
 import type { FormFieldParams } from '../../types';
 import { DataTableRowActions } from './data-table-row-actions';
-import { get } from 'http';
 
 const PAGE_SIZE = 25;
 
@@ -78,9 +82,14 @@ export default function MultipleRelationship({
         : [],
     [defaultScope, defaultValue, primaryAttributeName, relationshipEntitySchema, scope]
   );
-  const entityQuery = getRelatedItemsQuery(name, entityName, relationshipEntityName, scope, schema);
+  const entityQuery = getRelatedItemsQuery({
+    attributeName: name,
+    relatedEntityName: relationshipEntityName,
+    scope,
+    schema,
+  });
   const previewItems = rows.length ? rows.slice(0, 12).map((row) => row[primaryAttributeName]) : [];
-  const [getData, { loading, data }] = useLazyQuery<EntityItem[] | []>(gql`
+  const [getData, { loading, data }] = useLazyQuery<EntityQueryResults & EntityQueryAggregate>(gql`
     ${entityQuery.query}
   `);
 
@@ -92,8 +101,6 @@ export default function MultipleRelationship({
       }),
     [appDispatch, relationshipEntitySchema?.attributes, relationshipId, relationships]
   );
-  const loadingData = Array(5).fill({});
-  const loadingColumns = getLoadingColumns(columns);
 
   useEffect(() => {
     setRows(initialRows);
@@ -113,14 +120,6 @@ export default function MultipleRelationship({
       },
     });
   }, [appDispatch, data, initialRows, relationshipId, defaultValue, scope]);
-
-  useEffect(() => {
-    if (data) {
-      // pagination occured, assign the query results to the rows state
-      // const mappedResults = mapRelatedItemsQueryResult(entityName, relationshipEntityName, scope, data, schema);
-      // setRows(mappedResults.results); // TODO: merge with existing rows
-    }
-  }, [data, entityName, schema, relationshipEntityName, scope]);
 
   /**
    * Update the value of the field when the relationshp context value changes
@@ -142,6 +141,49 @@ export default function MultipleRelationship({
 
     setRows(uniqBy(prop('_id'), [...(selectedRows as []), ...initialRows]));
   }, [data, defaultValue.count, initialRows, paginationModel.page, relationships, relationshipId]);
+
+  // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
+  const fetchMoreOnBottomReached = useCallback(
+    (containerRefElement?: HTMLDivElement | null) => {
+      const totalCount = defaultValue.count ?? 0;
+
+      if (!containerRefElement || totalCount === 0 || rows.length === 0) {
+        return;
+      }
+
+      const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+      //once the user has scrolled within 200px of the bottom of the table, fetch more data if we can
+      if (scrollHeight - scrollTop - clientHeight < 200 && !loading && rows.length < totalCount) {
+        getData({
+          variables: {
+            options: {
+              limit: PAGE_SIZE,
+              offset: rows.length,
+            },
+            where: {
+              productsConnection_SOME: {
+                node: {
+                  _id: entityId,
+                },
+              },
+            },
+          },
+        })
+          .then(({ data: res }) => {
+            if (!res) {
+              return;
+            }
+
+            const mappedData = mapQueryResult(relationshipEntitySchema?.plural ?? '', scope, res, schema);
+            setRows(uniqBy(prop('_id'), [...initialRows, ...(mappedData.results as [])]));
+          })
+          .catch((error: unknown) => {
+            console.error('Error fetching more data:', error);
+          });
+      }
+    },
+    [defaultValue.count, loading, rows.length]
+  );
 
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
@@ -269,20 +311,11 @@ export default function MultipleRelationship({
                       data={rows}
                       entityName={entityName}
                       onScroll={(e) => {
-                        //TODO: add the fetchMoreOnBottomReached functionality like in the list.tsx component
-                        if (!loading && rows.length > 0 && rows.length < (defaultValue.count ?? 0)) {
-                          // TODO: esto se está lanzando cada vez que se hace scroll, hay que hacerlo solo cuando se llega al final
-                          console.log('fetch more');
-                          getData({
-                            variables: {
-                              options: {
-                                limit: PAGE_SIZE,
-                                offset: rows.length,
-                              },
-                            },
-                          });
-                        }
+                        fetchMoreOnBottomReached(e.target as HTMLDivElement);
                       }}
+                      rowAdditionState={
+                        relationships[relationshipId]?.connect as MultipleRelationshipConnection | undefined
+                      }
                       rowDeletionState={relationships[relationshipId]?.disconnect}
                     />
                   </div>

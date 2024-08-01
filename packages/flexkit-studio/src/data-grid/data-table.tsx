@@ -26,6 +26,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/primitives/table';
 import { cn } from '../ui/lib/utils';
 import type { AttributeValue } from '../graphql-client/types';
+import type { MultipleRelationshipConnection } from '../core/types';
 import { DataTableToolbar } from './data-table-toolbar';
 
 interface DataTableProps<TData extends AttributeValue, TValue> {
@@ -41,6 +42,7 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
   onEntitySelectionChange?: (rowSelection: string[]) => void;
   onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
   pageSize?: number;
+  rowAdditionState?: MultipleRelationshipConnection;
   rowDeletionState?: string[];
 }
 
@@ -58,6 +60,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
   onEntitySelectionChange,
   onScroll,
   pageSize,
+  rowAdditionState,
   rowDeletionState,
 }: DataTableProps<TData, TValue>): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -94,8 +97,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
     getRowId: (row) => row._id,
     manualPagination: true,
     meta: {
-      getRowBackground: (row: Row<TData>) =>
-        rowDeletionState?.includes(row.original._id) ? 'fk-bg-red-200 hover:fk-bg-red-300' : '',
+      getRowBackground: (row: Row<TData>) => getRowClassnames(row, rowDeletionState, rowAdditionState),
     },
   });
 
@@ -189,4 +191,20 @@ export function DataTable<TData extends AttributeValue, TValue>({
       </Table>
     </div>
   );
+}
+
+function getRowClassnames(
+  row: Row<AttributeValue>,
+  rowDeletionState?: string[],
+  rowAdditionState?: MultipleRelationshipConnection
+): string {
+  if (rowDeletionState?.includes(row.original._id)) {
+    return 'fk-bg-red-200 hover:fk-bg-red-300';
+  }
+
+  if (rowAdditionState?.some((line) => line._id === row.original._id)) {
+    return 'fk-bg-green-200 hover:fk-bg-green-300';
+  }
+
+  return '';
 }

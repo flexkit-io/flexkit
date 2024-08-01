@@ -13,7 +13,7 @@ const domain = 'api.flexkit.io';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const cookieStore = cookies();
-  const token = cookieStore.get('sessionToken')?.value;
+  const token = cookieStore.get('sessionToken')?.value ?? '';
   const { pathname, search } = request.nextUrl;
   const [, , , projectId] = pathname.split('/');
   const apiUrl = `https://${projectId}.${domain}`;
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const response = await fetch(`${apiUrl}${path}${search}`, {
     headers: {
       Accept: 'application/json',
-      Authorization: `${token}`,
+      Authorization: token,
       'Content-Type': 'application/json',
     },
   });
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 async function handler(request: NextRequest): Promise<NextResponse> {
   const cookieStore = cookies();
-  const token = cookieStore.get('sessionToken')?.value;
+  const token = cookieStore.get('sessionToken')?.value ?? '';
   const { pathname, search } = request.nextUrl;
   const [, , , projectId] = pathname.split('/');
   const apiUrl = `https://${projectId}.${domain}`;
@@ -51,7 +51,7 @@ async function handler(request: NextRequest): Promise<NextResponse> {
   const response = await fetch(`${apiUrl}${path}${search}`, {
     headers: {
       Accept: 'application/json',
-      Authorization: `${token}`,
+      Authorization: token,
       'Content-Type': 'application/json',
     },
     method: request.method,

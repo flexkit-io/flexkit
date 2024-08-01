@@ -9,19 +9,19 @@ export type AttributeValue = {
 };
 
 export type EntityQueryAggregate = {
-  [aggregateKey: string]: {
-    count: number;
-    __typename: string;
-  };
+  __typename: string;
+  count: number;
 };
 
-// export type EntityQueryResults = {
-//   [entityName: string]: {
-//     _id: string;
-//     __typename: string;
-//     [attributeName: string]: string | AttributeValue;
-//   }[];
-// };
+export type EntityQueryResult = {
+  __typename: string;
+  _id: string;
+  [key: string]: string | AttributeValue;
+};
+
+export type EntityQueryResults = {
+  [key: string]: EntityQueryAggregate | EntityQueryResult[];
+};
 
 export type EntityItem = {
   [attribute: string]: AttributeValue;
@@ -56,9 +56,6 @@ export type MappedFormEntityQueryResults = {
 export type FormEntityItem = {
   [attributeName: string]: FormAttributeValue;
 };
-
-export type EntityQueryResults = [boolean, MappedEntityQueryResults];
-export type FormEntityQueryResults = [boolean, MappedFormEntityQueryResults];
 
 export type UseEntityQueryParams = {
   entityNamePlural: string;

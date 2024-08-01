@@ -1,17 +1,17 @@
 import { filter, find, pick, propEq, toPairs, omit } from 'ramda';
-import pluralize from 'pluralize';
-import type { Attribute, Entity, DataType, Schema, ScopeType } from '../core/types';
+import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
 import type {
   AttributeValue,
   EntityData,
   EntityItem,
-  EntityList,
   EntityQueryAggregate,
   EntityQueryResults,
   FormEntityItem,
   FormAttributeValue,
+  MappedEntityItem,
   MappedEntityQueryResults,
   MappedFormEntityQueryResults,
+  EntityQueryResult,
 } from './types';
 
 type EntityQuery = {
@@ -105,7 +105,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
 export function mapQueryResult(
   entityNamePlural: string,
   scope: string,
-  results: EntityQueryResults & EntityQueryAggregate,
+  results: EntityQueryResults,
   schema: Schema
 ): MappedEntityQueryResults {
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
@@ -119,8 +119,8 @@ export function mapQueryResult(
   }
 
   const queryEntityName = entityNamePlural.toLowerCase();
-  const { count } = results[`${queryEntityName}Aggregate`];
-  const items = results[queryEntityName] as EntityQueryResults[typeof queryEntityName];
+  const { count } = results[`${queryEntityName}Aggregate`] as EntityQueryAggregate;
+  const items = results[queryEntityName] as EntityQueryResult[];
   const sliceFirstThreeItems = (values: EntityItem[], primaryAttributeName: string): string =>
     values
       .slice(0, 3)
@@ -174,7 +174,7 @@ export function mapQueryResult(
 export function mapQueryResultForFormFields(
   entityNamePlural: string,
   scope: string,
-  results: EntityQueryResults & EntityQueryAggregate,
+  results: EntityQueryResults,
   schema: Schema
 ): MappedFormEntityQueryResults {
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
@@ -188,8 +188,8 @@ export function mapQueryResultForFormFields(
   }
 
   const queryEntityName = entityNamePlural.toLowerCase();
-  const { count } = results[`${queryEntityName}Aggregate`];
-  const items = results[queryEntityName] as EntityQueryResults[typeof queryEntityName];
+  const { count } = results[`${queryEntityName}Aggregate`] as EntityQueryAggregate;
+  const items = results[queryEntityName] as EntityQueryResult[];
   const mappedQueryResult = items.map((entity) => {
     const globalAttributes = getAttributeListByScope('global', attributes).reduce(
       (acc, attribute) => ({
@@ -205,25 +205,24 @@ export function mapQueryResultForFormFields(
     );
     const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
       const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
+      const localAttribute = entity[attributeName] as AttributeValue | null;
 
       return {
         ...acc,
         [attributeName]: {
-          value: entity[attributeName] ? getValueByScope(entity[attributeName], scope) : null,
+          value: localAttribute ? getValueByScope(localAttribute, scope) : null,
           disabled:
-            entity[attributeName] && entity[attributeName][scope] === null && attributeSchema.scope === 'local'
-              ? true
-              : false,
+            localAttribute && localAttribute[scope] === null && attributeSchema.scope === 'local' ? true : false,
           scope,
-          _id: entity[attributeName] ? entity[attributeName]._id : null,
+          _id: localAttribute ? localAttribute._id : null,
         },
       };
     }, {});
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
       (acc, attributeName) => {
-        const value = entity[attributeName];
-        const _id = entity[attributeName]?._id;
-        const aggregateCount = entity[`${attributeName}Aggregate`]?.count;
+        const value = entity[attributeName] as AttributeValue | null;
+        const _id = value?._id;
+        const aggregateCount = (entity[`${attributeName}Aggregate`] as AttributeValue)?.count;
 
         return {
           ...acc,
@@ -251,7 +250,7 @@ export function mapQueryResultForFormFields(
 /**
  * Attribute values can be an object or an array of objects if the attribute is a multi-select.
  */
-function getValueByScope(attribute: AttributeValue[], scope: string): FormAttributeValue[] {
+function getValueByScope(attribute: AttributeValue | AttributeValue[], scope: string): FormAttributeValue[] | string {
   if (Array.isArray(attribute)) {
     return attribute.reduce((result: FormAttributeValue[], attr: AttributeValue) => {
       if (attr[scope] || attr.default) {
@@ -269,6 +268,7 @@ function getValueByScope(attribute: AttributeValue[], scope: string): FormAttrib
     }, []);
   }
 
+  // TODO: get the velue of the defaultScope declared in the config
   return attribute[scope] ?? attribute?.default ?? null;
 }
 
@@ -329,9 +329,9 @@ function filterOutInvalidAttributes(attributes: Attribute[], dataToMutate: Entit
   const data = omit(nonUpdatableAttributes, dataToMutate);
 
   return pick(
-    attributes.map((attribute) => attribute.name),
+    attributes.map((attribute) => attribute.name) as unknown as readonly [number, ...number[]],
     data
-  );
+  ) as unknown as FormEntityItem;
 }
 
 /**
@@ -414,12 +414,10 @@ function relationshipAttributesUpdate(
         },
         ''
       );
-      const nodesToConnect: string | undefined = attributeValue.relationships?.connect?.reduce(
-        (connectString: string, node) => {
-          return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
-        },
-        ''
-      );
+      const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection) ?? [];
+      const nodesToConnect: string | undefined = connections.reduce((connectString: string, node) => {
+        return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
+      }, '');
       const disconnect = nodesToDisconnect
         ? `disconnect: {\n          where: {\n            OR: [\n${nodesToDisconnect}            ]\n          }\n        }\n`
         : '';
@@ -436,7 +434,10 @@ function relationshipAttributesUpdate(
   return attributesString;
 }
 
-function stringifyValue(type: DataType, value: string | number | boolean): string | number | boolean {
+function stringifyValue(
+  type: DataType,
+  value: string | MappedEntityItem | FormEntityItem | undefined
+): string | MappedEntityItem | FormEntityItem | undefined {
   return stringTypes.includes(type) ? `"${value}"` : value;
 }
 
@@ -499,20 +500,6 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
   }, '');
 
   return fields;
-}
-
-export function getAttributeFulltextSearchQuery(attributeName: string, scope: string, searchText: string): string {
-  const pluralizedAttributeName = pluralize(attributeName);
-  const scopes = scope === 'default' ? 'default' : `default\n      ${scope}`;
-  return `query {
-    ${pluralizedAttributeName} (
-      fulltext: { ${attributeName}Fulltext: { phrase: "*${searchText}*" } }
-      options: { limit: 25 }
-    ) {
-      _id
-      ${scopes}
-    }
-  }`;
 }
 
 /**
@@ -651,12 +638,10 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
     }
 
     if (inputType === 'relationship' && relationship?.mode === 'multiple') {
-      const nodesToConnect: string | undefined = attributeValue.relationships?.connect?.reduce(
-        (connectString: string, node) => {
-          return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
-        },
-        ''
-      );
+      const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection) ?? [];
+      const nodesToConnect: string | undefined = connections.reduce((connectString: string, node) => {
+        return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
+      }, '');
       const connect = nodesToConnect
         ? `connect: {\n          where: {\n            node: {\n              OR: [\n${nodesToConnect}              ]\n            }\n          }\n        }\n`
         : '';
@@ -678,17 +663,22 @@ function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
   return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes?.[0]?.name ?? '';
 }
 
-export function getRelatedItemsQuery(
-  attributeName: string,
-  mainEntityName: string,
-  relatedEntityName: string,
-  scope: string,
-  schema: Schema
-): EntityQuery {
-  const filters = `(where: $where, options: {limit: 25, offset: 0})`;
-  const entitySchema = find(propEq(mainEntityName, 'name'))(schema) as Entity | undefined;
+export function getRelatedItemsQuery({
+  attributeName,
+  relatedEntityName,
+  scope,
+  schema,
+}: {
+  attributeName: string;
+  relatedEntityName: string;
+  scope: string;
+  schema: Schema;
+}): EntityQuery {
+  const filters = `(where: $where, options: $options)`;
+  const entitySchema = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
-  const heading = `$where: ${mainEntityName}Where, $options: ${relatedEntityName}Options`;
+  const heading = `$where: ${relatedEntityName}Where, $options: ${relatedEntityName}Options`;
+  const queryEntityName = entitySchema?.plural ?? '';
 
   if (attributes.length === 0) {
     return {
@@ -697,129 +687,60 @@ export function getRelatedItemsQuery(
     };
   }
 
-  const relationshipAttributesList = (): string => {
-    const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute | undefined;
-    const relationshipMode = relationshipAttribute?.relationship?.mode || 'single';
-    const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
-    const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
+  const globalAttributesList: string = getAttributeListByScope('global', attributes).join('\n  ');
+  const localAttributes: readonly string[] = getAttributeListByScope(['local'], attributes);
+  const defaultScopedAttr = localAttributes.reduce(
+    (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n    }\n  `,
+    ''
+  );
+  const scopedAttribute = localAttributes.reduce(
+    (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n      ${scope}\n    }\n  `,
+    ''
+  );
+  const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
 
-    if (relationshipMode === 'single') {
-      return `\n  ${relatedEntityName} {    _id\n    ${primaryAttributeName}\n  }\n  `;
-    }
+  const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
+  const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
+    const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
 
     return (
       // eslint-disable-next-line prefer-template -- string concatenation is easier to read here
-      `${attributeName}Aggregate {\n` +
-      `      count\n` +
-      `    }\n` +
-      `    ${attributeName} (options: $options) {  ` +
-      relatedEntity?.attributes.reduce((acc, attribute) => {
-        if (attribute.scope === 'local') {
-          return `    ${acc}\n      ${attribute.name} {\n        default\n        ${scope}\n      }\n    `;
+      `${acc}\n    ${attribute.name} (options: {limit: 25, offset: 0}) {  _id` +
+      relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
+        const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
+
+        if (relatedAttribute.scope === 'local') {
+          return `${relatedAcc}\n      ${relatedAttribute.name} {\n        default\n      ${additionalScope}}\n    `;
         }
 
-        if (attribute.scope === 'relationship') {
-          if (attribute.relationship?.mode === 'single') {
-            return `    ${acc}\n      ${attribute.name} {\n        ${attribute.relationship.field}\n      }\n    `;
+        if (relatedAttribute.scope === 'relationship') {
+          if (relatedAttribute.relationship?.mode === 'single') {
+            return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}\n    }\n    `;
           }
 
-          return `  ${acc}\n      ${attribute.name} (options: {limit: 25, offset: 0}) {\n        ${attribute.relationship?.field}  {\n          default\n          ${scope}\n        }\n      }\n    `;
+          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship?.field}  {\n      default\n      ${additionalScope}}\n        }\n    `;
         }
 
-        return `  ${acc}\n      ${attribute.name}\n  `;
+        return `${relatedAcc}\n      ${relatedAttribute.name}\n  `;
       }, '') +
-      `}\n  `
+      `}\n`
     );
-  };
-
-  const queryEntityName = pluralize(mainEntityName).toLowerCase();
+  }, '');
 
   return {
     queryEntityName,
     query:
       `query getEntity(${heading}) {\n` +
+      `  ${attributeName}Aggregate(where: $where) {\n` +
+      `    count\n` +
+      `  }\n` +
       `  ${queryEntityName}${filters} {\n` +
-      `    ${relationshipAttributesList()}` +
-      `}\n` +
+      `    _id\n` +
+      `    ${globalAttributesList}` +
+      `    ${localAttributesList}` +
+      `    ${relationshipAttributesList}` +
+      `  }\n` +
       `}\n`,
-  };
-}
-
-/**
- * Map the GraphQl results JSON to a key-value pair array. The values inside the scopedAttributes key are flattened to the first level.
- */
-export function mapRelatedItemsQueryResult(
-  mainEntityName: string,
-  relationshipEntityName: string,
-  scope: string,
-  results: EntityList,
-  schema: Schema
-): MappedEntityQueryResults {
-  const entitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
-  const attributes = entitySchema?.attributes ?? [];
-
-  if (attributes.length === 0) {
-    return {
-      count: 0,
-      results: [],
-    };
-  }
-
-  const queryEntityName = pluralize(mainEntityName).toLowerCase();
-  const relationshipQueryName = pluralize(relationshipEntityName).toLowerCase();
-  const [relationshipResults] = results[queryEntityName];
-  const count = relationshipResults[`${relationshipQueryName}Aggregate`]
-    ? relationshipResults[`${relationshipQueryName}Aggregate`].count
-    : 0;
-  const sliceFirstThreeItems = (values: any[], primaryAttributeName: string) =>
-    values
-      .slice(0, 3)
-      .map((item) =>
-        item?.[primaryAttributeName][scope] !== null
-          ? item?.[primaryAttributeName][scope]
-          : item?.[primaryAttributeName]?.default
-      )
-      .join(', ');
-  const mappedQueryResult = relationshipResults[relationshipQueryName].map((entity: EntityItem) => {
-    const globalAttributes = getAttributeListByScope('global', attributes).reduce(
-      (acc, attribute) => ({ ...acc, [attribute]: entity[attribute] }),
-      {}
-    );
-    const localAttributes = getAttributeListByScope('local', attributes).reduce(
-      (acc, attribute) => ({
-        ...acc,
-        [attribute]:
-          entity[attribute] && entity[attribute][scope] !== null
-            ? entity[attribute][scope]
-            : entity[attribute]?.default,
-      }),
-      {}
-    );
-    const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
-      (acc, attributeName) => {
-        const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
-        const relatedEntityName = attributeSchema.relationship?.entity ?? '';
-        const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
-        const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
-        const localValue = entity[attributeName];
-        const value = Array.isArray(localValue)
-          ? sliceFirstThreeItems(localValue, primaryAttributeName)
-          : localValue?.[primaryAttributeName];
-
-        return {
-          ...acc,
-          [attributeName]: value,
-        };
-      },
-      {}
-    );
-
-    return { ...globalAttributes, ...localAttributes, ...relationshipAttributes };
-  });
-
-  return {
-    count,
-    results: mappedQueryResult,
   };
 }
 
