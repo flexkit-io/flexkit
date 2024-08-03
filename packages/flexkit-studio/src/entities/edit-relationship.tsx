@@ -155,19 +155,33 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     setSelectedRows([selectedIds.pop()]);
   }
 
+  function handleCreateEntity(): void {
+    actionDispatch({ type: 'AddEntity', payload: { entityName } });
+  }
+
   return (
     <DrawerModal
       actions={
-        <Button
-          className="fk-px-8"
-          // disabled={disabled} // TODO: implement disabled state
-          onClick={() => {
-            handleSelection();
-          }}
-          variant="default"
-        >
-          Select
-        </Button>
+        <>
+          <Button
+            className="fk-px-8"
+            onClick={() => {
+              handleSelection();
+            }}
+            variant="default"
+          >
+            Select
+          </Button>
+          <Button
+            className="fk-px-8"
+            onClick={() => {
+              handleCreateEntity();
+            }}
+            variant="outline"
+          >
+            {`Create ${entityName.toLowerCase()}`}
+          </Button>
+        </>
       }
       depth={depth}
       isFocused={isFocused}

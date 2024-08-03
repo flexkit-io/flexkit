@@ -114,7 +114,6 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       actions={
         <Button
           className="fk-px-8"
-          // disabled={disabled} // TODO: implement disabled state
           onClick={() => {
             handleSave();
           }}
