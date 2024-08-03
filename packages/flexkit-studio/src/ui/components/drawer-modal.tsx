@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
-import { X as CloseIcon, Loader2 } from 'lucide-react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { X as CloseIcon } from 'lucide-react';
 import { DrawerModalContext } from '../drawer-modal-context';
 import { Button } from '../primitives/button';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '../primitives/drawer';
@@ -10,35 +10,28 @@ import { Separator } from '../primitives/separator';
 import { Skeleton } from '../primitives/skeleton';
 
 type Props = {
-  actionButtonLabel?: string;
+  actions: ReactNode;
   beforeClose?: (hasFormChanged: boolean) => boolean;
   children: ReactNode;
   depth: number; // how many drawers are open, to control the width of the drawers
-  editMenu?: ReactNode;
-  isActionButtonEnabledByDefault?: boolean;
   isFocused: boolean; // whether the drawer is the last one open
-  isSaving?: boolean;
+  onFormChange?: Dispatch<SetStateAction<boolean>>; // a callback executed everyt time the form changes its state
   onClose: () => void;
-  onSave: () => void;
   title: string;
 };
 
 export default function DrawerModal({
-  actionButtonLabel,
+  actions,
   beforeClose,
   children,
   depth,
-  editMenu,
-  isActionButtonEnabledByDefault,
   isFocused,
-  isSaving,
+  onFormChange,
   onClose,
-  onSave,
   title,
 }: Props): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const [hasFormChanged, setHasFormChanged] = useState(false);
-  const disabled = isActionButtonEnabledByDefault === true ? false : !hasFormChanged;
   const gutter = depth * (50 / depth);
 
   const handleClose = useCallback(() => {
@@ -75,13 +68,13 @@ export default function DrawerModal({
     };
   }, [onEscapeKeyPressed]);
 
-  const handleSave = useCallback(() => {
-    onSave();
-  }, [onSave]);
-
-  const isDirty = useCallback((flag: boolean) => {
-    setHasFormChanged(flag);
-  }, []);
+  const isDirty = useCallback(
+    (flag: boolean) => {
+      setHasFormChanged(flag);
+      onFormChange?.(flag);
+    },
+    [onFormChange]
+  );
 
   return (
     <Drawer
@@ -97,22 +90,11 @@ export default function DrawerModal({
           <DrawerTitle className="fk-w-full">
             {title ? title : <Skeleton className="fk-h-5 fk-w-[120px]" />}
           </DrawerTitle>
-          <Button
-            className="fk-px-8"
-            disabled={disabled}
-            onClick={() => {
-              handleSave();
-            }}
-            variant="default"
-          >
-            {isSaving ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
-            {actionButtonLabel ?? 'Save'}
-          </Button>
+          {actions}
           <Button className="" onClick={handleClose} size="icon" variant="ghost">
             <CloseIcon className="fk-h-4 fk-w-4" />
             <span className="fk-sr-only">Close</span>
           </Button>
-          {editMenu}
         </DrawerHeader>
         <Separator />
         <div className="fk-px-4 fk-pt-6 fk-h-full fk-min-h-full fk-overflow-y-auto fk-pb-16" data-vaul-no-drag>

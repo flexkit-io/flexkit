@@ -6,6 +6,7 @@ import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { gql } from '@apollo/client';
+import { Loader2 } from 'lucide-react';
 import { useAppContext } from '../core/app-context';
 import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
@@ -17,6 +18,7 @@ import type { SubmitHandle } from '../form/form-builder';
 import type { Entity } from '../core/types';
 import { getEntityCreateMutation, getEntityQuery } from '../graphql-client/queries';
 import type { EntityData } from '../graphql-client/types';
+import { Button } from '../ui/primitives/button';
 import { useDispatch } from './actions-context';
 import { type Action, type ActionAddEntity } from './types';
 
@@ -109,16 +111,24 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
 
   return (
     <DrawerModal
+      actions={
+        <Button
+          className="fk-px-8"
+          // disabled={disabled} // TODO: implement disabled state
+          onClick={() => {
+            handleSave();
+          }}
+          variant="default"
+        >
+          {mutationData.loading ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+          Save
+        </Button>
+      }
       beforeClose={handleBeforeClose}
       depth={depth}
-      // editMenu={<EditMenu />}
       isFocused={isFocused}
-      isSaving={mutationData.loading}
       onClose={() => {
         handleClose(action._id);
-      }}
-      onSave={() => {
-        handleSave();
       }}
       title={`Add ${entityName}`}
     >

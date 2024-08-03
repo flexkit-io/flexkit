@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { gql } from '@apollo/client';
+import { Loader2 } from 'lucide-react';
 import { useAppContext } from '../core/app-context';
 import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
@@ -17,6 +18,7 @@ import type { EntityData, FormEntityItem } from '../graphql-client/types';
 import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
 import type { Entity } from '../core/types';
+import { Button } from '../ui/primitives/button';
 import { useDispatch } from './actions-context';
 import Loading from './loading';
 import { type Action, type ActionEditEntity } from './types';
@@ -38,6 +40,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const { scope } = useAppContext();
   const dispatch = useDispatch();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
+  const [isFormDirty, setIsFormDirty] = useState(false);
 
   useEffect(() => {
     if (mutationData.error) {
@@ -119,17 +122,26 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
 
   return (
     <DrawerModal
+      actions={
+        <Button
+          className="fk-px-8"
+          disabled={!isFormDirty}
+          onClick={() => {
+            handleSave();
+          }}
+          variant="default"
+        >
+          {mutationData.loading ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+          Save
+        </Button>
+      }
       beforeClose={handleBeforeClose}
       depth={depth}
-      // editMenu={<EditMenu />}
       isFocused={isFocused}
-      isSaving={mutationData.loading}
       onClose={() => {
         handleClose(action._id);
       }}
-      onSave={() => {
-        handleSave();
-      }}
+      onFormChange={setIsFormDirty}
       title={entityIdentifier as string}
     >
       {isLoading || !data.length ? (

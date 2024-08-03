@@ -11,6 +11,7 @@ import { useEntityQuery } from '../graphql-client/use-entity-query';
 import type { AttributeValue } from '../graphql-client/types';
 import { gridColumnsDefinition } from '../data-grid/columns';
 import { DataTable } from '../data-grid/data-table';
+import { Button } from '../ui/primitives/button';
 import { Skeleton } from '../ui/primitives/skeleton';
 import type { Entity, SingleRelationshipConnection, MultipleRelationshipConnection } from '../core/types';
 import { useDispatch } from './actions-context';
@@ -156,16 +157,22 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
 
   return (
     <DrawerModal
-      actionButtonLabel="Select"
+      actions={
+        <Button
+          className="fk-px-8"
+          // disabled={disabled} // TODO: implement disabled state
+          onClick={() => {
+            handleSelection();
+          }}
+          variant="default"
+        >
+          Select
+        </Button>
+      }
       depth={depth}
-      // editMenu={<EditMenu />}
-      isActionButtonEnabledByDefault
       isFocused={isFocused}
       onClose={() => {
         handleClose(action._id);
-      }}
-      onSave={() => {
-        handleSelection();
       }}
       title={`Select ${entityName.toLowerCase()}`}
     >
