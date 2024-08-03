@@ -52,30 +52,31 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
     const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
+    const attributesNameList = relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
+      const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
+
+      if (relatedAttribute.scope === 'local') {
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        default\n      ${additionalScope}}\n    `;
+      }
+
+      if (relatedAttribute.scope === 'relationship') {
+        if (relatedAttribute.relationship?.mode === 'single') {
+          return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}\n    }\n    `;
+        }
+
+        if (relatedAttribute.relationship?.field) {
+          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship.field}  {\n      default\n      ${additionalScope}}\n        }\n    `;
+        }
+      }
+
+      return `${relatedAcc}\n      ${relatedAttribute.name}\n  `;
+    }, '');
 
     return (
-      // eslint-disable-next-line prefer-template -- string concatenation is easier to read here
       `${attribute.name}Aggregate {\n` +
       `      count\n` +
       `    }` +
-      `${acc}\n    ${attribute.name} (options: {limit: 25, offset: 0}) {  _id` +
-      relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
-        const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
-
-        if (relatedAttribute.scope === 'local') {
-          return `${relatedAcc}\n      ${relatedAttribute.name} {\n        default\n      ${additionalScope}}\n    `;
-        }
-
-        if (relatedAttribute.scope === 'relationship') {
-          if (relatedAttribute.relationship?.mode === 'single') {
-            return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}\n    }\n    `;
-          }
-
-          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship?.field}  {\n      default\n      ${additionalScope}}\n        }\n    `;
-        }
-
-        return `${relatedAcc}\n      ${relatedAttribute.name}\n  `;
-      }, '') +
+      `${acc}\n    ${attribute.name} (options: {limit: 25, offset: 0}) {  _id ${attributesNameList ?? ''}` +
       `}\n  `
     );
   }, '');
@@ -211,8 +212,7 @@ export function mapQueryResultForFormFields(
         ...acc,
         [attributeName]: {
           value: localAttribute ? getValueByScope(localAttribute, scope) : null,
-          disabled:
-            localAttribute && localAttribute[scope] === null && attributeSchema.scope === 'local' ? true : false,
+          disabled: Boolean(localAttribute && localAttribute[scope] === null && attributeSchema.scope === 'local'),
           scope,
           _id: localAttribute ? localAttribute._id : null,
         },
@@ -222,7 +222,7 @@ export function mapQueryResultForFormFields(
       (acc, attributeName) => {
         const value = entity[attributeName] as AttributeValue | null;
         const _id = value?._id;
-        const aggregateCount = (entity[`${attributeName}Aggregate`] as AttributeValue)?.count;
+        const aggregateCount = (entity[`${attributeName}Aggregate`] as AttributeValue).count;
 
         return {
           ...acc,
@@ -250,15 +250,18 @@ export function mapQueryResultForFormFields(
 /**
  * Attribute values can be an object or an array of objects if the attribute is a multi-select.
  */
-function getValueByScope(attribute: AttributeValue | AttributeValue[], scope: string): FormAttributeValue[] | string {
+function getValueByScope(
+  attribute: AttributeValue | AttributeValue[],
+  scope: string
+): FormAttributeValue[] | AttributeValue | string | null {
   if (Array.isArray(attribute)) {
     return attribute.reduce((result: FormAttributeValue[], attr: AttributeValue) => {
-      if (attr[scope] || attr.default) {
-        const option: FormAttributeValue | null = {
+      if (attr[scope] ?? attr.default) {
+        const option = {
           _id: attr._id,
-          disabled: attr.scope === null ? true : false,
+          disabled: Boolean(attr.scope === null),
           scope,
-          value: attr[scope] || attr.default,
+          value: attr[scope] ?? attr.default,
         };
 
         result.push(option);
@@ -269,7 +272,7 @@ function getValueByScope(attribute: AttributeValue | AttributeValue[], scope: st
   }
 
   // TODO: get the velue of the defaultScope declared in the config
-  return attribute[scope] ?? attribute?.default ?? null;
+  return attribute[scope] ?? attribute.default ?? null;
 }
 
 /**
@@ -353,9 +356,10 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
   const globalAttributes = pick(getAttributeListByScope('global', schemaAttributes) as [string], data);
   const attributesString = toPairs(globalAttributes).reduce((acc, [attributeName, value]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
-    const typedValue = stringTypes.includes(attributeSchema.dataType)
-      ? `"${value?.value ?? null}"`
-      : value?.value ?? null;
+    const typedValue =
+      stringTypes.includes(attributeSchema.dataType) && value.value !== null
+        ? `"${value.value as string}"`
+        : value.value?.toString() ?? 'null';
 
     return `${acc}\n      ${attributeName}: ${typedValue}`;
   }, '');
@@ -414,7 +418,7 @@ function relationshipAttributesUpdate(
         },
         ''
       );
-      const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection) ?? [];
+      const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection | null) ?? [];
       const nodesToConnect: string | undefined = connections.reduce((connectString: string, node) => {
         return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
       }, '');
@@ -436,9 +440,9 @@ function relationshipAttributesUpdate(
 
 function stringifyValue(
   type: DataType,
-  value: string | MappedEntityItem | FormEntityItem | undefined
-): string | MappedEntityItem | FormEntityItem | undefined {
-  return stringTypes.includes(type) ? `"${value}"` : value;
+  value: string | MappedEntityItem | EntityItem | AttributeValue | null | undefined
+): string {
+  return stringTypes.includes(type) ? `"${value?.toString() ?? 'null'}"` : value?.toString() ?? 'null';
 }
 
 function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: string, scope: string): string {
@@ -448,55 +452,55 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
   const localAttributesArray = getAttributeListByScope('local', schemaAttributes);
   const relationshipAttributesArray = getAttributeListByScope('relationship', schemaAttributes);
 
-  let fields = globalAttributesArray.reduce((list: string, attributeName: string) => {
-    list += `${attributeName}\n  `;
-
-    return list;
+  let fields = globalAttributesArray.reduce((acc, attributeName: string) => {
+    return `${acc}${attributeName}\n  `;
   }, '');
 
-  fields += localAttributesArray.reduce((list: string, attributeName: string) => {
-    list += `    ${attributeName} {\n        _id\n        ${scope}\n      }\n  `;
-
-    return list;
+  fields += localAttributesArray.reduce((acc, attributeName: string) => {
+    return `${acc}    ${attributeName} {\n        _id\n        ${scope}\n      }\n  `;
   }, '');
 
-  fields += relationshipAttributesArray.reduce((list: string, attributeName: string) => {
+  fields += relationshipAttributesArray.reduce((acc, attributeName: string) => {
     const relationshipAttribute = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute | undefined;
-    const relationshipMode = relationshipAttribute?.relationship?.mode || 'single';
-    const relationshipEntityName = relationshipAttribute?.relationship?.entity || '';
+    const relationshipMode = relationshipAttribute?.relationship?.mode ?? 'single';
+    const relationshipEntityName = relationshipAttribute?.relationship?.entity ?? '';
     const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
     const relationshipEntityAttributes = relationshipEntitySchema?.attributes ?? [];
     const primaryAttributeName = getPrimaryAttributeName(schemaAttributes);
+    let list = '';
 
     if (relationshipMode === 'single') {
-      list += `  ${attributeName} {\n      _id\n    ${primaryAttributeName}\n    }\n  `;
+      list = `  ${attributeName} {\n      _id\n    ${primaryAttributeName}\n    }\n  `;
     }
 
     if (relationshipMode === 'multiple' && relationshipEntityAttributes.length) {
-      list +=
+      const multipleRelationshipAttributes = relationshipEntityAttributes.reduce((str, attribute) => {
+        if (attribute.scope === 'local') {
+          return `${str}        ${attribute.name} {\n          default\n          ${scope}\n        }\n`;
+        }
+
+        if (attribute.scope === 'relationship') {
+          if (attribute.relationship?.mode === 'single') {
+            return `${str}  ${attribute.name} {\n      ${attribute.relationship.field}\n    }\n    `;
+          }
+
+          if (attribute.relationship?.field) {
+            return `${str}  ${attribute.name} (options: {limit: 25, offset: 0}) {\n      ${attribute.relationship.field}  {\n      default\n      ${scope}\n    }\n        }\n    `;
+          }
+        }
+
+        return `${str}  ${attribute.name}\n  `;
+      }, '');
+
+      list =
         `    ${attributeName}Aggregate {\n` +
         `       count\n` +
         `      }\n` +
-        `      ${attributeName} (options: {limit: 25, offset: 0}) {\n` +
-        relationshipEntityAttributes.reduce((acc, attribute) => {
-          if (attribute.scope === 'local') {
-            return `${acc}        ${attribute.name} {\n          default\n          ${scope}\n        }\n`;
-          }
-
-          if (attribute.scope === 'relationship') {
-            if (attribute?.relationship?.mode === 'single') {
-              return `${acc}  ${attribute.name} {\n      ${attribute.relationship?.field}\n    }\n    `;
-            }
-
-            return `${acc}  ${attribute.name} (options: {limit: 25, offset: 0}) {\n      ${attribute.relationship?.field}  {\n      default\n      ${scope}\n    }\n        }\n    `;
-          }
-
-          return `${acc}  ${attribute.name}\n  `;
-        }, '') +
+        `      ${attributeName} (options: {limit: 25, offset: 0}) {\n${multipleRelationshipAttributes}` +
         `      }\n`;
     }
 
-    return list;
+    return `${acc}${list}`;
   }, '');
 
   return fields;
@@ -561,6 +565,7 @@ export function getEntityCreateMutation(
   const data = filterOutInvalidAttributes(attributes, entityData);
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const localAttributes = localAttributesCreate(attributes, data, 'default', _id); // TODO: calculate default scope
+  // TODO: DANIEL: This is not working, it is not creating the relationship
   const relationshipAttributes = relationshipAttributesCreate(attributes, data);
   const responseType = pluralizedEntityName.toLowerCase();
   const attributeNamesList = formatResponseFieldsForMutation(schema, responseType, 'default'); // TODO: calculate default scope
@@ -592,13 +597,13 @@ function localAttributesCreate(
   const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
   const attributesArray = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
-    if (!attributeValue || !attributeValue.value) {
+    if (!attributeValue.value) {
       return acc;
     }
 
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
     const typedValue = Array.isArray(attributeValue.value)
-      ? null
+      ? 'null'
       : stringifyValue(attributeSchema.dataType, attributeValue.value);
 
     return (
@@ -622,10 +627,6 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
   const relationshipAttributes = pick(getAttributeListByScope('relationship', schemaAttributes) as [string], data);
   const attributesArray = toPairs(relationshipAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
-    if (!attributeValue.value) {
-      return acc;
-    }
-
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
     const { inputType, relationship } = attributeSchema;
 
@@ -637,8 +638,11 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
       return `${acc}\n      ${attributeName}: {\n        ${connect}      }`;
     }
 
-    if (inputType === 'relationship' && relationship?.mode === 'multiple') {
-      const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection) ?? [];
+    const isMultipleRelationship = inputType === 'relationship' && relationship?.mode === 'multiple';
+    const hasRelationships =
+      Array.isArray(attributeValue.relationships?.connect) && attributeValue.relationships.connect.length > 0;
+    if (isMultipleRelationship && hasRelationships) {
+      const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection | null) ?? [];
       const nodesToConnect: string | undefined = connections.reduce((connectString: string, node) => {
         return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
       }, '');
@@ -660,7 +664,7 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
  * The value of that attribute is returned as the value for the relationship attribute
  */
 function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
-  return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes?.[0]?.name ?? '';
+  return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes[0]?.name;
 }
 
 export function getRelatedItemsQuery({
@@ -702,29 +706,27 @@ export function getRelatedItemsQuery({
   const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
     const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
+    const attributesNameList = relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
+      const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
-    return (
-      // eslint-disable-next-line prefer-template -- string concatenation is easier to read here
-      `${acc}\n    ${attribute.name} (options: {limit: 25, offset: 0}) {  _id` +
-      relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
-        const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
+      if (relatedAttribute.scope === 'local') {
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        default\n      ${additionalScope}}\n    `;
+      }
 
-        if (relatedAttribute.scope === 'local') {
-          return `${relatedAcc}\n      ${relatedAttribute.name} {\n        default\n      ${additionalScope}}\n    `;
+      if (relatedAttribute.scope === 'relationship') {
+        if (relatedAttribute.relationship?.mode === 'single') {
+          return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}\n    }\n    `;
         }
 
-        if (relatedAttribute.scope === 'relationship') {
-          if (relatedAttribute.relationship?.mode === 'single') {
-            return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}\n    }\n    `;
-          }
-
-          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship?.field}  {\n      default\n      ${additionalScope}}\n        }\n    `;
+        if (relatedAttribute.relationship?.field) {
+          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship.field}  {\n      default\n      ${additionalScope}}\n        }\n    `;
         }
+      }
 
-        return `${relatedAcc}\n      ${relatedAttribute.name}\n  `;
-      }, '') +
-      `}\n`
-    );
+      return `${relatedAcc}\n      ${relatedAttribute.name}\n  `;
+    }, '');
+
+    return `${acc}\n    ${attribute.name} (options: {limit: 25, offset: 0}) {  _id ${attributesNameList ?? ''}}\n`;
   }, '');
 
   return {

@@ -16,7 +16,6 @@ import type {
   ColumnFiltersState,
   Updater,
   Row,
-  RowData,
   RowSelectionState,
   SortingState,
   TableMeta,

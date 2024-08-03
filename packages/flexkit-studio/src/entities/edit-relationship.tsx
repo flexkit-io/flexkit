@@ -24,11 +24,11 @@ type Props = {
 
 const PAGE_SIZE = 25;
 
-function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue, unknown>[] {
+function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({
     ...column,
     cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
-  })) as unknown as ColumnDef<AttributeValue, unknown>[];
+  })) as unknown as ColumnDef<AttributeValue>[];
 }
 
 export default function EditRelationship({ action, depth, isFocused }: Props): JSX.Element {
@@ -121,14 +121,14 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       connect = {
         _id: _id ?? '',
         value: data?.find((row) => row._id === _id),
-      };
+      } as SingleRelationshipConnection;
     }
 
     if (mode === 'multiple') {
       connect = selectedRows?.map((_id) => ({
         _id: _id ?? '',
         value: data?.find((row) => row._id === _id),
-      }));
+      })) as MultipleRelationshipConnection;
     }
 
     appDispatch({

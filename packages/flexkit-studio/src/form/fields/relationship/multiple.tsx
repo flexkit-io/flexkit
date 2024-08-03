@@ -2,21 +2,21 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { Dispatch, RefObject, SyntheticEvent } from 'react';
 // @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
 import { useLazyQuery, gql } from '@apollo/client';
-import type { ColumnDef, Row } from '@tanstack/react-table';
+import type { Row } from '@tanstack/react-table';
 import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';
 import { Link, Maximize2, X as ClearIcon } from 'lucide-react';
 import { getRelatedItemsQuery, mapQueryResult } from '../../../graphql-client/queries';
 import type {
   AttributeValue,
   EntityQueryAggregate,
+  EntityItem,
   EntityQueryResults,
-  FormAttributeValue,
+  MappedEntityItem,
 } from '../../../graphql-client/types';
 import { gridColumnsDefinition } from '../../../data-grid/columns';
 import { DataTable } from '../../../data-grid/data-table';
 import { Button } from '../../../ui/primitives/button';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
-import { Skeleton } from '../../../ui/primitives/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../ui/primitives/tooltip';
 import { Badge } from '../../../ui/primitives/badge';
 import { Collapsible, CollapsibleContent } from '../../../ui/primitives/collapsible';
@@ -50,9 +50,6 @@ export default function MultipleRelationship({
   const wrapperRef = useRef<HTMLDivElement>(null);
   useOuterClick(wrapperRef, setIsOpen);
   const [rows, setRows] = useState<AttributeValue[] | []>([]);
-  const [paginationModel, setPaginationModel] = useState({
-    page: 0,
-  });
   const { name, label, options, relationship } = fieldSchema;
   const relationshipEntityName: string = relationship?.entity ?? name;
   const actionDispatch = useDispatch();
@@ -88,7 +85,7 @@ export default function MultipleRelationship({
     scope,
     schema,
   });
-  const previewItems = rows.length ? rows.slice(0, 12).map((row) => row[primaryAttributeName]) : [];
+  const previewItems = rows.length ? rows.slice(0, 12).map((row) => row[primaryAttributeName] as string) : [];
   const [getData, { loading, data }] = useLazyQuery<EntityQueryResults & EntityQueryAggregate>(gql`
     ${entityQuery.query}
   `);
@@ -134,13 +131,11 @@ export default function MultipleRelationship({
    * Set the value of the rows for the datagrid
    */
   useEffect(() => {
-    const connections = Array.isArray(relationships[relationshipId]?.connect)
-      ? (relationships[relationshipId]?.connect as MultipleRelationshipConnection)
-      : [];
-    const selectedRows = connections?.map(({ value }) => value);
+    const connections = (relationships[relationshipId]?.connect as MultipleRelationshipConnection | null) ?? [];
+    const selectedRows = connections.map(({ value }) => value);
 
     setRows(uniqBy(prop('_id'), [...(selectedRows as []), ...initialRows]));
-  }, [data, defaultValue.count, initialRows, paginationModel.page, relationships, relationshipId]);
+  }, [data, defaultValue.count, initialRows, relationships, relationshipId]);
 
   // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
   const fetchMoreOnBottomReached = useCallback(
@@ -178,11 +173,22 @@ export default function MultipleRelationship({
             setRows(uniqBy(prop('_id'), [...initialRows, ...(mappedData.results as [])]));
           })
           .catch((error: unknown) => {
+            // eslint-disable-next-line no-console -- show the error to the user
             console.error('Error fetching more data:', error);
           });
       }
     },
-    [defaultValue.count, loading, rows.length]
+    [
+      defaultValue.count,
+      entityId,
+      getData,
+      initialRows,
+      loading,
+      relationshipEntitySchema?.plural,
+      rows.length,
+      schema,
+      scope,
+    ]
   );
 
   function handleSelection(event: SyntheticEvent): void {
@@ -340,7 +346,7 @@ type DataRowActions = {
 
 function dataRowActions({ appDispatch, relationshipId, relationships, row, setRows }: DataRowActions): JSX.Element {
   function disconnectEntity(entityId: string): void {
-    const connectedEntities = (relationships[relationshipId]?.connect as MultipleRelationshipConnection) ?? [];
+    const connectedEntities = (relationships[relationshipId]?.connect as MultipleRelationshipConnection | null) ?? [];
     const rowToDeleteWasJustConnected = typeof find(propEq(entityId, '_id'), connectedEntities) === 'object';
 
     const shouldUndoDisconnection = relationships[relationshipId]?.disconnect?.includes(entityId);
@@ -356,7 +362,7 @@ function dataRowActions({ appDispatch, relationshipId, relationships, row, setRo
       type: 'setRelationship',
       payload: {
         [relationshipId]: {
-          connect: connectedEntities.filter((rowItem) => rowItem?._id !== entityId) ?? [],
+          connect: connectedEntities.filter((rowItem) => rowItem._id !== entityId),
           disconnect: shouldUndoDisconnection
             ? relationships[relationshipId]?.disconnect?.filter((_id) => _id !== entityId) ?? []
             : disconnection,
@@ -368,13 +374,6 @@ function dataRowActions({ appDispatch, relationshipId, relationships, row, setRo
   return <DataTableRowActions action={disconnectEntity} row={row} />;
 }
 
-function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue, unknown>[] {
-  return columns.map((column) => ({
-    ...column,
-    cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
-  })) as unknown as ColumnDef<AttributeValue, unknown>[];
-}
-
 /**
  * Find the name of the attribute of an entity with isPrimary === true.
  * The value of that attribute is returned as the value for the relationship attribute
@@ -384,7 +383,7 @@ function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
 }
 
 type DataAdapter = {
-  data: FormAttributeValue['value'];
+  data: string | MappedEntityItem | EntityItem | AttributeValue;
   defaultScope: string;
   primaryAttributeName: string;
   relationshipEntitySchema: Entity | undefined;
@@ -403,7 +402,7 @@ function dataAdapter({
   }
 
   return data.map(
-    (row) =>
+    (row: MappedEntityItem | EntityItem) =>
       map((field) => {
         if (typeof field === 'object' && field.__typename) {
           const relationshipFieldSchema = find(propEq(field.__typename, 'name'))(
@@ -415,13 +414,18 @@ function dataAdapter({
             return field[relationshipFieldName];
           }
 
-          return field?.[scope] ?? field?.[defaultScope];
+          return field[scope] ?? field[defaultScope];
         }
 
         if (Array.isArray(field)) {
-          return field
+          const test = field as AttributeValue[];
+          return test
             .slice(0, 3)
-            .map((item) => item[primaryAttributeName]?.[scope] ?? item[primaryAttributeName]?.[defaultScope])
+            .map(
+              (item) =>
+                (item[primaryAttributeName] as AttributeValue | undefined)?.[scope] ??
+                (item[primaryAttributeName] as AttributeValue | undefined)?.[defaultScope]
+            )
             .join(', ');
         }
 

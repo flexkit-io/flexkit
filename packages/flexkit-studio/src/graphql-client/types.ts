@@ -4,7 +4,7 @@ import type { SingleRelationshipConnection, MultipleRelationshipConnection, Sche
 
 export type AttributeValue = {
   _id: string;
-  [key: string]: string;
+  [key: string]: string | AttributeValue | null;
   __typename: string;
 };
 
@@ -74,5 +74,5 @@ export type FormAttributeValue = {
     disconnect?: string[];
   };
   scope: string;
-  value: string | MappedEntityItem | FormEntityItem | undefined;
+  value: string | MappedEntityItem | EntityItem | AttributeValue | undefined | null;
 };
