@@ -375,7 +375,7 @@ function localAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityIt
     const { dataType } = attributeSchema;
     const typedValue =
       attributeValue.disabled || Array.isArray(attributeValue.value)
-        ? ''
+        ? 'null'
         : stringifyValue(dataType, attributeValue.value);
 
     if (!typedValue) {
