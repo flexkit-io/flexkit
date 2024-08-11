@@ -3,5 +3,8 @@
   "include": ["."],
   "exclude": ["dist", "build", "node_modules"],
   "declaration": true,
-  "declarationMap": true
+  "declarationMap": true,
+  "compilerOptions": {
+    "resolveJsonModule": true
+  }
 }
