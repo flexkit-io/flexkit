@@ -1,3 +1,5 @@
+import { Response } from 'node-fetch';
+
 export class APIError extends Error {
   status: number;
   serverMessage: string;
@@ -43,6 +45,37 @@ export class InvalidLocalConfig extends CliError<'INVALID_LOCAL_CONFIG', Invalid
       message: `Invalid local config parameter [${value
         .map((localConfig) => `"${localConfig}"`)
         .join(', ')}]. A string was expected.`,
+    });
+  }
+}
+
+export class CantParseJSONFile extends CliError<'CANT_PARSE_JSON_FILE', { file: string; parseErrorLocation: string }> {
+  constructor(file: string, parseErrorLocation: string) {
+    const message = `Can't parse json file ${file}: ${parseErrorLocation}`;
+    super({
+      code: 'CANT_PARSE_JSON_FILE',
+      meta: { file, parseErrorLocation },
+      message,
+    });
+  }
+}
+
+export class CantFindConfig extends CliError<'CANT_FIND_CONFIG', { paths: string[] }> {
+  constructor(paths: string[]) {
+    super({
+      code: 'CANT_FIND_CONFIG',
+      meta: { paths },
+      message: `Can't find a configuration file in the given locations.`,
+    });
+  }
+}
+
+export class WorkingDirectoryDoesNotExist extends CliError<'CWD_DOES_NOT_EXIST', {}> {
+  constructor() {
+    super({
+      code: 'CWD_DOES_NOT_EXIST',
+      meta: {},
+      message: 'The current working directory does not exist.',
     });
   }
 }

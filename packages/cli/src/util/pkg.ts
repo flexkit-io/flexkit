@@ -1,46 +1,35 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import type { PackageJson } from 'type-fest';
 
 const cache = new Map();
 
-function getPackageJSONPath(dir: string) {
+function getPackageJSONPath(dir: string): string {
   return path.join(dir, 'package.json');
 }
 
-function captureCallerCallSite() {
+function captureCallerCallSite(): NodeJS.CallSite {
   const _prepareStackTrace = Error.prepareStackTrace;
+  Error.prepareStackTrace = (_, stack) => stack;
 
-  let callSite;
-  try {
-    Error.prepareStackTrace = (_, stack) => stack;
-
-    // The `stack` reference above is of type `Array<NodeJS.CallSite>`
-    const callSites = new Error().stack as unknown as Array<NodeJS.CallSite>;
-
-    // TypeScript rule noUncheckedIndexedAccess makes `callSites[2]` potentially
-    // undefined; however, we can safely assert it is not undefined as the
-    // callstack will always have at least 3 entries, the first being this
-    // function, the second being `getPackageJSON`, and the third wherever its
-    // being called from.
-    callSite = callSites[2]!;
-  } finally {
-    Error.prepareStackTrace = _prepareStackTrace;
-  }
+  const callSites = new Error().stack as unknown as NodeJS.CallSite[];
+  const [, , callSite] = callSites;
+  Error.prepareStackTrace = _prepareStackTrace;
 
   return callSite;
 }
 
-function getPackageJSON() {
+function getPackageJSON(): PackageJson {
   const callSite = captureCallerCallSite();
   // Get the file name of where this function was called. It is guaranteed that
   // the only way for `getFileName` to return `undefined` is if this function is
   // called using `eval` thus it is safe to assert `filePath` is defined at this
   // point.
-  const filePath = (callSite.getFileName() || callSite.getEvalOrigin()) as string;
+  const filePath = callSite.getFileName() ?? callSite.getEvalOrigin() ?? '';
 
   let rootDir = path.dirname(filePath);
-
   let packageJSONPath = getPackageJSONPath(rootDir);
+
   while (!fs.existsSync(packageJSONPath)) {
     rootDir = path.join(rootDir, '..');
     packageJSONPath = getPackageJSONPath(rootDir);
@@ -53,7 +42,7 @@ function getPackageJSON() {
     cache.set(packageJSONPath, packageJSON);
   }
 
-  return packageJSON;
+  return packageJSON as PackageJson;
 }
 
-export default getPackageJSON() as typeof import('../../package.json');
+export default getPackageJSON();

@@ -10,7 +10,6 @@ import { Loader2 } from 'lucide-react';
 import { useAppContext } from '../core/app-context';
 import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
-// import EditMenu from './EditMenu';
 import { useConfig } from '../core/config/config-context';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import FormBuilder from '../form/form-builder';

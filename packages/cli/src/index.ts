@@ -13,17 +13,27 @@ try {
 }
 
 import { mkdirp } from 'fs-extra';
+import { ProxyAgent } from 'proxy-agent';
 import getGlobalPathConfig from './util/config/global-path';
+import { defaultAuthConfig, defaultGlobalConfig } from './util/config/default';
 import parseArguments from './util/parse-args';
 import { APIError } from './util/error-types';
 import { errorOutput, highlightOutput, paramOutput, Output } from './util/output';
 import hp from './util/humanize-path';
 import pkg from './util/pkg';
 import { help } from './args';
-import type { AuthConfig, GlobalConfig } from './types';
+import * as configFiles from './util/config/files';
+import type { AuthConfig, FlexkitConfig, GlobalConfig } from './types';
+import { CantFindConfig, CantParseJSONFile } from './util/error-types';
+import Client from './util/client';
+import getConfig from './util/get-config';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
+const FLEXKIT_CONFIG_PATH = configFiles.getConfigFilePath();
+const FLEXKIT_AUTH_CONFIG_PATH = configFiles.getAuthConfigFilePath();
+const API_URL = 'https://api.flexkit.io';
 let { isTTY } = process.stdout;
+let client: Client;
 let output: Output;
 let debug: (s: string) => void = () => {};
 
@@ -53,6 +63,30 @@ const main = async () => {
 
   debug = output.debug;
 
+  const localConfigPath = argv.flags['--local-config'];
+  let localConfig: FlexkitConfig | Error | undefined = await getConfig(output, localConfigPath);
+
+  if (localConfig instanceof CantParseJSONFile) {
+    output.error(`Couldn't parse JSON file ${localConfig.meta.file}.`);
+
+    return 1;
+  }
+
+  if (localConfig instanceof CantFindConfig) {
+    if (localConfigPath) {
+      output.error(`Couldn't find a project configuration file at \n    ${localConfig.meta.paths.join(' or\n    ')}`);
+
+      return 1;
+    } else {
+      localConfig = undefined;
+    }
+  }
+
+  if (localConfig instanceof Error) {
+    output.prettyError(localConfig);
+    return 1;
+  }
+
   // Ensure that the Flexkit global configuration directory exists
   try {
     await mkdirp(FLEXKIT_DIR);
@@ -67,6 +101,7 @@ const main = async () => {
   }
 
   let config: GlobalConfig;
+
   try {
     config = configFiles.readConfigFile();
   } catch (err: unknown) {
@@ -76,7 +111,7 @@ const main = async () => {
         configFiles.writeToConfigFile(config);
       } catch (err: unknown) {
         output.error(
-          `An unexpected error occurred while trying to save the config to "${hp(VERCEL_CONFIG_PATH)}" ${errorToString(
+          `An unexpected error occurred while trying to save the config to "${hp(FLEXKIT_CONFIG_PATH)}" ${errorToString(
             err
           )}`
         );
@@ -84,7 +119,7 @@ const main = async () => {
       }
     } else {
       output.error(
-        `An unexpected error occurred while trying to read the config in "${hp(VERCEL_CONFIG_PATH)}" ${errorToString(
+        `An unexpected error occurred while trying to read the config in "${hp(FLEXKIT_CONFIG_PATH)}" ${errorToString(
           err
         )}`
       );
@@ -92,14 +127,53 @@ const main = async () => {
     }
   }
 
+  let authConfig: AuthConfig;
+  try {
+    authConfig = configFiles.readAuthConfigFile();
+  } catch (err: unknown) {
+    if (isErrnoException(err) && err.code === 'ENOENT') {
+      authConfig = defaultAuthConfig;
+      try {
+        configFiles.writeToAuthConfigFile(authConfig);
+      } catch (err: unknown) {
+        output.error(
+          `An unexpected error occurred while trying to write the auth config to "${hp(
+            FLEXKIT_AUTH_CONFIG_PATH
+          )}" ${errorToString(err)}`
+        );
+        return 1;
+      }
+    } else {
+      output.error(
+        `An unexpected error occurred while trying to read the auth config in "${hp(
+          FLEXKIT_AUTH_CONFIG_PATH
+        )}" ${errorToString(err)}`
+      );
+      return 1;
+    }
+  }
+
+  // Shared API `Client` instance for all sub-commands to utilize
+  client = new Client({
+    agent: new ProxyAgent({ keepAlive: true }),
+    apiUrl: API_URL,
+    stdin: process.stdin,
+    stdout: process.stdout,
+    stderr: output.stream,
+    output,
+    config,
+    authConfig,
+    localConfig,
+    localConfigPath,
+    argv: process.argv,
+  });
+
   // The second argument to the command can be:
   //
   //  * a path to deploy (as in: `vercel path/`)
   //  * a subcommand (as in: `vercel ls`)
   const subcommand = argv.args[2];
   const subSubCommand = argv.args[3];
-
-  console.log(subcommand, subSubCommand);
 
   // Handle `--version` directly
   if (argv.flags['--version']) {
@@ -161,9 +235,11 @@ const main = async () => {
           )} could not be resolved. Please verify your internet connectivity and DNS configuration.`
         );
       }
+
       if (typeof err.stack === 'string') {
         output.debug(err.stack);
       }
+
       return 1;
     }
 
@@ -208,8 +284,48 @@ const main = async () => {
 
     return 1;
   }
+
+  return exitCode;
 };
 
-main().then(async (exitCode) => {
-  //process.exitCode = exitCode;
-});
+const handleRejection = async (err: any) => {
+  debug('handling rejection');
+
+  if (err) {
+    if (err instanceof Error) {
+      await handleUnexpected(err);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error(errorOutput(`An unexpected rejection occurred\n  ${err}`));
+    }
+  } else {
+    // eslint-disable-next-line no-console
+    console.error(errorOutput('An unexpected empty rejection occurred'));
+  }
+
+  process.exit(1);
+};
+
+const handleUnexpected = async (err: Error) => {
+  const { message } = err;
+
+  // We do not want to render errors about Sentry not being reachable
+  if (message.includes('sentry') && message.includes('ENOTFOUND')) {
+    debug(`Sentry is not reachable: ${err}`);
+    return;
+  }
+
+  // eslint-disable-next-line no-console
+  console.error(errorOutput(`An unexpected error occurred!\n${err.stack}`));
+
+  process.exit(1);
+};
+
+process.on('unhandledRejection', handleRejection);
+process.on('uncaughtException', handleUnexpected);
+
+main()
+  .then(async (exitCode) => {
+    process.exitCode = exitCode;
+  })
+  .catch(handleUnexpected);

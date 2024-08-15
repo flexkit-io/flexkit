@@ -1,4 +1,4 @@
-import { Command } from '../help';
+import type { Command } from '../help';
 
 export const loginCommand: Command = {
   name: 'login',

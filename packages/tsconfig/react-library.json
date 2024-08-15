@@ -6,6 +6,7 @@
     "jsx": "react-jsx",
     "lib": ["ES2021", "DOM"],
     "module": "NodeNext",
-    "target": "es6"
+    "target": "es6",
+    "resolveJsonModule": true
   }
 }

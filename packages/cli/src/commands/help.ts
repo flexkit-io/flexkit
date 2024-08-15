@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import Table, { CellOptions } from 'cli-table3';
+import CliTable, { type CellOptions } from 'cli-table3';
 import { noBorderChars } from '../util/output/table';
 
 const INDENT = ' '.repeat(2);
@@ -34,7 +34,7 @@ export interface Command {
 
 // https://github.com/cli-table/cli-table3/pull/303 adds
 // word wrapping per cell but did not include updated types.
-type _CellOptions = CellOptions & {
+type ExtendedCellOptions = CellOptions & {
   wordWrap?: boolean;
 };
 
@@ -120,26 +120,27 @@ const globalCommandOptions: CommandOption[] = [
 // by creating a one row, one cell, one column table.
 // This allows us to avoid pulling in the word-wrap
 // package which ironically seems to do a worse job.
-function wordWrap(text: string, maxWidth: number) {
-  const _tableOptions = Object.assign({}, tableOptions, {
+function wordWrap(text: string, maxWidth: number): string {
+  const _tableOptions = {
+    ...tableOptions,
     colWidths: [maxWidth],
     style: {
       'padding-left': INDENT.length,
     },
-  });
-  const table = new Table(_tableOptions);
+  };
+  const table = new CliTable(_tableOptions);
   table.push([
     {
       content: text,
       wordWrap: true,
-    } as _CellOptions,
+    } as ExtendedCellOptions,
   ]);
 
   return table.toString();
 }
 
 // Insert spaces in between non-whitespace items only
-export function lineToString(line: string[]) {
+export function lineToString(line: string[]): string {
   let string = '';
   for (let i = 0; i < line.length; i++) {
     if (i === line.length - 1) {
@@ -153,19 +154,18 @@ export function lineToString(line: string[]) {
       }
     }
   }
+
   return string;
 }
 
-export function outputArrayToString(outputArray: (string | null)[]) {
+export function outputArrayToString(outputArray: (string | null)[]): string {
   return outputArray.filter((line) => line !== null).join(NEWLINE);
 }
 
 /**
- * Example: `▲ vercel deploy [path] [options]`
- * @param command
- * @returns
+ * Example: `flexkit login [path] [options]`
  */
-export function buildCommandSynopsisLine(command: Command) {
+export function buildCommandSynopsisLine(command: Command): string {
   const line: string[] = [INDENT, chalk.bold('flexkit'), chalk.bold(command.name)];
 
   if (command.arguments.length > 0) {
@@ -186,25 +186,37 @@ export function buildCommandSynopsisLine(command: Command) {
 export function buildCommandOptionLines(
   commandOptions: CommandOption[],
   options: BuildHelpOutputOptions,
-  sectionTitle: String
-) {
+  sectionTitle: string
+): string | null {
   if (commandOptions.length === 0) {
     return null;
   }
 
   // Filter out deprecated and intentionally undocumented options
-  commandOptions = commandOptions.filter((option) => !option.deprecated && option.description !== undefined);
+  const filteredCommandOptions = commandOptions.filter(
+    (option) => !option.deprecated && option.description !== undefined
+  );
 
   // Sort command options alphabetically
-  commandOptions.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  filteredCommandOptions.sort((a, b) => {
+    if (a.name < b.name) {
+      return -1;
+    }
+
+    if (a.name > b.name) {
+      return 1;
+    }
+
+    return 0;
+  });
 
   // word wrapping requires the wrapped cell to have a fixed width.
   // We need to track cell sizes to ensure the final column of cells is
   // equal to the remainder of unused horizontal space.
   let maxWidthOfUnwrappedColumns = 0;
-  const rows: (string | undefined | _CellOptions)[][] = [];
+  const rows: (string | undefined | ExtendedCellOptions)[][] = [];
 
-  for (const option of commandOptions) {
+  for (const option of filteredCommandOptions) {
     const shorthandCell = option.shorthand ? `${INDENT}-${option.shorthand},` : '';
     let longhandCell = `${INDENT}--${option.name}`;
 
@@ -229,18 +241,20 @@ export function buildCommandOptionLines(
 
   const finalColumnWidth = options.columns - maxWidthOfUnwrappedColumns;
 
-  const table = new Table(
-    Object.assign({}, tableOptions, {
-      colWidths: [null, null, finalColumnWidth],
-    })
-  );
+  const table = new CliTable({
+    ...tableOptions,
+    colWidths: [null, null, finalColumnWidth],
+  });
 
   table.push(...rows);
 
   return [`${INDENT}${chalk.dim(sectionTitle)}:`, NEWLINE, NEWLINE, table.toString(), NEWLINE, NEWLINE].join('');
 }
 
-export function buildSubcommandLines(subcommands: Command[] | undefined, options: BuildHelpOutputOptions) {
+export function buildSubcommandLines(
+  subcommands: Command[] | undefined,
+  options: BuildHelpOutputOptions
+): string | null {
   if (!subcommands) {
     return null;
   }
@@ -249,7 +263,7 @@ export function buildSubcommandLines(subcommands: Command[] | undefined, options
   // We need to track cell sizes to ensure the final column of cells is
   // equal to the remainder of unused horizontal space.
   let maxWidthOfUnwrappedColumns = 0;
-  const rows: (string | undefined | _CellOptions)[][] = [];
+  const rows: (string | undefined | ExtendedCellOptions)[][] = [];
 
   for (const command of subcommands) {
     const nameCell = `${INDENT}${command.name}`;
@@ -280,18 +294,17 @@ export function buildSubcommandLines(subcommands: Command[] | undefined, options
   const rightMargin = INDENT.repeat(4).length;
   const finalColumnWidth = options.columns - maxWidthOfUnwrappedColumns - rightMargin;
 
-  const table = new Table(
-    Object.assign({}, tableOptions, {
-      colWidths: [null, null, finalColumnWidth],
-    })
-  );
+  const table = new CliTable({
+    ...tableOptions,
+    colWidths: [null, null, finalColumnWidth],
+  });
 
   table.push(...rows);
 
   return [`${INDENT}${chalk.dim('Commands')}:`, NEWLINE, NEWLINE, table.toString(), NEWLINE, NEWLINE].join('');
 }
 
-export function buildCommandExampleLines(command: Command) {
+export function buildCommandExampleLines(command: Command): string {
   const outputArray: string[] = [`${INDENT}${chalk.dim('Examples:')}`, ''];
 
   for (const example of command.examples) {
@@ -318,8 +331,8 @@ export function buildCommandExampleLines(command: Command) {
   return outputArrayToString(outputArray);
 }
 
-function buildDescriptionLine(command: Command, options: BuildHelpOutputOptions) {
-  let wrapingText = wordWrap(command.description, options.columns);
+function buildDescriptionLine(command: Command, options: BuildHelpOutputOptions): string {
+  const wrapingText = wordWrap(command.description, options.columns);
 
   return `${wrapingText}${NEWLINE}`;
 }
@@ -328,7 +341,7 @@ interface BuildHelpOutputOptions {
   columns: number;
 }
 
-export function buildHelpOutput(command: Command, options: BuildHelpOutputOptions) {
+export function buildHelpOutput(command: Command, options: BuildHelpOutputOptions): string {
   const outputArray: (string | null)[] = [
     '',
     buildCommandSynopsisLine(command),
@@ -347,7 +360,7 @@ export interface HelpOptions {
   columns?: number;
 }
 
-export function help(command: Command, options: HelpOptions) {
+export function help(command: Command, options: HelpOptions): string {
   return buildHelpOutput(command, {
     columns: options.columns ?? 80,
   });

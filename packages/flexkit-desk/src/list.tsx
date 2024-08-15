@@ -1,12 +1,12 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { find, propEq } from 'ramda';
 import { useAppContext, useConfig, useLocation, useParams, Outlet, Skeleton, useEntityQuery } from '@flexkit/studio';
-import type { Entity, SingleProject } from '@flexkit/studio';
+import type { ColumnDef, Entity, SingleProject, Row } from '@flexkit/studio';
 import { DataTable, DataTableRowActions, gridColumnsDefinition } from '@flexkit/studio/data-grid';
 
 const pageSize = 25;
 
-export function List() {
+export function List(): JSX.Element {
   const { entity: entityName } = useParams();
   const { search } = useLocation();
   const query = new URLSearchParams(search);
@@ -15,12 +15,16 @@ export function List() {
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entityName, 'plural'))(schema) as Entity | undefined;
-  const columnsDefinition = gridColumnsDefinition({
-    attributesSchema: entitySchema?.attributes || [],
-    actionsComponent: (row) => (
-      <DataTableRowActions entityName={entitySchema?.name ?? ''} entityNamePlural={entityName ?? ''} row={row} />
-    ),
-  });
+  const columnsDefinition = useMemo(
+    () =>
+      gridColumnsDefinition({
+        attributesSchema: entitySchema?.attributes ?? [],
+        actionsComponent: (row) =>
+          dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
+      }),
+    [entitySchema?.attributes, entitySchema?.name, entityName]
+  );
+
   const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };
 
   const { isLoading, fetchMore, count, data } = useEntityQuery({
@@ -50,14 +54,11 @@ export function List() {
         }
       }
     },
-    [count, data?.length, isLoading]
+    [count, data?.length, fetchMore, isLoading]
   );
 
   const loadingData = Array(pageSize).fill({});
-  const loadingColumns = columnsDefinition.map((column) => ({
-    ...column,
-    cell: () => <Skeleton className="fk-h-6 fk-w-full" />,
-  }));
+  const loadingColumns = getLoadingColumns(columnsDefinition);
 
   return (
     <div className="fk-flex fk-flex-col fk-h-full">
@@ -67,8 +68,8 @@ export function List() {
       <DataTable
         columns={isLoading ? loadingColumns : columnsDefinition}
         data={isLoading ? loadingData : data ?? []}
-        entityName={entitySchema?.name || ''}
-        hasToolbar={true}
+        entityName={entitySchema?.name ?? ''}
+        hasToolbar
         pageSize={pageSize}
         onScroll={(e) => {
           fetchMoreOnBottomReached(e.target as HTMLDivElement);
@@ -79,6 +80,29 @@ export function List() {
   );
 }
 
-function capitalize(str: string) {
+function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+type AttributeValue = {
+  _id: string;
+  [key: string]: string | AttributeValue | null;
+  __typename: string;
+};
+
+type DataRowActions = {
+  entityName: string;
+  entityNamePlural: string;
+  row: Row<AttributeValue>;
+};
+
+function dataRowActions({ entityName, entityNamePlural, row }: DataRowActions): JSX.Element {
+  return <DataTableRowActions entityName={entityName} entityNamePlural={entityNamePlural} row={row} />;
+}
+
+function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
+  return columns.map((column) => ({
+    ...column,
+    cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
+  })) as unknown as ColumnDef<AttributeValue>[];
 }

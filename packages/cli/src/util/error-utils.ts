@@ -1,4 +1,6 @@
 import util from 'node:util';
+import { Response } from 'node-fetch';
+import { APIError } from './error-types';
 
 /**
  * A simple type guard for objects.
@@ -40,3 +42,35 @@ export const errorToString = (error: unknown, fallback?: string): string => {
 export const isErrnoException = (error: unknown): error is NodeJS.ErrnoException => {
   return isError(error) && 'code' in error;
 };
+
+/**
+ * Normalizes unknown errors to the Error type, useful for working with errors
+ * in a `try...catch` statement.
+ */
+export const normalizeError = (error: unknown): Error => {
+  if (isError(error)) return error;
+
+  const errorMessage = errorToString(error);
+
+  // Copy over additional properties if the object is error-like.
+  return isErrorLike(error) ? Object.assign(new Error(errorMessage), error) : new Error(errorMessage);
+};
+
+export default async function responseError(res: Response, fallbackMessage = null) {
+  let bodyError;
+
+  if (!res.ok) {
+    let body: { error: { message: string } } | undefined;
+
+    try {
+      body = (await res.json()) as { error: { message: string } };
+    } catch (err) {
+      // body = '';
+    }
+
+    bodyError = body ? body.error : {};
+  }
+
+  const msg = bodyError?.message || fallbackMessage || 'Response Error';
+  return new APIError(msg, res, bodyError);
+}

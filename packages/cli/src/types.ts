@@ -1,3 +1,5 @@
+import type { Readable, Writable } from 'node:stream';
+import type * as tty from 'node:tty';
 export interface AuthConfig {
   '// Note'?: string;
   '// Docs'?: string;
@@ -18,33 +20,47 @@ export const fileNameSymbol = Symbol('fileName');
 export interface FlexkitConfig {
   [fileNameSymbol]?: string;
   name?: string;
-  meta?: string[];
-  version?: number;
-  public?: boolean;
-  env?: Dictionary<string>;
-  build?: {
-    env?: Dictionary<string>;
-  };
-  builds?: Builder[];
-  routes?: Route[];
-  files?: string[];
-  cleanUrls?: boolean;
-  rewrites?: Rewrite[];
-  redirects?: Redirect[];
-  headers?: Header[];
-  trailingSlash?: boolean;
-  functions?: BuilderFunctions;
-  github?: DeploymentGithubData;
-  scope?: string;
-  alias?: string | string[];
-  regions?: string[];
-  projectSettings?: ProjectSettings;
-  buildCommand?: string | null;
-  ignoreCommand?: string | null;
-  devCommand?: string | null;
-  installCommand?: string | null;
-  framework?: string | null;
-  outputDirectory?: string | null;
-  images?: Images;
-  crons?: Cron[];
+}
+
+export type Primitive = bigint | boolean | null | number | string | symbol | undefined;
+
+export type JSONArray = JSONValue[];
+
+export type JSONValue = Primitive | JSONObject | JSONArray;
+export interface JSONObject {
+  [key: string]: JSONValue;
+}
+
+export interface ReadableTTY extends Readable {
+  isTTY?: boolean;
+  isRaw?: boolean;
+  setRawMode?: (mode: boolean) => void;
+}
+
+export interface WritableTTY extends Writable {
+  isTTY?: boolean;
+}
+
+export interface Stdio {
+  stdin: ReadableTTY;
+  stdout: tty.WriteStream;
+  stderr: tty.WriteStream;
+}
+
+export interface PaginationOptions {
+  /**
+   * Amount of items in the current page.
+   * @example 20
+   */
+  count: number;
+  /**
+   * Timestamp that must be used to request the next page.
+   * @example 1540095775951
+   */
+  next: number | null;
+  /**
+   * Timestamp that must be used to request the previous page.
+   * @example 1540095775951
+   */
+  prev: number | null;
 }

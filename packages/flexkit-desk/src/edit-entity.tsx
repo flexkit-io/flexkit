@@ -1,6 +1,6 @@
 import { useParams } from '@flexkit/studio';
 
-export function EditEntity() {
+export function EditEntity(): JSX.Element {
   const { entity, id } = useParams();
 
   // Not used, left here as an example of how to nest routes in plugins (see ./index.tsx file)

@@ -1,9 +1,9 @@
 import chalk from 'chalk';
 
-export const help = () => `
+export const help = (): string => `
   ${chalk.bold(`Flexkit CLI`)} [options] <command | path>
 
-  ${chalk.dim('For deploy command help, run `vercel deploy --help`')}
+  ${chalk.dim('For deploy command help, run `flexkit deploy --help`')}
 
   ${chalk.dim('Commands:')}
 
@@ -16,7 +16,7 @@ export const help = () => `
       help                 [cmd]       Displays complete help for [cmd]
       init                 [example]   Initialize an example project
       inspect              [id]        Displays information related to a deployment
-      link                 [path]      Link local directory to a Vercel Project
+      link                 [path]      Link local directory to a Flexkit Project
       ls | list            [app]       Lists deployments
       login                [email]     Logs into your account or creates a new one
       logout                           Logs out of your account
@@ -47,10 +47,10 @@ export const help = () => `
     --cwd                          Current working directory
     -A ${chalk.bold.underline('FILE')}, --local-config=${chalk.bold.underline(
       'FILE'
-    )}   Path to the local ${'`vercel.json`'} file
+    )}   Path to the local vercel.json file
     -Q ${chalk.bold.underline('DIR')}, --global-config=${chalk.bold.underline(
       'DIR'
-    )}    Path to the global ${'`.vercel`'} directory
+    )}    Path to the global .vercel directory
     -d, --debug                    Debug mode [off]
     --no-color                     No color mode [off]
     -S, --scope                    Set a custom scope

@@ -30,7 +30,7 @@ function client(currentProjectId: string | undefined): ApolloClient<unknown> {
     link: additiveLink(currentProjectId ?? ''),
     cache: new InMemoryCache({
       dataIdFromObject: (responseObject) => {
-        return responseObject._id ? `${responseObject._id as string}` : defaultDataIdFromObject(responseObject);
+        return responseObject._id ? (responseObject._id as string) : defaultDataIdFromObject(responseObject);
       },
     }),
   });

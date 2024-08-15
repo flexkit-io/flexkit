@@ -51,7 +51,6 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
         setResult((prevRows) => {
           return {
             count: mappedFetchMoreResults.count,
-            // @ts-expect-error -- TS doesn't know if the results are MappedEntityItem[] or FormEntityItem[]
             results: uniqBy(prop('_id'), [...prevRows.results, ...mappedFetchMoreResults.results]),
           } as Results;
         });
