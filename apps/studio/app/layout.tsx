@@ -4,6 +4,7 @@
  */
 import './global.css';
 import '@flexkit/studio/styles.css';
+// @ts-expect-error -- https://github.com/vercel/geist-font/issues/122
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 

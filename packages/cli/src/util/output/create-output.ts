@@ -1,12 +1,12 @@
-import chalk, { Chalk } from 'chalk';
+import type * as tty from 'node:tty';
+import { inspect } from 'node:util';
+import chalk, { type Chalk } from 'chalk';
 import * as ansiEscapes from 'ansi-escapes';
 import { supportsHyperlink as detectSupportsHyperlink } from 'supports-hyperlinks';
-import renderLink from './link';
-import wait, { StopSpinner } from './wait';
 import { errorToString } from '../error-utils';
 import { removeEmoji } from '../emoji';
-import type * as tty from 'tty';
-import { inspect } from 'util';
+import renderLink from './link';
+import wait, { type StopSpinner } from './wait';
 
 const IS_TEST = process.env.NODE_ENV === 'test';
 
@@ -53,82 +53,95 @@ export class Output {
     }
   }
 
-  isDebugEnabled = () => {
+  isDebugEnabled = (): boolean => {
     return this.debugEnabled;
   };
 
-  print = (str: string) => {
+  print = (str: string): void => {
+    let text = str;
+
     if (this.colorDisabled) {
-      str = removeEmoji(str);
+      text = removeEmoji(text);
     }
+
     this.stopSpinner();
-    this.stream.write(str);
+    this.stream.write(text);
   };
 
-  log = (str: string, color = chalk.grey) => {
+  log = (str: string, color = chalk.grey): void => {
     this.print(`${color('>')} ${str}\n`);
   };
 
-  dim = (str: string, color = chalk.grey) => {
+  dim = (str: string, color = chalk.grey): void => {
     this.print(`${color(`> ${str}`)}\n`);
   };
 
-  warn = (str: string) => {
+  warn = (str: string): void => {
     this.print(chalk.yellow(chalk.bold('WARN! ') + str));
     this.print('\n');
   };
 
-  note = (str: string) => {
+  note = (str: string): void => {
     this.log(chalk`{yellow.bold NOTE:} ${str}`);
   };
 
-  error = (str: string) => {
+  error = (str: string): void => {
     this.print(`${chalk.red(`Error:`)} ${str}\n`);
   };
 
-  prettyError = (err: unknown) => {
-    return this.error(errorToString(err));
+  prettyError = (err: unknown): void => {
+    this.error(errorToString(err));
   };
 
-  ready = (str: string) => {
+  ready = (str: string): void => {
     this.print(`${chalk.cyan('> Ready!')} ${str}\n`);
   };
 
-  success = (str: string) => {
+  success = (str: string): void => {
     this.print(`${chalk.cyan('> Success!')} ${str}\n`);
   };
 
-  debug = (debug: unknown) => {
+  congratulations = (str: string): void => {
+    this.print(`${chalk.cyan('> Congratulations!')} ${str}\n`);
+  };
+
+  debug = (debug: unknown): void => {
     if (this.debugEnabled) {
       this.log(`${chalk.bold('[debug]')} ${chalk.gray(`[${new Date().toISOString()}]`)} ${debugToString(debug)}`);
     }
   };
 
-  spinner = (message: string, delay: number = 300): void => {
+  spinner = (message: string, delay = 300): void => {
     if (this.debugEnabled) {
-      this.debug(`Spinner invoked (${message}) with a ${delay}ms delay`);
+      this.debug(`Spinner invoked (${message}) with a ${delay.toString()}ms delay`);
+
       return;
     }
+
     if (IS_TEST || !this.stream.isTTY) {
       this.print(`${message}\n`);
-    } else {
-      this.spinnerMessage = message;
 
-      if (this._spinner) {
-        this._spinner.text = message;
-      } else {
-        this._spinner = wait(
-          {
-            text: message,
-            stream: this.stream,
-          },
-          delay
-        );
-      }
+      return;
     }
+
+    this.spinnerMessage = message;
+
+    if (this._spinner) {
+      this._spinner.text = message;
+
+      return;
+    }
+
+    this._spinner = wait(
+      {
+        text: message,
+        stream: this.stream,
+      },
+      delay
+    );
   };
 
-  stopSpinner = () => {
+  stopSpinner = (): void => {
     if (this.debugEnabled && this.spinnerMessage) {
       const msg = `Spinner stopped (${this.spinnerMessage})`;
       this.spinnerMessage = '';
@@ -141,7 +154,7 @@ export class Output {
     }
   };
 
-  time = async <T>(label: string | ((r?: T) => string), fn: Promise<T> | (() => Promise<T>)) => {
+  time = async <T>(label: string | ((r?: T) => string), fn: Promise<T> | (() => Promise<T>)): Promise<T> => {
     const promise = typeof fn === 'function' ? fn() : fn;
 
     if (this.debugEnabled) {
@@ -151,8 +164,9 @@ export class Output {
       const r = await promise;
       const endLabel = typeof label === 'function' ? label(r) : label;
       const duration = Date.now() - start;
-      const durationPretty = duration < 1000 ? `${duration}ms` : `${(duration / 1000).toFixed(2)}s`;
+      const durationPretty = duration < 1000 ? `${duration.toString()}ms` : `${(duration / 1000).toFixed(2)}s`;
       this.debug(`${endLabel} ${chalk.gray(`[${durationPretty}]`)}`);
+
       return r;
     }
 
@@ -182,12 +196,14 @@ function getNoColor(noColorArg: boolean | undefined): boolean {
   // NO_COLOR: the standard we want to support https://no-color.org/
   // noColorArg: the `--no-color` arg passed to the CLI command
   const noColor = process.env.FORCE_COLOR === '0' || process.env.NO_COLOR === '1' || noColorArg;
-  return !!noColor;
+
+  return Boolean(noColor);
 }
 
 function debugToString(debug: unknown): string {
   if (typeof debug === 'string') {
     return debug;
   }
+
   return inspect(debug);
 }

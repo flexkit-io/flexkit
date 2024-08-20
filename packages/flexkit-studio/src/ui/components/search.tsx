@@ -65,7 +65,7 @@ export function Search({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(searchRequest);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { results, error, isLoading } = useSearch(projectId, searchQuery);
+  const { results, isLoading } = useSearch(projectId, searchQuery);
 
   function handleOnSearchChange(q: string): void {
     // TODO: Add debounce
@@ -130,7 +130,7 @@ export function Search({
             <CommandEmpty>{noResultsMsg}</CommandEmpty>
             <CommandList>
               <CommandGroup>
-                {results.length > 0 && <CommandItem className="fk-hidden" value="-"></CommandItem>}
+                {results.length > 0 && <CommandItem className="fk-hidden" value="-" />}
                 {results.map((item) => (
                   <CommandItem
                     className="fk-flex"

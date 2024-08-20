@@ -5,7 +5,7 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { X as CloseIcon } from 'lucide-react';
 import { DrawerModalContext } from '../drawer-modal-context';
 import { Button } from '../primitives/button';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '../primitives/drawer';
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '../primitives/drawer';
 import { Separator } from '../primitives/separator';
 import { Skeleton } from '../primitives/skeleton';
 
@@ -90,6 +90,7 @@ export default function DrawerModal({
           <DrawerTitle className="fk-w-full">
             {title ? title : <Skeleton className="fk-h-5 fk-w-[120px]" />}
           </DrawerTitle>
+          <DrawerDescription className="fk-sr-only">{title ? title : 'Loading form'}</DrawerDescription>
           {actions}
           <Button className="" onClick={handleClose} size="icon" variant="ghost">
             <CloseIcon className="fk-h-4 fk-w-4" />

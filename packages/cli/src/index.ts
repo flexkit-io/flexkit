@@ -20,7 +20,7 @@ import parseArguments from './util/parse-args';
 import { APIError } from './util/error-types';
 import { errorOutput, highlightOutput, paramOutput, Output } from './util/output';
 import hp from './util/humanize-path';
-import pkg from './util/pkg';
+import { getPackageJSON } from './util/pkg';
 import { help } from './args';
 import * as configFiles from './util/config/files';
 import type { AuthConfig, FlexkitConfig, GlobalConfig } from './types';
@@ -178,7 +178,7 @@ const main = async () => {
   // Handle `--version` directly
   if (argv.flags['--version']) {
     // eslint-disable-next-line no-console
-    console.log(pkg.version);
+    console.log(getPackageJSON().version);
 
     return 0;
   }

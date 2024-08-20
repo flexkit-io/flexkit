@@ -5,7 +5,7 @@ export const loginCommand: Command = {
   description: 'Authenticate using your email or team id.',
   arguments: [
     {
-      name: 'email or team id',
+      name: 'email or project id',
       required: false,
     },
   ],
@@ -13,6 +13,20 @@ export const loginCommand: Command = {
     {
       name: 'github',
       description: 'Log in with GitHub',
+      shorthand: null,
+      type: String,
+      deprecated: false,
+    },
+    {
+      name: 'google',
+      description: 'Log in with Google',
+      shorthand: null,
+      type: String,
+      deprecated: false,
+    },
+    {
+      name: 'bitbucket',
+      description: 'Log in with Bitbucket',
       shorthand: null,
       type: String,
       deprecated: false,
@@ -27,7 +41,7 @@ export const loginCommand: Command = {
   ],
   examples: [
     {
-      name: 'Log into the Vercel platform',
+      name: 'Log into the Flexkit platform',
       value: `flexkit login`,
     },
     {

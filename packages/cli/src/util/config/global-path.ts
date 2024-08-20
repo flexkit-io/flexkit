@@ -1,12 +1,12 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import XDGAppPaths from 'xdg-app-paths';
 import parseArguments from '../parse-args';
 
 // Returns whether a directory exists
-export function isDirectory(path: string): boolean {
+export function isDirectory(dirPath: string): boolean {
   try {
-    return fs.lstatSync(path).isDirectory();
+    return fs.lstatSync(dirPath).isDirectory();
   } catch (_) {
     // We don't care which kind of error occured, it isn't a directory anyway.
     return false;
@@ -15,21 +15,17 @@ export function isDirectory(path: string): boolean {
 
 // Returns in which directory the config should be present
 export default function getGlobalPathConfig(): string {
-  let customPath: string | undefined;
-
-  const argv = parseArguments(process.argv.slice(2));
-  customPath = argv.flags['--global-config'];
-
+  const argv = parseArguments(process.argv.slice(2), {}, { permissive: true });
+  const customPath = argv.flags['--global-config'];
   const flexkitDirectories = XDGAppPaths({ name: 'Flexkit' }).dataDirs();
-
   const possibleConfigPaths = [...flexkitDirectories];
 
   // The customPath flag is the preferred location,
   // followed by the Flexkit directory,
   // If none of those exist, use the Flexkit directory.
   return (
-    (customPath && path.resolve(customPath)) ||
-    possibleConfigPaths.find((configPath) => isDirectory(configPath)) ||
+    (customPath && path.resolve(customPath)) ??
+    possibleConfigPaths.find((configPath) => isDirectory(configPath)) ??
     flexkitDirectories[0]
   );
 }

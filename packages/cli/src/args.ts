@@ -18,7 +18,7 @@ export const help = (): string => `
       inspect              [id]        Displays information related to a deployment
       link                 [path]      Link local directory to a Flexkit Project
       ls | list            [app]       Lists deployments
-      login                [email]     Logs into your account or creates a new one
+      login                [email]     Logs into your Flexkit's account
       logout                           Logs out of your account
       promote              [url|id]    Promote an existing deployment to current
       pull                 [path]      Pull your Project Settings from the cloud

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { PackageJson } from 'type-fest';
+import cmd from './output/cmd';
 
 const cache = new Map();
 
@@ -19,7 +20,7 @@ function captureCallerCallSite(): NodeJS.CallSite {
   return callSite;
 }
 
-function getPackageJSON(): PackageJson {
+export function getPackageJSON(): PackageJson {
   const callSite = captureCallerCallSite();
   // Get the file name of where this function was called. It is guaranteed that
   // the only way for `getFileName` to return `undefined` is if this function is
@@ -45,4 +46,19 @@ function getPackageJSON(): PackageJson {
   return packageJSON as PackageJson;
 }
 
-export default getPackageJSON();
+export function getPackageName(): string {
+  return getPackageJSON().name ?? '';
+}
+
+/**
+ * Returns the package name with subcommand(s)
+ * as a suffix such as `vercel env pull`.
+ */
+export function getCommandName(subcommands?: string): string {
+  let flexkit = 'flexkit';
+
+  if (subcommands) {
+    flexkit = `${flexkit} ${subcommands}`;
+  }
+  return cmd(flexkit);
+}

@@ -1,7 +1,7 @@
 import arg from 'arg';
 import getCommonArgs from './arg-common';
 
-type Handler = (value: string) => any;
+type Handler = (value: string) => unknown;
 
 interface Spec {
   [key: string]: string | Handler | [Handler];
@@ -22,13 +22,17 @@ export default function parseArguments<T extends Spec>(
   args: string[],
   flagsSpecification: T = {} as T,
   parserOptions: ParserOptions = {}
-) {
-  // currently parseArgument (and arg as a whole) will hang
-  // if there are cycles in the flagsSpecification
-  const { _: positional, ...rest } = arg(Object.assign({}, getCommonArgs(), flagsSpecification), {
-    ...parserOptions,
-    argv: args,
-  });
+): {
+  args: string[];
+  flags: Omit<arg.Result<T>, '_'>;
+} {
+  const { _: positional, ...rest } = arg(
+    { ...getCommonArgs(), ...flagsSpecification },
+    {
+      ...parserOptions,
+      argv: args,
+    }
+  );
 
   return { args: positional, flags: rest };
 }

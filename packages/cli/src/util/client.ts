@@ -21,8 +21,7 @@ export interface FetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | JSONObject;
   json?: boolean;
   retry?: RetryOptions;
-  useCurrentTeam?: boolean;
-  accountId?: string;
+  projectId?: string;
 }
 
 export interface ClientOptions extends Stdio {
@@ -105,16 +104,8 @@ export default class Client extends EventEmitter implements Stdio {
   private _fetch(_url: string, opts: FetchOptions = {}) {
     const url = new URL(_url, this.apiUrl);
 
-    if (opts.accountId || opts.useCurrentTeam !== false) {
-      if (opts.accountId) {
-        if (opts.accountId.startsWith('team_')) {
-          url.searchParams.set('teamId', opts.accountId);
-        } else {
-          url.searchParams.delete('teamId');
-        }
-      } else if (opts.useCurrentTeam !== false && this.config.currentTeam) {
-        url.searchParams.set('teamId', this.config.currentTeam);
-      }
+    if (opts.projectId) {
+      // TODO: change the URL to include the project ID as a subdomain
     }
 
     const headers = new Headers(opts.headers);

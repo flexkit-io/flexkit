@@ -4,6 +4,7 @@ import { noBorderChars } from '../util/output/table';
 
 const INDENT = ' '.repeat(2);
 const NEWLINE = '\n';
+const ISOTYPE = '𝗫';
 
 export type PrimitiveConstructor = typeof String | typeof Boolean | typeof Number;
 
@@ -166,7 +167,7 @@ export function outputArrayToString(outputArray: (string | null)[]): string {
  * Example: `flexkit login [path] [options]`
  */
 export function buildCommandSynopsisLine(command: Command): string {
-  const line: string[] = [INDENT, chalk.bold('flexkit'), chalk.bold(command.name)];
+  const line: string[] = [INDENT, ISOTYPE, chalk.bold('flexkit'), chalk.bold(command.name)];
 
   if (command.arguments.length > 0) {
     for (const argument of command.arguments) {
