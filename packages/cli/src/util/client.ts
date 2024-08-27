@@ -1,19 +1,27 @@
 import type { Agent } from 'node:http';
 import type * as tty from 'node:tty';
+import { EventEmitter } from 'node:events';
+import { URL } from 'node:url';
 import { gray } from 'chalk';
 import checkbox from '@inquirer/checkbox';
 import confirm from '@inquirer/confirm';
 import expand from '@inquirer/expand';
 import input from '@inquirer/input';
 import select from '@inquirer/select';
-import { EventEmitter } from 'events';
-import { URL } from 'url';
-import { AuthConfig, FlexkitConfig, GlobalConfig, JSONObject, Stdio, ReadableTTY, PaginationOptions } from '../types';
-import retry, { RetryFunction, Options as RetryOptions } from 'async-retry';
+import retry, { type RetryFunction, type Options as RetryOptions } from 'async-retry';
 import fetch, { Headers } from 'node-fetch';
 import type { BodyInit, RequestInit, Response } from 'node-fetch';
+import type {
+  AuthConfig,
+  FlexkitConfig,
+  GlobalConfig,
+  JSONObject,
+  Stdio,
+  ReadableTTY,
+  PaginationOptions,
+} from '../types';
 import userAgent from './user-agent';
-import { Output } from './output/create-output';
+import type { Output } from './output/create-output';
 import responseError from './error-utils';
 import sleep from './sleep';
 
@@ -27,6 +35,7 @@ export interface FetchOptions extends Omit<RequestInit, 'body'> {
 export interface ClientOptions extends Stdio {
   argv: string[];
   apiUrl: string;
+  authUrl: string;
   authConfig: AuthConfig;
   output: Output;
   config: GlobalConfig;
@@ -35,13 +44,14 @@ export interface ClientOptions extends Stdio {
   agent?: Agent;
 }
 
-export const isJSONObject = (v: any): v is JSONObject => {
-  return v && typeof v == 'object' && v.constructor === Object;
+export const isJSONObject = (v: object): v is JSONObject => {
+  return typeof v === 'object' && v.constructor === Object;
 };
 
 export default class Client extends EventEmitter implements Stdio {
   argv: string[];
   apiUrl: string;
+  authUrl: string;
   authConfig: AuthConfig;
   stdin: ReadableTTY;
   stdout: tty.WriteStream;
@@ -65,6 +75,7 @@ export default class Client extends EventEmitter implements Stdio {
     this.agent = opts.agent;
     this.argv = opts.argv;
     this.apiUrl = opts.apiUrl;
+    this.authUrl = opts.authUrl;
     this.authConfig = opts.authConfig;
     this.stdin = opts.stdin;
     this.stdout = opts.stdout;
@@ -80,20 +91,20 @@ export default class Client extends EventEmitter implements Stdio {
       style: { answer: gray },
     };
     this.input = {
-      text: (opts: Parameters<typeof input>[0]) =>
-        input({ theme, ...opts }, { input: this.stdin, output: this.stderr }),
-      checkbox: <T>(opts: Parameters<typeof checkbox<T>>[0]) =>
-        checkbox<T>({ theme, ...opts }, { input: this.stdin, output: this.stderr }),
-      expand: (opts: Parameters<typeof expand>[0]) =>
-        expand({ theme, ...opts }, { input: this.stdin, output: this.stderr }),
-      confirm: (opts: Parameters<typeof confirm>[0]) =>
-        confirm({ theme, ...opts }, { input: this.stdin, output: this.stderr }),
-      select: <T>(opts: Parameters<typeof select<T>>[0]) =>
-        select<T>({ theme, ...opts }, { input: this.stdin, output: this.stderr }),
+      text: (options: Parameters<typeof input>[0]) =>
+        input({ theme, ...options }, { input: this.stdin, output: this.stderr }),
+      checkbox: <T>(options: Parameters<typeof checkbox<T>>[0]) =>
+        checkbox<T>({ theme, ...options }, { input: this.stdin, output: this.stderr }),
+      expand: (options: Parameters<typeof expand>[0]) =>
+        expand({ theme, ...options }, { input: this.stdin, output: this.stderr }),
+      confirm: (options: Parameters<typeof confirm>[0]) =>
+        confirm({ theme, ...options }, { input: this.stdin, output: this.stderr }),
+      select: <T>(options: Parameters<typeof select<T>>[0]) =>
+        select<T>({ theme, ...options }, { input: this.stdin, output: this.stderr }),
     };
   }
 
-  retry<T>(fn: RetryFunction<T>, { retries = 3, maxTimeout = Infinity } = {}) {
+  retry<T>(fn: RetryFunction<T>, { retries = 3, maxTimeout = Infinity } = {}): Promise<T> {
     return retry(fn, {
       retries,
       maxTimeout,
@@ -101,7 +112,7 @@ export default class Client extends EventEmitter implements Stdio {
     });
   }
 
-  private _fetch(_url: string, opts: FetchOptions = {}) {
+  private _fetch(_url: string, opts: FetchOptions = {}): Promise<Response> {
     const url = new URL(_url, this.apiUrl);
 
     if (opts.projectId) {
@@ -121,6 +132,7 @@ export default class Client extends EventEmitter implements Stdio {
       body = JSON.stringify(opts.body);
       headers.set('content-type', 'application/json; charset=utf-8');
     } else {
+      // eslint-disable-next-line prefer-destructuring -- body is previously defined
       body = opts.body;
     }
 
@@ -129,10 +141,10 @@ export default class Client extends EventEmitter implements Stdio {
     return this.output.time(
       (res) => {
         if (res) {
-          return `#${requestId} ← ${res.status} ${res.statusText}: ${res.headers.get('x-vercel-id')}`;
-        } else {
-          return `#${requestId} → ${opts.method || 'GET'} ${url.href}`;
+          return `#${requestId.toString()} ← ${res.status.toString()} ${res.statusText}: ${res.headers.get('x-vercel-id') ?? ''}`;
         }
+
+        return `#${requestId.toString()} → ${opts.method ?? 'GET'} ${url.href}`;
       },
       fetch(url, { agent: this.agent, ...opts, headers, body })
     );
@@ -160,6 +172,7 @@ export default class Client extends EventEmitter implements Stdio {
       }
 
       const contentType = res.headers.get('content-type');
+
       if (!contentType) {
         return null;
       }
@@ -185,12 +198,13 @@ export default class Client extends EventEmitter implements Stdio {
       }
       const res = await this.fetch<T & { pagination: PaginationOptions }>(endpoint.href, opts);
       yield res;
-      next = res.pagination?.next;
+      // eslint-disable-next-line prefer-destructuring -- next is previously defined
+      next = res.pagination.next;
     } while (next);
   }
 
-  _onRetry = (error: Error) => {
-    this.output.debug(`Retrying: ${error}\n${error.stack}`);
+  _onRetry = (error: Error): void => {
+    this.output.debug(`Retrying: ${error.toString()}\n${error.stack ?? ''}`);
   };
 
   get cwd(): string {

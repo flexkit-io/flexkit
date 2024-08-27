@@ -1,5 +1,5 @@
 import util from 'node:util';
-import { Response } from 'node-fetch';
+import type { Response } from 'node-fetch';
 import { APIError } from './error-types';
 
 /**
@@ -7,7 +7,7 @@ import { APIError } from './error-types';
  *
  * @param obj - A possible object
  */
-export const isObject = (obj: unknown): obj is Record<string, unknown> => typeof obj === 'object' && obj !== null;
+export const isObject = (obj: unknown): obj is { [key: string]: unknown } => typeof obj === 'object' && obj !== null;
 
 /**
  * A type guard for `try...catch` errors.
@@ -56,7 +56,7 @@ export const normalizeError = (error: unknown): Error => {
   return isErrorLike(error) ? Object.assign(new Error(errorMessage), error) : new Error(errorMessage);
 };
 
-export default async function responseError(res: Response, fallbackMessage = null) {
+export default async function responseError(res: Response, fallbackMessage = null): Promise<APIError> {
   let bodyError;
 
   if (!res.ok) {
@@ -71,6 +71,11 @@ export default async function responseError(res: Response, fallbackMessage = nul
     bodyError = body ? body.error : {};
   }
 
-  const msg = bodyError?.message || fallbackMessage || 'Response Error';
+  const msg = bodyError?.message ?? fallbackMessage ?? 'Response Error';
+
   return new APIError(msg, res, bodyError);
+}
+
+export function isAPIError(v: unknown): v is APIError {
+  return isError(v) && 'status' in v;
 }

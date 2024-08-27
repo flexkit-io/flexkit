@@ -1,20 +1,20 @@
-import { Response } from 'node-fetch';
+import type { Response } from 'node-fetch';
 
 export class APIError extends Error {
   status: number;
   serverMessage: string;
-  [key: string]: any;
+  [key: string]: unknown;
 
   constructor(message: string, response: Response, body?: object) {
     super();
-    this.message = `${message} (${response.status})`;
+    this.message = `${message} (${response.status.toString()})`;
     this.status = response.status;
     this.serverMessage = message;
 
     if (body) {
       for (const field of Object.keys(body)) {
         if (field !== 'message') {
-          // @ts-ignore
+          // @ts-expect-error -- body could be anything
           this[field] = body[field];
         }
       }
@@ -70,12 +70,32 @@ export class CantFindConfig extends CliError<'CANT_FIND_CONFIG', { paths: string
   }
 }
 
-export class WorkingDirectoryDoesNotExist extends CliError<'CWD_DOES_NOT_EXIST', {}> {
+export class WorkingDirectoryDoesNotExist extends CliError<'CWD_DOES_NOT_EXIST', object> {
   constructor() {
     super({
       code: 'CWD_DOES_NOT_EXIST',
       meta: {},
       message: 'The current working directory does not exist.',
+    });
+  }
+}
+
+export class AccountNotFound extends CliError<'ACCOUNT_NOT_FOUND', { email: string }> {
+  constructor(email: string, message = `Please sign up: https://flexkit.io/signup`) {
+    super({
+      code: 'ACCOUNT_NOT_FOUND',
+      message,
+      meta: { email },
+    });
+  }
+}
+
+export class InvalidEmail extends CliError<'INVALID_EMAIL', { email: string }> {
+  constructor(email: string, message = 'Invalid Email') {
+    super({
+      code: 'INVALID_EMAIL',
+      message,
+      meta: { email },
     });
   }
 }

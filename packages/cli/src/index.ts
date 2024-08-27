@@ -32,6 +32,7 @@ const FLEXKIT_DIR = getGlobalPathConfig();
 const FLEXKIT_CONFIG_PATH = configFiles.getConfigFilePath();
 const FLEXKIT_AUTH_CONFIG_PATH = configFiles.getAuthConfigFilePath();
 const API_URL = 'https://api.flexkit.io';
+const AUTH_URL = 'https://flexkit.io';
 let { isTTY } = process.stdout;
 let client: Client;
 let output: Output;
@@ -157,6 +158,7 @@ const main = async () => {
   client = new Client({
     agent: new ProxyAgent({ keepAlive: true }),
     apiUrl: API_URL,
+    authUrl: AUTH_URL,
     stdin: process.stdin,
     stdout: process.stdout,
     stderr: output.stream,

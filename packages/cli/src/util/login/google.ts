@@ -4,7 +4,7 @@ import doOauthLogin from './oauth';
 import type { LoginResult } from './types';
 
 export default function doGoogleLogin(client: Client, outOfBand?: boolean): Promise<LoginResult> {
-  const url = new URL('/auth/login/google', 'https://flexkit.io');
+  const url = new URL('/auth/login/google', client.authUrl);
 
   return doOauthLogin(client, url, 'Google', outOfBand);
 }

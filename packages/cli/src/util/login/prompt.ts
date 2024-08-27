@@ -1,7 +1,7 @@
 import type Client from '../client';
 import listInput from '../input/list';
 import type { LoginResult } from './types';
-// import doEmailLogin from './email';
+import doEmailLogin from './email';
 import doGithubLogin from './github';
 import doGoogleLogin from './google';
 import doBitbucketLogin from './bitbucket';
@@ -30,7 +30,7 @@ export default async function prompt(client: Client, outOfBand?: boolean): Promi
     result = await doBitbucketLogin(client, outOfBand);
   } else if (choice === 'email') {
     const email = await readInput(client, 'Enter your email address:');
-    // result = await doEmailLogin(client, email);
+    result = await doEmailLogin(client, email);
   }
 
   return result;

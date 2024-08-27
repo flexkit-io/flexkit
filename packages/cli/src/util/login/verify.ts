@@ -9,7 +9,7 @@ export default function verify(
   verificationToken: string,
   provider: string
 ): Promise<LoginResultSuccess> {
-  const url = new URL('/auth/login/session', 'https://flexkit.io');
+  const url = new URL('/auth/login/session', client.authUrl);
   url.searchParams.set('code', verificationToken);
 
   // Set the "name" of the Token that will be created

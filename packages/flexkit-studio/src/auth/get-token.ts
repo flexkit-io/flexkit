@@ -2,8 +2,8 @@
 
 import { apiPaths } from '../core/api-paths';
 
-export async function getToken(code: string, projectId = ''): Promise<{ sid: string }> {
-  const url = new URL(apiPaths(projectId).sessionId);
+export async function getToken(code: string): Promise<{ sid: string }> {
+  const url = new URL(apiPaths().sessionId);
   url.searchParams.set('code', code);
 
   const token: { sid: string } = await fetch(url.toString(), {
