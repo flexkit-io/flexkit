@@ -1,10 +1,13 @@
 const domain = 'flexkit.io';
-const baseUrl = (projectId?: string): string =>
-  projectId ? `https://${projectId}.api.${domain}` : `https://${domain}`;
+export const baseApiUrl = `https://${domain}`;
+const baseProjectApiUrl = (projectId?: string): string =>
+  projectId ? `https://${projectId}.api.${domain}` : baseApiUrl;
 
 interface ApiPaths {
   authProviders: string;
   currentUser: string;
+  loginOtpConfirm: string;
+  loginOtpSend: string;
   logout: (basePath: string) => string;
   search: string;
   sessionId: string;
@@ -12,10 +15,12 @@ interface ApiPaths {
 
 export function apiPaths(projectId = ''): ApiPaths {
   return {
-    authProviders: `${baseUrl(projectId)}/auth/providers`,
+    authProviders: `${baseProjectApiUrl(projectId)}/auth/providers`,
     currentUser: `/api/flexkit/${projectId}/users/me`,
+    loginOtpConfirm: `${baseProjectApiUrl(projectId)}/auth/otp/confirm`,
+    loginOtpSend: `${baseProjectApiUrl(projectId)}/auth/otp/send`,
     logout: (basePath: string) => `/api/flexkit/${projectId}/auth/logout?redirect=/${basePath}/${projectId}`,
     search: `/api/flexkit/${projectId}/search`,
-    sessionId: `${baseUrl(projectId)}/api/auth/login/session`,
+    sessionId: `${baseProjectApiUrl(projectId)}/api/auth/login/session`,
   };
 }

@@ -98,7 +98,7 @@ const FormControl = React.forwardRef<React.ElementRef<typeof Slot>, React.Compon
 
     return (
       <Slot
-        aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
+        aria-describedby={!error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`}
         aria-invalid={Boolean(error)}
         id={formItemId}
         ref={ref}
@@ -120,7 +120,7 @@ const FormDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
 );
 FormDescription.displayName = 'FormDescription';
 
-type ExtendedError = {
+type ExtendedError = FieldError & {
   error?: {
     value: {
       message: string;
@@ -132,7 +132,15 @@ type ExtendedError = {
 const FormMessage = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, children, ...props }, ref) => {
     const { error, formMessageId } = useFormField() as unknown as ExtendedError;
-    const body = error?.value ? String(error.value.message) : children;
+    let body = children;
+
+    if (error && 'message' in error) {
+      body = error.message as string;
+    }
+
+    if (error?.value) {
+      body = error.value.message;
+    }
 
     if (!body) {
       return null;

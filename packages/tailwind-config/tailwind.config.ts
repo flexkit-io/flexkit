@@ -1,5 +1,6 @@
 import { fontFamily } from 'tailwindcss/defaultTheme';
 import type { Config } from 'tailwindcss';
+import link from '../cli/src/util/output/link';
 
 const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}', '../../apps/*/app/**/*.{js,ts,jsx,tsx}'],
@@ -21,6 +22,7 @@ const config: Config = {
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        link: 'hsl(var(--link))',
         overlay: 'hsl(var(--overlay))',
         primary: {
           DEFAULT: 'hsl(var(--primary))',
@@ -33,6 +35,10 @@ const config: Config = {
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
+        },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',

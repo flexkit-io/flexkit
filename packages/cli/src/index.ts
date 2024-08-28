@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+
+// eslint-disable-next-line import/order -- this import is needed before any other imports
 import { isErrnoException, isError, errorToString } from './util/error-utils';
 
 try {
@@ -6,25 +8,25 @@ try {
   process.cwd();
 } catch (err: unknown) {
   if (isError(err) && err.message.includes('uv_cwd')) {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- Log to stderr
     console.error('Error: The current working directory does not exist.');
     process.exit(1);
   }
 }
 
+/* eslint import/first: 0 -- the cwd check need to be before these imports */
 import { mkdirp } from 'fs-extra';
 import { ProxyAgent } from 'proxy-agent';
 import getGlobalPathConfig from './util/config/global-path';
 import { defaultAuthConfig, defaultGlobalConfig } from './util/config/default';
 import parseArguments from './util/parse-args';
-import { APIError } from './util/error-types';
 import { errorOutput, highlightOutput, paramOutput, Output } from './util/output';
 import hp from './util/humanize-path';
 import { getPackageJSON } from './util/pkg';
 import { help } from './args';
 import * as configFiles from './util/config/files';
 import type { AuthConfig, FlexkitConfig, GlobalConfig } from './types';
-import { CantFindConfig, CantParseJSONFile } from './util/error-types';
+import { APIError, CantFindConfig, CantParseJSONFile } from './util/error-types';
 import Client from './util/client';
 import getConfig from './util/get-config';
 
@@ -36,20 +38,23 @@ const AUTH_URL = 'https://flexkit.io';
 let { isTTY } = process.stdout;
 let client: Client;
 let output: Output;
-let debug: (s: string) => void = () => {};
+let debug: (s: string) => void = () => {
+  /**/
+};
 
-const main = async () => {
+const main = async (): Promise<number> => {
   let argv;
 
   try {
     argv = parseArguments(process.argv, {}, { permissive: true });
   } catch (err: unknown) {
+    let error = err;
     if (typeof err === 'string') {
-      err = new Error(err);
+      error = new Error(err);
     }
 
-    const error = err as Error;
-    errorOutput(error.message);
+    const parseError = error as Error;
+    errorOutput(parseError.message);
 
     return 1;
   }
@@ -62,6 +67,7 @@ const main = async () => {
     noColor: isNoColor,
   });
 
+  // eslint-disable-next-line prefer-destructuring -- debug is previously defined
   debug = output.debug;
 
   const localConfigPath = argv.flags['--local-config'];
@@ -78,9 +84,9 @@ const main = async () => {
       output.error(`Couldn't find a project configuration file at \n    ${localConfig.meta.paths.join(' or\n    ')}`);
 
       return 1;
-    } else {
-      localConfig = undefined;
     }
+
+    localConfig = undefined;
   }
 
   if (localConfig instanceof Error) {
@@ -110,10 +116,10 @@ const main = async () => {
       config = defaultGlobalConfig;
       try {
         configFiles.writeToConfigFile(config);
-      } catch (err: unknown) {
+      } catch (error: unknown) {
         output.error(
           `An unexpected error occurred while trying to save the config to "${hp(FLEXKIT_CONFIG_PATH)}" ${errorToString(
-            err
+            error
           )}`
         );
         return 1;
@@ -136,11 +142,11 @@ const main = async () => {
       authConfig = defaultAuthConfig;
       try {
         configFiles.writeToAuthConfigFile(authConfig);
-      } catch (err: unknown) {
+      } catch (error: unknown) {
         output.error(
           `An unexpected error occurred while trying to write the auth config to "${hp(
             FLEXKIT_AUTH_CONFIG_PATH
-          )}" ${errorToString(err)}`
+          )}" ${errorToString(error)}`
         );
         return 1;
       }
@@ -174,12 +180,14 @@ const main = async () => {
   //
   //  * a path to deploy (as in: `vercel path/`)
   //  * a subcommand (as in: `vercel ls`)
+  // eslint-disable-next-line prefer-destructuring -- this way is easier to read
   const subcommand = argv.args[2];
+  // eslint-disable-next-line prefer-destructuring -- this way is easier to read
   const subSubCommand = argv.args[3];
 
   // Handle `--version` directly
   if (argv.flags['--version']) {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- Log to stdout
     console.log(getPackageJSON().version);
 
     return 0;

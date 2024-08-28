@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/primitives/button';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { apiPaths } from '../core/api-paths';
 import { useConfig } from '../core/config/config-context';
 import { useAuth } from './auth-context';
+import EmailLogin from './email';
 
 type Provider = {
   name: string;
@@ -29,6 +30,7 @@ type Provider = {
 export function Login({ projectId }: { projectId: string }): JSX.Element {
   const { projects } = useConfig();
   const [selectedProject, setSelectedProject] = useState(projects[0]);
+  const [isEmailLogin, setIsEmailLogin] = useState(false);
   const { data, error, isLoading } = useSWR(apiPaths(projectId).authProviders, (url: string) =>
     fetch(url, { mode: 'cors' }).then((res) => res.json() as Promise<{ providers: Provider[] }>)
   );
@@ -85,23 +87,15 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                 </Select>
               </div>
             ) : null}
-            <p className="fk-mt-2 fk-mb-2 fk-text-sm fk-text-left fk-text-muted-foreground">Choose login provider</p>
-            <div className="fk-flex fk-flex-col fk-space-y-6">
-              {data.providers.map((provider: Provider) => (
-                <Fragment key={provider.name}>
-                  {provider.button.variant === 'link' ? (
-                    <a
-                      className="fk-text-sm fk-text-center"
-                      href={composeLoginHref({
-                        url: provider.url,
-                        projectId: selectedProject.projectId,
-                        basePath: '/api/flexkit/get-token',
-                        fromPath,
-                      })}
-                    >
-                      {provider.title}
-                    </a>
-                  ) : (
+            {isEmailLogin ? (
+              <EmailLogin projectId={projectId} setIsEmailLogin={setIsEmailLogin} />
+            ) : (
+              <>
+                <p className="fk-mt-2 fk-mb-2 fk-text-sm fk-text-left fk-text-muted-foreground">
+                  Choose login provider
+                </p>
+                <div className="fk-flex fk-flex-col fk-space-y-6">
+                  {data.providers.map((provider: Provider) => (
                     <Button
                       asChild
                       className={`${provider.button.color} ${provider.button.backgroundColor} hover:${provider.button.colorHover} hover:${provider.button.backgroundColorHover}`}
@@ -127,10 +121,19 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                         {provider.title}
                       </a>
                     </Button>
-                  )}
-                </Fragment>
-              ))}
-            </div>
+                  ))}
+                  <Button
+                    className="!fk-mt-4 fk-text-sm fk-text-center fk-text-link"
+                    onClick={() => {
+                      setIsEmailLogin(true);
+                    }}
+                    variant="link"
+                  >
+                    Continue with Email →
+                  </Button>
+                </div>
+              </>
+            )}
             <div className="fk-flex fk-flex-col fk-items-center fk-pt-8">
               <svg className="fk-w-[7rem]" fill="none" viewBox="0 0 191 42" xmlns="http://www.w3.org/2000/svg">
                 <path
