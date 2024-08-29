@@ -1,15 +1,11 @@
 import arg from 'arg';
-import getCommonArgs from './arg-common';
-
-type Handler = (value: string) => unknown;
-
-interface Spec {
-  [key: string]: string | Handler | [Handler];
-}
+import commonArgs from './arg-common';
 
 type ParserOptions = {
   permissive?: boolean;
 };
+
+type CommonArgs = typeof commonArgs;
 
 /**
  * Parses command line arguments.
@@ -18,16 +14,16 @@ type ParserOptions = {
  * It takes three arguments: `args`, `flagsSpecification`, and `parserOptions`.
  * It returns an object with two keys: `{args, flags}`
  */
-export default function parseArguments<T extends Spec>(
+export default function parseArguments(
   args: string[],
-  flagsSpecification: T = {} as T,
+  flagsSpecification: CommonArgs | object = {},
   parserOptions: ParserOptions = {}
 ): {
   args: string[];
-  flags: Omit<arg.Result<T>, '_'>;
+  flags: Omit<arg.Result<CommonArgs>, '_'>;
 } {
   const { _: positional, ...rest } = arg(
-    { ...getCommonArgs(), ...flagsSpecification },
+    { ...commonArgs, ...flagsSpecification },
     {
       ...parserOptions,
       argv: args,

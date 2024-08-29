@@ -22,13 +22,15 @@ import { defaultAuthConfig, defaultGlobalConfig } from './util/config/default';
 import parseArguments from './util/parse-args';
 import { errorOutput, highlightOutput, paramOutput, Output } from './util/output';
 import hp from './util/humanize-path';
-import { getPackageJSON } from './util/pkg';
+import { getPackageJSON, getCommandName } from './util/pkg';
 import { help } from './args';
 import * as configFiles from './util/config/files';
 import type { AuthConfig, FlexkitConfig, GlobalConfig } from './types';
 import { APIError, CantFindConfig, CantParseJSONFile } from './util/error-types';
 import Client from './util/client';
 import getConfig from './util/get-config';
+import loginCommand from './commands/login';
+import doLoginPrompt from './util/login/prompt';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
 const FLEXKIT_CONFIG_PATH = configFiles.getConfigFilePath();
@@ -176,6 +178,13 @@ const main = async (): Promise<number> => {
     argv: process.argv,
   });
 
+  // The `--cwd` flag is respected for all sub-commands
+  if (argv.flags['--cwd']) {
+    client.cwd = argv.flags['--cwd'];
+  }
+
+  const { cwd } = client;
+
   // The second argument to the command can be:
   //
   //  * a path to deploy (as in: `vercel path/`)
@@ -197,21 +206,58 @@ const main = async (): Promise<number> => {
   const bareHelpOption = !subcommand && argv.flags['--help'];
   const bareHelpSubcommand = subcommand === 'help' && !subSubCommand;
 
-  if (bareHelpOption || bareHelpSubcommand) {
+  if (bareHelpOption ?? bareHelpSubcommand) {
     output.print(help());
 
     return 2;
+  }
+
+  const subcommandsWithoutToken = ['login', 'logout', 'help', 'init'];
+
+  // Prompt for login if there is no current token
+  if (
+    !authConfig.token &&
+    !client.argv.includes('-h') &&
+    !client.argv.includes('--help') &&
+    !argv.flags['--token'] &&
+    subcommand &&
+    !subcommandsWithoutToken.includes(subcommand)
+  ) {
+    if (isTTY) {
+      output.log(`No existing credentials found. Please log in:`);
+      const result = await doLoginPrompt(client);
+
+      // The login function failed, so it returned an exit code
+      if (typeof result === 'number') {
+        return result;
+      }
+
+      // When `result` is a string it's the user's authentication token.
+      // It needs to be saved to the configuration file.
+      client.authConfig.token = result.token;
+
+      configFiles.writeToAuthConfigFile(client.authConfig);
+      configFiles.writeToConfigFile(client.config);
+
+      output.debug(`Saved credentials in "${hp(FLEXKIT_DIR)}"`);
+    } else {
+      output.prettyError({
+        message: `No existing credentials found. Please run ${getCommandName('login')} or pass ${paramOutput('--token')}`,
+        link: 'https://err.sh/vercel/no-credentials-found', // TODO: Update link
+      });
+      return 1;
+    }
   }
 
   let exitCode;
 
   try {
     if (subcommand) {
-      let func: any;
+      let func: ((client: Client) => Promise<number>) | null;
 
       switch (subcommand) {
         case 'login':
-          func = require('./commands/login').default;
+          func = loginCommand;
           break;
         default:
           func = null;
@@ -225,20 +271,18 @@ const main = async (): Promise<number> => {
         return 1;
       }
 
-      if (func.default) {
-        func = func.default;
-      }
-
       exitCode = await func(client);
     }
   } catch (err: unknown) {
     if (isErrnoException(err) && err.code === 'ENOTFOUND') {
       // Error message will look like the following:
       // "request to https://api.vercel.com/v2/user failed, reason: getaddrinfo ENOTFOUND api.vercel.com"
+      // eslint-disable-next-line prefer-named-capture-group -- Changing to a capture group would require a ES2018 target
       const matches = /getaddrinfo ENOTFOUND (.*)$/.exec(err.message || '');
 
-      if (matches && matches[1]) {
-        const hostname = matches[1];
+      if (matches?.[1]) {
+        const [, hostname] = matches;
+
         output.error(
           `The hostname ${highlightOutput(
             hostname
@@ -256,6 +300,7 @@ const main = async (): Promise<number> => {
     if (isErrnoException(err) && err.code === 'ECONNRESET') {
       // Error message will look like the following:
       // request to https://api.vercel.com/v2/user failed, reason: socket hang up
+      // eslint-disable-next-line prefer-named-capture-group -- Changing to a capture group would require a ES2018 target
       const matches = /request to https:\/\/(.*?)\//.exec(err.message || '');
       const hostname = matches?.[1];
       if (hostname) {

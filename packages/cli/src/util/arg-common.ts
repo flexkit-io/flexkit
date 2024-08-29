@@ -25,6 +25,14 @@ const ARG_COMMON = {
   '--api': String,
 
   '--cwd': String,
+
+  '--github': Boolean,
+
+  '--google': Boolean,
+
+  '--bitbucket': Boolean,
+
+  '--oob': Boolean,
 };
 
-export default () => ARG_COMMON;
+export default ARG_COMMON;
