@@ -44,9 +44,11 @@ export interface ClientOptions extends Stdio {
   agent?: Agent;
 }
 
-export const isJSONObject = (v: object): v is JSONObject => {
+export const isJSONObject = (v: BodyInit | JSONObject | undefined): v is JSONObject => {
   return typeof v === 'object' && v.constructor === Object;
 };
+
+type JsonResponse<T> = T extends object ? T : never;
 
 export default class Client extends EventEmitter implements Stdio {
   argv: string[];
@@ -151,8 +153,8 @@ export default class Client extends EventEmitter implements Stdio {
   }
 
   fetch(url: string, opts: FetchOptions & { json: false }): Promise<Response>;
-  fetch<T>(url: string, opts?: FetchOptions): Promise<T>;
-  fetch(url: string, opts: FetchOptions = {}) {
+  fetch<T extends object>(url: string, opts?: FetchOptions): Promise<JsonResponse<T>>;
+  fetch(url: string, opts: FetchOptions = {}): Promise<Response | null> {
     return this.retry(async (bail) => {
       const res = await this._fetch(url, opts);
 
@@ -160,7 +162,9 @@ export default class Client extends EventEmitter implements Stdio {
         const error = await responseError(res);
 
         if (res.status >= 400 && res.status < 500) {
-          return bail(error);
+          bail(error);
+
+          return null;
         }
 
         // Retry
@@ -177,7 +181,7 @@ export default class Client extends EventEmitter implements Stdio {
         return null;
       }
 
-      return contentType.includes('application/json') ? res.json() : res;
+      return contentType.includes('application/json') ? (res.json() as JsonResponse<unknown>) : res;
     }, opts.retry);
   }
 
