@@ -1,5 +1,6 @@
 import type { Readable, Writable } from 'node:stream';
 import type * as tty from 'node:tty';
+
 export interface AuthConfig {
   '// Note'?: string;
   '// Docs'?: string;

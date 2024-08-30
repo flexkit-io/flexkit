@@ -45,7 +45,13 @@ let debug: (s: string) => void = () => {
   /**/
 };
 
-const main = async (): Promise<number> => {
+const main = async (): Promise<number | undefined> => {
+  if (process.env.FORCE_TTY === '1') {
+    isTTY = true;
+    process.stdout.isTTY = true;
+    process.stdin.isTTY = true;
+  }
+
   let argv;
 
   try {
@@ -184,8 +190,6 @@ const main = async (): Promise<number> => {
     client.cwd = argv.flags['--cwd'];
   }
 
-  const { cwd } = client;
-
   // The second argument to the command can be:
   //
   //  * a path to deploy (as in: `vercel path/`)
@@ -235,7 +239,7 @@ const main = async (): Promise<number> => {
 
       // When `result` is a string it's the user's authentication token.
       // It needs to be saved to the configuration file.
-      client.authConfig.token = result.token;
+      client.authConfig.token = result.sid;
 
       configFiles.writeToAuthConfigFile(client.authConfig);
       configFiles.writeToConfigFile(client.config);
@@ -323,7 +327,7 @@ const main = async (): Promise<number> => {
       return 1;
     }
 
-    if (err instanceof APIError && 400 <= err.status && err.status <= 499) {
+    if (err instanceof APIError && err.status >= 400 && err.status <= 499) {
       err.message = err.serverMessage;
       output.prettyError(err);
 
@@ -339,7 +343,7 @@ const main = async (): Promise<number> => {
       output.prettyError(err);
     } else {
       // Otherwise it is an unexpected error and we should show the trace and an unexpected error message
-      output.error(`An unexpected error occurred in ${subcommand}: ${err}`);
+      output.error(`An unexpected error occurred in ${subcommand}: ${err as string}`);
     }
 
     return 1;
@@ -348,44 +352,40 @@ const main = async (): Promise<number> => {
   return exitCode;
 };
 
-const handleRejection = async (err: any) => {
+const handleRejection = (err: unknown): void => {
   debug('handling rejection');
 
   if (err) {
     if (err instanceof Error) {
-      await handleUnexpected(err);
+      handleUnexpected(err);
     } else {
-      // eslint-disable-next-line no-console
-      console.error(errorOutput(`An unexpected rejection occurred\n  ${err}`));
+      // eslint-disable-next-line no-console -- CLI output
+      console.error(errorOutput(`An unexpected rejection occurred\n  ${err as string}`));
     }
   } else {
-    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console -- CLI output
     console.error(errorOutput('An unexpected empty rejection occurred'));
   }
 
   process.exit(1);
 };
 
-const handleUnexpected = async (err: Error) => {
-  const { message } = err;
-
-  // We do not want to render errors about Sentry not being reachable
-  if (message.includes('sentry') && message.includes('ENOTFOUND')) {
-    debug(`Sentry is not reachable: ${err}`);
-    return;
-  }
-
-  // eslint-disable-next-line no-console
-  console.error(errorOutput(`An unexpected error occurred!\n${err.stack}`));
+const handleUnexpected = (err: Error): void => {
+  // eslint-disable-next-line no-console -- CLI output
+  console.error(errorOutput(`An unexpected error occurred!\n${err.stack ?? ''}`));
 
   process.exit(1);
 };
 
-process.on('unhandledRejection', handleRejection);
+process.on('unhandledRejection', (reason) => {
+  handleRejection(reason);
+});
 process.on('uncaughtException', handleUnexpected);
 
 main()
-  .then(async (exitCode) => {
+  .then((exitCode) => {
     process.exitCode = exitCode;
   })
-  .catch(handleUnexpected);
+  .catch((err: unknown) => {
+    handleUnexpected(err as Error);
+  });
