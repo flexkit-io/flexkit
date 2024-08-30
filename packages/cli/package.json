@@ -59,5 +59,9 @@
     "typescript": "^5.3.3",
     "write-json-file": "2.2.0",
     "xdg-app-paths": "8.3.0"
+  },
+  "dependencies": {
+    "@types/bytes": "^3.1.4",
+    "bytes": "^3.1.2"
   }
 }

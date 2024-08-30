@@ -80,6 +80,13 @@ importers:
         version: 5.5.4
 
   packages/cli:
+    dependencies:
+      '@types/bytes':
+        specifier: ^3.1.4
+        version: 3.1.4
+      bytes:
+        specifier: ^3.1.2
+        version: 3.1.2
     devDependencies:
       '@inquirer/checkbox':
         specifier: ^2.4.7
@@ -1829,6 +1836,9 @@ packages:
   '@types/async-retry@1.4.8':
     resolution: {integrity: sha512-Qup/B5PWLe86yI5I3av6ePGaeQrIHNKCwbsQotD6aHQ6YkHsMUxVZkZsmx/Ry3VZQ6uysHwTjQ7666+k6UjVJA==}
 
+  '@types/bytes@3.1.4':
+    resolution: {integrity: sha512-A0uYgOj3zNc4hNjHc5lYUfJQ/HVyBXiUMKdXd7ysclaE6k9oJdavQzODHuwjpUu2/boCP8afjQYi8z/GtvNCWA==}
+
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
 
@@ -2211,6 +2221,10 @@ packages:
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
     engines: {node: '>=10.16.0'}
+
+  bytes@3.1.2:
+    resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
+    engines: {node: '>= 0.8'}
 
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
@@ -5795,6 +5809,8 @@ snapshots:
     dependencies:
       '@types/retry': 0.12.5
 
+  '@types/bytes@3.1.4': {}
+
   '@types/debug@4.1.12':
     dependencies:
       '@types/ms': 0.7.34
@@ -6252,6 +6268,8 @@ snapshots:
   busboy@1.6.0:
     dependencies:
       streamsearch: 1.1.0
+
+  bytes@3.1.2: {}
 
   cac@6.7.14: {}
 

@@ -30,6 +30,7 @@ import { APIError, CantFindConfig, CantParseJSONFile } from './util/error-types'
 import Client from './util/client';
 import getConfig from './util/get-config';
 import loginCommand from './commands/login';
+import logoutCommand from './commands/logout';
 import doLoginPrompt from './util/login/prompt';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
@@ -245,6 +246,7 @@ const main = async (): Promise<number> => {
         message: `No existing credentials found. Please run ${getCommandName('login')} or pass ${paramOutput('--token')}`,
         link: 'https://err.sh/vercel/no-credentials-found', // TODO: Update link
       });
+
       return 1;
     }
   }
@@ -258,6 +260,9 @@ const main = async (): Promise<number> => {
       switch (subcommand) {
         case 'login':
           func = loginCommand;
+          break;
+        case 'logout':
+          func = logoutCommand;
           break;
         default:
           func = null;
