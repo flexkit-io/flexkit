@@ -1,0 +1,438 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+.flexkit-studio .graphiql-container,
+.flexkit-studio .CodeMirror-info,
+.flexkit-studio .CodeMirror-lint-tooltip,
+.flexkit-studio .graphiql-dialog,
+.flexkit-studio .graphiql-dialog-overlay,
+.flexkit-studio .graphiql-tooltip,
+.flexkit-studio [data-radix-popper-content-wrapper] {
+  --px-2: 2px;
+  --px-4: 4px;
+  --px-6: 6px;
+  --px-8: 8px;
+  --px-10: 10px;
+  --px-12: 12px;
+  --px-16: 16px;
+  --px-20: 20px;
+  --px-24: 24px;
+  --border-radius-2: 2px;
+  --border-radius-4: 4px;
+  --border-radius-8: 8px;
+  --border-radius-12: 12px;
+  --popover-border: none;
+  --sidebar-width: 60px;
+  --toolbar-width: 40px;
+  --session-header-height: 51px;
+}
+
+.flexkit-studio .graphiql-container,
+.flexkit-studio .CodeMirror-info,
+.flexkit-studio .CodeMirror-lint-tooltip,
+.flexkit-studio .graphiql-dialog,
+.flexkit-studio .graphiql-dialog-overlay,
+.flexkit-studio .graphiql-tooltip,
+.flexkit-studio [data-radix-popper-content-wrapper] {
+  --color-primary: 320, 95%, 43%;
+  --color-secondary: var(--foreground);
+  --color-tertiary: 188, 100%, 36%;
+  --color-info: var(--link);
+  --color-success: 158, 60%, 42%;
+  --color-warning: var(--muted-foreground);
+  --color-error: 13, 93%, 58%;
+  --color-neutral: var(--foreground);
+  --color-base: 219, 28%, 100%;
+  --alpha-secondary: 0.76;
+  --alpha-tertiary: 0.5;
+  --alpha-background-heavy: 0.15;
+  --alpha-background-medium: 0.1;
+  --alpha-background-light: 0.07;
+  --font-family: inherit;
+  --font-family-mono: 'Fira Code', monospace;
+  --font-size-hint: calc(12rem / 16);
+  --font-size-inline-code: calc(13rem / 16);
+  --font-size-body: calc(15rem / 16);
+  --font-size-h4: calc(18rem / 16);
+  --font-size-h3: calc(22rem / 16);
+  --font-size-h2: calc(25rem / 16);
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --line-height: 1.5;
+  --popover-box-shadow: 0px 6px 20px rgba(59, 76, 106, 0.13), 0px 1.34018px 4.46726px rgba(59, 76, 106, 0.0774939),
+    0px 0.399006px 1.33002px rgba(59, 76, 106, 0.0525061);
+}
+
+.graphiql-container {
+  display: flex;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* The sidebar */
+.graphiql-sidebar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--px-8);
+  width: var(--sidebar-width);
+}
+
+.graphiql-container .graphiql-sidebar .graphiql-sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-8);
+}
+
+.graphiql-container .graphiql-sidebar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: hsla(var(--color-neutral), var(--alpha-secondary));
+  height: calc(var(--sidebar-width) - (2 * var(--px-8)));
+  width: calc(var(--sidebar-width) - (2 * var(--px-8)));
+}
+
+.graphiql-container .graphiql-sidebar button.active {
+  color: hsl(var(--color-neutral));
+}
+
+.graphiql-container .graphiql-sidebar button:not(:first-child) {
+  margin-top: var(--px-4);
+}
+
+.graphiql-container .graphiql-sidebar button > svg {
+  height: var(--px-20);
+  width: var(--px-20);
+}
+
+/* The main content, i.e. everything except the sidebar */
+.graphiql-container .graphiql-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+/* The current session and tabs */
+.graphiql-container .graphiql-sessions {
+  background-color: hsla(var(--color-neutral), var(--alpha-background-light));
+  /* Adding the 8px of padding to the inner border radius of the query editor */
+  border-radius: calc(var(--border-radius-12) + var(--px-8));
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  max-height: 100%;
+  min-width: 0;
+}
+
+/* The session header containing tabs and the logo */
+.graphiql-container .graphiql-session-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  height: var(--session-header-height);
+}
+
+/* The button to add a new tab */
+button.graphiql-tab-add {
+  height: 100%;
+  padding: var(--px-4);
+}
+
+button.graphiql-tab-add > svg {
+  color: hsla(var(--color-neutral), var(--alpha-secondary));
+  display: block;
+  height: var(--px-16);
+  width: var(--px-16);
+}
+
+/* The right-hand-side of the session header */
+.graphiql-container .graphiql-session-header-right {
+  align-items: center;
+  display: flex;
+}
+
+/* The GraphiQL logo */
+.graphiql-container .graphiql-logo {
+  color: hsla(var(--color-neutral), var(--alpha-secondary));
+  font-size: var(--font-size-h4);
+  font-weight: var(--font-weight-medium);
+  padding: var(--px-12) var(--px-16);
+}
+
+/* Undo default link styling for the default GraphiQL logo link */
+.graphiql-container .graphiql-logo .graphiql-logo-link {
+  color: hsla(var(--color-neutral), var(--alpha-secondary));
+  text-decoration: none;
+}
+
+/* The editor of the session */
+.graphiql-container .graphiql-session {
+  display: flex;
+  flex: 1;
+  padding: 0 var(--px-8) var(--px-8);
+}
+
+/* All editors (query, variable, headers) */
+.graphiql-container .graphiql-editors {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.graphiql-container .graphiql-editors.full-height {
+  margin-top: calc(var(--px-8) - var(--session-header-height));
+}
+
+/* The query editor and the toolbar */
+.graphiql-container .graphiql-query-editor {
+  border-bottom: 1px solid hsla(var(--color-neutral), var(--alpha-background-heavy));
+  padding: var(--px-16);
+  column-gap: var(--px-16);
+  display: flex;
+  width: 100%;
+}
+
+/* The vertical toolbar next to the query editor */
+.graphiql-container .graphiql-toolbar {
+  width: var(--toolbar-width);
+}
+
+.graphiql-container .graphiql-toolbar > * + * {
+  margin-top: var(--px-8);
+}
+
+/* The toolbar icons */
+.graphiql-toolbar-icon {
+  color: hsla(var(--color-neutral), var(--alpha-tertiary));
+  display: block;
+  height: calc(var(--toolbar-width) - (var(--px-8) * 2));
+  width: calc(var(--toolbar-width) - (var(--px-8) * 2));
+}
+
+/* The tab bar for editor tools */
+.graphiql-container .graphiql-editor-tools {
+  cursor: row-resize;
+  display: flex;
+  width: 100%;
+  column-gap: var(--px-8);
+  padding: var(--px-8);
+}
+
+.graphiql-container .graphiql-editor-tools button {
+  color: hsla(var(--color-neutral), var(--alpha-secondary));
+}
+
+.graphiql-container .graphiql-editor-tools button.active {
+  color: hsl(var(--color-neutral));
+}
+
+/* The tab buttons to switch between editor tools */
+.graphiql-container .graphiql-editor-tools > button:not(.graphiql-toggle-editor-tools) {
+  padding: var(--px-8) var(--px-12);
+}
+
+.graphiql-container .graphiql-editor-tools .graphiql-toggle-editor-tools {
+  margin-left: auto;
+}
+
+/* An editor tool, e.g. variable or header editor */
+.graphiql-container .graphiql-editor-tool {
+  flex: 1;
+  padding: var(--px-16);
+}
+
+/**
+   * The way CodeMirror editors are styled they overflow their containing
+   * element. For some OS-browser-combinations this might cause overlap issues,
+   * setting the position of this to `relative` makes sure this element will
+   * always be on top of any editors.
+   */
+.graphiql-container .graphiql-toolbar,
+.graphiql-container .graphiql-editor-tools,
+.graphiql-container .graphiql-editor-tool {
+  position: relative;
+}
+
+/* The response view */
+.graphiql-container .graphiql-response {
+  --editor-background: transparent;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+}
+
+/* The results editor wrapping container */
+.graphiql-container .graphiql-response .result-window {
+  position: relative;
+  flex: 1;
+}
+
+/* The footer below the response view */
+.graphiql-container .graphiql-footer {
+  border-top: 1px solid hsla(var(--color-neutral), var(--alpha-background-heavy));
+}
+
+/* The plugin container */
+.graphiql-container .graphiql-plugin {
+  border-left: 1px solid hsla(var(--color-neutral), var(--alpha-background-heavy));
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--px-16);
+}
+
+/* Generic drag bar for horizontal resizing */
+.graphiql-horizontal-drag-bar {
+  width: var(--px-12);
+  cursor: col-resize;
+}
+
+.graphiql-horizontal-drag-bar:hover::after {
+  border: var(--px-2) solid hsla(var(--color-neutral), var(--alpha-background-heavy));
+  border-radius: var(--border-radius-2);
+  content: '';
+  display: block;
+  height: 25%;
+  margin: 0 auto;
+  position: relative;
+  /* (100% - 25%) / 2 = 37.5% */
+  top: 37.5%;
+  width: 0;
+}
+
+.graphiql-container .graphiql-chevron-icon {
+  color: hsla(var(--color-neutral), var(--alpha-tertiary));
+  display: block;
+  height: var(--px-12);
+  margin: var(--px-12);
+  width: var(--px-12);
+}
+
+/* Generic spin animation */
+.graphiql-spin {
+  animation: spin 0.8s linear 0s infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The header of the settings dialog */
+.graphiql-dialog .graphiql-dialog-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: var(--px-24);
+}
+
+/* The title of the settings dialog */
+.graphiql-dialog .graphiql-dialog-title {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  margin: 0;
+}
+
+/* A section inside the settings dialog */
+.graphiql-dialog .graphiql-dialog-section {
+  align-items: center;
+  border-top: 1px solid hsla(var(--color-neutral), var(--alpha-background-heavy));
+  display: flex;
+  justify-content: space-between;
+  padding: var(--px-24);
+}
+
+.graphiql-dialog .graphiql-dialog-section > :not(:first-child) {
+  margin-left: var(--px-24);
+}
+
+/* The section title in the settings dialog */
+.graphiql-dialog .graphiql-dialog-section-title {
+  font-size: var(--font-size-h4);
+  font-weight: var(--font-weight-medium);
+}
+
+/* The section caption in the settings dialog */
+.graphiql-dialog .graphiql-dialog-section-caption {
+  color: hsla(var(--color-neutral), var(--alpha-secondary));
+}
+
+.graphiql-dialog .graphiql-warning-text {
+  color: hsl(var(--color-warning));
+  font-weight: var(--font-weight-medium);
+}
+
+.graphiql-dialog .graphiql-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.graphiql-dialog .graphiql-table :is(th, td) {
+  border: 1px solid hsla(var(--color-neutral), var(--alpha-background-heavy));
+  padding: var(--px-8) var(--px-12);
+}
+
+/* A single key the short-key dialog */
+.graphiql-dialog .graphiql-key {
+  background-color: hsla(var(--color-neutral), var(--alpha-background-medium));
+  border-radius: var(--border-radius-4);
+  padding: var(--px-4);
+}
+
+.flexkit-studio .graphiql-container .CodeMirror,
+.flexkit-studio .graphiql-container .CodeMirror-gutters {
+  background-color: transparent;
+}
+
+/* Avoid showing native tooltips for icons with titles */
+.graphiql-container svg {
+  pointer-events: none;
+}
+
+.flexkit-studio .cm-s-graphiql .CodeMirror-cursor {
+  border-left: 2px solid hsl(var(--muted-foreground));
+}
+
+.flexkit-studio .CodeMirror-selected {
+  background: hsl(var(--accent-foreground) / 0.15) !important;
+}
+
+/* The Docs explorer */
+.flexkit-studio .graphiql-doc-explorer-header {
+  position: static;
+}
+
+.flexkit-studio .graphiql-doc-explorer-search-input {
+  border-radius: 0;
+}
+
+.flexkit-studio .graphiql-doc-explorer-search:not([data-state='idle']) {
+  z-index: 1;
+}
+
+.flexkit-studio .graphiql-doc-explorer-search:not([data-state='idle']) .graphiql-doc-explorer-search-input,
+.flexkit-studio .graphiql-doc-explorer-search [role='listbox'] {
+  background: hsl(var(--background));
+}
+
+.flexkit-studio button.graphiql-history-item-action {
+  color: hsl(var(--muted-foreground));
+}
+
+.flexkit-studio button.graphiql-history-item-label:hover,
+.flexkit-studio button.graphiql-history-item-label:focus {
+  color: hsl(var(--link));
+}

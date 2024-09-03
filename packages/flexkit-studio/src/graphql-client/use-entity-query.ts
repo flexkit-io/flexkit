@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from 'react';
 import { prop, uniqBy } from 'ramda';
-// @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
+// @ts-expect-error -- this is an ECMAScript module
 import { useQuery, gql } from '@apollo/client';
 import { getEntityQuery, mapQueryResult, mapQueryResultForFormFields } from './queries';
 import type {

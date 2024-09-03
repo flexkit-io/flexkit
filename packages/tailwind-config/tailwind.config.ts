@@ -1,6 +1,5 @@
 import { fontFamily } from 'tailwindcss/defaultTheme';
 import type { Config } from 'tailwindcss';
-import link from '../cli/src/util/output/link';
 
 const config: Config = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}', '../../apps/*/app/**/*.{js,ts,jsx,tsx}'],
@@ -15,6 +14,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['var(--font-geist-sans)', ...fontFamily.sans],
+        mono: ['var(--font-geist-mono)', ...fontFamily.mono],
       },
       colors: {
         border: 'hsl(var(--border))',

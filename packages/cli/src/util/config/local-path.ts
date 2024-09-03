@@ -1,12 +1,10 @@
 import path from 'path';
 import { InvalidLocalConfig } from '../error-types';
-import parseArguments from '../../util/parse-args';
+import parseArguments from '../parse-args';
 
-export default function getLocalPathConfig(prefix: string) {
-  let customPath: string | undefined;
-
+export default function getLocalPathConfig(prefix: string): string {
   const argv = parseArguments(process.argv.slice(2), {}, { permissive: true });
-  customPath = argv.flags['--local-config'];
+  const customPath = argv.flags['--local-config'];
 
   // If `--local-config` flag was specified, then that takes priority
   if (customPath) {
@@ -18,7 +16,7 @@ export default function getLocalPathConfig(prefix: string) {
   }
 
   // Otherwise check for `flexkit.json`.
-  const configPath = path.join(prefix, 'flexkit.json');
+  const configPath = path.join(prefix, 'flexkit.json'); // I AM WORKING HERE!!!!
 
   return configPath;
 }

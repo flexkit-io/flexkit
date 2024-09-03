@@ -1,4 +1,4 @@
-import { AuthConfig, GlobalConfig } from '../../types';
+import type { AuthConfig, GlobalConfig } from '../../types';
 
 export const defaultGlobalConfig: GlobalConfig = {
   '// Note': 'This is your Flexkit config file. For more information see the global configuration documentation.',

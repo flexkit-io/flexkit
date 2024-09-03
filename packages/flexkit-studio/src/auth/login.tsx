@@ -59,7 +59,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
     <>
       <div className="fk-container fk-relative fk-h-[calc(100vh-3rem)] fk-flex fk-items-center fk-justify-center lg:fk-px-0">
         <div className="fk-w-full lg:fk-p-8">
-          <div className="fk-mx-auto fk-flex fk-w-full fk-flex-col fk-justify-center sm:fk-w-[350px]">
+          <div className="fk-mx-auto fk-flex fk-flex-col fk-justify-center sm:fk-w-[350px]">
             <h1 className="fk-mb-4 fk-text-2xl fk-text-center fk-font-medium fk-tracking-tight">
               Login to Flexkit Studio
             </h1>

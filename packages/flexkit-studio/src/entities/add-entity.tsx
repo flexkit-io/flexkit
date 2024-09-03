@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
-// @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
+// @ts-expect-error -- this is an ECMAScript module
 import { gql } from '@apollo/client';
 import { Loader2 } from 'lucide-react';
 import { useAppContext } from '../core/app-context';

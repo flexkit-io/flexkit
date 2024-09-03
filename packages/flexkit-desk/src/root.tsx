@@ -1,7 +1,6 @@
-import { useAuth, Outlet, ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@flexkit/studio';
-import { Sidebar } from '@flexkit/studio';
+import { useAuth, Outlet, ResizableHandle, ResizablePanel, ResizablePanelGroup, Sidebar } from '@flexkit/studio';
 
-export function Root() {
+export function Root(): JSX.Element {
   const [, auth] = useAuth();
 
   return (
@@ -11,7 +10,7 @@ export function Root() {
           <Sidebar />
         </div>
       </ResizablePanel>
-      <ResizableHandle className="hover:fk-bg-blue-500 transition-colors" withHandle />
+      <ResizableHandle className="hover:fk-bg-blue-500 fk-transition-colors" withHandle />
       <ResizablePanel className="fk-p-3" defaultSize={82}>
         <Outlet />
       </ResizablePanel>

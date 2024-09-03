@@ -57,6 +57,8 @@ export {
 export { Input } from './ui/primitives/input';
 export { Label } from './ui/primitives/label';
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/primitives/resizable';
+export type { ImperativePanelHandle } from 'react-resizable-panels';
+export { Separator } from './ui/primitives/separator';
 export { ScrollArea, ScrollBar } from './ui/primitives/scroll-area';
 export {
   Select,

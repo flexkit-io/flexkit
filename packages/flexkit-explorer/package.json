@@ -1,7 +1,8 @@
 {
-  "name": "@flexkit/desk",
+  "name": "@flexkit/explorer",
   "version": "0.0.1",
   "main": "./dist/index.js",
+  "style": "dist/index.css",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -28,7 +29,6 @@
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },
   "devDependencies": {
-    "@types/debug": "^4.1.12",
     "@types/node": "^20.5.2",
     "@types/ramda": "^0.29.7",
     "@types/react": "^18.2.0",
@@ -46,7 +46,8 @@
   },
   "dependencies": {
     "@flexkit/studio": "workspace:*",
-    "debug": "^4.3.4",
+    "@graphiql/react": "0.26.2",
+    "@graphiql/toolkit": "0.11.0",
     "lucide-react": "^0.354.0",
     "ramda": "^0.29.1",
     "swr": "^2.2.4"

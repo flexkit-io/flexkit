@@ -1,13 +1,13 @@
 {
   "name": "tailwind-config",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": true,
   "main": "index.ts",
   "types": "index.ts",
   "devDependencies": {
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.31",
-    "prettier-plugin-tailwindcss": "^0.5.7",
-    "tailwindcss": "^3.2.4"
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.41",
+    "prettier-plugin-tailwindcss": "0.6.6",
+    "tailwindcss": "3.4.10"
   }
 }

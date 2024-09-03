@@ -1,4 +1,4 @@
-// @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
+// @ts-expect-error -- this is an ECMAScript module
 import type { OperationVariables } from '@apollo/client';
 import type { SingleRelationshipConnection, MultipleRelationshipConnection, Schema } from '../core/types';
 

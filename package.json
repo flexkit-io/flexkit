@@ -9,7 +9,7 @@
     "ui:add": "pnpm --filter @flexkit/studio ui:add"
   },
   "devDependencies": {
-    "eslint": "^8.48.0",
+    "eslint": "^8.57.0",
     "prettier": "^3.0.3",
     "tsconfig": "workspace:*",
     "turbo": "latest"

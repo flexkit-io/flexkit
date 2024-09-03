@@ -1,6 +1,8 @@
 import { defineConfig } from '@flexkit/studio/ssr';
 import { Desk } from '@flexkit/desk';
+import { Explorer } from '@flexkit/explorer';
 import { Image, Layers3, Tag } from 'lucide-react';
+import '@flexkit/explorer/styles.css';
 
 export default defineConfig([
   {
@@ -9,6 +11,7 @@ export default defineConfig([
     basePath: '/studio',
     plugins: [
       Desk(),
+      Explorer(),
       {
         // <-- this is a plugin. It's a function that returns a plugin object. Required fields are `name` and `contributes`.
         name: 'flexkit.desk',

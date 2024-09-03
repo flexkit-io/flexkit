@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { Dispatch, RefObject, SyntheticEvent } from 'react';
-// @ts-expect-error -- ignore bug in @apollo/client causing TS to complain about the import not being an ES module
+// @ts-expect-error -- this is an ECMAScript module
 import { useLazyQuery, gql } from '@apollo/client';
 import type { Row } from '@tanstack/react-table';
 import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';
@@ -351,7 +351,7 @@ function dataRowActions({ appDispatch, relationshipId, relationships, row, setRo
 
     const shouldUndoDisconnection = relationships[relationshipId]?.disconnect?.includes(entityId);
     const disconnection = rowToDeleteWasJustConnected
-      ? relationships[relationshipId]?.disconnect ?? []
+      ? (relationships[relationshipId]?.disconnect ?? [])
       : uniq([...(relationships[relationshipId]?.disconnect ?? []), entityId]);
 
     if (rowToDeleteWasJustConnected) {
@@ -364,7 +364,7 @@ function dataRowActions({ appDispatch, relationshipId, relationships, row, setRo
         [relationshipId]: {
           connect: connectedEntities.filter((rowItem) => rowItem._id !== entityId),
           disconnect: shouldUndoDisconnection
-            ? relationships[relationshipId]?.disconnect?.filter((_id) => _id !== entityId) ?? []
+            ? (relationships[relationshipId]?.disconnect?.filter((_id) => _id !== entityId) ?? [])
             : disconnection,
         },
       },

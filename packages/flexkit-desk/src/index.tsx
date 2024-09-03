@@ -1,8 +1,8 @@
 import { Layout as LayoutIcon } from 'lucide-react';
+import type { PluginOptions } from '@flexkit/studio';
 import { Root } from './root';
 import { List } from './list';
 import { EditEntity } from './edit-entity';
-import type { PluginOptions } from '@flexkit/studio';
 
 export function Desk(): PluginOptions {
   return {
