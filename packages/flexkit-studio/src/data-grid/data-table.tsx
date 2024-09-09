@@ -198,11 +198,11 @@ function getRowClassnames(
   rowAdditionState?: MultipleRelationshipConnection
 ): string {
   if (rowDeletionState?.includes(row.original._id)) {
-    return 'fk-bg-red-200 hover:fk-bg-red-300';
+    return 'fk-bg-row-removed hover:fk-bg-row-removed-hover';
   }
 
   if (rowAdditionState?.some((line) => line._id === row.original._id)) {
-    return 'fk-bg-green-200 hover:fk-bg-green-300';
+    return 'fk-bg-row-added hover:fk-bg-row-added-hover';
   }
 
   return '';

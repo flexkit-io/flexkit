@@ -59,26 +59,26 @@ export default defineConfig([
         plugins: [
           // nested plugins are allowed. For example, the `desk` plugin could have a `gridList` plugin.
           // gridList()
-          {
-            name: 'test-plugin',
-            contributes: {
-              apps: [
-                {
-                  name: 'test2',
-                  icon: <Layers3 strokeWidth={1.5} />,
-                  title: 'Categories 2',
-                  component: <div>Categories test 2</div>,
-                },
-              ],
-            },
-            plugins: [
-              // another nested plugin
-              {
-                name: 'test-plugin-2',
-                contributes: {},
-              },
-            ],
-          },
+          // {
+          //   name: 'test-plugin',
+          //   contributes: {
+          //     apps: [
+          //       {
+          //         name: 'test2',
+          //         icon: <Layers3 strokeWidth={1.5} />,
+          //         title: 'Categories 2',
+          //         component: <div>Categories test 2</div>,
+          //       },
+          //     ],
+          //   },
+          //   plugins: [
+          //     // another nested plugin
+          //     {
+          //       name: 'test-plugin-2',
+          //       contributes: {},
+          //     },
+          //   ],
+          // },
         ],
       },
       {
@@ -221,6 +221,50 @@ export default defineConfig([
               field: 'name',
               entity: 'flag',
             },
+          },
+        ],
+      },
+      {
+        name: 'category',
+        plural: 'categories',
+        attributes: [
+          {
+            name: 'name',
+            label: 'Name',
+            scope: 'local',
+            options: {
+              size: 260,
+              comment: 'The name of the category',
+            },
+            dataType: 'string',
+            inputType: 'text',
+            isPrimary: true,
+            validation: (z) => z.string().min(1, { message: 'Name is required' }),
+            defaultValue: '',
+          },
+          {
+            name: 'description',
+            label: 'Description',
+            scope: 'local',
+            options: {
+              size: 260,
+              comment: 'A short description of the category',
+            },
+            dataType: 'string',
+            inputType: 'text',
+            validation: (z) => z.string().min(1, { message: 'Description is required' }),
+            defaultValue: '',
+          },
+          {
+            name: 'isInMenu',
+            label: 'Is in Menu',
+            scope: 'local',
+            options: {
+              size: 100,
+              comment: 'Whether the category is shown in the menu',
+            },
+            dataType: 'boolean',
+            inputType: 'switch',
           },
         ],
       },

@@ -16,13 +16,13 @@ import { loginCommand } from './command';
 
 export default async function login(client: Client): Promise<number> {
   const { output } = client;
-  // const { token } = client.authConfig;
   const argv = parseArguments(client.argv.slice(2), {
     '--oob': Boolean,
     '--github': Boolean,
     '--google': Boolean,
     '--bitbucket': Boolean,
     '--help': Boolean,
+    '-h': '--help',
   });
 
   if (argv.flags['--help']) {

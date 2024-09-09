@@ -45,12 +45,8 @@ export const help = (): string => `
     -h, --help                     Output usage information
     -v, --version                  Output the version number
     --cwd                          Current working directory
-    -A ${chalk.bold.underline('FILE')}, --local-config=${chalk.bold.underline(
-      'FILE'
-    )}   Path to the local vercel.json file
-    -Q ${chalk.bold.underline('DIR')}, --global-config=${chalk.bold.underline(
-      'DIR'
-    )}    Path to the global .vercel directory
+    -A ${chalk.bold.underline('FILE')}, --local-config=${chalk.bold.underline('FILE')}   Path to the flexkit.config.[js|ts|jsx|tsx] file
+    -Q ${chalk.bold.underline('DIR')}, --global-config=${chalk.bold.underline('DIR')}    Path to the global Flexkit directory
     -d, --debug                    Debug mode [off]
     --no-color                     No color mode [off]
     -S, --scope                    Set a custom scope

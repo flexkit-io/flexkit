@@ -54,6 +54,7 @@
     "proxy-agent": "^6.4.0",
     "strip-ansi": "6.0.1",
     "supports-hyperlinks": "3.0.0",
+    "ts-node": "10.9.2",
     "tsup": "^7.2.0",
     "type-fest": "^4.24.0",
     "typescript": "^5.3.3",

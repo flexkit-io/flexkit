@@ -24,6 +24,10 @@ const config: Config = {
         foreground: 'hsl(var(--foreground))',
         link: 'hsl(var(--link))',
         overlay: 'hsl(var(--overlay))',
+        'row-added': 'hsl(var(--row-added))',
+        'row-added-hover': 'hsl(var(--row-added-hover))',
+        'row-removed': 'hsl(var(--row-removed))',
+        'row-removed-hover': 'hsl(var(--row-removed-hover))',
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',

@@ -135,7 +135,7 @@ code,
 kbd,
 samp,
 pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   /* 1 */
   font-feature-settings: normal;
   /* 2 */
@@ -630,6 +630,10 @@ video {
   width: 100%;
 }
 
+.fk-flex-col {
+  flex-direction: column;
+}
+
 .fk-items-center {
   align-items: center;
 }
@@ -638,8 +642,20 @@ video {
   overflow: auto;
 }
 
+.fk-rounded-md {
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.fk-bg-background {
+  background-color: hsl(var(--background));
+}
+
 .fk-bg-muted {
   background-color: hsl(var(--muted));
+}
+
+.\!fk-p-1 {
+  padding: 0.25rem !important;
 }
 
 .fk-p-3 {
@@ -721,7 +737,6 @@ body {
   --popover-border: none;
   --sidebar-width: 60px;
   --toolbar-width: 40px;
-  --session-header-height: 51px;
   --color-primary: 320, 95%, 43%;
   --color-secondary: var(--foreground);
   --color-tertiary: 188, 100%, 36%;
@@ -797,37 +812,6 @@ body {
   width: var(--px-20);
 }
 
-/* The main content, i.e. everything except the sidebar */
-
-.graphiql-container .graphiql-main {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-}
-
-/* The current session and tabs */
-
-.graphiql-container .graphiql-sessions {
-  background-color: hsla(var(--color-neutral), var(--alpha-background-light));
-  /* Adding the 8px of padding to the inner border radius of the query editor */
-  border-radius: calc(var(--border-radius-12) + var(--px-8));
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  max-height: 100%;
-  min-width: 0;
-}
-
-/* The session header containing tabs and the logo */
-
-.graphiql-container .graphiql-session-header {
-  align-items: center;
-  display: flex;
-  justify-content: space-between;
-  height: var(--session-header-height);
-}
-
 /* The button to add a new tab */
 
 button.graphiql-tab-add {
@@ -840,13 +824,6 @@ button.graphiql-tab-add > svg {
   display: block;
   height: var(--px-16);
   width: var(--px-16);
-}
-
-/* The right-hand-side of the session header */
-
-.graphiql-container .graphiql-session-header-right {
-  align-items: center;
-  display: flex;
 }
 
 /* The GraphiQL logo */
@@ -879,10 +856,6 @@ button.graphiql-tab-add > svg {
   display: flex;
   flex: 1;
   flex-direction: column;
-}
-
-.graphiql-container .graphiql-editors.full-height {
-  margin-top: calc(var(--px-8) - var(--session-header-height));
 }
 
 /* The query editor and the toolbar */

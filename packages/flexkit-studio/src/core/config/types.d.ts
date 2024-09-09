@@ -63,15 +63,14 @@ export interface ProjectOptions {
     name: string;
     plural: string;
     attributes: Attribute[];
-  }[]; // TODO: Add schema type
+  }[];
   // theme?: StudioTheme;
 }
 
 /**
- * If a single project is used, not specifying a name or basePath is acceptable
+ * If a single project is used, not specifying a basePath is acceptable
  */
-export type SingleProject = Omit<ProjectOptions, 'name' | 'basePath'> & {
-  name?: string;
+export type SingleProject = Omit<ProjectOptions, 'basePath'> & {
   basePath?: string;
 };
 

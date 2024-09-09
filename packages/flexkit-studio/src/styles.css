@@ -45,6 +45,12 @@ body {
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
+
+    --row-added: 141 78.9% 85.1%;
+    --row-added-hover: 142 76.6% 73.1%;
+
+    --row-removed: 0 96.3% 89.4%;
+    --row-removed-hover: 0 93.5% 81.8%;
   }
 
   .dark {
@@ -82,6 +88,12 @@ body {
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+
+    --row-added: 142 70.6% 45.3%;
+    --row-added-hover: 142 76.2% 36.3%;
+
+    --row-removed: 0 90.6% 70.8%;
+    --row-removed-hover: 0 84.2% 60.2%;
   }
 }
 

@@ -39,7 +39,7 @@ export interface ClientOptions extends Stdio {
   authConfig: AuthConfig;
   output: Output;
   config: GlobalConfig;
-  localConfig?: FlexkitConfig;
+  flexkitConfig?: FlexkitConfig;
   localConfigPath?: string;
   agent?: Agent;
 }
@@ -61,7 +61,7 @@ export default class Client extends EventEmitter implements Stdio {
   output: Output;
   config: GlobalConfig;
   agent?: Agent;
-  localConfig?: FlexkitConfig;
+  flexkitConfig?: FlexkitConfig;
   localConfigPath?: string;
   requestIdCounter: number;
   input: {
@@ -84,7 +84,7 @@ export default class Client extends EventEmitter implements Stdio {
     this.stderr = opts.stderr;
     this.output = opts.output;
     this.config = opts.config;
-    this.localConfig = opts.localConfig;
+    this.flexkitConfig = opts.flexkitConfig;
     this.localConfigPath = opts.localConfigPath;
     this.requestIdCounter = 1;
 
@@ -115,17 +115,20 @@ export default class Client extends EventEmitter implements Stdio {
   }
 
   private _fetch(_url: string, opts: FetchOptions = {}): Promise<Response> {
-    const url = new URL(_url, this.apiUrl);
+    let baseUrl = this.apiUrl;
 
     if (opts.projectId) {
-      // TODO: change the URL to include the project ID as a subdomain
+      // Change the base URL to include the project ID as a subdomain
+      baseUrl = this.apiUrl.replace('https://', `https://${opts.projectId}.`);
     }
+
+    const url = new URL(_url, baseUrl);
 
     const headers = new Headers(opts.headers);
     headers.set('user-agent', userAgent);
 
     if (this.authConfig.token) {
-      headers.set('authorization', `Bearer ${this.authConfig.token}`);
+      headers.set('authorization', this.authConfig.token);
     }
 
     let body;

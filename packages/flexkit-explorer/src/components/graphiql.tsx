@@ -19,8 +19,8 @@ import {
   ResponseEditor,
   SettingsIcon,
   Spinner,
-  Tabs,
-  Tab,
+  Tabs as GraphiQlTabs,
+  Tab as GraphiQlTab,
   ToolbarButton,
   Tooltip as GraphiQLTooltip,
   UnStyledButton,
@@ -55,15 +55,16 @@ import {
   ScrollArea,
   ScrollBar,
   Separator,
-  Tabs as ShadcnTabs,
+  Tabs,
   TabsContent,
-  TabsList as ShadcnTabsList,
+  TabsList,
   TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@flexkit/studio';
 import type { ImperativePanelHandle } from '@flexkit/studio';
+import type { TabState } from './types';
 
 export type GraphiQLToolbarConfig = {
   /**
@@ -340,9 +341,15 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
     [setTheme]
   );
 
-  const handleAddTab = editorContext.addTab;
-  const handleRefetchSchema = schemaContext.introspect;
-  const handleReorder = editorContext.moveTab;
+  const handleAddTab = (): void => {
+    editorContext.addTab();
+  };
+  const handleRefetchSchema = (): void => {
+    schemaContext.introspect();
+  };
+  const handleReorder = (newOrder: TabState[]): void => {
+    editorContext.moveTab(newOrder);
+  };
 
   const handleShowDialog: MouseEventHandler<HTMLButtonElement> = useCallback((event) => {
     setShowDialog(event.currentTarget.dataset.value as 'short-keys' | 'settings');
@@ -463,9 +470,9 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
             ref={sidebarPanel}
           >
             <div className="fk-flex fk-w-full fk-h-full fk-pb-6">
-              <ShadcnTabs className="fk-w-full" defaultValue={pluginContext?.plugins[0].title}>
+              <Tabs className="fk-w-full" defaultValue={pluginContext?.plugins[0].title}>
                 <div className={`fk-flex fk-items-center fk-py-1 ${isSidebarCollapsed ? '' : 'fk-px-4'}`}>
-                  <ShadcnTabsList className={isSidebarCollapsed ? 'fk-hidden' : ''}>
+                  <TabsList className={isSidebarCollapsed ? 'fk-hidden' : ''}>
                     {pluginContext?.plugins.map((plugin, index) => {
                       const isVisible = plugin === pluginContext.visiblePlugin;
                       const label = `${isVisible ? 'Hide' : 'Show'} ${plugin.title}`;
@@ -482,7 +489,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                         </TabsTrigger>
                       );
                     })}
-                  </ShadcnTabsList>
+                  </TabsList>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -524,7 +531,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                     </ScrollArea>
                   </TabsContent>
                 ))}
-              </ShadcnTabs>
+              </Tabs>
             </div>
             {/* <GraphiQLTooltip label="Re-fetch GraphQL schema">
                 <UnStyledButton
@@ -559,135 +566,138 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
           </ResizablePanel>
 
           <ResizableHandle className="hover:fk-bg-blue-500 fk-transition-colors" withHandle />
+          {/* Center column */}
+          <ResizablePanel className="fk-bg-muted" defaultSize={48}>
+            <div className="fk-flex fk-flex-col fk-h-full">
+              <div className="fk-flex fk-items-center fk-py-1 fk-px-4 fk-bg-background">
+                {!props.disableTabs && (
+                  <GraphiQlTabs
+                    aria-label="Select active operation"
+                    className="!fk-p-1 fk-bg-muted fk-rounded-md"
+                    onReorder={handleReorder}
+                    values={editorContext.tabs}
+                  >
+                    {editorContext.tabs.length > 0 && (
+                      <>
+                        {editorContext.tabs.map((tab, index) => (
+                          <GraphiQlTab
+                            className="fk-bg-background"
+                            isActive={index === editorContext.activeTabIndex}
+                            key={tab.id}
+                            value={tab}
+                          >
+                            <GraphiQlTab.Button
+                              aria-controls="graphiql-session"
+                              id={`${TAB_CLASS_PREFIX}${index.toString()}`}
+                              onClick={handleTabClick}
+                            >
+                              {tab.title}
+                            </GraphiQlTab.Button>
+                            <GraphiQlTab.Close onClick={handleTabClose} />
+                          </GraphiQlTab>
+                        ))}
+                        {addTab}
+                      </>
+                    )}
+                  </GraphiQlTabs>
+                )}
+              </div>
 
-          <ResizablePanel className="fk-p-3 fk-bg-muted" defaultSize={48}>
-            {/* TODO: Right column */}
-            <div className="graphiql-main">
-              <div className="graphiql-sessions">
-                {/* TODO: Estos son los tabs */}
-                <div className="graphiql-session-header">
-                  {!props.disableTabs && (
-                    <Tabs values={editorContext.tabs} onReorder={handleReorder} aria-label="Select active operation">
-                      {editorContext.tabs.length > 1 && (
-                        <>
-                          {editorContext.tabs.map((tab, index) => (
-                            <Tab key={tab.id} value={tab} isActive={index === editorContext.activeTabIndex}>
-                              <Tab.Button
-                                aria-controls="graphiql-session"
-                                id={`${TAB_CLASS_PREFIX}${index}`}
-                                onClick={handleTabClick}
-                              >
-                                {tab.title}
-                              </Tab.Button>
-                              <Tab.Close onClick={handleTabClose} />
-                            </Tab>
-                          ))}
-                          {addTab}
-                        </>
-                      )}
-                    </Tabs>
-                  )}
-                  <div className="graphiql-session-header-right">{editorContext.tabs.length === 1 && addTab}</div>
-                </div>
+              {/* Query editor */}
+              <div
+                role="tabpanel"
+                id="graphiql-session" // used by aria-controls="graphiql-session"
+                className="graphiql-session"
+                aria-labelledby={`${TAB_CLASS_PREFIX}${editorContext.activeTabIndex}`}
+              >
+                <div className={`graphiql-editors${editorContext.tabs.length === 1 ? ' full-height' : ''}`}>
+                  <div ref={editorToolsResize.firstRef}>
+                    <section className="graphiql-query-editor" aria-label="Query Editor">
+                      <QueryEditor
+                        editorTheme={props.editorTheme}
+                        keyMap={props.keyMap}
+                        onCopyQuery={props.onCopyQuery}
+                        onEdit={props.onEditQuery}
+                        readOnly={props.readOnly}
+                      />
+                      <div className="graphiql-toolbar" role="toolbar" aria-label="Editor Commands">
+                        <ExecuteButton />
+                        {toolbar}
+                      </div>
+                    </section>
+                  </div>
 
-                {/* TODO: Contenido de los tabs, es decir el editor de queries */}
-                <div
-                  role="tabpanel"
-                  id="graphiql-session" // used by aria-controls="graphiql-session"
-                  className="graphiql-session"
-                  aria-labelledby={`${TAB_CLASS_PREFIX}${editorContext.activeTabIndex}`}
-                >
-                  <div className={`graphiql-editors${editorContext.tabs.length === 1 ? ' full-height' : ''}`}>
-                    <div ref={editorToolsResize.firstRef}>
-                      <section className="graphiql-query-editor" aria-label="Query Editor">
-                        <QueryEditor
-                          editorTheme={props.editorTheme}
-                          keyMap={props.keyMap}
-                          onCopyQuery={props.onCopyQuery}
-                          onEdit={props.onEditQuery}
-                          readOnly={props.readOnly}
-                        />
-                        <div className="graphiql-toolbar" role="toolbar" aria-label="Editor Commands">
-                          <ExecuteButton />
-                          {toolbar}
-                        </div>
-                      </section>
-                    </div>
-
-                    <div ref={editorToolsResize.dragBarRef}>
-                      <div className="graphiql-editor-tools">
+                  <div ref={editorToolsResize.dragBarRef}>
+                    <div className="graphiql-editor-tools">
+                      <UnStyledButton
+                        type="button"
+                        className={
+                          activeSecondaryEditor === 'variables' && editorToolsResize.hiddenElement !== 'second'
+                            ? 'active'
+                            : ''
+                        }
+                        onClick={handleToolsTabClick}
+                        data-name="variables"
+                      >
+                        Variables
+                      </UnStyledButton>
+                      {isHeadersEditorEnabled && (
                         <UnStyledButton
                           type="button"
                           className={
-                            activeSecondaryEditor === 'variables' && editorToolsResize.hiddenElement !== 'second'
+                            activeSecondaryEditor === 'headers' && editorToolsResize.hiddenElement !== 'second'
                               ? 'active'
                               : ''
                           }
                           onClick={handleToolsTabClick}
-                          data-name="variables"
+                          data-name="headers"
                         >
-                          Variables
+                          Headers
                         </UnStyledButton>
-                        {isHeadersEditorEnabled && (
-                          <UnStyledButton
-                            type="button"
-                            className={
-                              activeSecondaryEditor === 'headers' && editorToolsResize.hiddenElement !== 'second'
-                                ? 'active'
-                                : ''
-                            }
-                            onClick={handleToolsTabClick}
-                            data-name="headers"
-                          >
-                            Headers
-                          </UnStyledButton>
-                        )}
+                      )}
 
-                        <GraphiQLTooltip
-                          label={
+                      <GraphiQLTooltip
+                        label={editorToolsResize.hiddenElement === 'second' ? 'Show editor tools' : 'Hide editor tools'}
+                      >
+                        <UnStyledButton
+                          type="button"
+                          onClick={toggleEditorTools}
+                          aria-label={
                             editorToolsResize.hiddenElement === 'second' ? 'Show editor tools' : 'Hide editor tools'
                           }
+                          className="graphiql-toggle-editor-tools"
                         >
-                          <UnStyledButton
-                            type="button"
-                            onClick={toggleEditorTools}
-                            aria-label={
-                              editorToolsResize.hiddenElement === 'second' ? 'Show editor tools' : 'Hide editor tools'
-                            }
-                            className="graphiql-toggle-editor-tools"
-                          >
-                            {editorToolsResize.hiddenElement === 'second' ? (
-                              <ChevronUpIcon className="graphiql-chevron-icon" aria-hidden="true" />
-                            ) : (
-                              <ChevronDownIcon className="graphiql-chevron-icon" aria-hidden="true" />
-                            )}
-                          </UnStyledButton>
-                        </GraphiQLTooltip>
-                      </div>
+                          {editorToolsResize.hiddenElement === 'second' ? (
+                            <ChevronUpIcon className="graphiql-chevron-icon" aria-hidden="true" />
+                          ) : (
+                            <ChevronDownIcon className="graphiql-chevron-icon" aria-hidden="true" />
+                          )}
+                        </UnStyledButton>
+                      </GraphiQLTooltip>
                     </div>
+                  </div>
 
-                    <section
-                      className="graphiql-editor-tool"
-                      aria-label={activeSecondaryEditor === 'variables' ? 'Variables' : 'Headers'}
-                    >
-                      <VariableEditor
+                  <section
+                    className="graphiql-editor-tool"
+                    aria-label={activeSecondaryEditor === 'variables' ? 'Variables' : 'Headers'}
+                  >
+                    <VariableEditor
+                      editorTheme={props.editorTheme}
+                      isHidden={activeSecondaryEditor !== 'variables'}
+                      keyMap={props.keyMap}
+                      onEdit={props.onEditVariables}
+                      readOnly={props.readOnly}
+                    />
+                    {isHeadersEditorEnabled && (
+                      <HeaderEditor
                         editorTheme={props.editorTheme}
-                        isHidden={activeSecondaryEditor !== 'variables'}
+                        isHidden={activeSecondaryEditor !== 'headers'}
                         keyMap={props.keyMap}
-                        onEdit={props.onEditVariables}
+                        onEdit={props.onEditHeaders}
                         readOnly={props.readOnly}
                       />
-                      {isHeadersEditorEnabled && (
-                        <HeaderEditor
-                          editorTheme={props.editorTheme}
-                          isHidden={activeSecondaryEditor !== 'headers'}
-                          keyMap={props.keyMap}
-                          onEdit={props.onEditHeaders}
-                          readOnly={props.readOnly}
-                        />
-                      )}
-                    </section>
-                  </div>
+                    )}
+                  </section>
                 </div>
               </div>
             </div>

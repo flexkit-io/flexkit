@@ -134,10 +134,11 @@ export function mapQueryResult(
       {}
     );
     const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
-      const scopedAttribute = entity[attributeName] as AttributeValue;
+      const scopedAttribute = entity[attributeName] as AttributeValue | null;
+
       return {
         ...acc,
-        [attributeName]: scopedAttribute[scope] ? scopedAttribute[scope] : scopedAttribute.default,
+        [attributeName]: scopedAttribute?.[scope] ? scopedAttribute[scope] : scopedAttribute?.default,
       };
     }, {});
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
@@ -359,7 +360,7 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
     const typedValue =
       stringTypes.includes(attributeSchema.dataType) && value.value !== null
         ? `"${value.value as string}"`
-        : value.value?.toString() ?? 'null';
+        : (value.value?.toString() ?? 'null');
 
     return `${acc}\n      ${attributeName}: ${typedValue}`;
   }, '');
@@ -442,7 +443,7 @@ function stringifyValue(
   type: DataType,
   value: string | MappedEntityItem | EntityItem | AttributeValue | null | undefined
 ): string {
-  return stringTypes.includes(type) ? `"${value?.toString() ?? 'null'}"` : value?.toString() ?? 'null';
+  return stringTypes.includes(type) ? `"${value?.toString() ?? 'null'}"` : (value?.toString() ?? 'null');
 }
 
 function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: string, scope: string): string {

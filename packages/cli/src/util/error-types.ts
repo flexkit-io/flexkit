@@ -33,18 +33,17 @@ export class CliError<Code, Meta> extends Error {
   }
 }
 
-interface InvalidLocalConfigMeta {
-  value: string[];
+interface InvalidProjectConfigMeta {
+  error: string;
 }
 
-export class InvalidLocalConfig extends CliError<'INVALID_LOCAL_CONFIG', InvalidLocalConfigMeta> {
-  constructor(value: string[]) {
+export class InvalidProjectConfig extends CliError<'INVALID_PROJECT_CONFIG', InvalidProjectConfigMeta> {
+  constructor(error: string) {
+    const message = 'Invalid project configuration. Please check your flexkit.config.[js|ts|jsx|tsx] file.';
     super({
-      code: 'INVALID_LOCAL_CONFIG',
-      meta: { value },
-      message: `Invalid local config parameter [${value
-        .map((localConfig) => `"${localConfig}"`)
-        .join(', ')}]. A string was expected.`,
+      code: 'INVALID_PROJECT_CONFIG',
+      meta: { error },
+      message,
     });
   }
 }

@@ -1,15 +1,11 @@
-import { join, basename } from 'node:path';
-import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import loadJSON from 'load-json-file';
 import { sync as writeJsonFileSync } from 'write-json-file';
-import { fileNameSymbol } from '../../types';
-import type { AuthConfig, FlexkitConfig, GlobalConfig } from '../../types';
-import { CliError } from '../error-types';
+import type { AuthConfig, GlobalConfig } from '../../types';
 import { errorOutput } from '../output/error';
 import { highlightOutput } from '../output/highlight';
-import { isErrnoException, isError } from '../error-utils';
+import { isErrnoException } from '../error-utils';
 import getGlobalPathConfig from './global-path';
-import getLocalPathConfig from './local-path';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
 const CONFIG_FILE_PATH = join(FLEXKIT_DIR, 'config.json');
@@ -88,52 +84,4 @@ export function getConfigFilePath(): string {
 
 export function getAuthConfigFilePath(): string {
   return AUTH_CONFIG_FILE_PATH;
-}
-
-export function readLocalConfig(prefix: string = process.cwd()): FlexkitConfig | undefined {
-  let config: FlexkitConfig | undefined;
-  let target = '';
-
-  try {
-    target = getLocalPathConfig(prefix);
-  } catch (err) {
-    if (err instanceof CliError) {
-      // eslint-disable-next-line no-console -- CLI output
-      console.error(errorOutput(err.message));
-      process.exit(1);
-    } else {
-      throw err;
-    }
-  }
-
-  if (!target) {
-    return;
-  }
-
-  try {
-    if (existsSync(target)) {
-      config = loadJSON.sync(target);
-    }
-  } catch (err: unknown) {
-    if (isError(err) && err.name === 'JSONError') {
-      // eslint-disable-next-line no-console -- CLI output
-      console.error(errorOutput(err.message));
-    } else if (isErrnoException(err)) {
-      const code = err.code ? ` (${err.code})` : '';
-      // eslint-disable-next-line no-console -- CLI output
-      console.error(errorOutput(`Failed to read config file: ${target}${code}`));
-    } else {
-      // eslint-disable-next-line no-console -- CLI output
-      console.error(err);
-    }
-    process.exit(1);
-  }
-
-  if (!config) {
-    return;
-  }
-
-  config[fileNameSymbol] = basename(target);
-
-  return config;
 }

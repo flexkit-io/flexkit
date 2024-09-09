@@ -31,6 +31,7 @@ import Client from './util/client';
 import getConfig from './util/get-config';
 import loginCommand from './commands/login';
 import logoutCommand from './commands/logout';
+import syncCommand from './commands/sync';
 import doLoginPrompt from './util/login/prompt';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
@@ -79,27 +80,28 @@ const main = async (): Promise<number | undefined> => {
   // eslint-disable-next-line prefer-destructuring -- debug is previously defined
   debug = output.debug;
 
+  // If a localConfigPath is passed, try to load the configuration from that path, otherwise try to load it from the current path
   const localConfigPath = argv.flags['--local-config'];
-  let localConfig: FlexkitConfig | Error | undefined = await getConfig(output, localConfigPath);
+  let flexkitConfig: FlexkitConfig | Error | undefined = getConfig(output, localConfigPath);
 
-  if (localConfig instanceof CantParseJSONFile) {
-    output.error(`Couldn't parse JSON file ${localConfig.meta.file}.`);
+  if (flexkitConfig instanceof CantParseJSONFile) {
+    output.error(`Couldn't parse JSON file ${flexkitConfig.meta.file}.`);
 
     return 1;
   }
 
-  if (localConfig instanceof CantFindConfig) {
+  if (flexkitConfig instanceof CantFindConfig) {
     if (localConfigPath) {
-      output.error(`Couldn't find a project configuration file at \n    ${localConfig.meta.paths.join(' or\n    ')}`);
+      output.error(`Couldn't find a project configuration file at \n    ${flexkitConfig.meta.paths.join(' or\n    ')}`);
 
       return 1;
     }
 
-    localConfig = undefined;
+    flexkitConfig = undefined;
   }
 
-  if (localConfig instanceof Error) {
-    output.prettyError(localConfig);
+  if (flexkitConfig instanceof Error) {
+    output.prettyError(flexkitConfig);
     return 1;
   }
 
@@ -180,7 +182,7 @@ const main = async (): Promise<number | undefined> => {
     output,
     config,
     authConfig,
-    localConfig,
+    flexkitConfig,
     localConfigPath,
     argv: process.argv,
   });
@@ -267,6 +269,9 @@ const main = async (): Promise<number | undefined> => {
           break;
         case 'logout':
           func = logoutCommand;
+          break;
+        case 'sync':
+          func = syncCommand;
           break;
         default:
           func = null;
