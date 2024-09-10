@@ -28,7 +28,9 @@ export default function SingleRelationship({
   const { relationships } = useAppContext();
   const relationshipId = useId();
   const relationshipEntitySchema = find(propEq(relationshipEntity, 'name'))(schema) as Entity | undefined;
-  const primaryAttributeName = getPrimaryAttributeName(relationshipEntitySchema?.attributes ?? []);
+  const primaryAttribute = getPrimaryAttribute(relationshipEntitySchema?.attributes ?? []);
+  const primaryAttributeName = primaryAttribute.name;
+  const primaryAttributeScope = primaryAttribute.scope;
 
   useEffect(() => {
     if (defaultValue.value === '') {
@@ -93,8 +95,16 @@ export default function SingleRelationship({
       name={name}
       render={({ field }: { field: { value?: FormFieldParams['defaultValue'] } }) => {
         const value = field.value?.value;
-        const displayValue =
-          value && typeof value === 'object' && !Array.isArray(value) ? value[primaryAttributeName] : '';
+        let displayValue = '';
+
+        if (value && typeof value === 'object' && !Array.isArray(value) && value[primaryAttributeName]) {
+          displayValue =
+            primaryAttributeScope === 'global'
+              ? value[primaryAttributeName]
+              : (value[primaryAttributeName]?.[scope] ?? value[primaryAttributeName]?.default);
+        }
+
+        console.log({ displayValue });
 
         return (
           <FormItem>
@@ -171,9 +181,9 @@ export default function SingleRelationship({
 }
 
 /**
- * Find the name of the attribute of an entity with isPrimary === true.
- * The value of that attribute is returned as the value for the relationship attribute
+ * Find the attribute of an entity with isPrimary === true.
+ * if none is found, return the first attribute.
  */
-function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
-  return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes[0]?.name;
+function getPrimaryAttribute(schemaAttributes: Attribute[]): Attribute {
+  return schemaAttributes.find((attr) => attr.isPrimary) ?? schemaAttributes[0];
 }

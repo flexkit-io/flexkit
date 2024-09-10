@@ -167,7 +167,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
-                      className="fk-flex fk-items-center"
+                      className="fk-flex fk-items-center fk-truncate"
                       key={cell.id}
                       style={{
                         width: cell.column.getSize(),

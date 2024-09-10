@@ -90,7 +90,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     (newData: EntityData, previousData?: FormEntityItem) => {
       if (!previousData) return;
 
-      const mutation = getEntityUpdateMutation(entityNamePlural, scope, schema, previousData, newData);
+      const mutation = getEntityUpdateMutation(entityNamePlural, entityId, scope, schema, previousData, newData);
       setMutation(gql`
         ${mutation}
       `);

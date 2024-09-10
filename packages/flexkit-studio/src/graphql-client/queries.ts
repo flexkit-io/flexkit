@@ -60,12 +60,21 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
       }
 
       if (relatedAttribute.scope === 'relationship') {
+        const relationshipEntity = find(propEq(relatedAttribute.relationship?.entity, 'name'))(schema) as
+          | Entity
+          | undefined;
+        const relationshipAttribute = find(propEq(relatedAttribute.relationship?.field, 'name'))(
+          relationshipEntity?.attributes ?? []
+        ) as Attribute;
+        const localAttributeQuery =
+          relationshipAttribute.scope === 'local' ? `{\n      default\n      ${additionalScope}}\n        ` : '';
+
         if (relatedAttribute.relationship?.mode === 'single') {
-          return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}\n    }\n    `;
+          return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
         }
 
         if (relatedAttribute.relationship?.field) {
-          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship.field}  {\n      default\n      ${additionalScope}}\n        }\n    `;
+          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
         }
       }
 
@@ -146,11 +155,23 @@ export function mapQueryResult(
         const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
         const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
         const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
-        const primaryAttributeName = getPrimaryAttributeName(relatedEntity?.attributes ?? []);
+        const primaryAttribute = getPrimaryAttribute(relatedEntity?.attributes ?? []);
+        const primaryAttributeName = primaryAttribute.name;
+        const primaryAttributeScope = primaryAttribute.scope;
         const localValue = entity[attributeName] as AttributeValue | null;
-        const value = Array.isArray(localValue)
-          ? sliceFirstThreeItems(localValue, primaryAttributeName)
-          : localValue?.[primaryAttributeName];
+
+        if (Array.isArray(localValue)) {
+          return {
+            ...acc,
+            [attributeName]: sliceFirstThreeItems(localValue, primaryAttributeName),
+          };
+        }
+
+        const value =
+          primaryAttributeScope === 'global'
+            ? localValue?.[primaryAttributeName]
+            : ((localValue?.[primaryAttributeName] as AttributeValue | undefined)?.[scope] ??
+              (localValue?.[primaryAttributeName] as AttributeValue | undefined)?.default);
 
         return {
           ...acc,
@@ -281,6 +302,7 @@ function getValueByScope(
  */
 export function getEntityUpdateMutation(
   entityNamePlural: string,
+  entityId: string,
   scope: string,
   schema: Schema,
   originalData: FormEntityItem,
@@ -297,7 +319,7 @@ export function getEntityUpdateMutation(
 
   const data = filterOutInvalidAttributes(attributes, dataToMutate);
   const globalAttributes = globalAttributesUpdate(attributes, data);
-  const localAttributes = localAttributesUpdate(attributes, data, scope);
+  const localAttributes = localAttributesUpdate(entityId, attributes, data, scope);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
   const responseType = pluralizedEntityName.toLowerCase();
   const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
@@ -368,7 +390,12 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
   return attributesString;
 }
 
-function localAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityItem, scope: string): string {
+function localAttributesUpdate(
+  entityId: string,
+  schemaAttributes: Attribute[],
+  data: FormEntityItem,
+  scope: string
+): string {
   const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
   const attributesArray: [string, FormAttributeValue][] = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
@@ -383,7 +410,21 @@ function localAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityIt
       return acc;
     }
 
-    return `${acc}\n      ${attributeName}: {\n        update: {\n          node: {\n            ${scope}: ${typedValue.toString()}\n          }\n        }\n      }`;
+    if (attributeValue._id) {
+      return `${acc}\n      ${attributeName}: {\n        update: {\n          node: {\n            ${scope}: ${typedValue.toString()}\n          }\n        }\n      }`;
+    }
+
+    return (
+      `${acc}\n      ${attributeName}: {\n` +
+      `        create: {\n` +
+      `          node: {\n` +
+      `            _id: "${entityId}:${attributeName}"\n` +
+      `            _type: "${dataType}"\n` +
+      `            ${scope}: ${typedValue}\n` +
+      `          }\n` +
+      `        }\n` +
+      `      }`
+    );
   }, '');
 
   return attributesString;
@@ -467,11 +508,20 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
     const relationshipEntityName = relationshipAttribute?.relationship?.entity ?? '';
     const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
     const relationshipEntityAttributes = relationshipEntitySchema?.attributes ?? [];
-    const primaryAttributeName = getPrimaryAttributeName(schemaAttributes);
+    const primaryAttributeName =
+      relationshipAttribute?.relationship?.field ?? '[invalid_relationship_field_name_in_schema]';
+    const primaryAttribute = find(propEq(primaryAttributeName, 'name'))(relationshipEntityAttributes) as Attribute;
+    const primaryAttributeScope = primaryAttribute.scope;
     let list = '';
 
     if (relationshipMode === 'single') {
-      list = `  ${attributeName} {\n      _id\n    ${primaryAttributeName}\n    }\n  `;
+      if (primaryAttributeScope === 'global') {
+        list = `  ${attributeName} {\n      _id\n    ${primaryAttributeName}\n    }\n  `;
+      }
+
+      if (primaryAttributeScope === 'local') {
+        list = `  ${attributeName} {\n      _id\n      ${primaryAttributeName} {\n        default\n        ${scope}\n      }\n    }\n  `;
+      }
     }
 
     if (relationshipMode === 'multiple' && relationshipEntityAttributes.length) {
@@ -482,7 +532,7 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
 
         if (attribute.scope === 'relationship') {
           if (attribute.relationship?.mode === 'single') {
-            return `${str}  ${attribute.name} {\n      ${attribute.relationship.field}\n    }\n    `;
+            return `${str}  ${attribute.name} {\n      ${attribute.relationship.field}  {\n      default\n      ${scope}\n    }\n        }\n    `;
           }
 
           if (attribute.relationship?.field) {
@@ -661,11 +711,11 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
 }
 
 /**
- * Find the name of the attribute of an entity with isPrimary === true.
- * The value of that attribute is returned as the value for the relationship attribute
+ * Find the attribute of an entity with isPrimary === true.
+ * if none is found, return the first attribute.
  */
-function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
-  return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes[0]?.name;
+function getPrimaryAttribute(schemaAttributes: Attribute[]): Attribute {
+  return schemaAttributes.find((attr) => attr.isPrimary) ?? schemaAttributes[0];
 }
 
 export function getRelatedItemsQuery({
@@ -715,12 +765,21 @@ export function getRelatedItemsQuery({
       }
 
       if (relatedAttribute.scope === 'relationship') {
+        const relationshipEntity = find(propEq(relatedAttribute.relationship?.entity, 'name'))(schema) as
+          | Entity
+          | undefined;
+        const relationshipAttribute = find(propEq(relatedAttribute.relationship?.field, 'name'))(
+          relationshipEntity?.attributes ?? []
+        ) as Attribute;
+        const localAttributeQuery =
+          relationshipAttribute.scope === 'local' ? `{\n      default\n      ${additionalScope}}\n        ` : '';
+
         if (relatedAttribute.relationship?.mode === 'single') {
-          return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}\n    }\n    `;
+          return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
         }
 
         if (relatedAttribute.relationship?.field) {
-          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship.field}  {\n      default\n      ${additionalScope}}\n        }\n    `;
+          return `${relatedAcc}\n      ${relatedAttribute.name} (options: {limit: 25, offset: 0}) {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
         }
       }
 

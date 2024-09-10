@@ -404,7 +404,7 @@ function dataAdapter({
   return data.map(
     (row: MappedEntityItem | EntityItem) =>
       map((field) => {
-        if (typeof field === 'object' && field.__typename) {
+        if (field && typeof field !== 'string' && !Array.isArray(field) && field.__typename) {
           const relationshipFieldSchema = find(propEq(field.__typename, 'name'))(
             relationshipEntitySchema?.attributes ?? []
           ) as Attribute | undefined;
