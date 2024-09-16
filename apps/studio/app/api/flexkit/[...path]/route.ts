@@ -63,6 +63,14 @@ async function handler(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ status });
   }
 
+  if (response.headers.get('content-type')?.includes('text/plain')) {
+    // Forward the response directly without consuming the body
+    return new NextResponse(response.body, {
+      status: response.status,
+      headers: response.headers,
+    });
+  }
+
   const jsonData = await response.json();
 
   return NextResponse.json(jsonData, { status });

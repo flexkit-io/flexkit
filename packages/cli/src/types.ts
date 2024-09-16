@@ -82,7 +82,7 @@ type DataType =
   | 'string'
   | 'time';
 
-type InputType = 'datetime' | 'number' | 'relationship' | 'select' | 'switch' | 'text' | 'textarea';
+type InputType = 'datetime' | 'editor' | 'number' | 'relationship' | 'select' | 'switch' | 'text' | 'textarea';
 
 type ScopeType = 'local' | 'global' | 'relationship';
 

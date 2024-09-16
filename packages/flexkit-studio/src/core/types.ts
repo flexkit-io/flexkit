@@ -58,7 +58,7 @@ export type DataType =
   | 'string'
   | 'time';
 
-export type InputType = 'datetime' | 'number' | 'relationship' | 'select' | 'switch' | 'text' | 'textarea';
+export type InputType = 'datetime' | 'editor' | 'number' | 'relationship' | 'select' | 'switch' | 'text' | 'textarea';
 
 type SelectList = {
   label: string;

@@ -4,7 +4,13 @@ import { Textarea as TextareaPrimitive } from '../../ui/primitives/textarea';
 import type { FormFieldParams } from '../types';
 import UseDefault from './use-default';
 
-export default function Textarea({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
+export default function Textarea({
+  control,
+  defaultValue,
+  fieldSchema,
+  getValues,
+  setValue,
+}: FormFieldParams): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(
@@ -31,8 +37,15 @@ export default function Textarea({ control, defaultValue, fieldSchema, setValue 
       name={name}
       render={({ field }: { field: { value?: FormAttributeValue } }) => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
-          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+          <div className="fk-flex">
+            <div className="fk-full-w">
+              <FormLabel>{label}</FormLabel>
+              {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+            </div>
+            <div className="fk-h-full fk-self-end fk-ml-auto">
+              {/* TODO: this should be a slot that can receive user-defined components and system components like Presence and AI Writting Tools */}
+            </div>
+          </div>
           <FormControl>
             <>
               <TextareaPrimitive

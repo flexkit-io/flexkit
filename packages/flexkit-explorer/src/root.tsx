@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-// @ts-expect-error -- this is an ECMAScript module
 import { createGraphiQLFetcher } from '@graphiql/toolkit';
 import { useConfig } from '@flexkit/studio';
 import { GraphiQL } from './components/graphiql';

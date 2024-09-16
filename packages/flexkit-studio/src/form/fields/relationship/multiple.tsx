@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { Dispatch, RefObject, SyntheticEvent } from 'react';
-// @ts-expect-error -- this is an ECMAScript module
 import { useLazyQuery, gql } from '@apollo/client';
 import type { Row } from '@tanstack/react-table';
 import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';

@@ -1,10 +1,7 @@
 'use client';
 
-// @ts-expect-error -- this is an ECMAScript module
 import { ApolloClient, ApolloProvider, InMemoryCache, defaultDataIdFromObject, from, HttpLink } from '@apollo/client';
-// @ts-expect-error -- this is an ECMAScript module
 import type { ApolloLink } from '@apollo/client';
-// @ts-expect-error -- this is an ECMAScript module
 import { onError } from '@apollo/client/link/error';
 import { useConfig } from '../core/config/config-context';
 

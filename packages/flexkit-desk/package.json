@@ -1,6 +1,7 @@
 {
   "name": "@flexkit/desk",
   "version": "0.0.1",
+  "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -22,8 +23,8 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup src/index.tsx --format esm,cjs --dts --external react & tailwindcss -i ./src/styles.css -o dist/index.css",
-    "dev": "tsup src/index.tsx --format esm,cjs --watch --dts --external react & tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
+    "build": "tsup src/index.tsx --format esm --dts --external react & tailwindcss -i ./src/styles.css -o dist/index.css",
+    "dev": "tsup src/index.tsx --format esm --watch --dts --external react & tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },

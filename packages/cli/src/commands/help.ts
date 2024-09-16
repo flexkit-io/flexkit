@@ -314,7 +314,7 @@ export function buildCommandExampleLines(command: Command): string {
     nameLine.push(example.name);
     outputArray.push(lineToString(nameLine));
     outputArray.push('');
-    const buildValueLine = (value: string) => {
+    const buildValueLine = (value: string): string => {
       return lineToString([INDENT, INDENT, chalk.cyan(`$ ${value}`)]);
     };
 

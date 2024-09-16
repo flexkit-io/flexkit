@@ -28,7 +28,7 @@ export default function Switch({ control, defaultValue, fieldSchema, setValue }:
       name={name}
       render={({ field }: { field: { value?: FormAttributeValue } }) => (
         <FormItem>
-          <div className="fk-flex fk-flex-row fk-items-center fk-justify-between fk-rounded-lg fk-border fk-p-3 fk-shadow-sm">
+          <div className="fk-flex fk-flex-row fk-items-center fk-justify-between fk-rounded-lg fk-border fk-p-3">
             <div className="fk-space-y-0.5">
               <FormLabel>{label}</FormLabel>
               {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}

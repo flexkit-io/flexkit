@@ -2,7 +2,6 @@
 
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
-// @ts-expect-error -- this is an ECMAScript module
 import { gql } from '@apollo/client';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityDeleteMutation } from '../graphql-client/queries';

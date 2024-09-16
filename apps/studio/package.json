@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@flexkit/asset-manager": "workspace:*",
     "@flexkit/desk": "workspace:*",
     "@flexkit/explorer": "workspace:*",
     "@flexkit/studio": "workspace:*",

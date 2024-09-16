@@ -1,7 +1,8 @@
 import { defineConfig } from '@flexkit/studio/ssr';
+import { AssetManager } from '@flexkit/asset-manager';
 import { Desk } from '@flexkit/desk';
 import { Explorer } from '@flexkit/explorer';
-import { Image, Layers3, Tag } from 'lucide-react';
+// import { Image, Layers3, Tag } from 'lucide-react';
 import '@flexkit/explorer/styles.css';
 
 export default defineConfig([
@@ -11,6 +12,7 @@ export default defineConfig([
     basePath: '/studio',
     plugins: [
       Desk(),
+      AssetManager(),
       Explorer(),
       {
         // <-- this is a plugin. It's a function that returns a plugin object. Required fields are `name` and `contributes`.
@@ -18,24 +20,24 @@ export default defineConfig([
         contributes: {
           apps: [
             // <-- this is a list of apps that will be shown in the sidebar. It's an array, because existing apps can't be overwritten.
-            {
-              name: 'images',
-              icon: <Image strokeWidth={1.5} />,
-              title: 'Images',
-              component: <div>Images</div>,
-            },
-            {
-              name: 'products',
-              icon: <Tag strokeWidth={1.5} />,
-              title: 'Products',
-              component: <div>Products</div>,
-            },
-            {
-              name: 'categories',
-              icon: <Layers3 strokeWidth={1.5} />,
-              title: 'Categories',
-              component: <div>Categories</div>,
-            },
+            // {
+            //   name: 'images',
+            //   icon: <Image strokeWidth={1.5} />,
+            //   title: 'Images',
+            //   component: <div>Images</div>,
+            // },
+            // {
+            //   name: 'products',
+            //   icon: <Tag strokeWidth={1.5} />,
+            //   title: 'Products',
+            //   component: <div>Products</div>,
+            // },
+            // {
+            //   name: 'categories',
+            //   icon: <Layers3 strokeWidth={1.5} />,
+            //   title: 'Categories',
+            //   component: <div>Categories</div>,
+            // },
           ],
           formFields: {
             // <-- this is a list of custom form fields that can be used in the desk app. It's an object, because existing fields can be overwritten.
@@ -282,7 +284,7 @@ export default defineConfig([
               comment: 'Description shwon at the bottom of the category page',
             },
             dataType: 'string',
-            inputType: 'text',
+            inputType: 'editor',
             defaultValue: '',
           },
           {

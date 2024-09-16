@@ -23,7 +23,7 @@ const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
-  <DrawerPrimitive.Overlay
+  <div // DrawerPrimitive.Overlay replaced here with a div to fix issue with RemoveScroll used in DrawerPrimitive.Overlay
     className={cn('fk-fixed fk-inset-0 fk-z-50 fk-bg-overlay/75 fk-backdrop-blur-[1px]', className)}
     ref={ref}
     {...props}
@@ -46,8 +46,8 @@ const DrawerContent = React.forwardRef<
       {...props}
     >
       <div className="fk-flex fk-w-full fk-h-full fk-pr-4">
-        <div className="fk-my-auto fk-ml-2 fk-h-[100px] fk-w-2 fk-rounded-full fk-bg-muted" />
-        <div className="fk-flex fk-flex-col fk-w-full fk-pb-12">{children}</div>
+        <div className="fk-my-auto fk-ml-2 fk-h-[100px] fk-w-2 fk-min-w-2 fk-rounded-full fk-bg-muted" />
+        <div className="fk-flex fk-flex-col fk-w-full fk-max-w-[calc(100%-1rem)] fk-pb-12">{children}</div>
       </div>
     </DrawerPrimitive.Content>
   </DrawerPortal>

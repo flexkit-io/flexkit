@@ -5,6 +5,7 @@ const baseProjectApiUrl = (projectId?: string): string =>
 
 interface ApiPaths {
   authProviders: string;
+  completion: string;
   currentUser: string;
   loginOtpConfirm: string;
   loginOtpSend: string;
@@ -16,6 +17,7 @@ interface ApiPaths {
 export function apiPaths(projectId = ''): ApiPaths {
   return {
     authProviders: `${baseProjectApiUrl(projectId)}/auth/providers`,
+    completion: `/api/flexkit/${projectId}/completion`,
     currentUser: `/api/flexkit/${projectId}/users/me`,
     loginOtpConfirm: `${baseProjectApiUrl(projectId)}/auth/otp/confirm`,
     loginOtpSend: `${baseProjectApiUrl(projectId)}/auth/otp/send`,

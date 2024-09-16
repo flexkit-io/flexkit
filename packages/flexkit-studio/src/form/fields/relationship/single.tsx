@@ -10,6 +10,7 @@ import type { ActionSetRelationship, Attribute, Entity } from '../../../core/typ
 import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
 import type { FormFieldParams } from '../../types';
+import type { AttributeValue } from '../../../graphql-client/types';
 
 export default function SingleRelationship({
   control,
@@ -100,11 +101,10 @@ export default function SingleRelationship({
         if (value && typeof value === 'object' && !Array.isArray(value) && value[primaryAttributeName]) {
           displayValue =
             primaryAttributeScope === 'global'
-              ? value[primaryAttributeName]
-              : (value[primaryAttributeName]?.[scope] ?? value[primaryAttributeName]?.default);
+              ? (value[primaryAttributeName] as string)
+              : (((((value[primaryAttributeName] as AttributeValue | undefined)?.[scope] as string | undefined) ??
+                  (value[primaryAttributeName] as AttributeValue | undefined)?.default) as string | undefined) ?? '');
         }
-
-        console.log({ displayValue });
 
         return (
           <FormItem>
@@ -132,7 +132,7 @@ export default function SingleRelationship({
                   }}
                   readOnly
                   type="text"
-                  value={displayValue as string}
+                  value={displayValue}
                 />
                 {displayValue ? (
                   <TooltipProvider>

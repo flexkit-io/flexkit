@@ -12,7 +12,7 @@ import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import type { EntityData, FormEntityItem } from '../graphql-client/types';
 // import NumberField from './fields/number';
 // import DateTimeField from './fields/datetime';
-// import EditorField from './fields/editor';
+import EditorField from './fields/editor';
 import TextareaField from './fields/textarea';
 import TextField from './fields/text';
 import RelationshipField from './fields/relationship';
@@ -140,7 +140,7 @@ export default forwardRef(FormBuilder);
 const formFieldComponentsMap: FieldComponentsMap = {
   'switch': SwitchField,
   datetime: TextField,
-  editor: TextField,
+  editor: EditorField,
   number: TextField,
   select: SelectField,
   text: TextField,

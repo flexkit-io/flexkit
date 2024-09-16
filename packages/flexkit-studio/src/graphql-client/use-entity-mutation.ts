@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-// @ts-expect-error -- this is an ECMAScript module
 import { useMutation, gql } from '@apollo/client';
-// @ts-expect-error -- this is an ECMAScript module
 import type { ApolloError, DocumentNode, MutationHookOptions } from '@apollo/client';
 
 type EntityMutationResponse = [

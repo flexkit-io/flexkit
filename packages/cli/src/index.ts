@@ -26,7 +26,7 @@ import { getPackageJSON, getCommandName } from './util/pkg';
 import { help } from './args';
 import * as configFiles from './util/config/files';
 import type { AuthConfig, FlexkitConfig, GlobalConfig } from './types';
-import { APIError, CantFindConfig, CantParseJSONFile } from './util/error-types';
+import { APIError, CantFindConfig, InvalidProjectConfig } from './util/error-types';
 import Client from './util/client';
 import getConfig from './util/get-config';
 import loginCommand from './commands/login';
@@ -82,10 +82,13 @@ const main = async (): Promise<number | undefined> => {
 
   // If a localConfigPath is passed, try to load the configuration from that path, otherwise try to load it from the current path
   const localConfigPath = argv.flags['--local-config'];
-  let flexkitConfig: FlexkitConfig | Error | undefined = getConfig(output, localConfigPath);
+  let flexkitConfig: FlexkitConfig | InvalidProjectConfig | Error | undefined = await getConfig(
+    output,
+    localConfigPath
+  );
 
-  if (flexkitConfig instanceof CantParseJSONFile) {
-    output.error(`Couldn't parse JSON file ${flexkitConfig.meta.file}.`);
+  if (flexkitConfig instanceof InvalidProjectConfig) {
+    output.error(`Couldn't parse config file ${flexkitConfig.meta.file}.`);
 
     return 1;
   }
@@ -102,6 +105,7 @@ const main = async (): Promise<number | undefined> => {
 
   if (flexkitConfig instanceof Error) {
     output.prettyError(flexkitConfig);
+
     return 1;
   }
 

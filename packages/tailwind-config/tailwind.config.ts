@@ -90,8 +90,22 @@ const config: Config = {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            '--tw-prose-body': 'var(--foreground)',
+            '--tw-prose-bold': 'var(--foreground)',
+            '--tw-prose-code': 'var(--foreground)',
+            '--tw-prose-quotes': 'var(--accent-foreground)',
+            p: {
+              fontSize: '0.875rem',
+              lineHeight: '1.25rem',
+            },
+          },
+        },
+      },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'), require('@tailwindcss/typography')],
 };
 export default config;
