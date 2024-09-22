@@ -116,7 +116,7 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
     const tempConfigFile = await import(tempConfigFilePath);
 
     // Clean up the temporary file
-    // fs.unlinkSync(tempConfigFilePath); // TODO: Uncomment this line
+    fs.unlinkSync(tempConfigFilePath);
 
     // Extract the default export (assuming it's the config object)
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- tempConfigFile is a module

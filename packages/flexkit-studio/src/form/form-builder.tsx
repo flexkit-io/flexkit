@@ -58,17 +58,13 @@ function FormBuilder(
   type UserSchema = z.infer<typeof validationSchema>;
 
   const form = useForm<UserSchema>({ resolver: zodResolver(validationSchema) });
-  const { control, getValues, handleSubmit, setValue, watch } = form;
+  const { control, getValues, handleSubmit, reset, setValue, watch } = form;
   const { isDirty } = useDrawerModalContext();
 
   useImperativeHandle(ref, () => ({
     submit() {
       void handleSubmit(() => {
         isDirty(false);
-        /**
-         * TODO: Investigate this further.
-         * The issue is that the data from the callback does not include the relationship fields, so we are using getValues() instead
-         */
         onSubmit(getValues(), formData);
       })();
     },
@@ -89,6 +85,10 @@ function FormBuilder(
       formChangesSubscription.unsubscribe();
     };
   }, [formData, isDirty, watch]);
+
+  useEffect(() => {
+    reset(formData, { keepValues: false });
+  }, [formData, reset]);
 
   if (!entitySchema || entitySchema.attributes.length === 0) {
     return (

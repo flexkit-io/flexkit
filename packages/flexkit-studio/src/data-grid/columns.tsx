@@ -16,16 +16,40 @@ export function gridColumnsDefinition<TData extends AttributeValue, TValue>({
   checkboxSelect,
   actionsComponent,
 }: Props<TData>): ColumnDefinition<TData, TValue>[] {
-  const cols = attributesSchema.map((attribute) => ({
-    accessorKey: attribute.name,
-    header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
-    cell: ({ row }: CellContext<TData, TValue>) => (
-      <div className="fk-flex fk-items-center">{row.getValue(attribute.name)}</div>
-    ),
-    enableSorting: false,
-    enableHiding: true,
-    size: attribute.options?.size ?? 150,
-  }));
+  // TODO: Those should come dynamically from useMiddlewareComponent()
+  const customPreviewComponents = {
+    'image': (value: string) => <img src={value} alt="Preview" />,
+  };
+  const defaultPreviewComponent = {
+    'boolean': (value: boolean) => <div className="fk-block fk-w-full fk-text-center">{value ? 'Yes' : 'No'}</div>,
+    'text': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+    'number': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+    'date': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+    'datetime': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+    'editor': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+    'select': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+    'relationship': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+    'switch': (value: boolean) => <div className="fk-block fk-w-full fk-text-center">{value ? 'Yes' : 'No'}</div>,
+    'textarea': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+  };
+
+  const cols = attributesSchema.map((attribute) => {
+    const previewType = attribute.previewType ?? attribute.inputType;
+    console.log('previewType', previewType);
+    const previewComponent =
+      customPreviewComponents[previewType] ?? defaultPreviewComponent[previewType] ?? defaultPreviewComponent['text'];
+
+    return {
+      accessorKey: attribute.name,
+      header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
+      cell: ({ row }: CellContext<TData, TValue>) => {
+        return previewComponent(row.getValue(attribute.name));
+      },
+      enableSorting: false,
+      enableHiding: true,
+      size: attribute.options?.size ?? 150,
+    };
+  });
 
   const actions = {
     id: 'actions',

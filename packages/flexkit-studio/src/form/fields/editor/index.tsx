@@ -32,7 +32,15 @@ const extensions = [...defaultExtensions, slashCommand];
 
 export default function Editor({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
-  const [content, setContent] = useState<JSONContent | undefined>();
+  let initialValue;
+
+  try {
+    initialValue = defaultValue?.value ? JSON.parse(defaultValue.value as string) : undefined;
+  } catch (e) {
+    initialValue = undefined;
+  }
+
+  const [content, setContent] = useState<JSONContent | undefined>(initialValue);
   const [openAI, setOpenAI] = useState(false);
   const [openNode, setOpenNode] = useState(false);
   const [openLink, setOpenLink] = useState(false);
@@ -79,7 +87,8 @@ export default function Editor({ control, defaultValue, fieldSchema, setValue }:
             <>
               <EditorRoot>
                 <EditorContent
-                  className="fk-relative fk-w-full fk-max-w-screen-lg"
+                  className="fk-relative fk-w-full fk-max-w-screen-lg fk-rounded-md fk-border fk-border-input fk-ring-offset-background focus-within:fk-outline-none focus-within:fk-ring-2 focus-within:fk-ring-ring focus-within:fk-ring-offset-2"
+                  editable={isEditable !== false && !field.value?.disabled}
                   editorProps={{
                     handleDOMEvents: {
                       keydown: (_view, event) => handleCommandNavigation(event),
@@ -88,10 +97,8 @@ export default function Editor({ control, defaultValue, fieldSchema, setValue }:
                     handleDrop: (view, event, _slice, moved) => handleImageDrop(view, event, moved, uploadFn),
                     attributes: {
                       class:
-                        'fk-prose prose-lg dark:fk-prose-invert prose-headings:fk-font-title fk-min-h-[150px] fk-font-default ' +
-                        'focus:fk-outline-none fk-rounded-md fk-max-w-full fk-border fk-border-input fk-bg-background ' +
-                        'fk-ring-offset-background focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring ' +
-                        'focus-visible:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50',
+                        'fk-prose prose-lg dark:fk-prose-invert prose-headings:fk-font-title fk-min-h-[150px] fk-font-default fk-rounded-md ' +
+                        'focus:fk-outline-none fk-max-w-full fk-bg-background ',
                     },
                   }}
                   extensions={extensions}

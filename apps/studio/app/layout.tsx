@@ -4,7 +4,6 @@
  */
 import './global.css';
 import '@flexkit/studio/styles.css';
-// @ts-expect-error -- https://github.com/vercel/geist-font/issues/122
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 
@@ -29,7 +28,6 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
   return (
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Seems like a bug in the Geist font types
     <html className={GeistSans.className} lang="en">
       <body>{children}</body>
     </html>

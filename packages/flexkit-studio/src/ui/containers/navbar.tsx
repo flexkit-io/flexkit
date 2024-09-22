@@ -17,7 +17,6 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
   const navigate = useNavigate();
 
   function handleSearchSelection(item: { entityName: string; entityNamePlural: string; entityId: string }) {
-    console.log({ item });
     navigate(`${basePath}/${projectId}/desk/list/${item.entityNamePlural}?id=${item.entityId}`);
   }
 

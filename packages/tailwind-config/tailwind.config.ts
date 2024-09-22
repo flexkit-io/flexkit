@@ -93,13 +93,38 @@ const config: Config = {
       typography: {
         DEFAULT: {
           css: {
-            '--tw-prose-body': 'var(--foreground)',
-            '--tw-prose-bold': 'var(--foreground)',
-            '--tw-prose-code': 'var(--foreground)',
-            '--tw-prose-quotes': 'var(--accent-foreground)',
+            '--tw-prose-body': 'hsl(var(--foreground))',
+            '--tw-prose-bold': 'hsl(var(--foreground))',
+            '--tw-prose-code': 'hsl(var(--foreground))',
+            '--tw-prose-quotes': 'hsl(var(--accent-foreground))',
+            '--tw-prose-headings': 'hsl(var(--muted-foreground))',
             p: {
               fontSize: '0.875rem',
               lineHeight: '1.25rem',
+            },
+            h1: {
+              fontSize: '1.5rem',
+              lineHeight: '2rem',
+            },
+            h2: {
+              fontSize: '1.25rem',
+              lineHeight: '1.875rem',
+            },
+            h3: {
+              fontSize: '1.25rem',
+              lineHeight: '1.75rem',
+            },
+            h4: {
+              fontSize: '1rem',
+              lineHeight: '1.5rem',
+            },
+            h5: {
+              fontSize: '0.875rem',
+              lineHeight: '1.25rem',
+            },
+            h6: {
+              fontSize: '0.75rem',
+              lineHeight: '1rem',
             },
           },
         },

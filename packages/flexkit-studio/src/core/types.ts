@@ -60,6 +60,8 @@ export type DataType =
 
 export type InputType = 'datetime' | 'editor' | 'number' | 'relationship' | 'select' | 'switch' | 'text' | 'textarea';
 
+export type PreviewType = 'text' | 'boolean';
+
 type SelectList = {
   label: string;
   value: string;
@@ -76,6 +78,7 @@ export type Attribute = {
   dataType: DataType;
   defaultValue?: string;
   inputType: InputType;
+  previewType?: PreviewType;
   isEditable?: boolean;
   isPrimary?: boolean;
   isUnique?: boolean;

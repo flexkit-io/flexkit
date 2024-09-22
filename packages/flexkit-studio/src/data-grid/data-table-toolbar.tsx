@@ -41,6 +41,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
             }}
           >
             <SelectTrigger className="fk-w-[12rem] fk-h-8" id="project">
+              <span className="fk-text-muted-foreground">Scope:</span>
               <SelectValue>
                 {(find(propEq(scope, 'name'))(scopes) as { name: string; label: string }).label}
               </SelectValue>

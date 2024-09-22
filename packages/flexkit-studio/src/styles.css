@@ -173,6 +173,10 @@ body {
   }
 }
 
+.ProseMirror[contenteditable='false'] {
+  @apply fk-opacity-50 fk-cursor-not-allowed;
+}
+
 .img-placeholder {
   position: relative;
 

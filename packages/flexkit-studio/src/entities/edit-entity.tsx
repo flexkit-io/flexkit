@@ -5,7 +5,7 @@ import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
 import { Loader2 } from 'lucide-react';
-import { useAppContext } from '../core/app-context';
+import { useAppContext, useAppDispatch } from '../core/app-context';
 import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
 import { useConfig } from '../core/config/config-context';
@@ -17,6 +17,7 @@ import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
 import type { Entity } from '../core/types';
 import { Button } from '../ui/primitives/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { useDispatch } from './actions-context';
 import Loading from './loading';
 import { type Action, type ActionEditEntity } from './types';
@@ -37,6 +38,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const entityName = entitySchema?.name ?? entityNamePlural;
   const { scope } = useAppContext();
   const dispatch = useDispatch();
+  const appDispatch = useAppDispatch();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
   const [isFormDirty, setIsFormDirty] = useState(false);
 
@@ -85,6 +87,10 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     ref.current?.submit();
   }, [ref]);
 
+  function handleScopeChange(value: string): void {
+    appDispatch({ type: 'setScope', payload: value });
+  }
+
   const saveEntity = useCallback(
     (newData: EntityData, previousData?: FormEntityItem) => {
       if (!previousData) return;
@@ -121,17 +127,41 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   return (
     <DrawerModal
       actions={
-        <Button
-          className="fk-px-8"
-          disabled={!isFormDirty}
-          onClick={() => {
-            handleSave();
-          }}
-          variant="default"
-        >
-          {mutationData.loading ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
-          Save
-        </Button>
+        <>
+          {scopes && scopes.length > 1 ? (
+            <Select
+              defaultValue={scope}
+              onValueChange={(value) => {
+                handleScopeChange(value);
+              }}
+            >
+              <SelectTrigger className="fk-w-[12rem] fk-h-9" id="project">
+                <span className="fk-text-muted-foreground">Scope:&nbsp;</span>
+                <SelectValue>
+                  {(find(propEq(scope, 'name'))(scopes) as { name: string; label: string }).label}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {scopes.map((scopeItem) => (
+                  <SelectItem key={scopeItem.name} value={scopeItem.name}>
+                    {scopeItem.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+          <Button
+            className="fk-px-8"
+            disabled={!isFormDirty}
+            onClick={() => {
+              handleSave();
+            }}
+            variant="default"
+          >
+            {mutationData.loading ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+            Save
+          </Button>
+        </>
       }
       beforeClose={handleBeforeClose}
       depth={depth}

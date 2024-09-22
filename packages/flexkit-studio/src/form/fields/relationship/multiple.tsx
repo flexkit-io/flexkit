@@ -410,15 +410,20 @@ function dataAdapter({
           const relationshipFieldName = relationshipFieldSchema?.relationship?.field ?? '';
 
           if (relationshipFieldName) {
-            return field[relationshipFieldName];
+            return (
+              (field[relationshipFieldName] as AttributeValue)?.[scope] ??
+              (field[relationshipFieldName] as AttributeValue)?.[defaultScope] ??
+              field[relationshipFieldName]
+            );
           }
 
           return field[scope] ?? field[defaultScope];
         }
 
         if (Array.isArray(field)) {
-          const test = field as AttributeValue[];
-          return test
+          const attrField = field as AttributeValue[];
+
+          return attrField
             .slice(0, 3)
             .map(
               (item) =>
@@ -432,21 +437,6 @@ function dataAdapter({
       }, row) as AttributeValue
   );
 }
-
-// function getRowClassName(_id: string, relationshipId: string, relationships: Relationships): string {
-//   const isAdding = find(propEq('_id', _id))(relationships[relationshipId]?.connect || []);
-//   const isRemoving = relationships[relationshipId]?.disconnect?.includes(_id);
-
-//   if (isAdding) {
-//     return 'add-relationship';
-//   }
-
-//   if (isRemoving) {
-//     return 'remove-relationship';
-//   }
-
-//   return '';
-// }
 
 function useOuterClick(ref: RefObject<HTMLDivElement>, callback: React.Dispatch<React.SetStateAction<boolean>>): void {
   useEffect(() => {

@@ -56,7 +56,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
       if (relatedAttribute.scope === 'local') {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        default\n      ${additionalScope}}\n    `;
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        default\n      ${additionalScope}}\n    `;
       }
 
       if (relatedAttribute.scope === 'relationship') {
@@ -67,7 +67,9 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
           relationshipEntity?.attributes ?? []
         ) as Attribute;
         const localAttributeQuery =
-          relationshipAttribute.scope === 'local' ? `{\n      default\n      ${additionalScope}}\n        ` : '';
+          relationshipAttribute.scope === 'local'
+            ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
+            : '';
 
         if (relatedAttribute.relationship?.mode === 'single') {
           return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
@@ -484,7 +486,9 @@ function stringifyValue(
   type: DataType,
   value: string | MappedEntityItem | EntityItem | AttributeValue | null | undefined
 ): string {
-  return stringTypes.includes(type) ? `"${value?.toString() ?? 'null'}"` : (value?.toString() ?? 'null');
+  return stringTypes.includes(type)
+    ? `"${value?.toString().replace(/"/g, '\\"') ?? 'null'}"`
+    : (value?.toString() ?? 'null');
 }
 
 function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: string, scope: string): string {
@@ -520,23 +524,31 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
       }
 
       if (primaryAttributeScope === 'local') {
-        list = `  ${attributeName} {\n      _id\n      ${primaryAttributeName} {\n        default\n        ${scope}\n      }\n    }\n  `;
+        list = `  ${attributeName} {\n      _id\n      ${primaryAttributeName} {\n        _id\n        default\n        ${scope}\n      }\n    }\n  `;
       }
     }
 
     if (relationshipMode === 'multiple' && relationshipEntityAttributes.length) {
       const multipleRelationshipAttributes = relationshipEntityAttributes.reduce((str, attribute) => {
         if (attribute.scope === 'local') {
-          return `${str}        ${attribute.name} {\n          default\n          ${scope}\n        }\n`;
+          return `${str}        ${attribute.name} {\n          _id\n          default\n          ${scope}\n        }\n`;
         }
 
         if (attribute.scope === 'relationship') {
+          const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
+          const relationshipEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
+          const relationshipAttribute = find(propEq(attribute.relationship?.field, 'name'))(
+            relationshipEntity?.attributes ?? []
+          ) as Attribute;
+          const localAttributeQuery =
+            relationshipAttribute.scope === 'local' ? `{\n      _id\n      default\n      ${additionalScope}}\n        ` : '';
+
           if (attribute.relationship?.mode === 'single') {
-            return `${str}  ${attribute.name} {\n      ${attribute.relationship.field}  {\n      default\n      ${scope}\n    }\n        }\n    `;
+            return `${str}  ${attribute.name} {\n      ${attribute.relationship.field}  ${localAttributeQuery}}\n    `;
           }
 
           if (attribute.relationship?.field) {
-            return `${str}  ${attribute.name} (options: {limit: 25, offset: 0}) {\n      ${attribute.relationship.field}  {\n      default\n      ${scope}\n    }\n        }\n    `;
+            return `${str}  ${attribute.name} (options: {limit: 25, offset: 0}) {\n      ${attribute.relationship.field}  ${localAttributeQuery}}\n    `;
           }
         }
 
@@ -761,7 +773,7 @@ export function getRelatedItemsQuery({
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
       if (relatedAttribute.scope === 'local') {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        default\n      ${additionalScope}}\n    `;
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        default\n      ${additionalScope}}\n    `;
       }
 
       if (relatedAttribute.scope === 'relationship') {
@@ -772,7 +784,9 @@ export function getRelatedItemsQuery({
           relationshipEntity?.attributes ?? []
         ) as Attribute;
         const localAttributeQuery =
-          relationshipAttribute.scope === 'local' ? `{\n      default\n      ${additionalScope}}\n        ` : '';
+          relationshipAttribute.scope === 'local'
+            ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
+            : '';
 
         if (relatedAttribute.relationship?.mode === 'single') {
           return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;

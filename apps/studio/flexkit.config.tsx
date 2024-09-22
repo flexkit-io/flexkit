@@ -42,7 +42,15 @@ export default defineConfig([
           formFields: {
             // <-- this is a list of custom form fields that can be used in the desk app. It's an object, because existing fields can be overwritten.
             'field-name': {
+              // input, preview
               component: 'someCustomFieldComponent',
+              description: 'A test form field',
+            },
+          },
+          previewFields: {
+            iconBoolean: {
+              component: 'iconBoolean',
+              description: 'A boolean field with an icon preview',
             },
           },
           navbar: {
@@ -127,8 +135,9 @@ export default defineConfig([
               size: 260,
               comment: 'The name of the product',
             },
-            dataType: 'string',
-            inputType: 'text',
+            dataType: 'string', // <-- This is the data type of the attribute, it directly affects how the data is saved in the database
+            inputType: 'text', // <-- This affects how the data is displayed in the form (text input, select, WYSIWYG editor, textarea, etc)
+            previewType: 'text', // <-- This affects how the data is displayed in the list view (text, image, boolean, WYSIWYG preview, etc)
             isPrimary: true,
             validation: (z) => z.string().min(1, { message: 'Name is required' }),
             defaultValue: '',
@@ -301,7 +310,7 @@ export default defineConfig([
           {
             name: 'path',
             label: 'Path',
-            scope: 'global',
+            scope: 'local',
             options: {
               size: 260,
               comment: 'URL path',
@@ -314,7 +323,7 @@ export default defineConfig([
           {
             name: 'pathSegment',
             label: 'Path Segment',
-            scope: 'global',
+            scope: 'local',
             options: {
               size: 260,
               comment: 'URL path segment',
@@ -352,6 +361,23 @@ export default defineConfig([
             isPrimary: true,
             validation: (z) => z.string().optional(),
             defaultValue: '',
+          },
+          {
+            name: 'products',
+            label: 'Products',
+            scope: 'relationship',
+            options: {
+              size: 260,
+              comment: 'Products related to this flag',
+            },
+            dataType: 'string',
+            inputType: 'relationship',
+            defaultValue: '',
+            relationship: {
+              mode: 'multiple',
+              field: 'name',
+              entity: 'product',
+            },
           },
         ],
       },

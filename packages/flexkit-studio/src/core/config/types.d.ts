@@ -35,7 +35,8 @@ export interface PluginOptions {
   title?: string;
   contributes?: {
     apps?: AppOptions[];
-    formFields?: { [key: string]: unknown };
+    formFields?: { [key: string]: (Props: LogoProps) => JSX.Element };
+    previewFields?: { [key: string]: (Props: LogoProps) => JSX.Element };
     commands?: CommandOptions[];
     navbar?: {
       logo?: {

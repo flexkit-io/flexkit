@@ -14,6 +14,7 @@ import type { AttributeValue } from '../../../graphql-client/types';
 
 export default function SingleRelationship({
   control,
+  defaultScope,
   defaultValue,
   entityId,
   fieldSchema,
@@ -100,10 +101,9 @@ export default function SingleRelationship({
 
         if (value && typeof value === 'object' && !Array.isArray(value) && value[primaryAttributeName]) {
           displayValue =
-            primaryAttributeScope === 'global'
-              ? (value[primaryAttributeName] as string)
-              : (((((value[primaryAttributeName] as AttributeValue | undefined)?.[scope] as string | undefined) ??
-                  (value[primaryAttributeName] as AttributeValue | undefined)?.default) as string | undefined) ?? '');
+            ((value[primaryAttributeName] as AttributeValue)?.[scope] as string) ??
+            (value[primaryAttributeName] as AttributeValue)?.[defaultScope] ??
+            value[primaryAttributeName];
         }
 
         return (

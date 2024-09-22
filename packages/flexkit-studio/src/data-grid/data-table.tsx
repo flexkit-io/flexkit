@@ -96,7 +96,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
     getRowId: (row) => row._id,
     manualPagination: true,
     meta: {
-      getRowBackground: (row: Row<TData>) => getRowClassnames(row, rowDeletionState, rowAdditionState),
+      getRowBackground: (row: Row<AttributeValue>) => getRowClassnames(row, rowDeletionState, rowAdditionState),
     },
   });
 
