@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { find, propEq } from 'ramda';
+import { find, propEq, set } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
 import { Loader2 } from 'lucide-react';
@@ -37,6 +37,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const entityName = entitySchema?.name ?? entityNamePlural;
   const { scope } = useAppContext();
+  const [currentScope, setCurrentScope] = useState(scope);
   const dispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
@@ -87,15 +88,41 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     ref.current?.submit();
   }, [ref]);
 
-  function handleScopeChange(value: string): void {
-    appDispatch({ type: 'setScope', payload: value });
+  function handleScopeChange(scope: string): void {
+    if (ref.current?.hasDataChanged()) {
+      dispatch({
+        type: 'AlertDialog',
+        _id: 'unsavedChanges',
+        payload: {
+          options: {
+            dialogTitle: 'Unsaved Changes',
+            dialogMessage: 'You have unsaved changes. Switching scopes will discard them.',
+            dialogCancelTitle: 'Stay Here',
+            dialogActionLabel: 'Discard Changes',
+            dialogActionCancel: () => {
+              setCurrentScope(currentScope);
+              dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
+            },
+            dialogActionSubmit: () => {
+              setCurrentScope(scope);
+              appDispatch({ type: 'setScope', payload: scope });
+            },
+          },
+        },
+      });
+
+      return;
+    }
+
+    setCurrentScope(scope);
+    appDispatch({ type: 'setScope', payload: scope });
   }
 
   const saveEntity = useCallback(
     (newData: EntityData, previousData?: FormEntityItem) => {
       if (!previousData) return;
 
-      const mutation = getEntityUpdateMutation(entityNamePlural, entityId, scope, schema, previousData, newData);
+      const mutation = getEntityUpdateMutation(entityNamePlural, entityId, currentScope, schema, previousData, newData);
       setMutation(gql`
         ${mutation}
       `);
@@ -108,13 +135,13 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       });
       runMutation(true);
     },
-    [action._id, entityId, entityNamePlural, handleClose, schema, runMutation, setMutation, setOptions, scope]
+    [action._id, entityId, entityNamePlural, handleClose, schema, runMutation, setMutation, setOptions, currentScope]
   );
 
   const { isLoading, data: results } = useEntityQuery({
     entityNamePlural,
     schema,
-    scope,
+    scope: currentScope,
     variables: { where: { _id: entityId } },
     isForm: true,
   });
@@ -130,15 +157,15 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
         <>
           {scopes && scopes.length > 1 ? (
             <Select
-              defaultValue={scope}
               onValueChange={(value) => {
                 handleScopeChange(value);
               }}
+              value={currentScope}
             >
               <SelectTrigger className="fk-w-[12rem] fk-h-9" id="project">
                 <span className="fk-text-muted-foreground">Scope:&nbsp;</span>
                 <SelectValue>
-                  {(find(propEq(scope, 'name'))(scopes) as { name: string; label: string }).label}
+                  {(find(propEq(currentScope, 'name'))(scopes) as { name: string; label: string }).label}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -176,7 +203,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
         <Loading />
       ) : (
         <FormBuilder
-          currentScope={scope}
+          currentScope={currentScope}
           defaultScope={defaultScope}
           entityId={entityId}
           entityName={entityName}
