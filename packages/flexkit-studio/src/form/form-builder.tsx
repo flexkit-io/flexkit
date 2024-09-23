@@ -165,7 +165,10 @@ function hasDataChanged(
       (acc, field) => ({
         ...acc,
         [field]: {
-          value: originalFormData[field].value,
+          value:
+            typeof originalFormData[field].value === 'object'
+              ? (originalFormData[field].value?._id ?? '')
+              : (originalFormData[field].value ?? ''),
           disabled: originalFormData[field].disabled,
           relationships: originalFormData[field].relationships,
         },
@@ -179,7 +182,10 @@ function hasDataChanged(
       (acc, field) => ({
         ...acc,
         [field]: {
-          value: changedData[field]?.value,
+          value:
+            typeof changedData[field]?.value === 'object'
+              ? (changedData[field]?.value?._id ?? '')
+              : (changedData[field]?.value ?? ''),
           disabled: changedData[field]?.disabled,
           relationships:
             Boolean(Object.keys(changedData[field]?.relationships?.connect ?? {}).length) ||

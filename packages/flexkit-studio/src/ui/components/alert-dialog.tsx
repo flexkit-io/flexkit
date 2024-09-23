@@ -41,7 +41,6 @@ export default function AlertDialog({ options }: Props): JSX.Element {
 
     setTimeout(() => {
       options.dialogActionSubmit?.();
-      // handleClose();
     }, 300);
   }
 

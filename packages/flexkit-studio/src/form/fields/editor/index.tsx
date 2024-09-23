@@ -56,7 +56,7 @@ export default function Editor({ control, defaultValue, fieldSchema, setValue }:
         value: JSON.stringify(json),
       });
     },
-    500
+    300
   );
 
   function handleCheckbox(checked: boolean, value: FormAttributeValue | undefined): void {

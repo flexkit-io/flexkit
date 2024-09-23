@@ -18,6 +18,7 @@ export default function SingleRelationship({
   defaultValue,
   entityId,
   fieldSchema,
+  getValues,
   schema,
   scope,
   setValue,
@@ -32,7 +33,6 @@ export default function SingleRelationship({
   const relationshipEntitySchema = find(propEq(relationshipEntity, 'name'))(schema) as Entity | undefined;
   const primaryAttribute = getPrimaryAttribute(relationshipEntitySchema?.attributes ?? []);
   const primaryAttributeName = primaryAttribute.name;
-  const primaryAttributeScope = primaryAttribute.scope;
 
   useEffect(() => {
     if (defaultValue.value === '') {
@@ -56,7 +56,7 @@ export default function SingleRelationship({
    * The relationshp context value changes when the user selects a row from the datagrid in the EditRelationship modal
    */
   useEffect(() => {
-    setValue(name, { ...defaultValue, ...(relationships[relationshipId]?.connect ?? '') });
+    setValue(name, { ...getValues(name), ...(relationships[relationshipId]?.connect ?? '') });
   }, [defaultValue, name, relationships, relationshipId, setValue]);
 
   function handleSelection(event: SyntheticEvent): void {
@@ -85,9 +85,8 @@ export default function SingleRelationship({
     };
 
     event.preventDefault();
-    setValue(name, '');
-
     appDispatch(action);
+    setValue(name, { ...getValues(name), _id: '', value: undefined });
   }
 
   return (

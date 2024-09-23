@@ -192,7 +192,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     >
       <DataTable
         columns={isLoading ? loadingColumns : columns}
-        data={isLoading ? loadingData : data ?? []}
+        data={isLoading ? loadingData : (data ?? [])}
         entityName={entitySchema?.name ?? ''}
         initialSelectionState={
           selectedRows?.reduce((acc, id) => ({ ...acc, ...(id ? { [id]: true } : {}) }), {}) as {

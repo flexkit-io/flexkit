@@ -42,7 +42,6 @@ export default defineConfig([
           formFields: {
             // <-- this is a list of custom form fields that can be used in the desk app. It's an object, because existing fields can be overwritten.
             'field-name': {
-              // input, preview
               component: 'someCustomFieldComponent',
               description: 'A test form field',
             },

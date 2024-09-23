@@ -236,7 +236,9 @@ export function mapQueryResultForFormFields(
         ...acc,
         [attributeName]: {
           value: localAttribute ? getValueByScope(localAttribute, scope) : null,
-          disabled: Boolean(localAttribute && localAttribute[scope] === null && attributeSchema.scope === 'local'),
+          disabled: Boolean(
+            localAttribute && localAttribute[scope] === null && attributeSchema.scope === 'local' && scope !== 'default'
+          ),
           scope,
           _id: localAttribute ? localAttribute._id : null,
         },
@@ -283,7 +285,7 @@ function getValueByScope(
       if (attr[scope] ?? attr.default) {
         const option = {
           _id: attr._id,
-          disabled: Boolean(attr.scope === null),
+          disabled: Boolean(attr.scope === null && scope !== 'default'),
           scope,
           value: attr[scope] ?? attr.default,
         };
@@ -541,7 +543,9 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
             relationshipEntity?.attributes ?? []
           ) as Attribute;
           const localAttributeQuery =
-            relationshipAttribute.scope === 'local' ? `{\n      _id\n      default\n      ${additionalScope}}\n        ` : '';
+            relationshipAttribute.scope === 'local'
+              ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
+              : '';
 
           if (attribute.relationship?.mode === 'single') {
             return `${str}  ${attribute.name} {\n      ${attribute.relationship.field}  ${localAttributeQuery}}\n    `;
