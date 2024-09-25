@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { find, propEq, set } from 'ramda';
+import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
-import { Loader2 } from 'lucide-react';
 import { useAppContext, useAppDispatch } from '../core/app-context';
 import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
+import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import { useConfig } from '../core/config/config-context';
 import { useEntityQuery } from '../graphql-client/use-entity-query';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
@@ -16,9 +16,9 @@ import type { EntityData, FormEntityItem } from '../graphql-client/types';
 import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
 import type { Entity } from '../core/types';
-import { Button } from '../ui/primitives/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { useDispatch } from './actions-context';
+import SaveButton from './save-button';
 import Loading from './loading';
 import { type Action, type ActionEditEntity } from './types';
 
@@ -32,7 +32,10 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const { entityId, entityNamePlural } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const { projects, currentProjectId } = useConfig();
-  const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { schema, scopes } = useCallback(
+    () => find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject,
+    [currentProjectId, projects]
+  )();
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const entityName = entitySchema?.name ?? entityNamePlural;
@@ -41,7 +44,14 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const dispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
-  const [isFormDirty, setIsFormDirty] = useState(false);
+  const { setIsDirty } = useDrawerModalContext();
+
+  const setFormIsDirty = useCallback(
+    (isDirty: boolean) => {
+      setIsDirty(isDirty);
+    },
+    [setIsDirty]
+  );
 
   useEffect(() => {
     if (mutationData.error) {
@@ -177,17 +187,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
               </SelectContent>
             </Select>
           ) : null}
-          <Button
-            className="fk-px-8"
-            disabled={!isFormDirty}
-            onClick={() => {
-              handleSave();
-            }}
-            variant="default"
-          >
-            {mutationData.loading ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
-            Save
-          </Button>
+          <SaveButton handleSave={handleSave} isLoading={mutationData.loading} />
         </>
       }
       beforeClose={handleBeforeClose}
@@ -196,7 +196,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       onClose={() => {
         handleClose(action._id);
       }}
-      onFormChange={setIsFormDirty}
+      onFormChange={() => {}}
       title={entityIdentifier as string}
     >
       {isLoading || !data.length ? (
@@ -212,6 +212,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
           onSubmit={saveEntity}
           ref={ref}
           schema={schema}
+          setIsDirty={setFormIsDirty}
         />
       )}
     </DrawerModal>

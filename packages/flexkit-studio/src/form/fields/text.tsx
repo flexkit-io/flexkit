@@ -4,7 +4,7 @@ import { Input } from '../../ui/primitives/input';
 import type { FormFieldParams } from '../types';
 import UseDefault from './use-default';
 
-export default function Text({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
+export function Text({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(

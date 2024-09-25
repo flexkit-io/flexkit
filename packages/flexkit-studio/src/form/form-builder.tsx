@@ -1,5 +1,5 @@
-import { createElement, forwardRef, useEffect, useImperativeHandle } from 'react';
-import type { ForwardedRef } from 'react';
+import { createElement, forwardRef, memo, useEffect, useImperativeHandle, useMemo } from 'react';
+import type { ComponentType, ForwardedRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,14 +7,13 @@ import { equals, find, propEq } from 'ramda';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
+import { useMiddlewareComponent } from '../core/use-middleware-component';
 import type { Entity, Schema } from '../core/types';
-import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import type { EntityData, FormEntityItem } from '../graphql-client/types';
 // import NumberField from './fields/number';
 // import DateTimeField from './fields/datetime';
 import EditorField from './fields/editor';
 import TextareaField from './fields/textarea';
-import TextField from './fields/text';
 import RelationshipField from './fields/relationship';
 import SwitchField from './fields/switch';
 import SelectField from './fields/select';
@@ -35,41 +34,58 @@ type Props = {
   entityNamePlural: string;
   formData?: FormEntityItem;
   schema: Schema;
+  setIsDirty: (isDirty: boolean) => void;
   onSubmit: (newData: EntityData, previousData?: FormEntityItem) => void;
 };
 
 type FieldComponentsMap = {
-  [type: string]: (_props: FormFieldParams) => JSX.Element;
+  [type: string]: ComponentType<FormFieldParams>;
 };
 
 function FormBuilder(
-  { currentScope, defaultScope, entityId, entityName, entityNamePlural, formData, schema, onSubmit }: Props,
+  { currentScope, defaultScope, entityId, entityName, entityNamePlural, formData, schema, setIsDirty, onSubmit }: Props,
   ref: ForwardedRef<SubmitHandle>
 ): JSX.Element {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const formSchema = entitySchema?.attributes ?? [];
-  const validationSchema = z.object(
-    formSchema.reduce((acc, fieldSchema) => {
-      if (typeof fieldSchema.validation === 'undefined') return acc;
+  const validationSchema = useMemo(() => {
+    return z.object(
+      formSchema.reduce((acc, fieldSchema) => {
+        if (typeof fieldSchema.validation === 'undefined') return acc;
 
-      return { ...acc, [fieldSchema.name]: z.object({ value: fieldSchema.validation(z) }) };
-    }, {})
-  );
+        return { ...acc, [fieldSchema.name]: z.object({ value: fieldSchema.validation(z) }) };
+      }, {})
+    );
+  }, [formSchema]);
   type UserSchema = z.infer<typeof validationSchema>;
 
   const form = useForm<UserSchema>({ resolver: zodResolver(validationSchema) });
   const { control, getValues, handleSubmit, reset, setValue, watch } = form;
-  const { isDirty } = useDrawerModalContext();
+  const TextField = useMiddlewareComponent({ contributionPoint: 'formFields.text' }) as ComponentType<FormFieldParams>;
+
+  const formFieldComponentsMap: FieldComponentsMap = useMemo(
+    () => ({
+      'switch': SwitchField,
+      datetime: TextField,
+      editor: EditorField,
+      number: TextField,
+      select: SelectField,
+      text: TextField,
+      textarea: TextareaField,
+      relationship: RelationshipField,
+    }),
+    [useMiddlewareComponent]
+  );
 
   useImperativeHandle(ref, () => ({
     submit() {
       void handleSubmit(() => {
-        isDirty(false);
+        setIsDirty(false);
         onSubmit(getValues(), formData);
       })();
     },
     hasErrors() {
-      isDirty(true);
+      setIsDirty(true);
     },
     hasDataChanged() {
       return hasDataChanged(getValues(), formData);
@@ -78,13 +94,13 @@ function FormBuilder(
 
   useEffect(() => {
     const formChangesSubscription = watch((changedData) => {
-      isDirty(hasDataChanged(changedData, formData));
+      setIsDirty(hasDataChanged(changedData, formData));
     });
 
     return () => {
       formChangesSubscription.unsubscribe();
     };
-  }, [formData, isDirty, watch]);
+  }, [formData, setIsDirty, watch]);
 
   useEffect(() => {
     reset(formData, { keepValues: false });
@@ -135,18 +151,7 @@ function FormBuilder(
   );
 }
 
-export default forwardRef(FormBuilder);
-
-const formFieldComponentsMap: FieldComponentsMap = {
-  'switch': SwitchField,
-  datetime: TextField,
-  editor: EditorField,
-  number: TextField,
-  select: SelectField,
-  text: TextField,
-  textarea: TextareaField,
-  relationship: RelationshipField,
-};
+export default memo(forwardRef(FormBuilder));
 
 function hasDataChanged(
   changedData: FormEntityItem | { [attribute: string]: undefined },

@@ -34,10 +34,13 @@ export function gridColumnsDefinition<TData extends AttributeValue, TValue>({
   };
 
   const cols = attributesSchema.map((attribute) => {
-    const previewType = attribute.previewType ?? attribute.inputType;
-    console.log('previewType', previewType);
+    const previewType =
+      attribute.previewType ?? (attribute.inputType as keyof typeof defaultPreviewComponent | 'image');
+    // console.log('previewType', previewType);
     const previewComponent =
-      customPreviewComponents[previewType] ?? defaultPreviewComponent[previewType] ?? defaultPreviewComponent['text'];
+      customPreviewComponents[previewType as keyof typeof customPreviewComponents] ??
+      defaultPreviewComponent[previewType as keyof typeof defaultPreviewComponent] ??
+      defaultPreviewComponent['text'];
 
     return {
       accessorKey: attribute.name,

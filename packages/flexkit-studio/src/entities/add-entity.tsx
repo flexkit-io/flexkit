@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { useAppContext } from '../core/app-context';
 import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
+import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import { useConfig } from '../core/config/config-context';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import FormBuilder from '../form/form-builder';
@@ -37,6 +38,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const { scope } = useAppContext();
   const dispatch = useDispatch();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
+  const { setIsDirty } = useDrawerModalContext();
 
   useEffect(() => {
     if (mutationData.error) {
@@ -44,8 +46,8 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
     }
   }, [mutationData.error]);
 
-  function handleBeforeClose(hasFormChanged: boolean): boolean {
-    if (hasFormChanged) {
+  function handleBeforeClose(): boolean {
+    if (ref.current?.hasDataChanged()) {
       dispatch({
         type: 'AlertDialog',
         _id: 'unsavedChanges',
@@ -137,6 +139,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
         onSubmit={saveEntity}
         ref={ref}
         schema={schema}
+        setIsDirty={setIsDirty}
       />
     </DrawerModal>
   );

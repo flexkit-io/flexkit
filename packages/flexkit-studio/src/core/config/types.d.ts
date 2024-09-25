@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from 'react';
 import type { Attribute, Scopes } from '../types';
+import type { FormFieldParams } from '../../form/types';
 
 export interface LogoProps {
   title: string;
@@ -12,8 +13,12 @@ interface ProjectSelectorProps {
   renderDefault: (props: Omit<ProjectSelectorProps, 'renderDefault'>) => JSX.Element;
 }
 
-export interface SearchProps {
+interface SearchProps {
   renderDefault: (props: Omit<SearchProps, 'renderDefault'>) => JSX.Element;
+}
+
+export interface FormFieldProps extends FormFieldParams {
+  renderDefault: (props: Omit<FormFieldParams, 'renderDefault'>) => JSX.Element;
 }
 
 export interface AppOptions {
@@ -35,7 +40,12 @@ export interface PluginOptions {
   title?: string;
   contributes?: {
     apps?: AppOptions[];
-    formFields?: { [key: string]: (Props: LogoProps) => JSX.Element };
+    formFields?: {
+      [key: string]: {
+        component: (Props: FormFieldProps) => JSX.Element;
+        description?: string;
+      };
+    };
     previewFields?: { [key: string]: (Props: LogoProps) => JSX.Element };
     commands?: CommandOptions[];
     navbar?: {

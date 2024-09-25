@@ -133,5 +133,5 @@ export type {
 } from '@tanstack/react-table';
 
 // Types
-export type { AppOptions, LogoProps, PluginOptions, SingleProject } from './core/config/types';
+export type { AppOptions, FormFieldProps, LogoProps, PluginOptions, SingleProject } from './core/config/types';
 export type { Attribute, Entity, DataType, Schema, ScopeType } from './core/types';

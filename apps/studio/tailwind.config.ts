@@ -1,20 +1,14 @@
-// tailwind config is required for editor support
+import type { Config } from 'tailwindcss';
 
-import sharedConfig from 'tailwind-config/tailwind.config';
-import flexkitStudioConfig from '@flexkit/studio/tailwind.config';
-
-const config = {
-  presets: [sharedConfig],
+const config: Config = {
   content: [
-    './pages/**/*.{ts,tsx}',
-    './components/**/*.{ts,tsx}',
-    './app/**/*.{ts,tsx}',
-    './src/**/*.{ts,tsx}',
-    './flexkit.config.tsx',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  darkMode: ['class'],
-  theme: flexkitStudioConfig.theme,
-  plugins: [require('tailwindcss-animate')],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
 };
-
 export default config;

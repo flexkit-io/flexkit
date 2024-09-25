@@ -4,6 +4,7 @@ import { ConfigProvider } from '../../core/config/config-context';
 import { GraphQLProvider } from '../../graphql-client/graphql-context';
 import { ActionsManager } from '../../entities/actions-manager';
 import type { ProjectOptions } from '../../core/config/types';
+import { DrawerModalProvider } from '../drawer-modal-context';
 
 export function Root({ config }: { config: ProjectOptions[] }): JSX.Element {
   const [defaultApp] = config;
@@ -17,7 +18,9 @@ export function Root({ config }: { config: ProjectOptions[] }): JSX.Element {
     <AuthProvider>
       <ConfigProvider config={config}>
         <GraphQLProvider>
-          <ActionsManager />
+          <DrawerModalProvider>
+            <ActionsManager />
+          </DrawerModalProvider>
           <Outlet />
         </GraphQLProvider>
       </ConfigProvider>

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { X as CloseIcon } from 'lucide-react';
-import { DrawerModalContext } from '../drawer-modal-context';
 import { Button } from '../primitives/button';
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '../primitives/drawer';
 import { Separator } from '../primitives/separator';
@@ -11,7 +10,7 @@ import { Skeleton } from '../primitives/skeleton';
 
 type Props = {
   actions: ReactNode;
-  beforeClose?: (hasFormChanged: boolean) => boolean;
+  beforeClose?: () => boolean;
   children: ReactNode;
   depth: number; // how many drawers are open, to control the width of the drawers
   isFocused: boolean; // whether the drawer is the last one open
@@ -31,11 +30,10 @@ export default function DrawerModal({
   title,
 }: Props): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
-  const [hasFormChanged, setHasFormChanged] = useState(false);
   const gutter = depth * (50 / depth);
 
   const handleClose = useCallback(() => {
-    const shouldClose = beforeClose ? beforeClose(hasFormChanged) : true;
+    const shouldClose = beforeClose ? beforeClose() : true;
 
     if (!shouldClose) return;
 
@@ -43,7 +41,7 @@ export default function DrawerModal({
     setTimeout(() => {
       onClose();
     }, 150);
-  }, [beforeClose, hasFormChanged, onClose, setIsOpen]);
+  }, [beforeClose, onClose, setIsOpen]);
 
   const onEscapeKeyPressed = useCallback(
     (event: KeyboardEvent): void => {
@@ -68,14 +66,6 @@ export default function DrawerModal({
     };
   }, [onEscapeKeyPressed]);
 
-  const isDirty = useCallback(
-    (flag: boolean) => {
-      setHasFormChanged(flag);
-      onFormChange?.(flag);
-    },
-    [onFormChange]
-  );
-
   return (
     <Drawer
       dismissible={false}
@@ -99,7 +89,7 @@ export default function DrawerModal({
         </DrawerHeader>
         <Separator />
         <div className="fk-px-4 fk-pt-6 fk-h-full fk-min-h-full fk-overflow-y-auto fk-pb-16" data-vaul-no-drag>
-          <DrawerModalContext.Provider value={{ isDirty }}>{children}</DrawerModalContext.Provider>
+          {children}
         </div>
       </DrawerContent>
     </Drawer>

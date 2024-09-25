@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3001",
+    "dev": "flexkit sync && next dev --port 3001",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
     "@flexkit/asset-manager": "workspace:*",
+    "@flexkit/cli": "workspace:*",
     "@flexkit/desk": "workspace:*",
     "@flexkit/explorer": "workspace:*",
     "@flexkit/studio": "workspace:*",

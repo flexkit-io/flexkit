@@ -105,10 +105,16 @@ const config: Config = {
             h1: {
               fontSize: '1.5rem',
               lineHeight: '2rem',
+              strong: {
+                fontWeight: '600',
+              },
             },
             h2: {
               fontSize: '1.25rem',
               lineHeight: '1.875rem',
+              strong: {
+                fontWeight: '600',
+              },
             },
             h3: {
               fontSize: '1.25rem',
