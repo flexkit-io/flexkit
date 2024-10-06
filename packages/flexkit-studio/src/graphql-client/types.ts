@@ -53,7 +53,7 @@ export type MappedFormEntityQueryResults = {
 };
 
 export type FormEntityItem = {
-  [attributeName: string]: FormAttributeValue;
+  [attributeName: string]: FormFieldValue;
 };
 
 export type UseEntityQueryParams = {
@@ -64,7 +64,7 @@ export type UseEntityQueryParams = {
   isForm?: boolean;
 };
 
-export type FormAttributeValue = {
+export type FormFieldValue = {
   _id?: string;
   count?: number;
   disabled: boolean;

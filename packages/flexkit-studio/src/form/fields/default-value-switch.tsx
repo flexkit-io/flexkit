@@ -7,7 +7,7 @@ type Props = {
   onChange: (checked: boolean) => void;
 };
 
-export default function UseDefault({ scope, checked, onChange }: Props): JSX.Element | null {
+export function DefaultValueSwitch({ scope, checked, onChange }: Props): JSX.Element | null {
   const elementId = useId();
 
   if (!scope || scope === 'default') {

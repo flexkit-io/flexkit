@@ -12,7 +12,7 @@ import type {
   EntityQueryResults,
   MappedEntityItem,
 } from '../../../graphql-client/types';
-import { gridColumnsDefinition } from '../../../data-grid/columns';
+import { useGridColumnsDefinition } from '../../../data-grid/columns';
 import { DataTable } from '../../../data-grid/data-table';
 import { Button } from '../../../ui/primitives/button';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
@@ -89,14 +89,10 @@ export default function MultipleRelationship({
     ${entityQuery.query}
   `);
 
-  const columns = useMemo(
-    () =>
-      gridColumnsDefinition<AttributeValue, unknown>({
-        attributesSchema: relationshipEntitySchema?.attributes ?? [],
-        actionsComponent: (row) => dataRowActions({ appDispatch, relationshipId, relationships, row, setRows }),
-      }),
-    [appDispatch, relationshipEntitySchema?.attributes, relationshipId, relationships]
-  );
+  const columns = useGridColumnsDefinition<AttributeValue, unknown>({
+    attributesSchema: relationshipEntitySchema?.attributes ?? [],
+    actionsComponent: (row) => dataRowActions({ appDispatch, relationshipId, relationships, row, setRows }),
+  });
 
   useEffect(() => {
     setRows(initialRows);

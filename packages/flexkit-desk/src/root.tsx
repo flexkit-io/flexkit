@@ -1,4 +1,5 @@
-import { useAuth, Outlet, ResizableHandle, ResizablePanel, ResizablePanelGroup, Sidebar } from '@flexkit/studio';
+import { useAuth, Outlet, Sidebar } from '@flexkit/studio';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@flexkit/studio/ui';
 
 export function Root(): JSX.Element {
   const [, auth] = useAuth();

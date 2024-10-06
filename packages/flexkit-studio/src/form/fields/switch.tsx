@@ -1,20 +1,20 @@
-import type { FormAttributeValue } from '../../graphql-client/types';
+import type { FormFieldValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import { Switch as SwitchPrimitive } from '../../ui/primitives/switch';
 import type { FormFieldParams } from '../types';
-import UseDefault from './use-default';
+import { DefaultValueSwitch } from './default-value-switch';
 
-export default function Switch({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
+export function Switch({ control, fieldSchema, setValue }: FormFieldParams): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
-  function handleInput(checked: boolean, previousValue: FormAttributeValue | undefined): void {
+  function handleInput(checked: boolean, previousValue: FormFieldValue | undefined): void {
     setValue(name, {
       ...previousValue,
       value: checked,
     });
   }
 
-  function handleCheckbox(checked: boolean, value: FormAttributeValue | undefined): void {
+  function handleCheckbox(checked: boolean, value: FormFieldValue | undefined): void {
     setValue(name, {
       ...value,
       disabled: checked,
@@ -24,9 +24,8 @@ export default function Switch({ control, defaultValue, fieldSchema, setValue }:
   return (
     <FormField
       control={control}
-      defaultValue={defaultValue}
       name={name}
-      render={({ field }: { field: { value?: FormAttributeValue } }) => (
+      render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
           <div className="fk-flex fk-flex-row fk-items-center fk-justify-between fk-rounded-lg fk-border fk-border-input fk-p-3 fk-ring-offset-background focus-within:fk-outline-none focus-within:fk-ring-2 focus-within:fk-ring-ring focus-within:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50">
             <div className="fk-space-y-0.5">
@@ -43,7 +42,7 @@ export default function Switch({ control, defaultValue, fieldSchema, setValue }:
               />
             </FormControl>
           </div>
-          <UseDefault
+          <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
             onChange={(checked) => {
               handleCheckbox(checked, field.value);

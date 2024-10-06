@@ -26,9 +26,6 @@ importers:
       '@flexkit/asset-manager':
         specifier: workspace:*
         version: link:../../packages/flexkit-asset-manager
-      '@flexkit/cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@flexkit/desk':
         specifier: workspace:*
         version: link:../../packages/flexkit-desk

@@ -1,7 +1,12 @@
+import { ComponentType } from 'react';
 import type { CellContext, ColumnDef, Row, Table } from '@tanstack/react-table';
 import type { Attribute } from '../core/types';
 import type { AttributeValue } from '../graphql-client/types';
+import { useConfig } from '../core/config/config-context';
 import { Checkbox } from '../ui/primitives/checkbox';
+import { Boolean as BooleanPrefiewField } from './preview-components/boolean';
+import { Text as TextPreviewField } from './preview-components/text';
+import { Editor as EditorPreviewField } from './preview-components/editor';
 
 type Props<TData> = {
   attributesSchema: Attribute[];
@@ -11,41 +16,52 @@ type Props<TData> = {
 
 type ColumnDefinition<TData extends AttributeValue, TValue> = ColumnDef<TData, TValue> & { id?: string; size: number };
 
-export function gridColumnsDefinition<TData extends AttributeValue, TValue>({
+export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   attributesSchema,
   checkboxSelect,
   actionsComponent,
 }: Props<TData>): ColumnDefinition<TData, TValue>[] {
-  // TODO: Those should come dynamically from useMiddlewareComponent()
-  const customPreviewComponents = {
-    'image': (value: string) => <img src={value} alt="Preview" />,
+  const { getContributionPointConfig } = useConfig();
+  const inputTypeToPreviewFieldMap = {
+    'datetime': 'text',
+    'editor': 'editor',
+    'number': 'text',
+    'relationship': 'text',
+    'select': 'text',
+    'switch': 'boolean',
+    'text': 'text',
+    'textarea': 'text',
   };
-  const defaultPreviewComponent = {
-    'boolean': (value: boolean) => <div className="fk-block fk-w-full fk-text-center">{value ? 'Yes' : 'No'}</div>,
-    'text': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
-    'number': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
-    'date': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
-    'datetime': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
-    'editor': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
-    'select': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
-    'relationship': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
-    'switch': (value: boolean) => <div className="fk-block fk-w-full fk-text-center">{value ? 'Yes' : 'No'}</div>,
-    'textarea': (value: boolean) => <div className="fk-flex fk-items-center">{value}</div>,
+  const previewFieldComponentsMap = {
+    'boolean': BooleanPrefiewField,
+    'text': TextPreviewField,
+    'number': TextPreviewField,
+    'date': TextPreviewField,
+    'datetime': TextPreviewField,
+    'editor': EditorPreviewField,
+    'select': TextPreviewField,
+    'relationship': TextPreviewField,
+    'switch': BooleanPrefiewField,
+    'textarea': TextPreviewField,
   };
 
   const cols = attributesSchema.map((attribute) => {
     const previewType =
-      attribute.previewType ?? (attribute.inputType as keyof typeof defaultPreviewComponent | 'image');
-    // console.log('previewType', previewType);
+      attribute.previewType ??
+      inputTypeToPreviewFieldMap[attribute.inputType as keyof typeof inputTypeToPreviewFieldMap];
+    console.log('previewType', previewType);
     const previewComponent =
-      customPreviewComponents[previewType as keyof typeof customPreviewComponents] ??
-      defaultPreviewComponent[previewType as keyof typeof defaultPreviewComponent] ??
-      defaultPreviewComponent['text'];
+      (getContributionPointConfig('previewFields', [previewType])?.[0]?.component as unknown as
+        | ComponentType<string | boolean | number | Date>
+        | undefined) ??
+      previewFieldComponentsMap[previewType as keyof typeof previewFieldComponentsMap] ??
+      previewFieldComponentsMap['text'];
 
     return {
       accessorKey: attribute.name,
       header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
       cell: ({ row }: CellContext<TData, TValue>) => {
+        // @ts-ignore -- TODO: fix this
         return previewComponent(row.getValue(attribute.name));
       },
       enableSorting: false,

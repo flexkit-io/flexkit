@@ -3,23 +3,25 @@ import type { Attribute, Scopes } from '../types';
 import type { FormFieldParams } from '../../form/types';
 
 export interface LogoProps {
+  theme: string | undefined;
   title: string;
-  renderDefault: (props: Omit<LogoProps, 'renderDefault'>) => JSX.Element;
 }
 
 interface ProjectSelectorProps {
   projectId: string;
   projects: ProjectOptions[];
-  renderDefault: (props: Omit<ProjectSelectorProps, 'renderDefault'>) => JSX.Element;
 }
 
 interface SearchProps {
-  renderDefault: (props: Omit<SearchProps, 'renderDefault'>) => JSX.Element;
+  onSelect: (item: { entityName: string; entityNamePlural: string; entityId: string }) => void;
+  projectId: string;
 }
 
-export interface FormFieldProps extends FormFieldParams {
-  renderDefault: (props: Omit<FormFieldParams, 'renderDefault'>) => JSX.Element;
-}
+export interface FormFieldProps extends FormFieldParams {}
+
+type UserNavProps = {
+  projectId: string;
+};
 
 export interface AppOptions {
   name: string;
@@ -46,7 +48,12 @@ export interface PluginOptions {
         description?: string;
       };
     };
-    previewFields?: { [key: string]: (Props: LogoProps) => JSX.Element };
+    previewFields?: {
+      [key: string]: {
+        component: (Props: string | boolean | number | Date) => JSX.Element;
+        description?: string;
+      };
+    };
     commands?: CommandOptions[];
     navbar?: {
       logo?: {

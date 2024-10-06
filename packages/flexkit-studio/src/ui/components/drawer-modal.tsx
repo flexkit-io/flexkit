@@ -73,7 +73,6 @@ export default function DrawerModal({
         handleClose();
       }}
       open={isOpen}
-      preventScrollRestoration={false}
     >
       <DrawerContent style={isFocused ? {} : { maxWidth: `calc(100% - ${gutter.toString()}px)` }}>
         <DrawerHeader>

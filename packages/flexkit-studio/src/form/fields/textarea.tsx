@@ -1,21 +1,15 @@
-import type { FormAttributeValue } from '../../graphql-client/types';
+import type { FormFieldValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import { Textarea as TextareaPrimitive } from '../../ui/primitives/textarea';
 import type { FormFieldParams } from '../types';
-import UseDefault from './use-default';
+import { DefaultValueSwitch } from './default-value-switch';
 
-export default function Textarea({
-  control,
-  defaultValue,
-  fieldSchema,
-  getValues,
-  setValue,
-}: FormFieldParams): JSX.Element {
+export function Textarea({ control, fieldSchema, getValues, setValue }: FormFieldParams): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(
     event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
-    previousValue: FormAttributeValue | undefined
+    previousValue: FormFieldValue | undefined
   ): void {
     setValue(name, {
       ...previousValue,
@@ -23,7 +17,7 @@ export default function Textarea({
     });
   }
 
-  function handleCheckbox(checked: boolean, value: FormAttributeValue | undefined): void {
+  function handleCheckbox(checked: boolean, value: FormFieldValue | undefined): void {
     setValue(name, {
       ...value,
       disabled: checked,
@@ -33,9 +27,8 @@ export default function Textarea({
   return (
     <FormField
       control={control}
-      defaultValue={defaultValue}
       name={name}
-      render={({ field }: { field: { value?: FormAttributeValue } }) => (
+      render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
           <div className="fk-flex">
             <div className="fk-full-w">
@@ -59,7 +52,7 @@ export default function Textarea({
                 }}
                 value={(field.value?.value as string) || ''}
               />
-              <UseDefault
+              <DefaultValueSwitch
                 checked={field.value?.disabled ?? false}
                 onChange={(checked) => {
                   handleCheckbox(checked, field.value);

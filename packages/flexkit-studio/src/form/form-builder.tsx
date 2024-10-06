@@ -7,16 +7,17 @@ import { equals, find, propEq } from 'ramda';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
-import { useMiddlewareComponent } from '../core/use-middleware-component';
 import type { Entity, Schema } from '../core/types';
 import type { EntityData, FormEntityItem } from '../graphql-client/types';
+import { useConfig } from '../core/config/config-context';
+import { Text as TextField } from './fields/text';
+import { Switch as SwitchField } from './fields/switch';
 // import NumberField from './fields/number';
 // import DateTimeField from './fields/datetime';
 import EditorField from './fields/editor';
-import TextareaField from './fields/textarea';
+import { Textarea as TextareaField } from './fields/textarea';
 import RelationshipField from './fields/relationship';
-import SwitchField from './fields/switch';
-import SelectField from './fields/select';
+import { Select as SelectField } from './fields/select';
 import UndefinedFieldTypeError from './fields/undefined-field-type-error';
 import type { FormFieldParams } from './types';
 
@@ -59,23 +60,20 @@ function FormBuilder(
   }, [formSchema]);
   type UserSchema = z.infer<typeof validationSchema>;
 
-  const form = useForm<UserSchema>({ resolver: zodResolver(validationSchema) });
-  const { control, getValues, handleSubmit, reset, setValue, watch } = form;
-  const TextField = useMiddlewareComponent({ contributionPoint: 'formFields.text' }) as ComponentType<FormFieldParams>;
+  const form = useForm<UserSchema>({ resolver: zodResolver(validationSchema), values: formData });
+  const { control, getValues, handleSubmit, setValue, watch } = form;
+  const { getContributionPointConfig } = useConfig();
 
-  const formFieldComponentsMap: FieldComponentsMap = useMemo(
-    () => ({
-      'switch': SwitchField,
-      datetime: TextField,
-      editor: EditorField,
-      number: TextField,
-      select: SelectField,
-      text: TextField,
-      textarea: TextareaField,
-      relationship: RelationshipField,
-    }),
-    [useMiddlewareComponent]
-  );
+  const formFieldComponentsMap: FieldComponentsMap = {
+    'switch': SwitchField,
+    datetime: TextField,
+    editor: EditorField,
+    number: TextField,
+    select: SelectField,
+    text: TextField,
+    textarea: TextareaField,
+    relationship: RelationshipField,
+  };
 
   useImperativeHandle(ref, () => ({
     submit() {
@@ -102,10 +100,6 @@ function FormBuilder(
     };
   }, [formData, setIsDirty, watch]);
 
-  useEffect(() => {
-    reset(formData, { keepValues: false });
-  }, [formData, reset]);
-
   if (!entitySchema || entitySchema.attributes.length === 0) {
     return (
       <Alert variant="destructive">
@@ -126,9 +120,13 @@ function FormBuilder(
             return null;
           }
 
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- required if the user pass an invalid inputType
-          return formFieldComponentsMap[field.inputType] ? (
-            createElement(formFieldComponentsMap[field.inputType], {
+          const fieldComponent =
+            (getContributionPointConfig('formFields', [field.inputType])?.[0]?.component as unknown as
+              | ComponentType<FormFieldParams>
+              | undefined) ?? formFieldComponentsMap[field.inputType];
+
+          return fieldComponent ? (
+            createElement(fieldComponent, {
               key: field.name,
               control,
               defaultScope,
@@ -191,7 +189,7 @@ function hasDataChanged(
             typeof changedData[field]?.value === 'object'
               ? (changedData[field]?.value?._id ?? '')
               : (changedData[field]?.value ?? ''),
-          disabled: changedData[field]?.disabled,
+          disabled: changedData[field]?.disabled ?? false,
           relationships:
             Boolean(Object.keys(changedData[field]?.relationships?.connect ?? {}).length) ||
             Boolean(changedData[field]?.relationships?.disconnect?.length)

@@ -5,21 +5,23 @@ import { has, path } from 'ramda';
 import { useParams } from 'react-router-dom';
 import type { AppOptions, PluginOptions, ProjectOptions } from './types';
 
-interface ConfigContext {
+type Contributes = NonNullable<PluginOptions['contributes']>;
+export interface ConfigContext {
   contributions: {
-    apps: AppOptions[];
+    apps: AppOptions[] | [];
   };
   currentProjectId?: string;
-  getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
-    contributionPoint: string | string[]
-  ) => PluginOptions['contributes'][T][];
+  getContributionPointConfig: <T extends keyof Contributes>(
+    contributionPoint: T,
+    subPath?: string[]
+  ) => Contributes[T][] | [];
   plugins: PluginOptions[];
   projects: ProjectOptions[];
 }
 
 const ConfigContext = createContext<ConfigContext>({
   contributions: {
-    apps: [] as AppOptions[],
+    apps: [],
   },
   currentProjectId: undefined,
   getContributionPointConfig: () => [],
@@ -63,12 +65,14 @@ export function ConfigProvider({
   const globalConfig = useMemo(
     () => ({
       contributions: {
-        apps: _getContributionPointConfig('apps', currentProjectPlugins),
+        apps: _getContributionPointConfig('apps', [], currentProjectPlugins),
       },
       currentProjectId,
-      getContributionPointConfig: <T extends keyof PluginOptions['contributes']>(
-        contributionPoint: string | string[]
-      ): PluginOptions['contributes'][T][] => _getContributionPointConfig(contributionPoint, currentProjectPlugins),
+      getContributionPointConfig: <T extends keyof Contributes>(
+        contributionPoint: T,
+        subPath: string[] = []
+      ): Contributes[T][] =>
+        _getContributionPointConfig(contributionPoint, subPath, currentProjectPlugins) as Contributes[T][],
       plugins: allPlugins,
       projects: globalFlattenedConfig.filter((item: ProjectOptions | PluginOptions) =>
         hasProjectIdProperty(item)
@@ -77,7 +81,19 @@ export function ConfigProvider({
     [allPlugins, currentProjectId, currentProjectPlugins, globalFlattenedConfig]
   );
 
-  return <ConfigContext.Provider value={globalConfig}>{children}</ConfigContext.Provider>;
+  return (
+    <ConfigContext.Provider
+      value={{
+        ...globalConfig,
+        contributions: {
+          ...globalConfig.contributions,
+          apps: globalConfig.contributions.apps as AppOptions[] | [],
+        },
+      }}
+    >
+      {children}
+    </ConfigContext.Provider>
+  );
 }
 
 export function useConfig(): ConfigContext {
@@ -87,7 +103,7 @@ export function useConfig(): ConfigContext {
 function flattenConfigByProperty(
   property: string[],
   config: (ProjectOptions | PluginOptions)[]
-): (ProjectOptions | PluginOptions)[] {
+): (ProjectOptions | PluginOptions)[] | [] {
   if (!Array.isArray(config)) {
     return [config];
   }
@@ -101,19 +117,20 @@ function flattenConfigByProperty(
   }, []);
 }
 
-function _getContributionPointConfig<T extends keyof PluginOptions['contributes']>(
-  contributionPoint: string | string[],
+function _getContributionPointConfig<T extends keyof Contributes>(
+  contributionPoint: T,
+  subPath: string[] = [],
   config: PluginOptions[]
-): PluginOptions['contributes'][T][] {
-  return flattenConfigByProperty(['contributes', contributionPoint].flat(), config).filter((item) =>
-    has('component', item)
-  ) as PluginOptions['contributes'][T][];
+): Contributes[T] {
+  const pathArray = ['contributes', contributionPoint, ...subPath];
+
+  return flattenConfigByProperty(pathArray.flat(), config).filter((item) => has('component', item)) as Contributes[T];
 }
 
-export function getApps(config: ProjectOptions[]): AppOptions[] {
+export function getApps(config: ProjectOptions[]): AppOptions[] | [] {
   const flattenedConfig = flattenConfigByProperty(['plugins'], config);
   const plugins = flattenedConfig.filter(
     (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
   ) as PluginOptions[];
-  return _getContributionPointConfig('apps', plugins);
+  return _getContributionPointConfig('apps', [], plugins) as AppOptions[] | [];
 }

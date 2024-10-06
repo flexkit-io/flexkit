@@ -16,9 +16,9 @@ import { handleImageDrop, handleImagePaste } from 'novel/plugins';
 import { useDebouncedCallback } from 'use-debounce';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
 import { Separator } from '../../../ui/primitives/separator';
-import type { FormAttributeValue } from '../../../graphql-client/types';
+import type { FormFieldValue } from '../../../graphql-client/types';
 import type { FormFieldParams } from '../../types';
-import UseDefault from '../use-default';
+import { DefaultValueSwitch } from '../default-value-switch';
 import { defaultExtensions } from './extensions';
 import { slashCommand, suggestionItems } from './slash-command';
 import { ColorSelector } from './selectors/color-selector';
@@ -46,20 +46,17 @@ export default function Editor({ control, defaultValue, fieldSchema, setValue }:
   const [openLink, setOpenLink] = useState(false);
   const [openColor, setOpenColor] = useState(false);
 
-  const debouncedUpdates = useDebouncedCallback(
-    (editor: EditorInstance, previousValue: FormAttributeValue | undefined) => {
-      const json = editor.getJSON();
+  const debouncedUpdates = useDebouncedCallback((editor: EditorInstance, previousValue: FormFieldValue | undefined) => {
+    const json = editor.getJSON();
 
-      setContent(json);
-      setValue(name, {
-        ...previousValue,
-        value: JSON.stringify(json),
-      });
-    },
-    300
-  );
+    setContent(json);
+    setValue(name, {
+      ...previousValue,
+      value: JSON.stringify(json),
+    });
+  }, 300);
 
-  function handleCheckbox(checked: boolean, value: FormAttributeValue | undefined): void {
+  function handleCheckbox(checked: boolean, value: FormFieldValue | undefined): void {
     setValue(name, {
       ...value,
       disabled: checked,
@@ -79,7 +76,7 @@ export default function Editor({ control, defaultValue, fieldSchema, setValue }:
       control={control}
       defaultValue={defaultValue}
       name={name}
-      render={({ field }: { field: { value?: FormAttributeValue } }) => (
+      render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
@@ -144,7 +141,7 @@ export default function Editor({ control, defaultValue, fieldSchema, setValue }:
                   </GenerativeMenuSwitch>
                 </EditorContent>
               </EditorRoot>
-              <UseDefault
+              <DefaultValueSwitch
                 checked={field.value?.disabled ?? false}
                 onChange={(checked) => {
                   handleCheckbox(checked, field.value);

@@ -7,7 +7,7 @@ import type {
   EntityQueryAggregate,
   EntityQueryResults,
   FormEntityItem,
-  FormAttributeValue,
+  FormFieldValue,
   MappedEntityItem,
   MappedEntityQueryResults,
   MappedFormEntityQueryResults,
@@ -279,9 +279,9 @@ export function mapQueryResultForFormFields(
 function getValueByScope(
   attribute: AttributeValue | AttributeValue[],
   scope: string
-): FormAttributeValue[] | AttributeValue | string | null {
+): FormFieldValue[] | AttributeValue | string | null {
   if (Array.isArray(attribute)) {
-    return attribute.reduce((result: FormAttributeValue[], attr: AttributeValue) => {
+    return attribute.reduce((result: FormFieldValue[], attr: AttributeValue) => {
       if (attr[scope] ?? attr.default) {
         const option = {
           _id: attr._id,
@@ -401,7 +401,7 @@ function localAttributesUpdate(
   scope: string
 ): string {
   const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
-  const attributesArray: [string, FormAttributeValue][] = toPairs(localAttributes);
+  const attributesArray: [string, FormFieldValue][] = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
     const { dataType } = attributeSchema;

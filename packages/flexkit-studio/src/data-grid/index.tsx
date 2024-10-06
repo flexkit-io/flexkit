@@ -1,4 +1,4 @@
-export { gridColumnsDefinition } from './columns';
+export { useGridColumnsDefinition } from './columns';
 export { DataTableRowActions } from './data-table-row-actions';
 export { DataTableToolbar } from './data-table-toolbar';
 export { DataTableViewOptions } from './data-table-view-options';

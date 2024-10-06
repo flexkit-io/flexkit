@@ -84,6 +84,18 @@ type DataType =
 
 type InputType = 'datetime' | 'editor' | 'number' | 'relationship' | 'select' | 'switch' | 'text' | 'textarea';
 
+type PreviewType =
+  | 'boolean'
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'datetime'
+  | 'editor'
+  | 'select'
+  | 'relationship'
+  | 'swtich'
+  | 'textarea';
+
 type ScopeType = 'local' | 'global' | 'relationship';
 
 type SelectList = {
@@ -100,6 +112,7 @@ export type Attribute = {
   dataType: DataType;
   defaultValue?: string;
   inputType: InputType;
+  previewType?: PreviewType;
   isEditable?: boolean;
   isPrimary?: boolean;
   isUnique?: boolean;

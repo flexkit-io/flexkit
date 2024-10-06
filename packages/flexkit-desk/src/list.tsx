@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { find, propEq } from 'ramda';
-import { useAppContext, useConfig, useLocation, useParams, Outlet, Skeleton, useEntityQuery } from '@flexkit/studio';
+import { useAppContext, useConfig, useLocation, useParams, Outlet, useEntityQuery } from '@flexkit/studio';
+import { Skeleton } from '@flexkit/studio/ui';
 import type { ColumnDef, Entity, SingleProject, Row } from '@flexkit/studio';
-import { DataTable, DataTableRowActions, gridColumnsDefinition } from '@flexkit/studio/data-grid';
+import { DataTable, DataTableRowActions, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
 
 const pageSize = 25;
 
@@ -15,15 +16,11 @@ export function List(): JSX.Element {
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entityName, 'plural'))(schema) as Entity | undefined;
-  const columnsDefinition = useMemo(
-    () =>
-      gridColumnsDefinition({
-        attributesSchema: entitySchema?.attributes ?? [],
-        actionsComponent: (row) =>
-          dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
-      }),
-    [entitySchema?.attributes, entitySchema?.name, entityName]
-  );
+  const columnsDefinition = useGridColumnsDefinition({
+    attributesSchema: entitySchema?.attributes ?? [],
+    actionsComponent: (row) =>
+      dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
+  });
 
   const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };
 
@@ -67,7 +64,7 @@ export function List(): JSX.Element {
       </h2>
       <DataTable
         columns={isLoading ? loadingColumns : columnsDefinition}
-        data={isLoading ? loadingData : data ?? []}
+        data={isLoading ? loadingData : (data ?? [])}
         entityName={entitySchema?.name ?? ''}
         hasToolbar
         pageSize={pageSize}

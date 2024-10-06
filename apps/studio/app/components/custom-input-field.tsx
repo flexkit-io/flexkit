@@ -1,13 +1,73 @@
-import type { FormFieldProps } from '@flexkit/studio';
+import type { FormFieldParams, FormFieldValue } from '@flexkit/studio';
+import {
+  Badge,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormLabel,
+  FormMessage,
+  FormItem,
+  Input,
+} from '@flexkit/studio/ui';
+import { DefaultValueSwitch } from '@flexkit/studio';
 
-export default function CustomTextField({ renderDefault, ...props }: FormFieldProps): JSX.Element {
-  // const { defaultValue } = props;
-  // const count = defaultValue?.value?.length ?? 0;
+export function CustomTextField({ control, fieldSchema, getValues, setValue }: FormFieldParams): JSX.Element {
+  const { name, label, isEditable, options } = fieldSchema;
+  const count = getValues(name)?.value?.length as number;
+
+  function handleInput(
+    event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
+    previousValue: FormFieldValue | undefined
+  ): void {
+    setValue(name, {
+      ...previousValue,
+      value: event.currentTarget.value,
+    });
+  }
+
+  function handleCheckbox(checked: boolean, value: FormFieldValue | undefined): void {
+    setValue(name, {
+      ...value,
+      disabled: checked,
+    });
+  }
 
   return (
-    <div className="flex w-full flex-col">
-      {renderDefault({ ...props })}
-      {/* <div className="">{count}</div> */}
-    </div>
+    <FormField
+      control={control}
+      name={name}
+      render={({ field }: { field: { value?: FormFieldValue } }) => (
+        <FormItem>
+          <FormLabel>{label}</FormLabel>
+          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+          <FormControl>
+            <>
+              <Input
+                className={`fk-w-full fk-mt-[0.1875rem] ${
+                  !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
+                }`}
+                disabled={isEditable === false || field.value?.disabled}
+                {...field}
+                onChange={(event) => {
+                  handleInput(event, field.value);
+                }}
+                value={(field.value?.value as string) || ''}
+              />
+              <Badge className="flex text-[0.6875rem] ml-auto mt-2 font-light" variant="secondary">
+                Characters: {count}
+              </Badge>
+              <DefaultValueSwitch
+                checked={field.value?.disabled ?? false}
+                onChange={(checked) => {
+                  handleCheckbox(checked, field.value);
+                }}
+                scope={field.value?.scope}
+              />
+            </>
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
   );
 }

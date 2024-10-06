@@ -1,15 +1,15 @@
-import type { FormAttributeValue } from '../../graphql-client/types';
+import type { FormFieldValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import { Input } from '../../ui/primitives/input';
 import type { FormFieldParams } from '../types';
-import UseDefault from './use-default';
+import { DefaultValueSwitch } from './default-value-switch';
 
-export function Text({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
+export function Text({ control, fieldSchema, setValue }: FormFieldParams): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(
     event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
-    previousValue: FormAttributeValue | undefined
+    previousValue: FormFieldValue | undefined
   ): void {
     setValue(name, {
       ...previousValue,
@@ -17,7 +17,7 @@ export function Text({ control, defaultValue, fieldSchema, setValue }: FormField
     });
   }
 
-  function handleCheckbox(checked: boolean, value: FormAttributeValue | undefined): void {
+  function handleCheckbox(checked: boolean, value: FormFieldValue | undefined): void {
     setValue(name, {
       ...value,
       disabled: checked,
@@ -27,9 +27,8 @@ export function Text({ control, defaultValue, fieldSchema, setValue }: FormField
   return (
     <FormField
       control={control}
-      defaultValue={defaultValue}
       name={name}
-      render={({ field }: { field: { value?: FormAttributeValue } }) => (
+      render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
@@ -46,7 +45,7 @@ export function Text({ control, defaultValue, fieldSchema, setValue }: FormField
                 }}
                 value={(field.value?.value as string) || ''}
               />
-              <UseDefault
+              <DefaultValueSwitch
                 checked={field.value?.disabled ?? false}
                 onChange={(checked) => {
                   handleCheckbox(checked, field.value);

@@ -9,7 +9,7 @@ import { useConfig } from '../core/config/config-context';
 import type { SingleProject } from '../core/config/types';
 import { useEntityQuery } from '../graphql-client/use-entity-query';
 import type { AttributeValue } from '../graphql-client/types';
-import { gridColumnsDefinition } from '../data-grid/columns';
+import { useGridColumnsDefinition } from '../data-grid/columns';
 import { DataTable } from '../data-grid/data-table';
 import { Button } from '../ui/primitives/button';
 import { Skeleton } from '../ui/primitives/skeleton';
@@ -71,14 +71,10 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     },
   });
 
-  const columns = useMemo(
-    () =>
-      gridColumnsDefinition({
-        attributesSchema: entitySchema?.attributes ?? [],
-        checkboxSelect: mode,
-      }),
-    [entitySchema?.attributes, mode]
-  );
+  const columns = useGridColumnsDefinition({
+    attributesSchema: entitySchema?.attributes ?? [],
+    checkboxSelect: mode,
+  });
   const loadingData = Array(5).fill({});
   const loadingColumns = getLoadingColumns(columns);
 

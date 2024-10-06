@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from 'next-themes';
 import type { ProjectOptions } from '../../core/config/types';
-import { useMiddlewareComponent } from '../../core/use-middleware-component';
+import { useContributedComponent } from '../../core/use-contributed-component';
 
 type Props = {
   projectId: string;
@@ -8,10 +9,11 @@ type Props = {
 };
 
 export function Navbar({ projectId, projects }: Props): JSX.Element {
-  const Logo = useMiddlewareComponent({ contributionPoint: 'navbar.logo' });
-  const ProjectSelector = useMiddlewareComponent({ contributionPoint: 'navbar.projectSelector' });
-  const Search = useMiddlewareComponent({ contributionPoint: 'navbar.search' });
-  const UserNav = useMiddlewareComponent({ contributionPoint: 'navbar.userNav' });
+  const { resolvedTheme } = useTheme();
+  const Logo = useContributedComponent('navbar.logo');
+  const ProjectSelector = useContributedComponent('navbar.projectSelector');
+  const Search = useContributedComponent('navbar.search');
+  const UserNav = useContributedComponent('navbar.userNav');
   const currentProject = projects.find((project) => project.projectId === projectId) ?? projects[0];
   const { basePath } = currentProject;
   const navigate = useNavigate();
@@ -22,7 +24,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
 
   return (
     <div className="fk-flex fk-basis-14 fk-min-h-[3.5rem] fk-px-3 fk-gap-x-4 fk-border-b fk-border-border">
-      <Logo title="Flexkit Studio" />
+      <Logo theme={resolvedTheme} title="Flexkit Studio" />
       <div className="fk-flex fk-grow fk-shrink fk-items-center fk-gap-x-4 px-4">
         <ProjectSelector projectId={projectId} projects={projects} />
         <Search onSelect={handleSearchSelection} projectId={projectId} />

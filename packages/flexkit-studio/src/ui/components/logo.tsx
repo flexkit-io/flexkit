@@ -1,11 +1,7 @@
-import { useTheme } from 'next-themes';
-
-export function Logo({ title }: { title: string }): JSX.Element {
-  const { resolvedTheme } = useTheme();
-
+export function Logo({ title, theme }: { title: string; theme: string | undefined }): JSX.Element {
   return (
     <a className="fk-flex fk-items-center" href="/" title={title}>
-      {resolvedTheme === 'light' ? (
+      {theme === 'light' ? (
         <svg className="fk-h-8 fk-w-8" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
           <path d="M7 8H41V40H7V8Z" fill="white" />
           <path

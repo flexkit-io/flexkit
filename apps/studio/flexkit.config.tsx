@@ -2,7 +2,8 @@ import { defineConfig } from '@flexkit/studio/ssr';
 import { AssetManager } from '@flexkit/asset-manager';
 import { Desk } from '@flexkit/desk';
 import { Explorer } from '@flexkit/explorer';
-import CustomTextField from './app/components/custom-input-field';
+import { CustomTextField } from './app/components/custom-input-field';
+import { CustomBooleanPreviewField } from './app/components/custom-boolean-preview-field';
 // import { Image, Layers3, Tag } from 'lucide-react';
 import '@flexkit/explorer/styles.css';
 
@@ -42,25 +43,41 @@ export default defineConfig([
           ],
           formFields: {
             // <-- this is a list of custom form fields that can be used in the desk app. It's an object, because existing fields can be overwritten.
-            // text: {
-            //   component: CustomTextField,
-            //   description: 'An example override of the text field',
-            // },
-            // 'field-name': {
-            //   component: 'someCustomFieldComponent',
-            //   description: 'A test form field',
-            // },
+            textWithCounter: {
+              component: CustomTextField,
+              description: 'An example override of the text field',
+            },
           },
           previewFields: {
-            iconBoolean: {
-              component: 'iconBoolean',
+            customBooleanPreviewField: {
+              component: CustomBooleanPreviewField,
               description: 'A boolean field with an icon preview',
             },
           },
           navbar: {
             logo: {
-              component: ({ renderDefault, ...props }) => {
-                return <>{renderDefault({ ...props, title: 'Title overwritten from a plugin' })}</>;
+              component: (props) => {
+                return (
+                  <a className="fk-flex fk-items-center" href="/" title={props.title}>
+                    {props.theme === 'light' ? (
+                      <svg className="fk-h-8 fk-w-8" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7 8H41V40H7V8Z" fill="white" />
+                        <path
+                          d="M24 0C42 0 48 6 48 24C48 42 42 48 24 48C6 48 0 42 0 24C0 6 6 0 24 0ZM17.7494 9.52381H8.7619L19.2833 23.8313L8.7619 38.7078H17.7494L21.0499 33.6639V14.2549L17.7494 9.52381ZM38.9577 9.52381H29.9542L26.2857 14.8229V33.0406L29.9542 38.7078H38.9577L28.3908 23.8313L38.9577 9.52381Z"
+                          fill="#020817"
+                        />
+                      </svg>
+                    ) : (
+                      <svg className="fk-h-8 fk-w-8" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7 8H41V40H7V8Z" fill="#020817" />
+                        <path
+                          d="M24 0C42 0 48 6 48 24C48 42 42 48 24 48C6 48 0 42 0 24C0 6 6 0 24 0ZM17.7494 9.52381H8.7619L19.2833 23.8313L8.7619 38.7078H17.7494L21.0499 33.6639V14.2549L17.7494 9.52381ZM38.9577 9.52381H29.9542L26.2857 14.8229V33.0406L29.9542 38.7078H38.9577L28.3908 23.8313L38.9577 9.52381Z"
+                          fill="white"
+                        />
+                      </svg>
+                    )}
+                  </a>
+                );
               },
             },
             // search: {
@@ -310,6 +327,7 @@ export default defineConfig([
             },
             dataType: 'boolean',
             inputType: 'switch',
+            previewType: 'customBooleanPreviewField',
           },
           {
             name: 'path',
@@ -347,7 +365,7 @@ export default defineConfig([
               comment: 'The meta-title of the category',
             },
             dataType: 'string',
-            inputType: 'text',
+            inputType: 'textWithCounter',
             isPrimary: true,
             validation: (z) => z.string().optional(),
             defaultValue: '',
@@ -361,7 +379,7 @@ export default defineConfig([
               comment: 'The meta-description of the category',
             },
             dataType: 'string',
-            inputType: 'text',
+            inputType: 'textWithCounter',
             isPrimary: true,
             validation: (z) => z.string().optional(),
             defaultValue: '',
