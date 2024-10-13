@@ -4,7 +4,7 @@ import { Input } from '../../ui/primitives/input';
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
-export function Text({ control, fieldSchema, setValue }: FormFieldParams): JSX.Element {
+export function Text({ control, fieldSchema, setValue }: FormFieldParams<'text'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(
@@ -31,7 +31,7 @@ export function Text({ control, fieldSchema, setValue }: FormFieldParams): JSX.E
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
-          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+          {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <>
               <Input

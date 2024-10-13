@@ -332,6 +332,11 @@ div[data-youtube-video] > iframe {
   outline: 6px solid #fbbf24;
 }
 
+/* Needed so the drag handle of TipTap is correctly positioned when the editor is inside a modal (tiptap-extension-global-drag-handle) */
+[data-vaul-drawer] {
+  transform: scale(1);
+}
+
 @media only screen and (max-width: 480px) {
   div[data-youtube-video] > iframe {
     max-height: 50px;

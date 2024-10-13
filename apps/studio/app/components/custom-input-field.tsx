@@ -11,7 +11,7 @@ import {
 } from '@flexkit/studio/ui';
 import { DefaultValueSwitch } from '@flexkit/studio';
 
-export function CustomTextField({ control, fieldSchema, getValues, setValue }: FormFieldParams): JSX.Element {
+export function CustomTextField({ control, fieldSchema, getValues, setValue }: FormFieldParams<'text'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
   const count = getValues(name)?.value?.length as number;
 
@@ -39,7 +39,7 @@ export function CustomTextField({ control, fieldSchema, getValues, setValue }: F
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
-          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+          {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <>
               <Input

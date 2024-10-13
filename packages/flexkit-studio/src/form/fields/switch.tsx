@@ -4,7 +4,7 @@ import { Switch as SwitchPrimitive } from '../../ui/primitives/switch';
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
-export function Switch({ control, fieldSchema, setValue }: FormFieldParams): JSX.Element {
+export function Switch({ control, fieldSchema, setValue }: FormFieldParams<'switch'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(checked: boolean, previousValue: FormFieldValue | undefined): void {

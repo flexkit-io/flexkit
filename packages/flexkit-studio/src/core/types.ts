@@ -56,18 +56,20 @@ export type DataType =
   | 'int'
   | 'point'
   | 'string'
-  | 'time';
+  | 'time'
+  | 'image';
 
 export type InputType =
   | 'datetime'
   | 'editor'
+  | 'image'
   | 'number'
   | 'relationship'
   | 'select'
   | 'switch'
   | 'text'
   | 'textarea'
-  | (string & {});
+  | (string & NonNullable<unknown>);
 
 export type PreviewType =
   | 'boolean'
@@ -80,7 +82,7 @@ export type PreviewType =
   | 'relationship'
   | 'swtich'
   | 'textarea'
-  | (string & {});
+  | (string & NonNullable<unknown>);
 
 type SelectList = {
   label: string;
@@ -94,6 +96,40 @@ type GroupedSelectList = {
 
 type ZodType = typeof z;
 
+export type CommonOptions = {
+  comment?: string;
+  size?: number;
+  placeholder?: string;
+};
+
+export type SelectOptions = CommonOptions & {
+  list: SelectList[] | GroupedSelectList[];
+};
+
+export type ImageOptions = CommonOptions & {
+  accept?: string;
+};
+
+export type DateTimeOptions = CommonOptions & {
+  format?: string;
+};
+
+export type NumberOptions = CommonOptions & {
+  min?: number;
+  max?: number;
+};
+
+export type AttributeOptions = {
+  select: SelectOptions;
+  image: ImageOptions;
+  datetime: DateTimeOptions;
+  number: NumberOptions;
+  text: CommonOptions;
+  textarea: CommonOptions;
+  switch: CommonOptions;
+  [key: string]: CommonOptions;
+};
+
 export type Attribute = {
   dataType: DataType;
   defaultValue?: string;
@@ -105,12 +141,7 @@ export type Attribute = {
   isSearchable?: boolean;
   label: string;
   name: string;
-  options?: {
-    comment?: string;
-    list?: SelectList[] | GroupedSelectList[];
-    placeholder?: string;
-    size?: number;
-  };
+  options?: AttributeOptions[InputType];
   relationship?: {
     entity: string;
     mode: 'single' | 'multiple';

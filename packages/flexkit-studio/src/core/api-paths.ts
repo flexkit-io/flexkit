@@ -12,6 +12,7 @@ interface ApiPaths {
   logout: (basePath: string) => string;
   search: string;
   sessionId: string;
+  upload: string;
 }
 
 export function apiPaths(projectId = ''): ApiPaths {
@@ -24,5 +25,6 @@ export function apiPaths(projectId = ''): ApiPaths {
     logout: (basePath: string) => `/api/flexkit/${projectId}/auth/logout?redirect=/${basePath}/${projectId}`,
     search: `/api/flexkit/${projectId}/search`,
     sessionId: `${baseProjectApiUrl(projectId)}/api/auth/login/session`,
+    upload: `/api/flexkit/${projectId}/upload`,
   };
 }

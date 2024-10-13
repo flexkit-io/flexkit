@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 /**
  * Catch-all endpoint to re-route API requests to Flexkit.
@@ -13,7 +13,9 @@ const domain = 'api.flexkit.io';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const cookieStore = cookies();
+  const headersList = headers();
   const token = cookieStore.get('sessionToken')?.value ?? '';
+  const contentType = headersList.get('content-type');
   const { pathname, search } = request.nextUrl;
   const [, , , projectId] = pathname.split('/');
   const apiUrl = `https://${projectId}.${domain}`;
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     headers: {
       Accept: 'application/json',
       Authorization: token,
-      'Content-Type': 'application/json',
+      'Content-Type': contentType ?? 'application/json',
     },
   });
   const { status } = response;
@@ -34,7 +36,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 async function handler(request: NextRequest): Promise<NextResponse> {
   const cookieStore = cookies();
+  const headersList = headers();
   const token = cookieStore.get('sessionToken')?.value ?? '';
+  const contentType = headersList.get('content-type');
   const { pathname, search } = request.nextUrl;
   const [, , , projectId] = pathname.split('/');
   const apiUrl = `https://${projectId}.${domain}`;
@@ -52,7 +56,7 @@ async function handler(request: NextRequest): Promise<NextResponse> {
     headers: {
       Accept: 'application/json',
       Authorization: token,
-      'Content-Type': 'application/json',
+      'Content-Type': contentType ?? 'application/json',
     },
     method: request.method,
     body,

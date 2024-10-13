@@ -12,7 +12,7 @@ import {
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
-export function Select({ control, fieldSchema, setValue }: FormFieldParams): JSX.Element {
+export function Select({ control, fieldSchema, setValue }: FormFieldParams<'select'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(value: string, previousValue: FormFieldValue | undefined): void {

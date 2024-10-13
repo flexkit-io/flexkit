@@ -272,6 +272,21 @@ export default defineConfig([
               entity: 'category',
             },
           },
+          {
+            name: 'mainImage',
+            label: 'Main Image',
+            options: {
+              accept: 'image/*',
+              size: 260,
+              comment: 'The main image of the product',
+            },
+            dataType: 'image',
+            inputType: 'image',
+            previewType: 'text',
+            scope: 'global', // TODO: Images have global scope. The type should be adjusted to not require a scope when inputType is image
+            validation: (z) => z.string().min(1, { message: 'Image is required' }),
+            defaultValue: '',
+          },
         ],
       },
       {

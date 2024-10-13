@@ -10,8 +10,9 @@ interface ContributionPointMap {
   'navbar.projectSelector': LazyExoticComponent<ComponentType<ProjectSelectorProps>>;
   'navbar.search': LazyExoticComponent<ComponentType<SearchProps>>;
   'navbar.userNav': LazyExoticComponent<ComponentType<UserNavProps>>;
-  'formFields.switch': LazyExoticComponent<ComponentType<FormFieldParams>>;
-  'formFields.text': LazyExoticComponent<ComponentType<FormFieldParams>>;
+  'formFields.switch': LazyExoticComponent<ComponentType<FormFieldParams<'switch'>>>;
+  'formFields.text': LazyExoticComponent<ComponentType<FormFieldParams<'text'>>>;
+  'formFields.textarea': LazyExoticComponent<ComponentType<FormFieldParams<'textarea'>>>;
   'previewFields.boolean': LazyExoticComponent<ComponentType<boolean>>;
 }
 
@@ -26,6 +27,9 @@ const contributionPointMap: ContributionPointMap = {
   // form fields
   'formFields.switch': lazy(() => import('../form/fields/switch.js').then(({ Switch }) => ({ 'default': Switch }))),
   'formFields.text': lazy(() => import('../form/fields/text.js').then(({ Text }) => ({ 'default': Text }))),
+  'formFields.textarea': lazy(() =>
+    import('../form/fields/textarea.js').then(({ Textarea }) => ({ 'default': Textarea }))
+  ),
   // preview fields
   'previewFields.boolean': lazy(() =>
     import('../data-grid/preview-components/boolean.js').then(({ Boolean }) => ({ 'default': Boolean }))

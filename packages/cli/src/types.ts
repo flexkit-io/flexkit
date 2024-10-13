@@ -80,9 +80,20 @@ type DataType =
   | 'int'
   | 'point'
   | 'string'
-  | 'time';
+  | 'time'
+  | 'image';
 
-type InputType = 'datetime' | 'editor' | 'number' | 'relationship' | 'select' | 'switch' | 'text' | 'textarea';
+type InputType =
+  | 'datetime'
+  | 'editor'
+  | 'image'
+  | 'number'
+  | 'relationship'
+  | 'select'
+  | 'switch'
+  | 'text'
+  | 'textarea'
+  | (string & NonNullable<unknown>);
 
 type PreviewType =
   | 'boolean'
@@ -94,7 +105,8 @@ type PreviewType =
   | 'select'
   | 'relationship'
   | 'swtich'
-  | 'textarea';
+  | 'textarea'
+  | (string & NonNullable<unknown>);
 
 type ScopeType = 'local' | 'global' | 'relationship';
 
@@ -108,6 +120,37 @@ type GroupedSelectList = {
   items: SelectList[];
 };
 
+type CommonOptions = {
+  comment?: string;
+  size?: number;
+  placeholder?: string;
+};
+
+type SelectOptions = CommonOptions & {
+  list: SelectList[] | GroupedSelectList[];
+};
+
+type ImageOptions = CommonOptions & {
+  accept?: string;
+};
+
+type DateTimeOptions = CommonOptions & {
+  format?: string;
+};
+
+type NumberOptions = CommonOptions & {
+  min?: number;
+  max?: number;
+};
+
+export type AttributeOptions = {
+  select: SelectOptions;
+  image: ImageOptions;
+  datetime: DateTimeOptions;
+  number: NumberOptions;
+  [key: string]: CommonOptions;
+};
+
 export type Attribute = {
   dataType: DataType;
   defaultValue?: string;
@@ -119,19 +162,13 @@ export type Attribute = {
   isSearchable?: boolean;
   label: string;
   name: string;
-  options?: {
-    comment?: string;
-    list?: SelectList[] | GroupedSelectList[];
-    placeholder?: string;
-    size?: number;
-  };
+  options?: AttributeOptions[InputType];
   relationship?: {
     entity: string;
     mode: 'single' | 'multiple';
     field: string;
   };
-  scope: ScopeType;
-};
+} & ({ dataType: 'image' } | { dataType: Exclude<DataType, 'image'>; scope: ScopeType });
 
 export interface ProjectOptions {
   title?: string;

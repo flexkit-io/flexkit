@@ -7,11 +7,12 @@ import { equals, find, propEq } from 'ramda';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
-import type { Entity, Schema } from '../core/types';
+import type { AttributeOptions, Entity, InputType, Schema } from '../core/types';
 import type { EntityData, FormEntityItem } from '../graphql-client/types';
 import { useConfig } from '../core/config/config-context';
 import { Text as TextField } from './fields/text';
 import { Switch as SwitchField } from './fields/switch';
+import { Uploader as UploaderField } from './fields/uploader';
 // import NumberField from './fields/number';
 // import DateTimeField from './fields/datetime';
 import EditorField from './fields/editor';
@@ -40,7 +41,7 @@ type Props = {
 };
 
 type FieldComponentsMap = {
-  [type: string]: ComponentType<FormFieldParams>;
+  [type in keyof AttributeOptions]: ComponentType<FormFieldParams<type>>;
 };
 
 function FormBuilder(
@@ -64,15 +65,16 @@ function FormBuilder(
   const { control, getValues, handleSubmit, setValue, watch } = form;
   const { getContributionPointConfig } = useConfig();
 
-  const formFieldComponentsMap: FieldComponentsMap = {
-    'switch': SwitchField,
+  const formFieldComponentsMap = {
     datetime: TextField,
     editor: EditorField,
+    image: UploaderField,
     number: TextField,
+    relationship: RelationshipField,
     select: SelectField,
+    'switch': SwitchField,
     text: TextField,
     textarea: TextareaField,
-    relationship: RelationshipField,
   };
 
   useImperativeHandle(ref, () => ({
@@ -122,24 +124,27 @@ function FormBuilder(
 
           const fieldComponent =
             (getContributionPointConfig('formFields', [field.inputType])?.[0]?.component as unknown as
-              | ComponentType<FormFieldParams>
-              | undefined) ?? formFieldComponentsMap[field.inputType];
+              | ComponentType<FormFieldParams<typeof field.inputType>>
+              | undefined) ?? formFieldComponentsMap[field.inputType as keyof typeof formFieldComponentsMap];
 
           return fieldComponent ? (
-            createElement(fieldComponent, {
-              key: field.name,
-              control,
-              defaultScope,
-              defaultValue: formData ? formData[field.name] : { value: '', disabled: false, scope: defaultScope },
-              entityId,
-              entityName,
-              entityNamePlural,
-              fieldSchema: field,
-              getValues,
-              schema,
-              scope: currentScope,
-              setValue,
-            })
+            createElement(
+              fieldComponent as ComponentType<FormFieldParams<typeof field.inputType>>,
+              {
+                key: field.name,
+                control,
+                defaultScope,
+                defaultValue: formData ? formData[field.name] : { value: '', disabled: false, scope: defaultScope },
+                entityId,
+                entityName,
+                entityNamePlural,
+                fieldSchema: field,
+                getValues,
+                schema,
+                scope: currentScope,
+                setValue,
+              } as FormFieldParams<typeof field.inputType>
+            )
           ) : (
             <UndefinedFieldTypeError inputType={field.inputType} key={field.name} label={field.label} />
           );

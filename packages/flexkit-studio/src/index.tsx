@@ -35,6 +35,7 @@ export {
   useReactTable,
 } from '@tanstack/react-table';
 export { useVirtualizer } from '@tanstack/react-virtual';
+export { DataTableFacetedFilter } from './data-grid/data-table-faceted-filter';
 
 // Entities
 export { useDispatch } from './entities/actions-context';

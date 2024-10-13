@@ -49,7 +49,6 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     const previewType =
       attribute.previewType ??
       inputTypeToPreviewFieldMap[attribute.inputType as keyof typeof inputTypeToPreviewFieldMap];
-    console.log('previewType', previewType);
     const previewComponent =
       (getContributionPointConfig('previewFields', [previewType])?.[0]?.component as unknown as
         | ComponentType<string | boolean | number | Date>

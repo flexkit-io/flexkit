@@ -37,7 +37,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   }
 
   const globalAttributesList: string = getAttributeListByScope('global', attributes).join('\n  ');
-
+  const imageAttributes: string[] = getImageAttributes(attributes);
   const localAttributes: readonly string[] = getAttributeListByScope(['local'], attributes);
   const defaultScopedAttr = localAttributes.reduce(
     (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n    }\n  `,
@@ -48,6 +48,9 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
     ''
   );
   const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
+  const imageAttributesList: string = imageAttributes.reduce((acc, attribute) => {
+    return `${acc}\n    ${attribute} {\n      _id\n      url\n      path\n    }\n  `;
+  }, '');
 
   const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
@@ -55,8 +58,12 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
     const attributesNameList = relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
+      if (relatedAttribute.dataType === 'image') {
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        url\n      path\n    }\n    `;
+      }
+
       if (relatedAttribute.scope === 'local') {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        default\n      ${additionalScope}}\n    `;
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        default\n      ${additionalScope}\n}\n    `;
       }
 
       if (relatedAttribute.scope === 'relationship') {
@@ -105,6 +112,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
       `    _id\n` +
       `    ${globalAttributesList}` +
       `    ${localAttributesList}` +
+      `    ${imageAttributesList}` +
       `  ${relationshipAttributesList}` +
       `}\n` +
       `}\n`,
@@ -374,7 +382,18 @@ function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attr
     }, []);
   }
 
-  const filteredAttributes = filter(propEq(type, 'scope'))(attributes);
+  const filteredAttributes = attributes.filter(
+    (attribute) => attribute.scope === type && attribute.inputType !== 'image'
+  );
+
+  return filteredAttributes.map((attribute) => attribute.name);
+}
+
+/**
+ * Get all attributes that are of type image.
+ */
+function getImageAttributes(attributes: Attribute[]): Attribute['name'][] {
+  const filteredAttributes = filter(propEq('image', 'dataType'))(attributes);
 
   return filteredAttributes.map((attribute) => attribute.name);
 }

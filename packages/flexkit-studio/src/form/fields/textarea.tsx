@@ -4,7 +4,7 @@ import { Textarea as TextareaPrimitive } from '../../ui/primitives/textarea';
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
-export function Textarea({ control, fieldSchema, getValues, setValue }: FormFieldParams): JSX.Element {
+export function Textarea({ control, fieldSchema, getValues, setValue }: FormFieldParams<'textarea'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
   function handleInput(

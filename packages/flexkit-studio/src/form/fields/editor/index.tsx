@@ -30,7 +30,12 @@ import GenerativeMenuSwitch from './generative/generative-menu-switch';
 
 const extensions = [...defaultExtensions, slashCommand];
 
-export default function Editor({ control, defaultValue, fieldSchema, setValue }: FormFieldParams): JSX.Element {
+export default function Editor({
+  control,
+  defaultValue,
+  fieldSchema,
+  setValue,
+}: FormFieldParams<'editor'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
   let initialValue;
 

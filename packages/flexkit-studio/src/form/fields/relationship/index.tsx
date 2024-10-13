@@ -4,7 +4,7 @@ import type { FormFieldParams } from '../../types';
 import MultipleRelationship from './multiple';
 import SingleRelationship from './single';
 
-export default function Relationship(formFieldParams: FormFieldParams): JSX.Element {
+export default function Relationship(formFieldParams: FormFieldParams<'relationship'>): JSX.Element {
   const { fieldSchema } = formFieldParams;
   const { relationship } = fieldSchema;
 

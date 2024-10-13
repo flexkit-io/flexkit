@@ -22,7 +22,7 @@ export default function SingleRelationship({
   schema,
   scope,
   setValue,
-}: FormFieldParams): JSX.Element {
+}: FormFieldParams<'relationship'>): JSX.Element {
   const [hasFocus, setHasFocus] = useState(false);
   const { name, label, options, relationship } = fieldSchema;
   const relationshipEntity: string = relationship?.entity ?? name;
@@ -94,7 +94,7 @@ export default function SingleRelationship({
       control={control}
       defaultValue={defaultValue}
       name={name}
-      render={({ field }: { field: { value?: FormFieldParams['defaultValue'] } }) => {
+      render={({ field }: { field: { value?: FormFieldParams<'relationship'>['defaultValue'] } }) => {
         const value = field.value?.value;
         let displayValue = '';
 

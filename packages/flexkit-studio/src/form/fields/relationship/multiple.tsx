@@ -44,7 +44,7 @@ export default function MultipleRelationship({
   schema,
   scope,
   setValue,
-}: FormFieldParams): JSX.Element {
+}: FormFieldParams<'relationship'>): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   useOuterClick(wrapperRef, setIsOpen);
