@@ -10,7 +10,7 @@ import type { ActionSetRelationship, Attribute, Entity } from '../../../core/typ
 import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
 import type { FormFieldParams } from '../../types';
-import type { AttributeValue } from '../../../graphql-client/types';
+import type { AttributeValue, EntityItem, MappedEntityItem } from '../../../graphql-client/types';
 
 export default function SingleRelationship({
   control,
@@ -28,6 +28,7 @@ export default function SingleRelationship({
   const relationshipEntity: string = relationship?.entity ?? name;
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
+  const fieldId = useId();
   const { relationships } = useAppContext();
   const relationshipId = useId();
   const relationshipEntitySchema = find(propEq(relationshipEntity, 'name'))(schema) as Entity | undefined;
@@ -94,7 +95,15 @@ export default function SingleRelationship({
       control={control}
       defaultValue={defaultValue}
       name={name}
-      render={({ field }: { field: { value?: FormFieldParams<'relationship'>['defaultValue'] } }) => {
+      render={({
+        field,
+      }: {
+        field: {
+          value?: {
+            value: string | MappedEntityItem | EntityItem | AttributeValue | undefined | null;
+          };
+        };
+      }) => {
         const value = field.value?.value;
         let displayValue = '';
 
@@ -107,7 +116,7 @@ export default function SingleRelationship({
 
         return (
           <FormItem>
-            <FormLabel>{label}</FormLabel>
+            <FormLabel htmlFor={fieldId}>{label}</FormLabel>
             {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
             <FormControl className="fk-flex fk-w-full fk-items-center fk-space-x-2">
               <div
@@ -117,6 +126,7 @@ export default function SingleRelationship({
               >
                 <Input
                   className="fk-h-[2.375rem] fk-py-[0.4375rem] fk-caret-transparent fk-border-0 focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0"
+                  id={fieldId}
                   onBlur={() => {
                     setHasFocus(false);
                   }}

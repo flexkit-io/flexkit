@@ -10,6 +10,7 @@ import type {
   MappedEntityItem,
   MappedFormEntityQueryResults,
   UseEntityQueryParams,
+  ImageValue,
 } from './types';
 
 type FetchMoreOptions = { variables: { options: { offset: number; limit: number } } };
@@ -17,7 +18,7 @@ type Results = (MappedEntityQueryResults | MappedFormEntityQueryResults) | { cou
 
 export function useEntityQuery({ entityNamePlural, schema, scope, variables, isForm }: UseEntityQueryParams): {
   count: number;
-  data: MappedEntityItem[] | FormEntityItem[] | undefined;
+  data: MappedEntityItem[] | FormEntityItem[] | ImageValue[] | undefined;
   fetchMore: (args: FetchMoreOptions) => void;
   isLoading: boolean;
 } {

@@ -100,6 +100,6 @@ function dataRowActions({ entityName, entityNamePlural, row }: DataRowActions): 
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({
     ...column,
-    cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
+    cell: () => <Skeleton className="fk-h-4 fk-w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
   })) as unknown as ColumnDef<AttributeValue>[];
 }

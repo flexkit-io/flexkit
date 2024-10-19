@@ -32,6 +32,7 @@
     "ui:add": "pnpm dlx shadcn-ui@latest add"
   },
   "devDependencies": {
+    "@types/bytes": "^3.1.4",
     "@types/debug": "^4.1.12",
     "@types/node": "^20.5.2",
     "@types/ramda": "^0.29.7",
@@ -87,6 +88,7 @@
     "@tiptap/html": "2.7.0",
     "@tiptap/pm": "2.7.0",
     "ai": "3.3.37",
+    "bytes": "^3.1.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^1.0.0",

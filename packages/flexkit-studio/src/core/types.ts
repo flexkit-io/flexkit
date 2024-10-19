@@ -1,14 +1,14 @@
 import type { z, ZodTypeAny } from 'zod';
-import type { AttributeValue, EntityItem, MappedEntityItem } from '../graphql-client/types';
+import type { AttributeValue, EntityItem, MappedEntityItem, ImageValue } from '../graphql-client/types';
 
 export type SingleRelationshipConnection = {
   _id: string;
-  value: string | MappedEntityItem | EntityItem | AttributeValue | undefined | null;
+  value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | undefined | null;
 };
 
 export type MultipleRelationshipConnection = {
   _id: string;
-  value: string | MappedEntityItem | EntityItem | AttributeValue | undefined | null;
+  value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | undefined | null;
 }[];
 
 export type Relationships = {

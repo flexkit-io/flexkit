@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { FormFieldValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import { Input } from '../../ui/primitives/input';
@@ -6,6 +7,7 @@ import { DefaultValueSwitch } from './default-value-switch';
 
 export function Text({ control, fieldSchema, setValue }: FormFieldParams<'text'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
+  const id = useId();
 
   function handleInput(
     event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
@@ -30,7 +32,7 @@ export function Text({ control, fieldSchema, setValue }: FormFieldParams<'text'>
       name={name}
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
+          <FormLabel htmlFor={id}>{label}</FormLabel>
           {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <>
@@ -39,6 +41,7 @@ export function Text({ control, fieldSchema, setValue }: FormFieldParams<'text'>
                   !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
                 }`}
                 disabled={isEditable === false || field.value?.disabled}
+                id={id}
                 {...field}
                 onChange={(event) => {
                   handleInput(event, field.value);

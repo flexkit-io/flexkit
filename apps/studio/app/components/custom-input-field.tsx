@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { FormFieldParams, FormFieldValue } from '@flexkit/studio';
 import {
   Badge,
@@ -13,6 +14,7 @@ import { DefaultValueSwitch } from '@flexkit/studio';
 
 export function CustomTextField({ control, fieldSchema, getValues, setValue }: FormFieldParams<'text'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
+  const fieldId = useId();
   const count = getValues(name)?.value?.length as number;
 
   function handleInput(
@@ -38,7 +40,7 @@ export function CustomTextField({ control, fieldSchema, getValues, setValue }: F
       name={name}
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
+          <FormLabel htmlFor={fieldId}>{label}</FormLabel>
           {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <>
@@ -47,7 +49,7 @@ export function CustomTextField({ control, fieldSchema, getValues, setValue }: F
                   !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
                 }`}
                 disabled={isEditable === false || field.value?.disabled}
-                {...field}
+                id={fieldId}
                 onChange={(event) => {
                   handleInput(event, field.value);
                 }}

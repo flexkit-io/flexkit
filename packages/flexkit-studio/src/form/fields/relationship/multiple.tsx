@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { Dispatch, RefObject, SyntheticEvent } from 'react';
+import type { Dispatch, SyntheticEvent } from 'react';
 import { useLazyQuery, gql } from '@apollo/client';
 import type { Row } from '@tanstack/react-table';
 import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';
@@ -11,6 +11,7 @@ import type {
   EntityItem,
   EntityQueryResults,
   MappedEntityItem,
+  ImageValue,
 } from '../../../graphql-client/types';
 import { useGridColumnsDefinition } from '../../../data-grid/columns';
 import { DataTable } from '../../../data-grid/data-table';
@@ -19,6 +20,7 @@ import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormIt
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../ui/primitives/tooltip';
 import { Badge } from '../../../ui/primitives/badge';
 import { Collapsible, CollapsibleContent } from '../../../ui/primitives/collapsible';
+import { useOuterClick } from '../../../ui/hooks/use-outer-click';
 import type {
   ActionSetRelationship,
   Attribute,
@@ -54,6 +56,7 @@ export default function MultipleRelationship({
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const { relationships } = useAppContext();
+  const fieldId = useId();
   const relationshipId = useId();
   const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
   const relationshipEntityAttributesSchema = relationshipEntitySchema?.attributes ?? [];
@@ -208,11 +211,11 @@ export default function MultipleRelationship({
       name={name}
       render={() => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
+          <FormLabel htmlFor={fieldId}>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-[2.375rem] fk-pl-3 fk-pr-10 fk-py-0.5 fk-text-sm">
             <div
-              aria-controls="relationship-dropdown"
+              aria-controls={`relationship-dropdown-${name}`}
               aria-expanded={isOpen}
               className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
                 isOpen ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
@@ -227,6 +230,13 @@ export default function MultipleRelationship({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   setIsOpen(true);
+                }
+
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  wrapperRef.current?.blur();
+                  setIsOpen(false);
                 }
               }}
               ref={wrapperRef}
@@ -253,6 +263,7 @@ export default function MultipleRelationship({
                       <TooltipTrigger asChild>
                         <Button
                           className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          id={fieldId}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               wrapperRef.current?.focus();
@@ -305,7 +316,7 @@ export default function MultipleRelationship({
               </div>
               <Collapsible className="fk-w-full fk-space-y-2 !fk-ml-0" onOpenChange={setIsOpen} open={isOpen}>
                 <CollapsibleContent className="fk-w-full">
-                  <div className="fk-flex fk-w-full fk-mt-3 fk-mb-2" id="relationship-dropdown">
+                  <div className="fk-flex fk-w-full fk-mt-3 fk-mb-2" id={`relationship-dropdown-${name}`}>
                     <DataTable
                       classNames={{ table: 'fk-max-h-[17.5rem]' }}
                       columns={columns}
@@ -378,7 +389,7 @@ function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
 }
 
 type DataAdapter = {
-  data: string | MappedEntityItem | EntityItem | AttributeValue;
+  data: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue;
   defaultScope: string;
   primaryAttributeName: string;
   relationshipEntitySchema: Entity | undefined;
@@ -432,34 +443,4 @@ function dataAdapter({
         return field;
       }, row) as AttributeValue
   );
-}
-
-function useOuterClick(ref: RefObject<HTMLDivElement>, callback: React.Dispatch<React.SetStateAction<boolean>>): void {
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent): void {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        callback(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [callback, ref]);
-
-  useEffect(() => {
-    function handleFocusOutside(event: FocusEvent): void {
-      if (ref.current && !ref.current.contains(event.target as Node)) {
-        callback(false);
-      }
-    }
-
-    document.addEventListener('focusin', handleFocusOutside);
-
-    return () => {
-      document.removeEventListener('mousedown', handleFocusOutside);
-    };
-  }, [callback, ref]);
 }

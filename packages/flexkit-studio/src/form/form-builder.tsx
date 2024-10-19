@@ -165,18 +165,33 @@ function hasDataChanged(
     return Object.keys(changedData).some((field) => changedData[field]?.value !== '');
   }
 
+  /**
+   * Normalize the value for comparison.
+   * This is necessary because the value might be an object, so we need to either
+   * compare by the _id or or other keys depending on the type of field.
+   */
+  const normalizeComparisonValue = (value: unknown) => {
+    if (typeof value === 'object' && value !== null) {
+      if ('path' in value) {
+        // for image attributes
+        return value.path;
+      }
+
+      return '_id' in value ? (value as { _id: string })._id : '';
+    }
+
+    return value ?? '';
+  };
+
   const sortAlphabetically = (a: string, b: string): 1 | -1 => (a < b ? -1 : 1);
   const originalData = Object.keys(originalFormData)
     .sort((a, b) => sortAlphabetically(a, b))
-    .filter((field) => field !== 'updatedAt')
+    .filter((field) => field !== '_updatedAt')
     .reduce(
       (acc, field) => ({
         ...acc,
         [field]: {
-          value:
-            typeof originalFormData[field].value === 'object'
-              ? (originalFormData[field].value?._id ?? '')
-              : (originalFormData[field].value ?? ''),
+          value: normalizeComparisonValue(originalFormData[field].value),
           disabled: originalFormData[field].disabled,
           relationships: originalFormData[field].relationships,
         },
@@ -185,15 +200,12 @@ function hasDataChanged(
     );
   const newData = Object.keys(changedData)
     .sort((a, b) => sortAlphabetically(a, b))
-    .filter((field) => field !== 'updatedAt')
+    .filter((field) => field !== '_updatedAt')
     .reduce(
       (acc, field) => ({
         ...acc,
         [field]: {
-          value:
-            typeof changedData[field]?.value === 'object'
-              ? (changedData[field]?.value?._id ?? '')
-              : (changedData[field]?.value ?? ''),
+          value: normalizeComparisonValue(changedData[field]?.value),
           disabled: changedData[field]?.disabled ?? false,
           relationships:
             Boolean(Object.keys(changedData[field]?.relationships?.connect ?? {}).length) ||

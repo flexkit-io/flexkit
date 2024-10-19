@@ -15,6 +15,8 @@ interface ApiPaths {
   upload: string;
 }
 
+export const IMAGES_BASE_URL = 'https://flexkit.io/images/';
+
 export function apiPaths(projectId = ''): ApiPaths {
   return {
     authProviders: `${baseProjectApiUrl(projectId)}/auth/providers`,

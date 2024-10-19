@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { find, propEq } from 'ramda';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useAppContext, useAppDispatch } from '../core/app-context';
@@ -28,7 +28,7 @@ const PAGE_SIZE = 25;
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({
     ...column,
-    cell: () => <Skeleton className="fk-h-4 fk-w-full" />,
+    cell: () => <Skeleton className="fk-h-4 fk-w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
   })) as unknown as ColumnDef<AttributeValue>[];
 }
 

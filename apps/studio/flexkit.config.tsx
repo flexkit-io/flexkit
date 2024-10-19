@@ -282,9 +282,7 @@ export default defineConfig([
             },
             dataType: 'image',
             inputType: 'image',
-            previewType: 'text',
             scope: 'global', // TODO: Images have global scope. The type should be adjusted to not require a scope when inputType is image
-            validation: (z) => z.string().min(1, { message: 'Image is required' }),
             defaultValue: '',
           },
         ],

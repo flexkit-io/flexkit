@@ -46,15 +46,19 @@ async function handler(request: NextRequest): Promise<NextResponse> {
   let body;
 
   try {
-    const payload = await request.json();
-    body = payload && JSON.stringify(payload);
+    if (contentType === 'application/json') {
+      const payload = await request.json();
+      body = payload && JSON.stringify(payload);
+    } else {
+      // eslint-disable-next-line prefer-destructuring -- body is defined earlier
+      body = request.body;
+    }
   } catch (error) {
     body = undefined;
   }
 
   const response = await fetch(`${apiUrl}${path}${search}`, {
     headers: {
-      Accept: 'application/json',
       Authorization: token,
       'Content-Type': contentType ?? 'application/json',
     },

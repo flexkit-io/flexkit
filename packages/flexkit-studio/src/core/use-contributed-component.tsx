@@ -4,6 +4,7 @@ import { useConfig } from './config/config-context';
 import { PluginOptions } from './config/types';
 import type { LogoProps, ProjectSelectorProps, SearchProps, UserNavProps } from './config/types';
 import type { FormFieldParams } from '../form/types';
+import type { Image } from '../data-grid/preview-components/image';
 
 interface ContributionPointMap {
   'navbar.logo': LazyExoticComponent<ComponentType<LogoProps>>;
@@ -14,6 +15,9 @@ interface ContributionPointMap {
   'formFields.text': LazyExoticComponent<ComponentType<FormFieldParams<'text'>>>;
   'formFields.textarea': LazyExoticComponent<ComponentType<FormFieldParams<'textarea'>>>;
   'previewFields.boolean': LazyExoticComponent<ComponentType<boolean>>;
+  'previewFields.image': LazyExoticComponent<ComponentType<Image>>;
+  'previewFields.text': LazyExoticComponent<ComponentType<string>>;
+  'previewFields.editor': LazyExoticComponent<ComponentType<string>>;
 }
 
 const contributionPointMap: ContributionPointMap = {
@@ -33,6 +37,15 @@ const contributionPointMap: ContributionPointMap = {
   // preview fields
   'previewFields.boolean': lazy(() =>
     import('../data-grid/preview-components/boolean.js').then(({ Boolean }) => ({ 'default': Boolean }))
+  ),
+  'previewFields.image': lazy(() =>
+    import('../data-grid/preview-components/image.js').then(({ Image }) => ({ 'default': Image }))
+  ),
+  'previewFields.text': lazy(() =>
+    import('../data-grid/preview-components/text.js').then(({ Text }) => ({ 'default': Text }))
+  ),
+  'previewFields.editor': lazy(() =>
+    import('../data-grid/preview-components/editor.js').then(({ Editor }) => ({ 'default': Editor }))
   ),
 };
 

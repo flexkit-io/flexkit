@@ -7,7 +7,7 @@ import { Checkbox } from '../ui/primitives/checkbox';
 import { Boolean as BooleanPrefiewField } from './preview-components/boolean';
 import { Text as TextPreviewField } from './preview-components/text';
 import { Editor as EditorPreviewField } from './preview-components/editor';
-
+import { Image as ImagePreviewField } from './preview-components/image';
 type Props<TData> = {
   attributesSchema: Attribute[];
   checkboxSelect?: 'single' | 'multiple'; // whether to include a checkbox column for row selection
@@ -25,6 +25,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   const inputTypeToPreviewFieldMap = {
     'datetime': 'text',
     'editor': 'editor',
+    'image': 'image',
     'number': 'text',
     'relationship': 'text',
     'select': 'text',
@@ -34,14 +35,15 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   };
   const previewFieldComponentsMap = {
     'boolean': BooleanPrefiewField,
-    'text': TextPreviewField,
-    'number': TextPreviewField,
     'date': TextPreviewField,
     'datetime': TextPreviewField,
     'editor': EditorPreviewField,
-    'select': TextPreviewField,
+    'image': ImagePreviewField,
+    'number': TextPreviewField,
     'relationship': TextPreviewField,
+    'select': TextPreviewField,
     'switch': BooleanPrefiewField,
+    'text': TextPreviewField,
     'textarea': TextPreviewField,
   };
 

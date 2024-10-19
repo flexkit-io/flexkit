@@ -42,6 +42,17 @@ export type MappedEntityItem = {
   [attributeName: string]: string;
 };
 
+export type ImageValue = {
+  _id: string;
+  path: string;
+  size: number;
+  mimeType: string;
+  originalFilename: string;
+  lqip: string;
+  width: number;
+  height: number;
+};
+
 export type MappedEntityQueryResults = {
   count: number;
   results: MappedEntityItem[] | [];
@@ -73,5 +84,5 @@ export type FormFieldValue = {
     disconnect?: string[];
   };
   scope: string;
-  value: string | MappedEntityItem | EntityItem | AttributeValue | undefined | null;
+  value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | undefined | null;
 };

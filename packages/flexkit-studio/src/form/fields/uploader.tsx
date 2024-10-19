@@ -1,30 +1,53 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import type { SyntheticEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import type { FormFieldValue } from '../../graphql-client/types';
+import bytes from 'bytes';
+import type { FormFieldValue, ImageValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
-import { Input } from '../../ui/primitives/input';
+import { Button } from '../../ui/primitives/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
+import { Collapsible, CollapsibleContent } from '../../ui/primitives/collapsible';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../ui/primitives/dropdown-menu';
+import {
+  Copy as CopyIcon,
+  Download as DownloadIcon,
+  Ellipsis as EllipsisIcon,
+  Image as ImageIcon,
+  Maximize2,
+  RefreshCwOff as ClearFieldIcon,
+  Search as SearchIcon,
+  Upload as UploadIcon,
+  X as ClearIcon,
+} from 'lucide-react';
 import type { FormFieldParams } from '../types';
-import { apiPaths } from '../../core/api-paths';
+import { apiPaths, IMAGES_BASE_URL } from '../../core/api-paths';
+import { useOuterClick } from '../../ui/hooks/use-outer-click';
 
-export function Uploader({ control, fieldSchema, setValue }: FormFieldParams<'image'>): JSX.Element {
+export function Uploader({ control, fieldSchema, getValues, setValue }: FormFieldParams<'image'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
   const { projectId } = useParams();
+  const [isOpen, setIsOpen] = useState(false);
   const inputFile = useRef<HTMLInputElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [base64PreviewImage, setBase64PreviewImage] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [saving, setSaving] = useState(false);
+  const id = useId();
+  useOuterClick(wrapperRef, setIsOpen, '[data-radix-popper-content-wrapper]');
 
-  async function handleInput(
-    event: React.ChangeEvent<HTMLInputElement>,
-    previousValue: FormFieldValue | undefined
-  ): Promise<void> {
-    const file = event.currentTarget.files && event.currentTarget.files[0];
-
+  async function handleInput(file: File | null, previousValue: FormFieldValue | undefined): Promise<void> {
     if (!file) {
       return;
     }
 
-    if (file.size / 1024 / 1024 > 50) {
+    if (file.size > bytes('50MB')) {
       console.log('File size too big (max 50MB)');
       // toast.error("File size too big (max 50MB)");
       return;
@@ -41,7 +64,7 @@ export function Uploader({ control, fieldSchema, setValue }: FormFieldParams<'im
     try {
       const response = await fetch(apiPaths(projectId).upload, {
         method: 'POST',
-        headers: { 'content-type': file?.type || 'application/octet-stream' },
+        headers: { 'Content-Type': file?.type || 'application/octet-stream' },
         body: file,
       });
 
@@ -49,18 +72,37 @@ export function Uploader({ control, fieldSchema, setValue }: FormFieldParams<'im
 
       setValue(name, {
         ...previousValue,
-        value: data.pathname,
+        value: {
+          _id: (previousValue?.value as ImageValue)?._id,
+          path: data.pathname,
+          originalFilename: file.name,
+          size: file.size,
+          mimeType: file.type,
+        },
       });
     } catch (error) {
       console.error(error);
       setBase64PreviewImage(null);
       setValue(name, {
         ...previousValue,
-        value: '',
+        value: {
+          _id: (previousValue?.value as ImageValue)?._id,
+        },
       });
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleClearing(event: SyntheticEvent): void {
+    event.stopPropagation();
+    setValue(name, {
+      ...getValues(name),
+      _id: '',
+      value: {
+        _id: (getValues(name)?.value as ImageValue)?._id,
+      },
+    });
   }
 
   return (
@@ -69,32 +111,261 @@ export function Uploader({ control, fieldSchema, setValue }: FormFieldParams<'im
       name={name}
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
+          <FormLabel htmlFor={id}>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-          <FormControl>
-            <>
-              {base64PreviewImage && (
-                <img src={base64PreviewImage} alt="Preview" className="fk-h-12 fk-w-12 rounded-md object-cover" />
-              )}
-              <Input
-                className={`fk-w-full fk-mt-[0.1875rem] ${
-                  !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
-                }`}
-                disabled={isEditable === false || field.value?.disabled}
-                {...field}
-                onChange={(event) => {
-                  handleInput(event, field.value);
-                }}
-                value={(field.value?.value as string) || ''}
-              />
-            </>
+          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-[2.5rem] fk-text-sm">
+            <div
+              aria-controls={`image-dropdown-${name}`}
+              aria-expanded={isOpen}
+              className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-overflow-hidden focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
+                isOpen ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
+              } ${dragActive ? 'fk-border-dashed fk-border-2 fk-border-green-500 fk-bg-green-50' : 'fk-border-input fk-bg-background'}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                wrapperRef.current?.focus();
+                wrapperRef.current?.click();
+                setIsOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setIsOpen(true);
+                }
+
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  wrapperRef.current?.blur();
+                  setIsOpen(false);
+                }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDragActive(true);
+              }}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDragActive(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDragActive(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setDragActive(false);
+
+                const file = e.dataTransfer.files && e.dataTransfer.files[0];
+
+                handleInput(file, field.value);
+              }}
+              ref={wrapperRef}
+              role="combobox"
+              tabIndex={0}
+            >
+              <div className="fk-flex fk-w-full fk-space-x-2">
+                {/* Initial empty state when there is no image */}
+                {!(field.value?.value as ImageValue)?.path && !base64PreviewImage ? (
+                  <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
+                    <div className="fk-flex fk-h-full fk-items-center fk-text-muted-foreground fk-text-sm fk-font-light">
+                      <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" /> Drag or paste image here
+                    </div>
+                    <Button
+                      className="fk-ml-auto fk-h-7 fk-rounded fk-text-muted-foreground"
+                      id={id}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        inputFile.current?.click();
+                      }}
+                      variant="ghost"
+                    >
+                      <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                      Upload
+                    </Button>
+                    <Button className="fk-ml-2 fk-h-7 fk-rounded fk-text-muted-foreground" variant="ghost">
+                      <SearchIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                      Select
+                    </Button>
+                  </div>
+                ) : null}
+                {/* When there is an image, show the image and its metadata */}
+                {(field.value?.value as ImageValue | undefined)?.path && !isOpen ? (
+                  <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
+                    <img
+                      className="fk-w-8 fk-h-8 fk-mr-2 fk-rounded fk-object-scale-down"
+                      src={`${IMAGES_BASE_URL}${(field.value?.value as ImageValue).path}?w=128&h=128&f=webp`}
+                      alt="Uploaded"
+                    />
+                    {bytes((field.value?.value as ImageValue).size)}
+                    <span className="fk-block fk-w-px fk-h-5 fk-mx-2 fk-bg-border" />
+                    {(field.value?.value as ImageValue).mimeType}
+                    {(field.value?.value as ImageValue).width && (field.value?.value as ImageValue).height ? (
+                      <>
+                        <span className="fk-block fk-w-px fk-h-5 fk-mx-2 fk-bg-border" />
+                        {(field.value?.value as ImageValue).width}x{(field.value?.value as ImageValue).height}px
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+                {!(field.value?.value as ImageValue)?.path && base64PreviewImage && (
+                  <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
+                    <img
+                      src={base64PreviewImage}
+                      alt="Preview"
+                      className="fk-mr-2 fk-mt-0.5 fk-rounded fk-h-7 fk-w-7 rounded-md object-cover"
+                    />
+                    Loading image...
+                  </div>
+                )}
+                {/* When there is an image, show the dropdown menu */}
+                {(field.value?.value as ImageValue)?.path ? (
+                  <div className="fk-absolute fk-top-0 fk-right-10">
+                    <DropdownMenu>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                className="fk-h-8 fk-w-8 fk-ml-auto fk-mt-[0.1875rem] fk-rounded"
+                                size="icon"
+                                variant="ghost"
+                              >
+                                <EllipsisIcon className="fk-h-4 fk-w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Show actions</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <DropdownMenuContent className="fk-w-48">
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem onClick={() => inputFile.current?.click()}>
+                            <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                            <span>Upload</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                            <span>Select image</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem>
+                            <DownloadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                            <span>Download</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <CopyIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                            <span>Copy URL</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleClearing}>
+                          <ClearFieldIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                          <span>Clear field</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ) : null}
+                <>
+                  {!isOpen && ((field.value?.value as ImageValue)?.path || base64PreviewImage) ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                wrapperRef.current?.focus();
+                                wrapperRef.current?.click();
+                              }
+                            }}
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <Maximize2 className="fk-h-4 fk-w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Expand field</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : null}
+                </>
+                {isOpen && ((field.value?.value as ImageValue)?.path || base64PreviewImage) ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            wrapperRef.current?.blur();
+                            setIsOpen(false);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              wrapperRef.current?.blur();
+                              setIsOpen(false);
+                            }
+                          }}
+                          size="icon"
+                          variant="ghost"
+                        >
+                          <ClearIcon className="fk-h-4 fk-w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Close</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
+              </div>
+              <Collapsible
+                className="fk-w-full fk-space-y-2 !fk-ml-0"
+                onOpenChange={setIsOpen}
+                open={isOpen && (Boolean((field.value?.value as ImageValue)?.path) || Boolean(base64PreviewImage))}
+              >
+                <CollapsibleContent className="fk-w-full">
+                  <div className="fk-flex fk-w-full fk-h-[30vh]" id={`image-dropdown-${name}`}>
+                    {(field.value?.value as ImageValue | undefined)?.path ? (
+                      <img
+                        className="fk-w-full fk-rounded-md fk-object-scale-down"
+                        src={`${IMAGES_BASE_URL}${(field.value?.value as ImageValue).path}?w=624&h=624&f=webp`}
+                        alt="Uploaded"
+                      />
+                    ) : null}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+              {saving ? (
+                <div className="fk-absolute !fk-m-0 fk-top-0 fk-left-0 fk-right-0 fk-bottom-0 fk-w-full fk-bg-muted-foreground/5 fk-overflow-hidden">
+                  <div className="fk-animate-progress fk-w-full fk-h-full fk-bg-muted-foreground/10" />
+                </div>
+              ) : null}
+            </div>
           </FormControl>
           <input
             accept={options?.accept ? options.accept : 'image/*'}
-            className="hidden"
+            className="fk-hidden"
             id={`file-upload-${name}`}
             onChange={(e) => {
-              // handleUpload(e, uppy);
+              const file = e.currentTarget.files && e.currentTarget.files[0];
+
+              handleInput(file, field.value);
             }}
             ref={inputFile}
             type="file"

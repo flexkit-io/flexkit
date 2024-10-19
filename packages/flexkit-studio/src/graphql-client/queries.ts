@@ -12,6 +12,7 @@ import type {
   MappedEntityQueryResults,
   MappedFormEntityQueryResults,
   EntityQueryResult,
+  ImageValue,
 } from './types';
 
 type EntityQuery = {
@@ -49,7 +50,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   );
   const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
   const imageAttributesList: string = imageAttributes.reduce((acc, attribute) => {
-    return `${acc}\n    ${attribute} {\n      _id\n      url\n      path\n    }\n  `;
+    return `${acc}\n    ${attribute} {\n      _id\n      originalFilename\n      mimeType\n      path\n      size\n    }\n  `;
   }, '');
 
   const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
@@ -59,7 +60,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
       if (relatedAttribute.dataType === 'image') {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        url\n      path\n    }\n    `;
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        originalFilename\n      mimeType\n      path\n      size\n    }\n    `;
       }
 
       if (relatedAttribute.scope === 'local') {
@@ -160,6 +161,10 @@ export function mapQueryResult(
         [attributeName]: scopedAttribute?.[scope] ? scopedAttribute[scope] : scopedAttribute?.default,
       };
     }, {});
+    const imageAttributes = getImageAttributes(attributes).reduce(
+      (acc, attributeName) => ({ ...acc, [attributeName]: entity[attributeName] }),
+      {}
+    );
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
       (acc, attributeName) => {
         const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
@@ -191,7 +196,7 @@ export function mapQueryResult(
       {}
     );
 
-    return { _id, ...globalAttributes, ...localAttributes, ...relationshipAttributes };
+    return { _id, ...globalAttributes, ...localAttributes, ...imageAttributes, ...relationshipAttributes };
   });
 
   return {
@@ -252,6 +257,18 @@ export function mapQueryResultForFormFields(
         },
       };
     }, {});
+    const imageAttributes = getImageAttributes(attributes).reduce(
+      (acc, attribute) => ({
+        ...acc,
+        [attribute]: {
+          value: entity[attribute],
+          disabled: false,
+          scope: 'default',
+          _id: '',
+        },
+      }),
+      {}
+    );
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
       (acc, attributeName) => {
         const value = entity[attributeName] as AttributeValue | null;
@@ -272,7 +289,7 @@ export function mapQueryResultForFormFields(
       {}
     );
 
-    return { ...globalAttributes, ...localAttributes, ...relationshipAttributes };
+    return { ...globalAttributes, ...localAttributes, ...imageAttributes, ...relationshipAttributes };
   });
 
   return {
@@ -332,6 +349,7 @@ export function getEntityUpdateMutation(
   const data = filterOutInvalidAttributes(attributes, dataToMutate);
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const localAttributes = localAttributesUpdate(entityId, attributes, data, scope);
+  const imageAttributes = imageAttributesUpdate(entityId, attributes, data);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
   const responseType = pluralizedEntityName.toLowerCase();
   const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
@@ -340,7 +358,7 @@ export function getEntityUpdateMutation(
     `mutation updateEntity($where: ${entityName}Where) {\n` +
     `  update${pluralizedEntityName}(\n` +
     `    where: $where\n` +
-    `    update: {${globalAttributes}${localAttributes}${relationshipAttributes}\n    }\n` +
+    `    update: {${globalAttributes}${localAttributes}${imageAttributes}${relationshipAttributes}\n    }\n` +
     `  ) {\n` +
     `    ${responseType} {\n` +
     `      _id\n` +
@@ -408,6 +426,55 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
         : (value.value?.toString() ?? 'null');
 
     return `${acc}\n      ${attributeName}: ${typedValue}`;
+  }, '');
+
+  return attributesString;
+}
+
+function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], data: FormEntityItem): string {
+  const imageAttributes = pick(getImageAttributes(schemaAttributes) as [string], data);
+  const attributesArray: [string, FormFieldValue][] = toPairs(imageAttributes);
+  const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
+    const imageValue = attributeValue.value as ImageValue | null;
+    const imagePath = imageValue?.path ? `"${imageValue.path}"` : 'null';
+    const imageSize = imageValue?.size ? imageValue.size : 'null';
+    const imageMimeType = imageValue?.mimeType ? `"${imageValue.mimeType}"` : 'null';
+    const originalFilename = imageValue?.originalFilename ? `"${imageValue.originalFilename}"` : 'null';
+
+    if (!imagePath) {
+      return acc;
+    }
+
+    console.log('attributeValue', attributeValue);
+
+    if ((attributeValue.value as ImageValue)?._id) {
+      return (
+        `${acc}\n      ${attributeName}: {\n` +
+        `        update: {\n` +
+        `          node: {\n` +
+        `            mimeType: ${imageMimeType}\n` +
+        `            originalFilename: ${originalFilename}\n` +
+        `            path: ${imagePath}\n` +
+        `            size: ${imageSize}\n` +
+        `          }\n` +
+        `        }\n` +
+        `      }`
+      );
+    }
+
+    return (
+      `${acc}\n      ${attributeName}: {\n` +
+      `        create: {\n` +
+      `          node: {\n` +
+      `            _id: "${entityId}:${attributeName}"\n` +
+      `            mimeType: ${imageMimeType}\n` +
+      `            originalFilename: ${originalFilename}\n` +
+      `            path: ${imagePath}\n` +
+      `            size: ${imageSize}\n` +
+      `          }\n` +
+      `        }\n` +
+      `      }`
+    );
   }, '');
 
   return attributesString;
@@ -505,7 +572,7 @@ function relationshipAttributesUpdate(
 
 function stringifyValue(
   type: DataType,
-  value: string | MappedEntityItem | EntityItem | AttributeValue | null | undefined
+  value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | null | undefined
 ): string {
   return stringTypes.includes(type)
     ? `"${value?.toString().replace(/"/g, '\\"') ?? 'null'}"`
