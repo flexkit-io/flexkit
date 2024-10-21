@@ -70,6 +70,17 @@ export default async function main(client: Client): Promise<number> {
         output.debug(err.message);
         handled = true;
       }
+
+      if (err.status === 400) {
+        if (Array.isArray(err.serverMessage)) {
+          err.serverMessage.forEach((error: { message: string }) => {
+            output.error(error.message);
+          });
+        } else {
+          output.error(err.serverMessage);
+        }
+        handled = true;
+      }
     }
 
     if (!handled) {

@@ -425,7 +425,7 @@ export default defineConfig([
             label: 'Name',
             scope: 'local',
             options: {
-              size: 260,
+              size: 200,
               comment: 'A characteristic or benefit of a product',
             },
             dataType: 'string',
@@ -439,7 +439,7 @@ export default defineConfig([
             label: 'Tooltip',
             scope: 'local',
             options: {
-              size: 360,
+              size: 450,
               comment: 'The tooltip text to display when hovering over the flag',
             },
             dataType: 'string',
@@ -475,7 +475,7 @@ export default defineConfig([
             label: 'Name',
             scope: 'global',
             options: {
-              size: 120,
+              size: 200,
               comment: 'The name of the brand',
             },
             dataType: 'string',

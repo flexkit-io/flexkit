@@ -50,7 +50,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   );
   const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
   const imageAttributesList: string = imageAttributes.reduce((acc, attribute) => {
-    return `${acc}\n    ${attribute} {\n      _id\n      originalFilename\n      mimeType\n      path\n      size\n    }\n  `;
+    return `${acc}\n    ${attribute} {\n      _id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n  `;
   }, '');
 
   const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
@@ -60,7 +60,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
       if (relatedAttribute.dataType === 'image') {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        originalFilename\n      mimeType\n      path\n      size\n    }\n    `;
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n    `;
       }
 
       if (relatedAttribute.scope === 'local') {
@@ -440,12 +440,13 @@ function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], 
     const imageSize = imageValue?.size ? imageValue.size : 'null';
     const imageMimeType = imageValue?.mimeType ? `"${imageValue.mimeType}"` : 'null';
     const originalFilename = imageValue?.originalFilename ? `"${imageValue.originalFilename}"` : 'null';
+    const height = imageValue?.height ? imageValue.height : 'null';
+    const width = imageValue?.width ? imageValue.width : 'null';
+    const lqip = imageValue?.lqip ? `"${imageValue.lqip}"` : 'null';
 
     if (!imagePath) {
       return acc;
     }
-
-    console.log('attributeValue', attributeValue);
 
     if ((attributeValue.value as ImageValue)?._id) {
       return (
@@ -456,6 +457,9 @@ function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], 
         `            originalFilename: ${originalFilename}\n` +
         `            path: ${imagePath}\n` +
         `            size: ${imageSize}\n` +
+        `            height: ${height}\n` +
+        `            width: ${width}\n` +
+        `            lqip: ${lqip}\n` +
         `          }\n` +
         `        }\n` +
         `      }`
@@ -471,6 +475,9 @@ function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], 
       `            originalFilename: ${originalFilename}\n` +
       `            path: ${imagePath}\n` +
       `            size: ${imageSize}\n` +
+      `            height: ${height}\n` +
+      `            width: ${width}\n` +
+      `            lqip: ${lqip}\n` +
       `          }\n` +
       `        }\n` +
       `      }`

@@ -2,6 +2,18 @@ import { useId, useRef, useState } from 'react';
 import type { SyntheticEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import bytes from 'bytes';
+import {
+  Copy as CopyIcon,
+  Download as DownloadIcon,
+  Ellipsis as EllipsisIcon,
+  Image as ImageIcon,
+  Maximize2,
+  RefreshCwOff as ClearFieldIcon,
+  Search as SearchIcon,
+  Upload as UploadIcon,
+  X as ClearIcon,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import type { FormFieldValue, ImageValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import { Button } from '../../ui/primitives/button';
@@ -15,20 +27,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../ui/primitives/dropdown-menu';
-import {
-  Copy as CopyIcon,
-  Download as DownloadIcon,
-  Ellipsis as EllipsisIcon,
-  Image as ImageIcon,
-  Maximize2,
-  RefreshCwOff as ClearFieldIcon,
-  Search as SearchIcon,
-  Upload as UploadIcon,
-  X as ClearIcon,
-} from 'lucide-react';
-import type { FormFieldParams } from '../types';
 import { apiPaths, IMAGES_BASE_URL } from '../../core/api-paths';
 import { useOuterClick } from '../../ui/hooks/use-outer-click';
+import type { FormFieldParams } from '../types';
 
 export function Uploader({ control, fieldSchema, getValues, setValue }: FormFieldParams<'image'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
@@ -47,15 +48,28 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
       return;
     }
 
-    if (file.size > bytes('50MB')) {
-      console.log('File size too big (max 50MB)');
-      // toast.error("File size too big (max 50MB)");
+    if (file.size > bytes('4MB')) {
+      toast.error('File size too big (max 4MB)');
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (e) => {
+      const img = new Image();
       setBase64PreviewImage(e.target?.result as string);
+
+      img.onload = function () {
+        setValue(name, {
+          ...(getValues(name)?.value as ImageValue),
+          value: {
+            ...(getValues(name)?.value as ImageValue),
+            width: img.width,
+            height: img.height,
+          },
+        });
+      };
+
+      img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
 
@@ -70,21 +84,24 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
 
       const data = await response.json();
 
+      console.log('data', data);
+
       setValue(name, {
-        ...previousValue,
+        ...(getValues(name)?.value as ImageValue),
         value: {
-          _id: (previousValue?.value as ImageValue)?._id,
+          ...(getValues(name)?.value as ImageValue),
           path: data.pathname,
           originalFilename: file.name,
           size: file.size,
           mimeType: file.type,
+          lqip: data.lqip,
         },
       });
     } catch (error) {
       console.error(error);
       setBase64PreviewImage(null);
       setValue(name, {
-        ...previousValue,
+        ...(getValues(name)?.value as ImageValue),
         value: {
           _id: (previousValue?.value as ImageValue)?._id,
         },
@@ -103,6 +120,28 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
         _id: (getValues(name)?.value as ImageValue)?._id,
       },
     });
+  }
+
+  function handleCopyUrl(event: SyntheticEvent, fieldValue: FormFieldValue | undefined): void {
+    event.stopPropagation();
+
+    if (fieldValue?.value && typeof fieldValue.value === 'object' && 'path' in fieldValue.value) {
+      navigator.clipboard.writeText(`${IMAGES_BASE_URL}${fieldValue.value.path}`);
+    }
+  }
+
+  function handleUpload(event: SyntheticEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    inputFile.current?.click();
+  }
+
+  function handleDownload(event: SyntheticEvent, fieldValue: FormFieldValue | undefined): void {
+    event.stopPropagation();
+
+    if (fieldValue?.value && typeof fieldValue.value === 'object' && 'path' in fieldValue.value) {
+      window.open(`${IMAGES_BASE_URL}${fieldValue.value.path}?download=1`, '_blank');
+    }
   }
 
   return (
@@ -177,11 +216,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                     <Button
                       className="fk-ml-auto fk-h-7 fk-rounded fk-text-muted-foreground"
                       id={id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        inputFile.current?.click();
-                      }}
+                      onClick={handleUpload}
                       variant="ghost"
                     >
                       <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
@@ -246,7 +281,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                       </TooltipProvider>
                       <DropdownMenuContent className="fk-w-48">
                         <DropdownMenuGroup>
-                          <DropdownMenuItem onClick={() => inputFile.current?.click()}>
+                          <DropdownMenuItem onClick={handleUpload}>
                             <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
                             <span>Upload</span>
                           </DropdownMenuItem>
@@ -257,11 +292,11 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => handleDownload(e, field.value)}>
                             <DownloadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
                             <span>Download</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => handleCopyUrl(e, field.value)}>
                             <CopyIcon className="fk-mr-2 fk-h-4 fk-w-4" />
                             <span>Copy URL</span>
                           </DropdownMenuItem>
