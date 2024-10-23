@@ -15,7 +15,7 @@ import { DefaultValueSwitch } from '@flexkit/studio';
 export function CustomTextField({ control, fieldSchema, getValues, setValue }: FormFieldParams<'text'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
   const fieldId = useId();
-  const count = getValues(name)?.value?.length as number;
+  const count = (getValues(name)?.value as string | undefined)?.length ?? 0;
 
   function handleInput(
     event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,

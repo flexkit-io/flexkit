@@ -1,6 +1,6 @@
 import { CircleCheck, CircleX } from 'lucide-react';
 
-export function Boolean(value: boolean) {
+export function Boolean({ value }: { value: boolean }) {
   return (
     <div className="fk-flex fk-w-full fk-justify-center">
       {value ? (

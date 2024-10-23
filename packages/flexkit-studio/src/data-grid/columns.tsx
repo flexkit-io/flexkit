@@ -1,3 +1,4 @@
+import React from 'react';
 import { ComponentType } from 'react';
 import type { CellContext, ColumnDef, Row, Table } from '@tanstack/react-table';
 import type { Attribute } from '../core/types';
@@ -53,7 +54,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
       inputTypeToPreviewFieldMap[attribute.inputType as keyof typeof inputTypeToPreviewFieldMap];
     const previewComponent =
       (getContributionPointConfig('previewFields', [previewType])?.[0]?.component as unknown as
-        | ComponentType<string | boolean | number | Date>
+        | ComponentType<{ value: unknown }>
         | undefined) ??
       previewFieldComponentsMap[previewType as keyof typeof previewFieldComponentsMap] ??
       previewFieldComponentsMap['text'];
@@ -62,8 +63,9 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
       accessorKey: attribute.name,
       header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
       cell: ({ row }: CellContext<TData, TValue>) => {
-        // @ts-ignore -- TODO: fix this
-        return previewComponent(row.getValue(attribute.name));
+        const PreviewComponent = previewComponent as ComponentType<{ value: unknown }>;
+        console.log(row.getAllCells());
+        return <PreviewComponent value={row.getValue(attribute.name)} row={row} />;
       },
       enableSorting: false,
       enableHiding: true,

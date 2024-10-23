@@ -14,10 +14,10 @@ interface ContributionPointMap {
   'formFields.switch': LazyExoticComponent<ComponentType<FormFieldParams<'switch'>>>;
   'formFields.text': LazyExoticComponent<ComponentType<FormFieldParams<'text'>>>;
   'formFields.textarea': LazyExoticComponent<ComponentType<FormFieldParams<'textarea'>>>;
-  'previewFields.boolean': LazyExoticComponent<ComponentType<boolean>>;
-  'previewFields.image': LazyExoticComponent<ComponentType<Image>>;
-  'previewFields.text': LazyExoticComponent<ComponentType<string>>;
-  'previewFields.editor': LazyExoticComponent<ComponentType<string>>;
+  'previewFields.boolean': LazyExoticComponent<ComponentType<{ value: boolean }>>;
+  'previewFields.image': LazyExoticComponent<ComponentType<{ value: Image }>>;
+  'previewFields.text': LazyExoticComponent<ComponentType<{ value: string }>>;
+  'previewFields.editor': LazyExoticComponent<ComponentType<{ value: string }>>;
 }
 
 const contributionPointMap: ContributionPointMap = {

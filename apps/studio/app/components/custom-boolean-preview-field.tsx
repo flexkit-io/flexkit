@@ -1,6 +1,6 @@
 import { CircleCheckBig, CircleX } from 'lucide-react';
 
-export function CustomBooleanPreviewField(value: boolean): JSX.Element {
+export function CustomBooleanPreviewField({ value }: { value: boolean }): JSX.Element {
   return (
     <div className="fk-flex fk-w-full fk-justify-center">
       {value ? (

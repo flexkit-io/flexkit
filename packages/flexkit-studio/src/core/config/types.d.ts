@@ -37,6 +37,11 @@ export interface AppRoute {
   children?: AppRoute[];
 }
 
+type Image = {
+  _id: string;
+  path: string;
+};
+
 export interface PluginOptions {
   name: string;
   title?: string;
@@ -50,7 +55,7 @@ export interface PluginOptions {
     };
     previewFields?: {
       [key: string]: {
-        component: (Props: string | boolean | number | Date) => JSX.Element;
+        component: ({ value }: { value: string | boolean | number | null | Date | Image }) => JSX.Element;
         description?: string;
       };
     };

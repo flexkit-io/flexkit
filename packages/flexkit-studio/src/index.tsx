@@ -1,10 +1,11 @@
 'use client';
 
 // Core
-export { useAppContext } from './core/app-context';
+export { useAppContext, useAppDispatch } from './core/app-context';
 export { FlexkitStudio } from './core/flexkit-studio';
 export { useConfig } from './core/config/config-context';
 export type { ConfigContext } from './core/config/config-context';
+export { IMAGES_BASE_URL } from './core/api-paths';
 
 // Auth
 export { useAuth } from './auth/auth-context';
@@ -21,7 +22,7 @@ export type { FormFieldParams } from './form/types';
 
 // GraphQL client
 export { useEntityQuery } from './graphql-client/use-entity-query';
-export type { FormFieldValue, MappedEntityItem } from './graphql-client/types';
+export type { AttributeValue, FormFieldValue, MappedEntityItem } from './graphql-client/types';
 
 // Data Grid
 export {
@@ -39,13 +40,17 @@ export { DataTableFacetedFilter } from './data-grid/data-table-faceted-filter';
 
 // Entities
 export { useDispatch } from './entities/actions-context';
+export { getEntitySchema } from './graphql-client/queries';
 
 export type {
   ColumnDef,
   ColumnFiltersState,
   Row,
+  RowSelectionState,
   SortingState,
   Table as ReactTable,
+  TableMeta,
+  Updater,
   VisibilityState,
 } from '@tanstack/react-table';
 

@@ -1,28 +1,40 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { find, propEq } from 'ramda';
-import { useAppContext, useConfig, useLocation, useParams, Outlet, useEntityQuery } from '@flexkit/studio';
+import {
+  getEntitySchema,
+  useAppContext,
+  useConfig,
+  useLocation,
+  useParams,
+  Outlet,
+  useEntityQuery,
+} from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
-import type { ColumnDef, Entity, SingleProject, Row } from '@flexkit/studio';
-import { DataTable, DataTableRowActions, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
+import { DataTable } from '@flexkit/studio/data-grid';
+import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
+import { DataTableRowActions, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
+import { DataTableToolbar } from './data-grid/data-table-toolbar';
 
 const pageSize = 25;
 
 export function List(): JSX.Element {
-  const entityName = 'products';
+  const entityName = '_images';
   const { search } = useLocation();
   const query = new URLSearchParams(search);
   const entityId = query.get('id');
   const { scope } = useAppContext();
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-  const entitySchema = find(propEq(entityName, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = getEntitySchema(schema, entityName);
   const columnsDefinition = useGridColumnsDefinition({
     attributesSchema: entitySchema?.attributes ?? [],
     actionsComponent: (row) =>
       dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
   });
 
-  const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };
+  const variables = entityId
+    ? { where: { _id: entityId } }
+    : { where: { NOT: { path: null } }, options: { offset: 0, limit: pageSize } };
 
   const { isLoading, fetchMore, count, data } = useEntityQuery({
     entityNamePlural: entityName ?? '',
@@ -58,27 +70,21 @@ export function List(): JSX.Element {
   const loadingColumns = getLoadingColumns(columnsDefinition);
 
   return (
-    <div className="fk-flex fk-flex-col fk-h-full">
-      <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">
-        {capitalize(entitySchema?.plural ?? '')}
-      </h2>
+    <div className="fk-flex fk-flex-col fk-h-full fk-pl-4">
+      <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">Asset Manager</h2>
       <DataTable
         columns={isLoading ? loadingColumns : columnsDefinition}
         data={isLoading ? loadingData : (data ?? [])}
         entityName={entitySchema?.name ?? ''}
-        hasToolbar
         pageSize={pageSize}
         onScroll={(e) => {
           fetchMoreOnBottomReached(e.target as HTMLDivElement);
         }}
+        toolbarComponent={(table) => <DataTableToolbar entityName={entitySchema?.name ?? ''} table={table} />}
       />
       <Outlet />
     </div>
   );
-}
-
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 type AttributeValue = {

@@ -1,7 +1,6 @@
 'use client';
 
-import { cloneElement, useRef, useState } from 'react';
-import type { ReactElement, UIEvent } from 'react';
+import { useRef, useState } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -11,7 +10,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from '@tanstack/react-table';
+} from '@flexkit/studio';
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -19,22 +18,13 @@ import type {
   Row,
   RowSelectionState,
   SortingState,
-  Table,
   TableMeta,
   VisibilityState,
-} from '@tanstack/react-table';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import {
-  Table as TablePrimitive,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../ui/primitives/table';
-import { cn } from '../ui/lib/utils';
-import type { AttributeValue } from '../graphql-client/types';
-import type { MultipleRelationshipConnection } from '../core/types';
+} from '@flexkit/studio';
+import { useVirtualizer } from '@flexkit/studio';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@flexkit/studio/ui';
+import type { AttributeValue } from '@flexkit/studio';
+import { DataTableToolbar } from './data-table-toolbar';
 
 interface DataTableProps<TData extends AttributeValue, TValue> {
   classNames?: {
@@ -44,13 +34,11 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
   columns: ColumnDef<AttributeValue, TValue>[];
   data: TData[];
   entityName: string;
+  hasToolbar?: boolean;
   initialSelectionState?: RowSelectionState;
   onEntitySelectionChange?: (rowSelection: string[]) => void;
-  onScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
   pageSize?: number;
-  rowAdditionState?: MultipleRelationshipConnection;
-  rowDeletionState?: string[];
-  toolbarComponent?: (table: Table<AttributeValue>) => ReactElement;
 }
 
 interface ExtendedDataTable extends TableMeta<unknown> {
@@ -58,16 +46,14 @@ interface ExtendedDataTable extends TableMeta<unknown> {
 }
 
 export function DataTable<TData extends AttributeValue, TValue>({
-  classNames,
   columns,
   data,
+  entityName,
+  hasToolbar,
   initialSelectionState,
   onEntitySelectionChange,
   onScroll,
   pageSize,
-  rowAdditionState,
-  rowDeletionState,
-  toolbarComponent,
 }: DataTableProps<TData, TValue>): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [rowSelection, setRowSelection] = useState(initialSelectionState ?? {});
@@ -102,9 +88,6 @@ export function DataTable<TData extends AttributeValue, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getRowId: (row) => row._id,
     manualPagination: true,
-    meta: {
-      getRowBackground: (row: Row<AttributeValue>) => getRowClassnames(row, rowDeletionState, rowAdditionState),
-    },
   });
 
   const { rows } = table.getRowModel();
@@ -128,9 +111,9 @@ export function DataTable<TData extends AttributeValue, TValue>({
   }
 
   return (
-    <div className={cn('fk-w-full fk-h-full fk-space-y-4', classNames?.wrapper)}>
-      {toolbarComponent && toolbarComponent(table)}
-      <TablePrimitive className={cn('fk-grid fk-pb-[5rem]', classNames?.table)} onScroll={onScroll} ref={scrollRef}>
+    <div className="fk-w-full fk-h-full fk-space-y-4">
+      {Boolean(hasToolbar) && <DataTableToolbar entityName={entityName} table={table} />}
+      <Table className="fk-grid fk-pb-[5rem]" onScroll={onScroll} ref={scrollRef}>
         <TableHeader className="fk-grid">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow className="fk-flex fk-w-full" key={headerGroup.id}>
@@ -161,9 +144,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
 
               return (
                 <TableRow
-                  className={`${(table.options.meta as ExtendedDataTable).getRowBackground(
-                    row
-                  )} fk-flex fk-absolute fk-w-full`}
+                  className="fk-flex fk-absolute fk-w-full"
                   data-index={virtualRow.index}
                   data-state={row.getIsSelected() && 'selected'}
                   key={virtualRow.key}
@@ -194,23 +175,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
             </TableRow>
           )}
         </TableBody>
-      </TablePrimitive>
+      </Table>
     </div>
   );
-}
-
-function getRowClassnames(
-  row: Row<AttributeValue>,
-  rowDeletionState?: string[],
-  rowAdditionState?: MultipleRelationshipConnection
-): string {
-  if (rowDeletionState?.includes(row.original._id)) {
-    return 'fk-bg-row-removed hover:fk-bg-row-removed-hover';
-  }
-
-  if (rowAdditionState?.some((line) => line._id === row.original._id)) {
-    return 'fk-bg-row-added hover:fk-bg-row-added-hover';
-  }
-
-  return '';
 }

@@ -6,7 +6,7 @@ const MAX_LENGTH = 100;
 /**
  * Renders a preview of the editor content.
  */
-export function Editor(value: string) {
+export function Editor({ value }: { value: string }) {
   let textValue;
 
   try {

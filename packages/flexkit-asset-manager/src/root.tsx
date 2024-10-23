@@ -13,6 +13,7 @@ import {
   X as ResetIcon,
 } from 'lucide-react';
 import { Sidebar } from './sidebar';
+import { List } from './list';
 import { DataTableFacetedFilter } from '@flexkit/studio';
 
 const statuses = [
@@ -73,6 +74,7 @@ export function Root(): JSX.Element {
     <ResizablePanelGroup direction="horizontal" className="fk-h-full">
       <ResizablePanel className="fk-p-3" defaultSize={82}>
         <div className="fk-flex fk-flex-col">
+          <List />
           {/* <div className="flex flex-1 items-center space-x-2">
             <Input
               placeholder="Filter tasks..."

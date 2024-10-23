@@ -1,4 +1,5 @@
 import { filter, find, pick, propEq, toPairs, omit } from 'ramda';
+import { imageSchema } from '../entities/assets-schema';
 import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
 import type {
   AttributeValue,
@@ -24,7 +25,7 @@ const stringTypes: DataType[] = ['date', 'datetime', 'duration', 'id', 'string',
 
 export function getEntityQuery(entityNamePlural: string, scope: string, schema: Schema): EntityQuery {
   const filters = `(where: $where, options: $options)`;
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
   const attributes = entitySchema?.attributes ?? [];
   const heading = `$where: ${entityName}Where, $options: ${entityName}Options`;
@@ -129,7 +130,7 @@ export function mapQueryResult(
   results: EntityQueryResults,
   schema: Schema
 ): MappedEntityQueryResults {
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
   const attributes = entitySchema?.attributes ?? [];
 
   if (attributes.length === 0) {
@@ -145,7 +146,7 @@ export function mapQueryResult(
   const sliceFirstThreeItems = (values: EntityItem[], primaryAttributeName: string): string =>
     values
       .slice(0, 3)
-      .map((item) => item[primaryAttributeName].default)
+      .map((item) => item[primaryAttributeName]?.[scope] ?? item[primaryAttributeName].default)
       .join(', ');
   const mappedQueryResult = items.map((entity) => {
     const { _id } = entity;
@@ -215,7 +216,7 @@ export function mapQueryResultForFormFields(
   results: EntityQueryResults,
   schema: Schema
 ): MappedFormEntityQueryResults {
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
   const attributes = entitySchema?.attributes ?? [];
 
   if (attributes.length === 0) {
@@ -337,7 +338,7 @@ export function getEntityUpdateMutation(
   originalData: FormEntityItem,
   dataToMutate: EntityData
 ): string {
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entityNamePlural);
@@ -587,7 +588,7 @@ function stringifyValue(
 }
 
 function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: string, scope: string): string {
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
   const schemaAttributes = entitySchema?.attributes ?? [];
   const globalAttributesArray = getAttributeListByScope('global', schemaAttributes);
   const localAttributesArray = getAttributeListByScope('local', schemaAttributes);
@@ -647,6 +648,10 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
           if (attribute.relationship?.field) {
             return `${str}  ${attribute.name} (options: {limit: 25, offset: 0}) {\n      ${attribute.relationship.field}  ${localAttributeQuery}}\n    `;
           }
+        }
+
+        if (attribute.inputType === 'image') {
+          return `${str}  ${attribute.name} {\n    _id\n    originalFilename\n    mimeType\n    path\n    size\n    height\n    width\n    lqip\n  }\n`;
         }
 
         return `${str}  ${attribute.name}\n  `;
@@ -714,7 +719,7 @@ export function getEntityCreateMutation(
   entityData: EntityData,
   _id: string
 ): string {
-  const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
 
@@ -920,3 +925,11 @@ export function getRelatedItemsQuery({
 const capitalize = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
+
+export function getEntitySchema(schema: Schema, entityNamePlural: string): Entity | undefined {
+  if (entityNamePlural === '_images') {
+    return imageSchema;
+  }
+
+  return find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+}

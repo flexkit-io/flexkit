@@ -85,4 +85,4 @@ export {
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/primitives/tabs';
 export { ToggleGroup, ToggleGroupItem } from './ui/primitives/toggle-group';
 export { Toggle, toggleVariants } from './ui/primitives/toggle';
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/primitives/tooltip';
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipPortal, TooltipProvider } from './ui/primitives/tooltip';

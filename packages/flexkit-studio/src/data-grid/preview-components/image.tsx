@@ -6,7 +6,7 @@ export type Image = {
   path: string;
 };
 
-export function Image(value: Image) {
+export function Image({ value }: { value: Image }) {
   if (!value?.path) {
     return null;
   }

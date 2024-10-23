@@ -7,7 +7,7 @@ import { equals, find, propEq } from 'ramda';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
-import type { AttributeOptions, Entity, InputType, Schema } from '../core/types';
+import type { Entity, Schema } from '../core/types';
 import type { EntityData, FormEntityItem } from '../graphql-client/types';
 import { useConfig } from '../core/config/config-context';
 import { Text as TextField } from './fields/text';
@@ -38,10 +38,6 @@ type Props = {
   schema: Schema;
   setIsDirty: (isDirty: boolean) => void;
   onSubmit: (newData: EntityData, previousData?: FormEntityItem) => void;
-};
-
-type FieldComponentsMap = {
-  [type in keyof AttributeOptions]: ComponentType<FormFieldParams<type>>;
 };
 
 function FormBuilder(
@@ -162,7 +158,9 @@ function hasDataChanged(
 ): boolean {
   if (!originalFormData) {
     // iterate over changedData and check if there are any values
-    return Object.keys(changedData).some((field) => changedData[field]?.value !== '');
+    return Object.keys(changedData).some(
+      (field) => changedData[field]?.value !== '' && changedData[field]?.value !== undefined
+    );
   }
 
   /**

@@ -1,9 +1,17 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { find, propEq } from 'ramda';
-import { useAppContext, useConfig, useLocation, useParams, Outlet, useEntityQuery } from '@flexkit/studio';
+import {
+  getEntitySchema,
+  useAppContext,
+  useConfig,
+  useLocation,
+  useParams,
+  Outlet,
+  useEntityQuery,
+} from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
-import type { ColumnDef, Entity, SingleProject, Row } from '@flexkit/studio';
-import { DataTable, DataTableRowActions, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
+import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
+import { DataTable, DataTableRowActions, DataTableToolbar, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
 
 const pageSize = 25;
 
@@ -15,7 +23,7 @@ export function List(): JSX.Element {
   const { scope } = useAppContext();
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-  const entitySchema = find(propEq(entityName, 'plural'))(schema) as Entity | undefined;
+  const entitySchema = getEntitySchema(schema, entityName ?? '');
   const columnsDefinition = useGridColumnsDefinition({
     attributesSchema: entitySchema?.attributes ?? [],
     actionsComponent: (row) =>
@@ -66,11 +74,11 @@ export function List(): JSX.Element {
         columns={isLoading ? loadingColumns : columnsDefinition}
         data={isLoading ? loadingData : (data ?? [])}
         entityName={entitySchema?.name ?? ''}
-        hasToolbar
         pageSize={pageSize}
         onScroll={(e) => {
           fetchMoreOnBottomReached(e.target as HTMLDivElement);
         }}
+        toolbarComponent={(table) => <DataTableToolbar entityName={entitySchema?.name ?? ''} table={table} />}
       />
       <Outlet />
     </div>
