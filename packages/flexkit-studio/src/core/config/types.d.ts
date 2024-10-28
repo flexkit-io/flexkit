@@ -37,10 +37,7 @@ export interface AppRoute {
   children?: AppRoute[];
 }
 
-type Image = {
-  _id: string;
-  path: string;
-};
+type PreviewComponent<T = unknown> = React.ComponentType<{ value: T }>;
 
 export interface PluginOptions {
   name: string;
@@ -55,7 +52,7 @@ export interface PluginOptions {
     };
     previewFields?: {
       [key: string]: {
-        component: ({ value }: { value: string | boolean | number | null | Date | Image }) => JSX.Element;
+        component: ({ value }: { value: string | boolean | number | null | Date | Image }) => JSX.Element | null;
         description?: string;
       };
     };

@@ -9,7 +9,7 @@ export const imageSchema: Entity = {
       label: 'Image',
       scope: 'global',
       options: {
-        size: 260,
+        size: 140,
       },
       isEditable: false,
       dataType: 'string',
@@ -22,7 +22,7 @@ export const imageSchema: Entity = {
       label: 'Filename',
       scope: 'global',
       options: {
-        size: 260,
+        size: 280,
       },
       isEditable: true,
       dataType: 'string',
@@ -36,7 +36,7 @@ export const imageSchema: Entity = {
       label: 'Size',
       scope: 'global',
       options: {
-        size: 160,
+        size: 120,
       },
       isEditable: true,
       dataType: 'string',

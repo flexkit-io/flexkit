@@ -1,4 +1,3 @@
-import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
 import { IMAGES_BASE_URL } from '@flexkit/studio';
 
 export type Image = {
@@ -12,7 +11,7 @@ export function Image({ value }: { value: Image }): JSX.Element | null {
   }
 
   return (
-    <div className="fk-z-10">
+    <div className="fk-z-10 fk-mix-blend-multiply">
       <img src={`${IMAGES_BASE_URL}${value}?w=624&h=624&f=webp`} alt="image" className="fk-w-20 fk-h-20" />
     </div>
   );

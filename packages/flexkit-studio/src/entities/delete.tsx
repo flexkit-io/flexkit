@@ -18,10 +18,11 @@ export default function Delete({ action }: Props): JSX.Element {
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const [runMutation, setMutation, setOptions] = useEntityMutation();
+  const entityName = action.payload.entityName === '_image' ? 'image' : action.payload.entityName.toLowerCase();
 
   const dialogOptions = {
-    dialogTitle: `Delete ${action.payload.entityName.toLowerCase()}`,
-    dialogMessage: `Are you sure you want to delete the selected ${action.payload.entityName.toLowerCase()}? The item will be deleted permanently.`,
+    dialogTitle: `Delete ${entityName}`,
+    dialogMessage: `Are you sure you want to delete the selected ${entityName}? The item will be deleted permanently.`,
     dialogCancelTitle: 'Cancel',
     dialogActionLabel: 'Delete',
     dialogActionSubmit: () => {

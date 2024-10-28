@@ -1,14 +1,6 @@
 import { useCallback } from 'react';
 import { find, propEq } from 'ramda';
-import {
-  getEntitySchema,
-  useAppContext,
-  useConfig,
-  useLocation,
-  useParams,
-  Outlet,
-  useEntityQuery,
-} from '@flexkit/studio';
+import { getEntitySchema, useAppContext, useConfig, useLocation, Outlet, useEntityQuery } from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
 import { DataTable } from '@flexkit/studio/data-grid';
 import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
@@ -34,7 +26,7 @@ export function List(): JSX.Element {
 
   const variables = entityId
     ? { where: { _id: entityId } }
-    : { where: { NOT: { path: null } }, options: { offset: 0, limit: pageSize } };
+    : { where: { NOT: { path: null } }, options: { offset: 0, limit: pageSize, sort: [{ _updatedAt: 'DESC' }] } };
 
   const { isLoading, fetchMore, count, data } = useEntityQuery({
     entityNamePlural: entityName ?? '',
@@ -70,7 +62,7 @@ export function List(): JSX.Element {
   const loadingColumns = getLoadingColumns(columnsDefinition);
 
   return (
-    <div className="fk-flex fk-flex-col fk-h-full fk-pl-4">
+    <div className="fk-flex fk-flex-col fk-h-full fk-pl-3">
       <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">Asset Manager</h2>
       <DataTable
         columns={isLoading ? loadingColumns : columnsDefinition}

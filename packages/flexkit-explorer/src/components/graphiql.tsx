@@ -471,7 +471,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
           >
             <div className="fk-flex fk-w-full fk-h-full fk-pb-6">
               <Tabs className="fk-w-full" defaultValue={pluginContext?.plugins[0].title}>
-                <div className={`fk-flex fk-items-center fk-py-1 ${isSidebarCollapsed ? '' : 'fk-px-4'}`}>
+                <div className={`fk-flex fk-items-center fk-py-1 ${isSidebarCollapsed ? '' : 'fk-px-3'}`}>
                   <TabsList className={isSidebarCollapsed ? 'fk-hidden' : ''}>
                     {pluginContext?.plugins.map((plugin, index) => {
                       const isVisible = plugin === pluginContext.visiblePlugin;

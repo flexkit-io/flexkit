@@ -680,6 +680,19 @@ export function getEntityDeleteMutation(entityName: string, schema: Schema, _id:
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
   const localAttributes = localAttributesDelete(attributes, _id);
 
+  if (entityName === '_image') {
+    return (
+      `mutation deleteEntity($where: ${entityName}Where) {\n` +
+      `  delete_images(\n` +
+      `    where: $where\n` +
+      `  ) {\n` +
+      `    nodesDeleted\n` +
+      `    relationshipsDeleted\n` +
+      `  }\n` +
+      `}\n`
+    );
+  }
+
   return (
     `mutation deleteEntity($where: ${entityName}Where) {\n` +
     `  delete${pluralizedEntityName}(\n` +

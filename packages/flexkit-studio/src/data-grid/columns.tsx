@@ -1,4 +1,3 @@
-import React from 'react';
 import { ComponentType } from 'react';
 import type { CellContext, ColumnDef, Row, Table } from '@tanstack/react-table';
 import type { Attribute } from '../core/types';
@@ -54,18 +53,23 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
       inputTypeToPreviewFieldMap[attribute.inputType as keyof typeof inputTypeToPreviewFieldMap];
     const previewComponent =
       (getContributionPointConfig('previewFields', [previewType])?.[0]?.component as unknown as
-        | ComponentType<{ value: unknown }>
+        | ComponentType<{ value: TData }>
         | undefined) ??
       previewFieldComponentsMap[previewType as keyof typeof previewFieldComponentsMap] ??
       previewFieldComponentsMap['text'];
 
     return {
       accessorKey: attribute.name,
+      filterFn: (row: Row<TData>, id: string, value: string) => {
+        return value.includes(row.getValue(id));
+      },
       header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
       cell: ({ row }: CellContext<TData, TValue>) => {
-        const PreviewComponent = previewComponent as ComponentType<{ value: unknown }>;
+        const PreviewComponent = previewComponent as ComponentType<{ value: TData }>;
+
+        // TODO: Pass the complete row data to the preview component, so it can concatenate values from other attributes (i.e. for the "image dimensions" column)
         console.log(row.getAllCells());
-        return <PreviewComponent value={row.getValue(attribute.name)} row={row} />;
+        return <PreviewComponent value={row.getValue(attribute.name)} />;
       },
       enableSorting: false,
       enableHiding: true,
