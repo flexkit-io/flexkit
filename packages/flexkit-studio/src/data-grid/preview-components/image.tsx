@@ -11,20 +11,23 @@ export function Image({ value }: { value: Image }) {
     return null;
   }
 
+  const thumbnaillUrl = value.path.endsWith('.svg')
+    ? `${IMAGES_BASE_URL}${value.path}`
+    : `${IMAGES_BASE_URL}${value.path}?w=84&h=84&f=webp`;
+  const fullUrl = value.path.endsWith('.svg')
+    ? `${IMAGES_BASE_URL}${value.path}`
+    : `${IMAGES_BASE_URL}${value.path}?w=624&h=624&f=webp`;
+
   return (
     <div className="fk-z-10">
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <img
-              src={`${IMAGES_BASE_URL}${value.path}?w=84&h=84&f=webp`}
-              alt="image"
-              className="fk-w-7 fk-h-7 fk-cursor-zoom-in"
-            />
+            <img src={thumbnaillUrl} alt="image" className="fk-w-7 fk-h-7 fk-cursor-zoom-in" />
           </TooltipTrigger>
           <TooltipPortal>
             <TooltipContent>
-              <img src={`${IMAGES_BASE_URL}${value.path}?w=624&h=624&f=webp`} alt="image" className="fk-w-52 fk-h-52" />
+              <img src={fullUrl} alt="image" className="fk-w-52 fk-h-52" />
             </TooltipContent>
           </TooltipPortal>
         </Tooltip>

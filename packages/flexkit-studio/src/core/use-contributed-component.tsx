@@ -18,6 +18,7 @@ interface ContributionPointMap {
   'previewFields.image': LazyExoticComponent<ComponentType<{ value: Image }>>;
   'previewFields.text': LazyExoticComponent<ComponentType<{ value: string }>>;
   'previewFields.editor': LazyExoticComponent<ComponentType<{ value: string }>>;
+  'previewFields.datetime': LazyExoticComponent<ComponentType<{ value: string }>>;
 }
 
 const contributionPointMap: ContributionPointMap = {
@@ -46,6 +47,9 @@ const contributionPointMap: ContributionPointMap = {
   ),
   'previewFields.editor': lazy(() =>
     import('../data-grid/preview-components/editor.js').then(({ Editor }) => ({ 'default': Editor }))
+  ),
+  'previewFields.datetime': lazy(() =>
+    import('../data-grid/preview-components/datetime.js').then(({ DateTime }) => ({ 'default': DateTime }))
   ),
 };
 

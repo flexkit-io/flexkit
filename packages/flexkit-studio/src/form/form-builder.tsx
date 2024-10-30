@@ -13,8 +13,8 @@ import { useConfig } from '../core/config/config-context';
 import { Text as TextField } from './fields/text';
 import { Switch as SwitchField } from './fields/switch';
 import { Uploader as UploaderField } from './fields/uploader';
-// import NumberField from './fields/number';
-// import DateTimeField from './fields/datetime';
+import { Number as NumberField } from './fields/number';
+import { DateTime as DateTimeField } from './fields/datetime';
 import EditorField from './fields/editor';
 import { Textarea as TextareaField } from './fields/textarea';
 import RelationshipField from './fields/relationship';
@@ -62,10 +62,10 @@ function FormBuilder(
   const { getContributionPointConfig } = useConfig();
 
   const formFieldComponentsMap = {
-    datetime: TextField,
+    datetime: DateTimeField,
     editor: EditorField,
     image: UploaderField,
-    number: TextField,
+    number: NumberField,
     relationship: RelationshipField,
     select: SelectField,
     'switch': SwitchField,

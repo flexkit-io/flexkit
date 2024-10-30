@@ -8,6 +8,8 @@ import { Boolean as BooleanPrefiewField } from './preview-components/boolean';
 import { Text as TextPreviewField } from './preview-components/text';
 import { Editor as EditorPreviewField } from './preview-components/editor';
 import { Image as ImagePreviewField } from './preview-components/image';
+import { DateTime as DateTimePreviewField } from './preview-components/datetime';
+
 type Props<TData> = {
   attributesSchema: Attribute[];
   checkboxSelect?: 'single' | 'multiple'; // whether to include a checkbox column for row selection
@@ -23,7 +25,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
 }: Props<TData>): ColumnDefinition<TData, TValue>[] {
   const { getContributionPointConfig } = useConfig();
   const inputTypeToPreviewFieldMap = {
-    'datetime': 'text',
+    'datetime': 'datetime',
     'editor': 'editor',
     'image': 'image',
     'number': 'text',
@@ -36,7 +38,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   const previewFieldComponentsMap = {
     'boolean': BooleanPrefiewField,
     'date': TextPreviewField,
-    'datetime': TextPreviewField,
+    'datetime': DateTimePreviewField,
     'editor': EditorPreviewField,
     'image': ImagePreviewField,
     'number': TextPreviewField,

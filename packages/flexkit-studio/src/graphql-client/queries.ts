@@ -21,7 +21,8 @@ type EntityQuery = {
   query: string;
 };
 
-const stringTypes: DataType[] = ['date', 'datetime', 'duration', 'id', 'string', 'time'];
+const stringTypes: DataType[] = ['id', 'string'];
+const temporalTypes: DataType[] = ['date', 'datetime', 'duration', 'time'];
 
 export function getEntityQuery(entityNamePlural: string, scope: string, schema: Schema): EntityQuery {
   const filters = `(where: $where, options: $options)`;
@@ -504,12 +505,12 @@ function localAttributesUpdate(
         ? 'null'
         : stringifyValue(dataType, attributeValue.value);
 
-    if (!typedValue) {
-      return acc;
+    if (attributeValue._id) {
+      return `${acc}\n      ${attributeName}: {\n        update: {\n          node: {\n            ${scope}: ${typedValue}\n          }\n        }\n      }`;
     }
 
-    if (attributeValue._id) {
-      return `${acc}\n      ${attributeName}: {\n        update: {\n          node: {\n            ${scope}: ${typedValue.toString()}\n          }\n        }\n      }`;
+    if (!typedValue) {
+      return acc;
     }
 
     return (
@@ -581,10 +582,14 @@ function relationshipAttributesUpdate(
 function stringifyValue(
   type: DataType,
   value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | null | undefined
-): string {
+): string | null {
+  if (temporalTypes.includes(type)) {
+    return value?.toString().replace(/"/g, '\\"') ? `"${value?.toString().replace(/"/g, '\\"')}"` : null;
+  }
+
   return stringTypes.includes(type)
     ? `"${value?.toString().replace(/"/g, '\\"') ?? 'null'}"`
-    : (value?.toString() ?? 'null');
+    : (value?.toString() ?? null);
 }
 
 function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: string, scope: string): string {
@@ -775,7 +780,7 @@ function localAttributesCreate(
   const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
   const attributesArray = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
-    if (!attributeValue.value) {
+    if (!attributeValue?.value) {
       return acc;
     }
 
