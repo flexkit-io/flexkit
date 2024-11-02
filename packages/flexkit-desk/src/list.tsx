@@ -9,7 +9,15 @@ import {
   Outlet,
   useEntityQuery,
 } from '@flexkit/studio';
-import { Skeleton } from '@flexkit/studio/ui';
+import {
+  Skeleton,
+  SidebarTrigger,
+  Separator,
+  useSidebar,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@flexkit/studio/ui';
 import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
 import { DataTable, DataTableRowActions, DataTableToolbar, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
 
@@ -29,6 +37,7 @@ export function List(): JSX.Element {
     actionsComponent: (row) =>
       dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
   });
+  const { setOpen } = useSidebar();
 
   const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };
 
@@ -66,10 +75,19 @@ export function List(): JSX.Element {
   const loadingColumns = getLoadingColumns(columnsDefinition);
 
   return (
-    <div className="fk-flex fk-flex-col fk-h-full">
-      <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">
-        {capitalize(entitySchema?.plural ?? '')}
-      </h2>
+    <div className="fk-flex fk-flex-col fk-h-full fk-px-4 fk-py-3">
+      <div className="fk-flex fk-items-center fk-mb-4 fk-gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="-fk-ml-1 fk-w-4 fk-h-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Separator orientation="vertical" className="fk-h-4" />
+        <h2 className="fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">
+          {capitalize(entitySchema?.plural ?? '')}
+        </h2>
+      </div>
       <DataTable
         columns={isLoading ? loadingColumns : columnsDefinition}
         data={isLoading ? loadingData : (data ?? [])}

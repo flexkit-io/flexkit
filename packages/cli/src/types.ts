@@ -174,10 +174,15 @@ export interface ProjectOptions {
   title?: string;
   projectId: string;
   basePath: string;
+  groups?: {
+    title: string;
+    name: string;
+  }[];
   scopes?: Scopes;
   schema: {
     name: string;
     plural: string;
+    group?: string;
     attributes: Attribute[];
   }[];
 }

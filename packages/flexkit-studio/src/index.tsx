@@ -13,9 +13,6 @@ export { useAuth } from './auth/auth-context';
 // Router
 export { Outlet, useLocation, useParams } from 'react-router-dom';
 
-// Components
-export { Sidebar } from './ui/components/sidebar';
-
 // Form
 export { DefaultValueSwitch } from './form/fields/default-value-switch';
 export type { FormFieldParams } from './form/types';

@@ -4,7 +4,7 @@ import type { Config } from 'tailwindcss';
 const config: Config = {
   presets: [sharedConfig] as Partial<Config>[],
   darkMode: ['class'],
-  prefix: 'fk-',
+  prefix: 'ex-',
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
 };
 

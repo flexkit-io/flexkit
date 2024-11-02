@@ -12,6 +12,10 @@ export default defineConfig([
     title: 'Flexkit',
     projectId: 'abcdefghij',
     basePath: '/studio',
+    groups: [
+      { title: 'Catalog', name: 'catalog' },
+      { title: 'Operations', name: 'operations' },
+    ],
     plugins: [
       Desk(),
       AssetManager(),
@@ -147,6 +151,7 @@ export default defineConfig([
       {
         name: 'product',
         plural: 'products',
+        group: 'catalog',
         attributes: [
           {
             name: 'name',
@@ -359,6 +364,7 @@ export default defineConfig([
       {
         name: 'category',
         plural: 'categories',
+        group: 'catalog',
         attributes: [
           {
             name: 'name',
@@ -488,6 +494,7 @@ export default defineConfig([
       {
         name: 'flag',
         plural: 'flags',
+        group: 'catalog',
         attributes: [
           {
             name: 'name',
@@ -551,6 +558,7 @@ export default defineConfig([
       {
         name: 'brand',
         plural: 'brands',
+        group: 'catalog',
         attributes: [
           {
             name: 'name',
@@ -624,6 +632,42 @@ export default defineConfig([
               field: 'name',
               entity: 'product',
             },
+          },
+        ],
+      },
+      {
+        name: 'salesOrder',
+        plural: 'salesOrders',
+        group: 'operations',
+        attributes: [
+          {
+            name: 'state',
+            label: 'State',
+            scope: 'global',
+            options: {
+              size: 130,
+              comment: 'The state of the order',
+              list: [
+                {
+                  label: 'Completed',
+                  value: 'completed',
+                },
+                {
+                  label: 'In Progress',
+                  value: 'inProgress',
+                },
+                {
+                  label: 'Cancelled',
+                  value: 'cancelled',
+                },
+              ],
+              placeholder: 'Select a state',
+            },
+            dataType: 'string',
+            inputType: 'select',
+            isPrimary: true,
+            validation: (z) => z.string().min(1, { message: 'State is required' }),
+            defaultValue: '',
           },
         ],
       },

@@ -1,20 +1,26 @@
-import { useAuth, Outlet, Sidebar } from '@flexkit/studio';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@flexkit/studio/ui';
+import { find, propEq } from 'ramda';
+import { Outlet, useAuth, useConfig } from '@flexkit/studio';
+import { Sidebar, SidebarInset, SidebarProvider } from '@flexkit/studio/ui';
+import type { SingleProject } from '@flexkit/studio';
+
+const SIDEBAR_COOKIE_NAME = 'flexkit:sidebar:state';
 
 export function Root(): JSX.Element {
   const [, auth] = useAuth();
+  const { projects, currentProjectId } = useConfig();
+  const { schema, groups } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const defaultOpen =
+    document.cookie
+      .split('; ')
+      .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+      ?.split('=')[1] !== 'false';
 
   return (
-    <ResizablePanelGroup direction="horizontal" className="fk-h-full">
-      <ResizablePanel defaultSize={18} minSize={10}>
-        <div className="fk-flex fk-w-full fk-h-full">
-          <Sidebar />
-        </div>
-      </ResizablePanel>
-      <ResizableHandle className="hover:fk-bg-blue-500 fk-transition-colors" withHandle />
-      <ResizablePanel className="fk-p-3" defaultSize={82}>
+    <SidebarProvider defaultOpen={defaultOpen}>
+      <Sidebar schema={schema} groups={groups} />
+      <SidebarInset>
         <Outlet />
-      </ResizablePanel>
-    </ResizablePanelGroup>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

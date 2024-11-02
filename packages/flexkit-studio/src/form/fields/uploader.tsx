@@ -84,8 +84,6 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
 
       const data = await response.json();
 
-      console.log('data', data);
-
       setValue(name, {
         ...(getValues(name)?.value as ImageValue),
         value: {

@@ -71,6 +71,8 @@ export {
   SheetTitle,
   SheetDescription,
 } from './ui/primitives/sheet';
+export { Sidebar } from './ui/components/sidebar';
+export { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from './ui/primitives/sidebar';
 export { Skeleton } from './ui/primitives/skeleton';
 export {
   Table,

@@ -77,11 +77,16 @@ export interface ProjectOptions {
   projectId: string;
   basePath: string;
   icon?: ComponentType;
+  groups?: {
+    title: string;
+    name: string;
+  }[];
   plugins?: PluginOptions[];
   scopes?: Scopes;
   schema: {
     name: string;
     plural: string;
+    group?: string;
     attributes: Attribute[];
   }[];
   // theme?: StudioTheme;

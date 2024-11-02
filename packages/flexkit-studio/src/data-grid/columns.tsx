@@ -70,7 +70,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
         const PreviewComponent = previewComponent as ComponentType<{ value: TData }>;
 
         // TODO: Pass the complete row data to the preview component, so it can concatenate values from other attributes (i.e. for the "image dimensions" column)
-        console.log(row.getAllCells());
+        // console.log(row.getAllCells());
         return <PreviewComponent value={row.getValue(attribute.name)} />;
       },
       enableSorting: false,
