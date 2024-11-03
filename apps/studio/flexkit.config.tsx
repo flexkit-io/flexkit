@@ -1,10 +1,16 @@
+import {
+  Flag as FlagIcon,
+  FolderTree as FolderTreeIcon,
+  Tag as TagIcon,
+  ShoppingCart as ShoppingCartIcon,
+  Store as StoreIcon,
+} from 'lucide-react';
 import { defineConfig } from '@flexkit/studio/ssr';
 import { AssetManager } from '@flexkit/asset-manager';
 import { Desk } from '@flexkit/desk';
 import { Explorer } from '@flexkit/explorer';
 import { CustomTextField } from './app/components/custom-input-field';
 import { CustomBooleanPreviewField } from './app/components/custom-boolean-preview-field';
-// import { Image, Layers3, Tag } from 'lucide-react';
 import '@flexkit/explorer/styles.css';
 
 export default defineConfig([
@@ -12,7 +18,7 @@ export default defineConfig([
     title: 'Flexkit',
     projectId: 'abcdefghij',
     basePath: '/studio',
-    groups: [
+    menuGroups: [
       { title: 'Catalog', name: 'catalog' },
       { title: 'Operations', name: 'operations' },
     ],
@@ -151,7 +157,11 @@ export default defineConfig([
       {
         name: 'product',
         plural: 'products',
-        group: 'catalog',
+        menu: {
+          label: 'Products',
+          group: 'catalog',
+          icon: <TagIcon />,
+        },
         attributes: [
           {
             name: 'name',
@@ -364,7 +374,11 @@ export default defineConfig([
       {
         name: 'category',
         plural: 'categories',
-        group: 'catalog',
+        menu: {
+          label: 'Categories',
+          group: 'catalog',
+          icon: <FolderTreeIcon />,
+        },
         attributes: [
           {
             name: 'name',
@@ -494,7 +508,11 @@ export default defineConfig([
       {
         name: 'flag',
         plural: 'flags',
-        group: 'catalog',
+        menu: {
+          label: 'Flags',
+          group: 'catalog',
+          icon: <FlagIcon />,
+        },
         attributes: [
           {
             name: 'name',
@@ -558,7 +576,11 @@ export default defineConfig([
       {
         name: 'brand',
         plural: 'brands',
-        group: 'catalog',
+        menu: {
+          label: 'Brands',
+          group: 'catalog',
+          icon: <StoreIcon />,
+        },
         attributes: [
           {
             name: 'name',
@@ -638,7 +660,11 @@ export default defineConfig([
       {
         name: 'salesOrder',
         plural: 'salesOrders',
-        group: 'operations',
+        menu: {
+          label: 'Sales Orders',
+          group: 'operations',
+          icon: <ShoppingCartIcon />,
+        },
         attributes: [
           {
             name: 'state',

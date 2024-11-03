@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { VariantProps, cva } from 'class-variance-authority';
-import { PanelLeft } from 'lucide-react';
+import { PanelLeft as PanelLeftIcon, Menu as MenuIcon } from 'lucide-react';
 import { useIsMobile } from '../hooks/use-mobile';
 import { cn } from '../lib/utils';
 import { Button } from './button';
@@ -226,7 +226,7 @@ Sidebar.displayName = 'Sidebar';
 
 const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.ComponentProps<typeof Button>>(
   ({ className, onClick, ...props }, ref) => {
-    const { toggleSidebar } = useSidebar();
+    const { isMobile, toggleSidebar } = useSidebar();
 
     return (
       <Button
@@ -241,7 +241,7 @@ const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.C
         }}
         {...props}
       >
-        <PanelLeft />
+        {isMobile ? <MenuIcon /> : <PanelLeftIcon />}
         <span className="fk-sr-only">Toggle Sidebar</span>
       </Button>
     );
@@ -262,7 +262,7 @@ const SidebarRail = React.forwardRef<HTMLButtonElement, React.ComponentProps<'bu
         onClick={toggleSidebar}
         title="Toggle Sidebar"
         className={cn(
-          'fk-absolute fk-inset-y-0 fk-z-20 fk-hidden fk-w-4 fk--translate-x-1/2 fk-transition-all fk-ease-linear after:fk-absolute after:fk-inset-y-0 after:fk-left-1/2 after:fk-w-[2px] hover:after:fk-bg-sidebar-border group-data-[side=left]:fk--right-4 group-data-[side=right]:fk-left-0 sm:fk-flex',
+          'fk-absolute fk-inset-y-0 fk-z-20 fk-hidden fk-w-4 fk--translate-x-1/2 fk-transition-all fk-ease-linear after:fk-absolute after:fk-inset-y-0 after:fk-left-1/2 after:fk-w-[2px] after:fk-bg-sidebar-border hover:after:fk-bg-muted-foreground group-data-[side=left]:fk--right-4 group-data-[side=right]:fk-left-0 sm:fk-flex',
           '[[data-side=left]_&]:fk-cursor-w-resize [[data-side=right]_&]:fk-cursor-e-resize',
           '[[data-side=left][data-state=collapsed]_&]:fk-cursor-e-resize [[data-side=right][data-state=collapsed]_&]:fk-cursor-w-resize',
           'group-data-[collapsible=offcanvas]:fk-translate-x-0 group-data-[collapsible=offcanvas]:after:fk-left-full group-data-[collapsible=offcanvas]:hover:fk-bg-sidebar',

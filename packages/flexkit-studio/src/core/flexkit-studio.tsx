@@ -89,7 +89,7 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
 function mapConfig(project: SingleProject | ProjectOptions): ProjectOptions {
   return {
     basePath: project.basePath ?? '/',
-    groups: project.groups ?? [],
+    menuGroups: project.menuGroups ?? [],
     icon: project.icon,
     plugins: project.plugins,
     projectId: project.projectId,

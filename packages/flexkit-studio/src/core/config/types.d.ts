@@ -77,7 +77,7 @@ export interface ProjectOptions {
   projectId: string;
   basePath: string;
   icon?: ComponentType;
-  groups?: {
+  menuGroups?: {
     title: string;
     name: string;
   }[];
@@ -86,10 +86,13 @@ export interface ProjectOptions {
   schema: {
     name: string;
     plural: string;
-    group?: string;
+    menu?: {
+      label?: string;
+      group?: string;
+      icon?: JSX.Element;
+    };
     attributes: Attribute[];
   }[];
-  // theme?: StudioTheme;
 }
 
 /**

@@ -174,7 +174,7 @@ export interface ProjectOptions {
   title?: string;
   projectId: string;
   basePath: string;
-  groups?: {
+  menuGroups?: {
     title: string;
     name: string;
   }[];
@@ -182,7 +182,10 @@ export interface ProjectOptions {
   schema: {
     name: string;
     plural: string;
-    group?: string;
+    menu?: {
+      label?: string;
+      group?: string;
+    };
     attributes: Attribute[];
   }[];
 }

@@ -569,7 +569,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
           {/* Center column */}
           <ResizablePanel className="ex-bg-muted" defaultSize={48}>
             <div className="ex-flex ex-flex-col ex-h-full">
-              <div className="ex-flex ex-items-center ex-py-1 ex-px-4 ex-bg-background">
+              <div className="ex-flex ex-items-center ex-py-1 ex-px-4 ex-gap-6 ex-bg-muted">
                 {!props.disableTabs && (
                   <GraphiQlTabs
                     aria-label="Select active operation"
@@ -580,12 +580,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                     {editorContext.tabs.length > 0 && (
                       <>
                         {editorContext.tabs.map((tab, index) => (
-                          <GraphiQlTab
-                            className="ex-bg-background"
-                            isActive={index === editorContext.activeTabIndex}
-                            key={tab.id}
-                            value={tab}
-                          >
+                          <GraphiQlTab isActive={index === editorContext.activeTabIndex} key={tab.id} value={tab}>
                             <GraphiQlTab.Button
                               aria-controls="graphiql-session"
                               id={`${TAB_CLASS_PREFIX}${index.toString()}`}
@@ -596,11 +591,11 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                             <GraphiQlTab.Close onClick={handleTabClose} />
                           </GraphiQlTab>
                         ))}
-                        {addTab}
                       </>
                     )}
                   </GraphiQlTabs>
                 )}
+                {addTab}
               </div>
 
               {/* Query editor */}

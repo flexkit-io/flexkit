@@ -20,7 +20,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      'fk-fixed fk-inset-0 fk-z-50 fk-bg-overlay/80 fk- data-[state=open]:fk-animate-in data-[state=closed]:fk-animate-out data-[state=closed]:fk-fade-out-0 data-[state=open]:fk-fade-in-0',
+      'fk-fixed fk-inset-0 fk-z-50 fk-bg-overlay/75 fk-backdrop-blur-[1px] data-[state=open]:fk-animate-in data-[state=closed]:fk-animate-out data-[state=closed]:fk-fade-out-0 data-[state=open]:fk-fade-in-0',
       className
     )}
     {...props}
@@ -37,7 +37,7 @@ const sheetVariants = cva(
         top: 'fk-inset-x-0 fk-top-0 fk-border-b data-[state=closed]:fk-slide-out-to-top data-[state=open]:fk-slide-in-from-top',
         bottom:
           'fk-inset-x-0 fk-bottom-0 fk-border-t data-[state=closed]:fk-slide-out-to-bottom data-[state=open]:fk-slide-in-from-bottom',
-        left: 'fk-inset-y-0 fk-left-0 fk-h-full fk-w-3/4 fk-border-r data-[state=closed]:fk-slide-out-to-left data-[state=open]:fk-slide-in-from-left sm:fk-max-w-sm',
+        left: 'fk-inset-y-0 fk-left-0 fk-h-full fk-w-3/4 fk-border-r fk-border-r-sidebar-border data-[state=closed]:fk-slide-out-to-left data-[state=open]:fk-slide-in-from-left sm:fk-max-w-sm',
         right:
           'fk-inset-y-0 fk-right-0 fk-h-full fk-w-3/4 fk- fk-border-l data-[state=closed]:fk-slide-out-to-right data-[state=open]:fk-slide-in-from-right sm:fk-max-w-sm',
       },

@@ -8,7 +8,7 @@ const SIDEBAR_COOKIE_NAME = 'flexkit:sidebar:state';
 export function Root(): JSX.Element {
   const [, auth] = useAuth();
   const { projects, currentProjectId } = useConfig();
-  const { schema, groups } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { schema, menuGroups } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const defaultOpen =
     document.cookie
       .split('; ')
@@ -17,7 +17,7 @@ export function Root(): JSX.Element {
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <Sidebar schema={schema} groups={groups} />
+      <Sidebar schema={schema} menuGroups={menuGroups} />
       <SidebarInset>
         <Outlet />
       </SidebarInset>

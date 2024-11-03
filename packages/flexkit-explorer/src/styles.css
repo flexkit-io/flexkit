@@ -25,8 +25,8 @@ body {
   --px-24: 24px;
   --border-radius-2: 2px;
   --border-radius-4: 4px;
-  --border-radius-8: 8px;
-  --border-radius-12: 12px;
+  --border-radius-8: 4px;
+  --border-radius-12: 4px;
   --popover-border: none;
   --sidebar-width: 60px;
   --toolbar-width: 40px;
@@ -66,6 +66,16 @@ body {
   --line-height: 1.5;
   --popover-box-shadow: 0px 6px 20px rgba(59, 76, 106, 0.13), 0px 1.34018px 4.46726px rgba(59, 76, 106, 0.0774939),
     0px 0.399006px 1.33002px rgba(59, 76, 106, 0.0525061);
+}
+
+:root {
+  --tab-background: 0 0% 100%;
+  --tab-foreground: 240 5.9% 10%;
+}
+
+.dark {
+  --tab-background: 240 5.9% 23%;
+  --tab-foreground: 0 0% 98%;
 }
 
 .graphiql-container {
@@ -157,10 +167,23 @@ button.graphiql-tab-add > svg {
 /* The query editor and the toolbar */
 .graphiql-container .graphiql-query-editor {
   border-bottom: 1px solid hsla(var(--color-neutral), var(--alpha-background-heavy));
-  padding: var(--px-16);
+  padding-left: var(--px-8);
+  padding-right: var(--px-8);
+  padding-top: var(--px-16);
+  padding-bottom: var(--px-16);
   column-gap: var(--px-16);
   display: flex;
   width: 100%;
+}
+
+.graphiql-container .graphiql-tab {
+  color: hsl(var(--tab-foreground));
+  background-color: hsl(var(--tab-background));
+}
+
+.graphiql-container .graphiql-tab.graphiql-tab-active {
+  color: hsl(var(--background));
+  background-color: hsl(var(--foreground));
 }
 
 /* The vertical toolbar next to the query editor */

@@ -12,12 +12,12 @@ import {
   SidebarMenuButton,
   SidebarRail,
 } from '../primitives/sidebar';
-import type { SingleProject } from '@flexkit/studio';
+import type { SingleProject } from '../../core/config/types';
 import { groupBy } from 'ramda';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
-  groups?: SingleProject['groups'];
+  menuGroups?: SingleProject['menuGroups'];
   schema: SingleProject['schema'];
 }
 
@@ -31,12 +31,12 @@ const fuse = new Fuse(iconList, {
   threshold: 0.5,
 });
 
-export function Sidebar({ className, groups, schema }: SidebarProps): JSX.Element {
+export function Sidebar({ className, menuGroups, schema }: SidebarProps): JSX.Element {
   const itemsByGroup = groupBy(
-    (item) => (item.group && groups?.find((g) => g.name === item.group)?.name) || 'ungrouped',
+    (item) => (item.menu?.group && menuGroups?.find((g) => g.name === item.menu?.group)?.name) || 'ungrouped',
     schema
   );
-  const nonEmptyGroups = groups?.filter((group) => itemsByGroup[group.name]?.length);
+  const nonEmptyGroups = menuGroups?.filter((menuGroup) => itemsByGroup[menuGroup.name]?.length);
 
   return (
     <SidebarPrimitive className={className} collapsible="icon" variant="inset">
@@ -50,14 +50,15 @@ export function Sidebar({ className, groups, schema }: SidebarProps): JSX.Elemen
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname.includes(`/list/${entity.plural}`)}
-                    tooltip={capitalize(entity.plural)}
+                    tooltip={capitalize(entity.menu?.label ?? entity.plural)}
                   >
                     <NavLink to={`list/${entity.plural}`}>
-                      {createElement(Icons[getBestMatchingIcon(entity.name)] as React.ComponentType<any>, {
-                        className: 'fk-h-4 fk-w-4 fk-mr-2',
-                        strokeWidth: 2,
-                      })}
-                      <span>{capitalize(entity.plural)}</span>
+                      {entity.menu?.icon ??
+                        createElement(Icons[getBestMatchingIcon(entity.name)] as React.ComponentType<any>, {
+                          className: 'fk-h-4 fk-w-4 fk-mr-2',
+                          strokeWidth: 2,
+                        })}
+                      <span>{capitalize(entity.menu?.label ?? entity.plural)}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -72,14 +73,14 @@ export function Sidebar({ className, groups, schema }: SidebarProps): JSX.Elemen
                 <SidebarMenuButton
                   asChild
                   isActive={location.pathname.includes(`/list/${entity.plural}`)}
-                  tooltip={capitalize(entity.plural)}
+                  tooltip={capitalize(entity.menu?.label ?? entity.plural)}
                 >
                   <NavLink to={`list/${entity.plural}`}>
                     {createElement(Icons[getBestMatchingIcon(entity.name)] as React.ComponentType<any>, {
                       className: 'fk-h-4 fk-w-4 fk-mr-2',
                       strokeWidth: 2,
                     })}
-                    <span>{capitalize(entity.plural)}</span>
+                    <span>{capitalize(entity.menu?.label ?? entity.plural)}</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
