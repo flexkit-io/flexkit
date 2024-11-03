@@ -102,16 +102,14 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
     );
   }, '');
 
-  const queryEntityName = entityNamePlural.toLowerCase();
-
   return {
-    queryEntityName,
+    queryEntityName: entityNamePlural,
     query:
       `query getEntity(${heading}) {\n` +
-      `  ${queryEntityName}Aggregate {\n` +
+      `  ${entityNamePlural}Aggregate {\n` +
       `     count\n` +
       `  }\n` +
-      `  ${queryEntityName}${filters} {\n` +
+      `  ${entityNamePlural}${filters} {\n` +
       `    _id\n` +
       `    ${globalAttributesList}` +
       `    ${localAttributesList}` +
@@ -141,9 +139,8 @@ export function mapQueryResult(
     };
   }
 
-  const queryEntityName = entityNamePlural.toLowerCase();
-  const { count } = results[`${queryEntityName}Aggregate`] as EntityQueryAggregate;
-  const items = results[queryEntityName] as EntityQueryResult[];
+  const { count } = results[`${entityNamePlural}Aggregate`] as EntityQueryAggregate;
+  const items = results[entityNamePlural] as EntityQueryResult[];
   const sliceFirstThreeItems = (values: EntityItem[], primaryAttributeName: string): string =>
     values
       .slice(0, 3)
@@ -227,9 +224,8 @@ export function mapQueryResultForFormFields(
     };
   }
 
-  const queryEntityName = entityNamePlural.toLowerCase();
-  const { count } = results[`${queryEntityName}Aggregate`] as EntityQueryAggregate;
-  const items = results[queryEntityName] as EntityQueryResult[];
+  const { count } = results[`${entityNamePlural}Aggregate`] as EntityQueryAggregate;
+  const items = results[entityNamePlural] as EntityQueryResult[];
   const mappedQueryResult = items.map((entity) => {
     const globalAttributes = getAttributeListByScope('global', attributes).reduce(
       (acc, attribute) => ({
@@ -324,7 +320,6 @@ function getValueByScope(
     }, []);
   }
 
-  // TODO: get the velue of the defaultScope declared in the config
   return attribute[scope] ?? attribute.default ?? null;
 }
 
@@ -353,7 +348,7 @@ export function getEntityUpdateMutation(
   const localAttributes = localAttributesUpdate(entityId, attributes, data, scope);
   const imageAttributes = imageAttributesUpdate(entityId, attributes, data);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
-  const responseType = pluralizedEntityName.toLowerCase();
+  const responseType = entityNamePlural;
   const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
 
   return (
@@ -702,9 +697,7 @@ export function getEntityDeleteMutation(entityName: string, schema: Schema, _id:
     `mutation deleteEntity($where: ${entityName}Where) {\n` +
     `  delete${pluralizedEntityName}(\n` +
     `    where: $where\n` +
-    `    delete: {\n` +
-    `     ${localAttributes}\n` +
-    `    }\n` +
+    `${localAttributes ? `    delete: {\n     ${localAttributes}\n    }\n` : ''}` +
     `  ) {\n` +
     `    nodesDeleted\n` +
     `    relationshipsDeleted\n` +
@@ -747,11 +740,10 @@ export function getEntityCreateMutation(
 
   const data = filterOutInvalidAttributes(attributes, entityData);
   const globalAttributes = globalAttributesUpdate(attributes, data);
-  const localAttributes = localAttributesCreate(attributes, data, 'default', _id); // TODO: calculate default scope
-  // TODO: DANIEL: This is not working, it is not creating the relationship
+  const localAttributes = localAttributesCreate(attributes, data, 'default', _id);
   const relationshipAttributes = relationshipAttributesCreate(attributes, data);
-  const responseType = pluralizedEntityName.toLowerCase();
-  const attributeNamesList = formatResponseFieldsForMutation(schema, responseType, 'default'); // TODO: calculate default scope
+  const responseType = entityNamePlural;
+  const attributeNamesList = formatResponseFieldsForMutation(schema, responseType, 'default');
 
   return (
     `mutation {\n` +
