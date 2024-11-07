@@ -93,6 +93,7 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
     .replace(/^(?:require|import).*\.css.*;$/gm, '');
 
   const transformer = removeCssImportsTransformer();
+  let tempConfigFilePath;
 
   try {
     const transpiledConfigFile = ts.transpileModule(fileContent, {
@@ -109,7 +110,7 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
 
     // Create a temporary file with the transpiled code.
     // The file is created in the same directory as the config file, since it needs access to the node_modules folder
-    const tempConfigFilePath = path.resolve(contextFolder, 'temp-flexkit-project-config.mjs');
+    tempConfigFilePath = path.resolve(contextFolder, `${generateRandomFilename()}-temp.mjs`);
     fs.writeFileSync(tempConfigFilePath, transpiledConfigFile);
 
     // Import the transpiled config
@@ -126,8 +127,24 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
   } catch (error) {
     const normalizedError = error instanceof Error ? error : new Error(error as string);
 
+    // Clean up the temporary file
+    if (tempConfigFilePath) {
+      fs.unlinkSync(tempConfigFilePath);
+    }
+
     return new InvalidProjectConfig(normalizedError.message, configFilePath);
   }
+}
+
+function generateRandomFilename(length = 8): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let filename = '';
+
+  for (let i = 0; i < length; i++) {
+    filename += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return filename;
 }
 
 function removeCssImportsTransformer(): ts.TransformerFactory<ts.SourceFile> {
@@ -207,11 +224,13 @@ function extractKeysTransformer<T extends ts.Node>(context: ts.TransformationCon
 
               return factory.updatePropertyAssignment(prop, prop.name, newInitializer);
             } else if (isNowInScopesOrSchema) {
-              // Inside 'scopes' or 'schema', keep all properties except functions
+              // Inside 'scopes' or 'schema', keep all properties except functions and JSX elements
               if (
                 ts.isFunctionExpression(prop.initializer) ||
                 ts.isArrowFunction(prop.initializer) ||
-                ts.isCallExpression(prop.initializer)
+                ts.isCallExpression(prop.initializer) ||
+                ts.isJsxElement(prop.initializer) ||
+                ts.isJsxSelfClosingElement(prop.initializer)
               ) {
                 return undefined;
               }

@@ -88,7 +88,7 @@ const main = async (): Promise<number | undefined> => {
   );
 
   if (flexkitConfig instanceof InvalidProjectConfig) {
-    output.error(`Couldn't parse config file ${flexkitConfig.meta.file}.`);
+    output.error(`Couldn't parse config file ${flexkitConfig.meta.file}. Please check the file for syntax errors.`);
 
     return 1;
   }
@@ -254,7 +254,7 @@ const main = async (): Promise<number | undefined> => {
     } else {
       output.prettyError({
         message: `No existing credentials found. Please run ${getCommandName('login')} or pass ${paramOutput('--token')}`,
-        link: 'https://err.sh/vercel/no-credentials-found', // TODO: Update link
+        link: 'https://flexkit.io/notifications/no-credentials-found', // TODO: Update link
       });
 
       return 1;
