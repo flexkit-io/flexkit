@@ -120,7 +120,7 @@ export default function SingleRelationship({
             {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
             <FormControl className="fk-flex fk-w-full fk-items-center fk-space-x-2">
               <div
-                className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background ${
+                className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background fk-ring-offset-background ${
                   hasFocus ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
                 }`}
               >

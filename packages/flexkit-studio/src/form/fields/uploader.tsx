@@ -154,7 +154,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
             <div
               aria-controls={`image-dropdown-${name}`}
               aria-expanded={isOpen}
-              className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-overflow-hidden focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
+              className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-overflow-hidden focus-visible:fk-outline-none fk-ring-offset-background focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
                 isOpen ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
               } ${dragActive ? 'fk-border-dashed fk-border-2 fk-border-green-500 fk-bg-green-50' : 'fk-border-input fk-bg-background'}`}
               onClick={(e) => {
