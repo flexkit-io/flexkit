@@ -64,22 +64,31 @@ export function DateTime({ control, fieldSchema, getValues, setValue }: FormFiel
                     id={id}
                     variant="outline"
                   >
-                    {field.value?.value ? (
-                      format(new Date(field.value.value as string), 'PPP') +
-                      ' at ' +
-                      format(new Date(field.value.value as string), 'HH:mm')
-                    ) : (
-                      <span>Pick a date and time</span>
-                    )}
-                    <Button
-                      className="fk-absolute fk-right-10 fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
-                      onClick={handleClearing}
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <ClearIcon className="fk-h-4 fk-w-4" />
-                    </Button>
-                    <CalendarIcon className="fk-absolute fk-right-3 fk-h-4 fk-w-4 fk-text-muted-foreground hover:fk-text-accent-foreground" />
+                    <div className="fk-flex fk-items-center fk-w-full">
+                      <span className="fk-flex-grow">
+                        {field.value?.value
+                          ? format(new Date(field.value.value as string), 'PPP') +
+                            ' at ' +
+                            format(new Date(field.value.value as string), 'HH:mm')
+                          : 'Pick a date and time'}
+                      </span>
+                      <div className="fk-flex fk-items-center fk-gap-1">
+                        {field.value?.value && (
+                          <span
+                            className="fk-p-2 fk-text-muted-foreground hover:fk-text-accent-foreground fk-cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleClearing(e);
+                            }}
+                            role="button"
+                            aria-label="Clear date"
+                          >
+                            <ClearIcon className="fk-h-4 fk-w-4" />
+                          </span>
+                        )}
+                        <CalendarIcon className="fk-h-4 fk-w-4 fk-text-muted-foreground hover:fk-text-accent-foreground" />
+                      </div>
+                    </div>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="fk-w-auto fk-p-0" align="start">

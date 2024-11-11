@@ -100,7 +100,12 @@ export function Search({
       }}
       shouldFilter={false}
     >
-      <div className="fk-flex fk-items-center fk-border fk-border-border fk-rounded-md fk-px-3 fk-h-9 md:fk-w-[100px] lg:fk-w-[300px]">
+      <div
+        className={cn(
+          'fk-flex fk-items-center fk-border fk-border-border fk-rounded-md fk-px-3 fk-h-9 md:fk-w-[100px] lg:fk-w-[300px] fk-ring-offset-background',
+          'focus-within:fk-outline-none focus-within:fk-ring-2 focus-within:fk-ring-ring focus-within:fk-ring-offset-2'
+        )}
+      >
         {isLoading ? (
           <LoaderCircle className="fk-mr-2 fk-h-4 fk-w-4 fk-shrink-0 fk-opacity-50 fk-animate-spin" />
         ) : (
