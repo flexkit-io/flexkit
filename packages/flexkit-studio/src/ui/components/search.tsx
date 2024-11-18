@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { LoaderCircle, Search as SearchIcon } from 'lucide-react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { useSearch } from '../../core/use-search';
@@ -8,6 +8,7 @@ import { cn } from '../lib/utils';
 import { Badge } from '../primitives/badge';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '../primitives/command';
 import { ScrollArea } from '../primitives/scroll-area';
+import type { Entity, SearchRequestProps } from '../../core/types';
 
 export type ComboBoxItemType = {
   value: string;
@@ -29,29 +30,33 @@ export interface SearchProps {
   className?: string;
   onSearchChange?: (e: string) => void;
   projectId: string;
+  schema: Entity[];
 }
 
-const searchRequest = {
-  searchRequests: {
-    // TODO: This must be obtained from the schema
-    searches: [
-      {
-        collection: 'products',
-        query_by: 'name,sku',
-      },
-      {
-        collection: 'brands',
-        query_by: 'name',
-      },
-      {
-        collection: 'flags',
-        query_by: 'name',
-      },
-    ],
-  },
-  commonParams: {
-    q: '',
-  },
+const getBaseSearchRequest = (schema: Entity[]): SearchRequestProps => {
+  const collections = schema
+    .filter((entity) => entity.attributes.some((attr) => attr.isSearchable))
+    .map((entity) => entity.plural);
+  const queryBy = schema
+    .filter((entity) => entity.attributes.some((attr) => attr.isSearchable))
+    .map((entity) =>
+      entity.attributes
+        .filter((attr) => attr.isSearchable)
+        .map((attr) => attr.name)
+        .join(',')
+    );
+
+  return {
+    searchRequests: {
+      searches: collections.map((collection, index) => ({
+        collection,
+        query_by: queryBy[index],
+      })),
+    },
+    commonParams: {
+      q: '',
+    },
+  };
 };
 
 export function Search({
@@ -61,8 +66,10 @@ export function Search({
   className,
   onSearchChange,
   projectId,
+  schema,
 }: SearchProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
+  const searchRequest = useMemo(() => getBaseSearchRequest(schema), [schema]);
   const [searchQuery, setSearchQuery] = useState(searchRequest);
   const inputRef = useRef<HTMLInputElement>(null);
   const { results, isLoading } = useSearch(projectId, searchQuery);

@@ -51,8 +51,13 @@ function mapResults(
     .filter((result) => (result as RawResultItem).hits.length > 0)
     .map((result) => {
       const item = result as RawResultItem;
-      const entityNamePlural = item.request_params.collection_name.replace(`${projectId}_`, '');
+      const entityNamePlural = item.request_params.collection_name.replace(`${projectId}_`, '').replace(/_\d+$/, '');
       const entitySchema = find<Entity>(propEq(entityNamePlural, 'plural'))(schema);
+
+      if (!entitySchema) {
+        return [];
+      }
+
       const primaryAttributeName = getPrimaryAttributeName(entitySchema?.attributes ?? []);
       const entityName = entitySchema?.name ?? entityNamePlural;
 
@@ -60,12 +65,12 @@ function mapResults(
       return item.hits.map(({ document }) => {
         const primaryAttribute = document[primaryAttributeName];
         const scopedPrimaryAttribute =
-          typeof primaryAttribute !== 'string' ? primaryAttribute[scope] ?? primaryAttribute[defaultScope] : null;
+          typeof primaryAttribute !== 'string' ? (primaryAttribute[scope] ?? primaryAttribute[defaultScope]) : null;
         const primaryAttributeValue = scopedPrimaryAttribute ?? document[primaryAttributeName];
         const attributes = Object.entries(document).reduce(
           (acc: Omit<SearchResultItem, '_id' | '_entityName' | '_entityNamePlural'>, [key, value]) => {
             if (key !== primaryAttributeName && key !== 'id' && key !== '_updatedAt') {
-              const scopedValue = typeof value !== 'string' ? value[scope] ?? value[defaultScope] : value;
+              const scopedValue = typeof value !== 'string' ? (value[scope] ?? value[defaultScope]) : value;
 
               acc[key] = scopedValue;
             }

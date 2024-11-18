@@ -174,6 +174,7 @@ export default defineConfig([
             dataType: 'string', // <-- This is the data type of the attribute, it directly affects how the data is saved in the database
             inputType: 'text', // <-- This affects how the data is displayed in the form (text input, select, WYSIWYG editor, textarea, etc)
             previewType: 'text', // <-- This affects how the data is displayed in the list view (text, image, boolean, WYSIWYG preview, etc)
+            isSearchable: true,
             isPrimary: true,
             validation: (z) => z.string().min(1, { message: 'Name is required' }),
             defaultValue: '',
@@ -390,6 +391,7 @@ export default defineConfig([
             },
             dataType: 'string',
             inputType: 'text',
+            isSearchable: true,
             isPrimary: true,
             validation: (z) => z.string().min(1, { message: 'Name is required' }),
             defaultValue: '',
@@ -524,6 +526,7 @@ export default defineConfig([
             },
             dataType: 'string',
             inputType: 'text',
+            isSearchable: true,
             isPrimary: true,
             validation: (z) => z.string().min(1, { message: 'Name is required' }),
             defaultValue: '',
@@ -593,6 +596,7 @@ export default defineConfig([
             dataType: 'string',
             isPrimary: true,
             isUnique: true,
+            isSearchable: true,
             inputType: 'text',
             validation: (z) => z.string().min(1, { message: 'Name is required' }),
             defaultValue: '',

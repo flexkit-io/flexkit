@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from 'react';
 import type { Attribute, Scopes } from '../types';
 import type { FormFieldParams } from '../../form/types';
-
+import type { Entity } from '../types';
 export interface LogoProps {
   theme: string | undefined;
   title: string;
@@ -15,6 +15,7 @@ interface ProjectSelectorProps {
 interface SearchProps {
   onSelect: (item: { entityName: string; entityNamePlural: string; entityId: string }) => void;
   projectId: string;
+  schema: Entity[];
 }
 
 export interface FormFieldProps extends FormFieldParams {}
