@@ -8,7 +8,7 @@ export function Root(): JSX.Element {
   return (
     <ResizablePanelGroup direction="horizontal" className="fk-h-full">
       <ResizablePanel className="fk-p-3" defaultSize={82}>
-        <div className="fk-flex fk-flex-col">
+        <div className="fk-flex fk-flex-col fk-h-full">
           <List />
         </div>
       </ResizablePanel>

@@ -29,7 +29,7 @@ export function useSearch(
   );
   const results = mapResults(data?.results ?? [], projectId, schema, scope, defaultScope);
 
-  return { results, error, isLoading };
+  return { results: results ?? [], error, isLoading };
 }
 
 /**
@@ -41,14 +41,14 @@ function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
 }
 
 function mapResults(
-  results: RawSearchResultItems,
+  results: RawSearchResultItems | undefined,
   projectId: string,
   schema: Entity[],
   scope: string,
   defaultScope: string
-): SearchResultItem[] {
+): SearchResultItem[] | undefined {
   return results
-    .filter((result) => (result as RawResultItem).hits.length > 0)
+    ?.filter((result) => (result as RawResultItem)?.hits?.length > 0)
     .map((result) => {
       const item = result as RawResultItem;
       const entityNamePlural = item.request_params.collection_name.replace(`${projectId}_`, '').replace(/_\d+$/, '');
