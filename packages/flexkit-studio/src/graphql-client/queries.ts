@@ -141,11 +141,18 @@ export function mapQueryResult(
 
   const { count } = results[`${entityNamePlural}Aggregate`] as EntityQueryAggregate;
   const items = results[entityNamePlural] as EntityQueryResult[];
-  const sliceFirstThreeItems = (values: EntityItem[], primaryAttributeName: string): string =>
-    values
+  const sliceFirstThreeItems = (values: EntityItem[], primaryAttribute: Attribute): string => {
+    const primaryAttributeName = primaryAttribute.name;
+
+    return values
       .slice(0, 3)
-      .map((item) => item[primaryAttributeName]?.[scope] ?? item[primaryAttributeName].default)
+      .map((item) =>
+        primaryAttribute.scope === 'local'
+          ? (item[primaryAttributeName]?.[scope] ?? item[primaryAttributeName].default)
+          : item[primaryAttributeName]
+      )
       .join(', ');
+  };
   const mappedQueryResult = items.map((entity) => {
     const { _id } = entity;
     const globalAttributes = getAttributeListByScope('global', attributes).reduce(
@@ -177,7 +184,7 @@ export function mapQueryResult(
         if (Array.isArray(localValue)) {
           return {
             ...acc,
-            [attributeName]: sliceFirstThreeItems(localValue, primaryAttributeName),
+            [attributeName]: sliceFirstThreeItems(localValue, primaryAttribute),
           };
         }
 

@@ -87,11 +87,13 @@ export interface ProjectOptions {
   schema: {
     name: string;
     plural: string;
-    menu?: {
-      label?: string;
-      group?: string;
-      icon?: JSX.Element;
-    };
+    menu?:
+      | { hidden: true }
+      | {
+          label?: string;
+          group?: string;
+          icon?: JSX.Element;
+        };
     attributes: Attribute[];
   }[];
 }

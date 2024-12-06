@@ -21,6 +21,12 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   schema: SingleProject['schema'];
 }
 
+type VisibleMenuSchema = Array<
+  Omit<SingleProject['schema'][number], 'menu'> & {
+    menu?: Exclude<SingleProject['schema'][number]['menu'], { hidden: true }>;
+  }
+>;
+
 const iconList = Object.keys(Icons).map((iconName) => ({
   name: iconName,
   icon: Icons[iconName as keyof typeof Icons],
@@ -32,9 +38,11 @@ const fuse = new Fuse(iconList, {
 });
 
 export function Sidebar({ className, menuGroups, schema }: SidebarProps): JSX.Element {
+  // Filter out hidden items first, then group them
+  const visibleItems = schema.filter((item) => !(item.menu && 'hidden' in item.menu)) as VisibleMenuSchema;
   const itemsByGroup = groupBy(
     (item) => (item.menu?.group && menuGroups?.find((g) => g.name === item.menu?.group)?.name) || 'ungrouped',
-    schema
+    visibleItems
   );
   const nonEmptyGroups = menuGroups?.filter((menuGroup) => itemsByGroup[menuGroup.name]?.length);
 

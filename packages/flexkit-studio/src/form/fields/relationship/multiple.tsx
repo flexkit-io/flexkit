@@ -61,17 +61,27 @@ export default function MultipleRelationship({
   const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
   const relationshipEntityAttributesSchema = relationshipEntitySchema?.attributes ?? [];
   const baseEntitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
-  const baseEntityAttributesSchema = baseEntitySchema?.attributes ?? [];
+  const baseEntityName = baseEntitySchema?.name ?? '';
   const relationshipMode = find<Attribute>(propEq(entityName, 'name'))(relationshipEntityAttributesSchema)?.relationship
     ?.mode;
-  const parentEntityRelationshipMode = find<Attribute>(propEq(name, 'name'))(baseEntityAttributesSchema)?.relationship
-    ?.mode;
+  let connectionName: string | undefined;
 
-  // name of the entity used to filter out the related items already connected when showing the list (i.e. productsConnection_NONE)
-  const connectionName =
-    (relationshipMode ?? parentEntityRelationshipMode) === 'single'
-      ? `${entityName}Connection_NOT`
-      : `${entityNamePlural}Connection_NONE`;
+  /**
+   * Find out if this attribute is related to the base entity (by-directional relationship)
+   * If so, get the connection name to filter out the related items already connected when showing the list (i.e. productsConnection_NONE)
+   * */
+  const relationshipAttribute = relationshipEntityAttributesSchema.find(
+    (attr) => attr.relationship?.entity === baseEntityName
+  );
+  const relationshipAttributeMode = relationshipAttribute?.relationship?.mode;
+  const connectionAttributeName = relationshipMode === 'single' ? entityName : entityNamePlural;
+
+  if (relationshipAttributeMode) {
+    connectionName =
+      relationshipAttributeMode === 'single'
+        ? `${connectionAttributeName}Connection_NOT`
+        : `${connectionAttributeName}Connection_NONE`;
+  }
 
   const primaryAttributeName = getPrimaryAttributeName(relationshipEntityAttributesSchema);
   const initialRows = useMemo(

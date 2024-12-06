@@ -182,10 +182,12 @@ export interface ProjectOptions {
   schema: {
     name: string;
     plural: string;
-    menu?: {
-      label?: string;
-      group?: string;
-    };
+    menu?:
+      | { hidden: true }
+      | {
+          label?: string;
+          group?: string;
+        };
     attributes: Attribute[];
   }[];
 }
