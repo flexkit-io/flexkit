@@ -426,7 +426,7 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
     const typedValue =
       stringTypes.includes(attributeSchema.dataType) && value.value !== null
-        ? `"${value.value as string}"`
+        ? JSON.stringify(value.value) // Sanitize the value to avoid GraphQl errors (specially due to newlines)
         : (value.value?.toString() ?? 'null');
 
     return `${acc}\n      ${attributeName}: ${typedValue}`;
@@ -543,15 +543,14 @@ function relationshipAttributesUpdate(
     const { inputType, relationship } = attributeSchema;
 
     if (inputType === 'relationship' && relationship?.mode === 'single') {
-      const relatedEntityName = relationship.entity;
       const disconnect = `disconnect: {\n          where: {\n            node: {\n              _id: "${
-        originalData[relatedEntityName]._id ?? ''
+        originalData[attributeName]._id ?? ''
       }"\n            }\n          }\n        }\n`;
       const connect = `connect: {\n          where: {\n            node: {\n              _id: "${
         attributeValue._id ?? ''
       }"\n            }\n          }\n        }\n`;
 
-      return `${acc}\n      ${relatedEntityName}: {\n        ${connect}        ${disconnect}      }`;
+      return `${acc}\n      ${attributeName}: {\n        ${connect}        ${disconnect}      }`;
     }
 
     if (inputType === 'relationship' && relationship?.mode === 'multiple') {

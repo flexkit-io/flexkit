@@ -89,6 +89,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
     (newData: EntityData) => {
       const _id = uuidv4();
       const mutation = getEntityCreateMutation(entityNamePlural, schema, newData, _id);
+      console.log({ mutation });
       const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
       const refreshQuery = gql`
         ${entityQuery.query}
