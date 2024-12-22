@@ -424,10 +424,7 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
   const globalAttributes = pick(getAttributeListByScope('global', schemaAttributes) as [string], data);
   const attributesString = toPairs(globalAttributes).reduce((acc, [attributeName, value]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
-    const typedValue =
-      stringTypes.includes(attributeSchema.dataType) && value.value !== null
-        ? JSON.stringify(value.value) // Sanitize the value to avoid GraphQl errors (specially due to newlines)
-        : (value.value?.toString() ?? 'null');
+    const typedValue = stringifyValue(attributeSchema.dataType, value.value);
 
     return `${acc}\n      ${attributeName}: ${typedValue}`;
   }, '');

@@ -183,7 +183,7 @@ export interface ProjectOptions {
     name: string;
     plural: string;
     menu?:
-      | { hidden: true }
+      | { hidden: true; label?: string }
       | {
           label?: string;
           group?: string;

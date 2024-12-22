@@ -40,6 +40,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
+  const entityLabel = entitySchema?.menu?.label ?? entityName.toLowerCase();
   const entityNamePlural = entitySchema?.plural ?? '';
   const relationshipContext = relationships[relationshipId];
 
@@ -49,13 +50,15 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       : (relationshipContext?.connect as MultipleRelationshipConnection | undefined)?.map((item) => item._id);
 
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
-  const filterOutConnectedEntities = {
-    [connectionName ?? '']: {
-      node: {
-        _id: entityId,
-      },
-    },
-  };
+  const filterOutConnectedEntities = connectionName
+    ? {
+        [connectionName]: {
+          node: {
+            _id: entityId,
+          },
+        },
+      }
+    : {};
   const conditionalWhereClause = mode === 'multiple' ? filterOutConnectedEntities : {};
 
   const { count, data, fetchMore, isLoading } = useEntityQuery({
@@ -175,7 +178,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
             }}
             variant="outline"
           >
-            {`Create ${entityName.toLowerCase()}`}
+            {`Create ${entityLabel}`}
           </Button>
         </>
       }
@@ -184,7 +187,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       onClose={() => {
         handleClose(action._id);
       }}
-      title={`Select ${entityName.toLowerCase()}`}
+      title={`Select ${entityLabel}`}
     >
       <DataTable
         columns={isLoading ? loadingColumns : columns}

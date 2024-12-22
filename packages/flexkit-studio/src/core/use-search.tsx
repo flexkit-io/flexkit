@@ -65,7 +65,9 @@ function mapResults(
       return item.hits.map(({ document }) => {
         const primaryAttribute = document[primaryAttributeName];
         const scopedPrimaryAttribute =
-          typeof primaryAttribute !== 'string' ? (primaryAttribute[scope] ?? primaryAttribute[defaultScope]) : null;
+          primaryAttribute && typeof primaryAttribute !== 'string'
+            ? (primaryAttribute[scope] ?? primaryAttribute[defaultScope])
+            : null;
         const primaryAttributeValue = scopedPrimaryAttribute ?? document[primaryAttributeName];
         const attributes = Object.entries(document).reduce(
           (acc: Omit<SearchResultItem, '_id' | '_entityName' | '_entityNamePlural'>, [key, value]) => {

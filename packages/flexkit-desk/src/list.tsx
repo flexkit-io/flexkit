@@ -85,7 +85,7 @@ export function List(): JSX.Element {
         </Tooltip>
         <Separator orientation="vertical" className="fk-h-4" />
         <h2 className="fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">
-          {capitalize(entitySchema?.plural ?? '')}
+          {capitalize(entitySchema?.menu?.label ?? entitySchema?.plural ?? '')}
         </h2>
       </div>
       <DataTable

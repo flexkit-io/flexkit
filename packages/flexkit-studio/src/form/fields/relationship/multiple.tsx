@@ -264,7 +264,8 @@ export default function MultipleRelationship({
                   </span>
                 ) : (
                   <Button className="fk-h-8 fk-mr-auto fk-mt-2" onClick={handleSelection} variant="outline">
-                    <Link className="fk-h-4 fk-w-4 fk-mr-2" /> Link to a record from {relationshipEntitySchema?.plural}
+                    <Link className="fk-h-4 fk-w-4 fk-mr-2" /> Link to a record from{' '}
+                    {relationshipEntitySchema?.menu?.label ?? relationshipEntitySchema?.plural}
                   </Button>
                 )}
                 {!isOpen ? (

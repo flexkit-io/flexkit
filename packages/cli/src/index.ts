@@ -88,7 +88,9 @@ const main = async (): Promise<number | undefined> => {
   );
 
   if (flexkitConfig instanceof InvalidProjectConfig) {
-    output.error(`Couldn't parse config file ${flexkitConfig.meta.file}. Please check the file for syntax errors.`);
+    output.error(
+      `Couldn't parse config file ${flexkitConfig.meta.file}. Please check the file for syntax errors.\n\nError: ${flexkitConfig.meta.error}`
+    );
 
     return 1;
   }

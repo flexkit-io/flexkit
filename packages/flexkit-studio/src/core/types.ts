@@ -154,6 +154,13 @@ export type Attribute = {
 export type Entity = {
   name: string;
   plural: string;
+  menu?:
+    | { hidden: true; label?: string }
+    | {
+        label?: string;
+        group?: string;
+        icon?: JSX.Element;
+      };
   attributes: Attribute[];
 };
 

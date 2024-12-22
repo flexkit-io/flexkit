@@ -157,9 +157,23 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   });
   const data = results as FormEntityItem[];
 
-  const primaryAttributeName =
-    entitySchema?.attributes.find((attr) => attr.isPrimary)?.name ?? entitySchema?.attributes[0]?.name ?? '';
-  const entityIdentifier = !isLoading && data.length ? data[0][primaryAttributeName].value : '';
+  function getEntityIdentifier(entitySchema: Entity, data: FormEntityItem[]): string {
+    const primaryAttribute = entitySchema?.attributes.find((attr) => attr.isPrimary) ?? entitySchema?.attributes[0];
+    const primaryAttributeName = primaryAttribute.name;
+    const isRelationship = primaryAttribute?.relationship?.field !== undefined;
+
+    if (isLoading || !data.length) {
+      return '';
+    }
+
+    return isRelationship && primaryAttribute?.relationship?.field
+      ? ((data[0][primaryAttributeName]?.value as Record<string, unknown>)?.[
+          primaryAttribute.relationship.field
+        ] as string)
+      : (data[0][primaryAttributeName]?.value as string);
+  }
+
+  const entityIdentifier = !isLoading && data.length && entitySchema ? getEntityIdentifier(entitySchema, data) : '';
 
   return (
     <DrawerModal

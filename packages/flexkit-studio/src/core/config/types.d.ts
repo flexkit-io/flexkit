@@ -84,18 +84,7 @@ export interface ProjectOptions {
   }[];
   plugins?: PluginOptions[];
   scopes?: Scopes;
-  schema: {
-    name: string;
-    plural: string;
-    menu?:
-      | { hidden: true }
-      | {
-          label?: string;
-          group?: string;
-          icon?: JSX.Element;
-        };
-    attributes: Attribute[];
-  }[];
+  schema: Entity[];
 }
 
 /**
