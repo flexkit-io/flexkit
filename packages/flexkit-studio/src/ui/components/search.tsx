@@ -37,20 +37,11 @@ const getBaseSearchRequest = (schema: Entity[]): SearchRequestProps => {
   const collections = schema
     .filter((entity) => entity.attributes.some((attr) => attr.isSearchable))
     .map((entity) => entity.plural);
-  const queryBy = schema
-    .filter((entity) => entity.attributes.some((attr) => attr.isSearchable))
-    .map((entity) =>
-      entity.attributes
-        .filter((attr) => attr.isSearchable)
-        .map((attr) => attr.name)
-        .join(',')
-    );
 
   return {
     searchRequests: {
-      searches: collections.map((collection, index) => ({
+      searches: collections.map((collection) => ({
         collection,
-        query_by: queryBy[index],
       })),
     },
     commonParams: {

@@ -22,7 +22,7 @@ export const customers = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Email is required' }),
+      validation: (z) => z.string().email({ message: 'Invalid email address' }),
       defaultValue: '',
     },
     {

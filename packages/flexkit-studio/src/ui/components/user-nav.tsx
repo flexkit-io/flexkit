@@ -33,14 +33,14 @@ export function UserNav({ projectId }: Props): JSX.Element {
         <Button className="fk-relative fk-h-8 fk-w-8 fk-rounded-full" variant="ghost">
           <Avatar className="fk-h-8 fk-w-8">
             <AvatarImage alt="@shadcn" src={auth.user?.avatar_url} />
-            <AvatarFallback>{`${auth.user?.first_name[0].toUpperCase()} ${auth.user?.last_name[0].toUpperCase()}`}</AvatarFallback>
+            <AvatarFallback>{auth.user?.display_name.charAt(0).toUpperCase() ?? ''}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="fk-w-56" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="fk-flex fk-flex-col fk-space-y-1">
-            <p className="fk-text-sm fk-font-medium fk-leading-none">{`${auth.user?.first_name} ${auth.user?.last_name}`}</p>
+            <p className="fk-text-sm fk-font-medium fk-leading-none">{auth.user?.display_name}</p>
             <p className="fk-text-xs fk-leading-none fk-text-muted-foreground">{auth.user?.email}</p>
           </div>
         </DropdownMenuLabel>

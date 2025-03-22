@@ -10,15 +10,17 @@ function Toaster({ ...props }: ToasterProps): JSX.Element {
 
   return (
     <Sonner
-      className="fk-toaster fk-group"
+      className="toaster fk-group"
       theme={theme as ToasterProps['theme']}
       toastOptions={{
         classNames: {
           toast:
-            'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
-          description: 'group-[.toast]:text-muted-foreground',
-          actionButton: 'group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
-          cancelButton: 'group-[.toast]:bg-muted group-[.toast]:text-muted-foreground',
+            'group toast group-[.toaster]:fk-bg-background group-[.toaster]:fk-text-foreground group-[.toaster]:fk-border-border group-[.toaster]:fk-shadow-lg',
+          description: 'group-[.toast]:fk-text-muted-foreground',
+          actionButton: 'group-[.toast]:fk-bg-primary group-[.toast]:fk-text-primary-foreground',
+          cancelButton: 'group-[.toast]:fk-bg-muted group-[.toast]:fk-text-muted-foreground',
+          success:
+            'group-[.toaster]:!fk-bg-emerald-500 group-[.toaster]:!fk-border-emerald-500 group-[.toaster]:!fk-text-white',
         },
       }}
       {...props}

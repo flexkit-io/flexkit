@@ -12,7 +12,7 @@ export function Editor({ value }: { value: string }) {
   try {
     textValue = generateText(JSON.parse(value), defaultExtensions).substring(0, MAX_LENGTH);
   } catch (e) {
-    textValue = value.substring(0, MAX_LENGTH);
+    textValue = value?.substring(0, MAX_LENGTH) ?? '';
   }
 
   return <div className="fk-truncate">{textValue}</div>;

@@ -17,7 +17,6 @@ export const salesOrderItems = defineEntity({
         comment: 'Unique SKU identifier',
       },
       dataType: 'string',
-      isUnique: true,
       inputType: 'text',
       validation: (z) => z.string().min(1, { message: 'SKU is required' }),
       defaultValue: '',

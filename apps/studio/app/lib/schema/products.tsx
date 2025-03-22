@@ -81,6 +81,18 @@ export const products = defineEntity({
       defaultValue: 'simple',
     },
     {
+      name: 'description',
+      label: 'Description',
+      scope: 'local',
+      options: {
+        size: 260,
+        comment: 'Full description of the product',
+      },
+      dataType: 'string',
+      inputType: 'editor',
+      defaultValue: '',
+    },
+    {
       name: 'brand',
       label: 'Brand',
       scope: 'relationship',

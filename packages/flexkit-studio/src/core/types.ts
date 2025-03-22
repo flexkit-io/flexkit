@@ -182,28 +182,15 @@ export type GridEntityRow = {
 };
 
 export type RawResultItem = {
-  facet_counts: [];
+  collection: string;
   found: number;
   hits: {
     document: {
       id: string;
       [key: string]: string | { [key: string]: string };
     };
-    highlight: {
-      [key: string]: string | { [key: string]: string };
-    };
-    id: string;
-    text_match: number;
+    score: number;
   }[];
-  out_of: number;
-  page: number;
-  request_params: {
-    collection_name: string;
-    per_page: number;
-    q: string;
-  };
-  search_cutoff: boolean;
-  search_time_ms: number;
 };
 
 type RawResultError = {
@@ -224,7 +211,6 @@ export interface SearchRequestProps {
   searchRequests: {
     searches: {
       collection: string;
-      query_by: string;
     }[];
   };
   commonParams: {

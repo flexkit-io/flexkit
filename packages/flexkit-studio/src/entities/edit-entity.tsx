@@ -139,13 +139,12 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       setOptions({
         variables: { where: { _id: entityId } },
         onCompleted: () => {
-          handleClose(action._id);
           toast.success('Your changes have been saved.');
         },
       });
       runMutation(true);
     },
-    [action._id, entityId, entityNamePlural, handleClose, schema, runMutation, setMutation, setOptions, currentScope]
+    [action._id, entityId, entityNamePlural, schema, runMutation, setMutation, setOptions, currentScope]
   );
 
   const { isLoading, data: results } = useEntityQuery({

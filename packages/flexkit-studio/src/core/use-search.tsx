@@ -51,7 +51,7 @@ function mapResults(
     ?.filter((result) => (result as RawResultItem)?.hits?.length > 0)
     .map((result) => {
       const item = result as RawResultItem;
-      const entityNamePlural = item.request_params.collection_name.replace(`${projectId}_`, '').replace(/_\d+$/, '');
+      const entityNamePlural = item.collection.replace(`${projectId}_`, '').replace(/_\d+$/, '');
       const entitySchema = find<Entity>(propEq(entityNamePlural, 'plural'))(schema);
 
       if (!entitySchema) {

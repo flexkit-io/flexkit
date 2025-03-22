@@ -12,10 +12,17 @@ import type { AttributeValue } from '../graphql-client/types';
 import { useGridColumnsDefinition } from '../data-grid/columns';
 import { DataTable } from '../data-grid/data-table';
 import { Button } from '../ui/primitives/button';
+import { Input } from '../ui/primitives/input';
 import { Skeleton } from '../ui/primitives/skeleton';
-import type { Entity, SingleRelationshipConnection, MultipleRelationshipConnection } from '../core/types';
+import type {
+  Entity,
+  SingleRelationshipConnection,
+  MultipleRelationshipConnection,
+  SearchRequestProps,
+} from '../core/types';
 import { useDispatch } from './actions-context';
 import { type Action, type ActionEditRelationship } from './types';
+import { useSearch } from '../core/use-search';
 
 type Props = {
   action: ActionEditRelationship;
@@ -202,7 +209,39 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
         onScroll={(e) => {
           fetchMoreOnBottomReached(e.target as HTMLDivElement);
         }}
+        toolbarComponent={(table) => (
+          <SearchBar entityNamePlural={entityNamePlural} projectId={currentProjectId ?? ''} />
+        )}
       />
     </DrawerModal>
   );
+}
+
+function SearchBar({ entityNamePlural, projectId }: { entityNamePlural: string; projectId: string }): JSX.Element {
+  const [search, setSearch] = useState('');
+  const searchRequest = getBaseSearchRequest();
+  const [searchQuery, setSearchQuery] = useState(searchRequest);
+  const { results, isLoading } = useSearch(projectId, searchQuery);
+
+  function getBaseSearchRequest(): SearchRequestProps {
+    return {
+      searchRequests: {
+        searches: [
+          {
+            collection: entityNamePlural,
+          },
+        ],
+      },
+      commonParams: {
+        q: '',
+      },
+    };
+  }
+
+  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>): void {
+    setSearch(e.target.value);
+    setSearchQuery({ ...searchQuery, commonParams: { q: e.target.value } });
+  }
+
+  return <Input placeholder="Search" value={search} onChange={handleSearchChange} />;
 }
