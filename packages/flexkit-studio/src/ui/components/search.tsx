@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useState, useMemo } from 'react';
-import { LoaderCircle, Search as SearchIcon } from 'lucide-react';
+import { LoaderCircle, Search as SearchIcon, X as XIcon } from 'lucide-react';
 import { Command as CommandPrimitive } from 'cmdk';
+import { useNavigate } from 'react-router-dom';
 import { useSearch } from '../../core/use-search';
 import { cn } from '../lib/utils';
 import { Badge } from '../primitives/badge';
@@ -60,12 +61,15 @@ export function Search({
   schema,
 }: SearchProps): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   const searchRequest = useMemo(() => getBaseSearchRequest(schema), [schema]);
   const [searchQuery, setSearchQuery] = useState(searchRequest);
   const inputRef = useRef<HTMLInputElement>(null);
   const { results, isLoading } = useSearch(projectId, searchQuery);
+  const navigate = useNavigate();
 
   function handleOnSearchChange(q: string): void {
+    setInputValue(q);
     // TODO: Add debounce
     if (q.length > 0) {
       setIsOpen(true);
@@ -76,6 +80,24 @@ export function Search({
 
     if (onSearchChange) {
       onSearchChange(q);
+    }
+  }
+
+  function handleClear(): void {
+    setInputValue('');
+    setIsOpen(false);
+    setSearchQuery(searchRequest);
+
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+
+    // Remove id from URL if present
+    const url = new URL(window.location.href);
+
+    if (url.searchParams.has('id')) {
+      url.searchParams.delete('id');
+      navigate(url.pathname + url.search);
     }
   }
 
@@ -120,7 +142,17 @@ export function Search({
           }}
           onValueChange={handleOnSearchChange}
           ref={inputRef}
+          value={inputValue}
         />
+        {inputValue && (
+          <button
+            className="fk-flex fk-items-center fk-justify-center fk-ml-2 fk-text-muted-foreground hover:fk-text-foreground"
+            onClick={handleClear}
+            type="button"
+          >
+            <XIcon className="fk-h-4 fk-w-4" />
+          </button>
+        )}
       </div>
       <div className="fk-relative fk-max-w-[600px]">
         <div
