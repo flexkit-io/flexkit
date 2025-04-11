@@ -698,7 +698,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
             </div>
           </ResizablePanel>
           <ResizableHandle className="hover:ex-bg-blue-500 ex-transition-colors" withHandle />
-          <ResizablePanel className="ex-p-3 ex-relative ex-z-50" defaultSize={30}>
+          <ResizablePanel className="ex-p-3 ex-relative" defaultSize={30}>
             {/* TODO: Este es el panel con la respuesta */}
             <div className="graphiql-response ex-h-full">
               {executionContext.isFetching ? <Spinner /> : null}
