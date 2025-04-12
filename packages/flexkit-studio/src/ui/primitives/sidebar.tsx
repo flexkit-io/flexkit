@@ -417,7 +417,7 @@ const SidebarMenu = React.forwardRef<HTMLUListElement, React.ComponentProps<'ul'
   <ul
     ref={ref}
     data-sidebar="menu"
-    className={cn('fk-flex fk-w-full fk-min-w-0 fk-flex-col fk-gap-1', className)}
+    className={cn('fk-flex fk-w-full fk-min-w-0 fk-flex-col fk-gap-1 fk-z-10', className)}
     {...props}
   />
 ));
