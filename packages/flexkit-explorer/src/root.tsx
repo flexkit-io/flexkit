@@ -11,5 +11,5 @@ export function Root(): JSX.Element {
   const url = `https://${currentProjectId}.api.flexkit.io/graphql`;
   const fetcher = useMemo(() => createGraphiQLFetcher({ url }), [url]);
 
-  return <GraphiQL fetcher={fetcher} />;
+  return <GraphiQL fetcher={fetcher} forcedTheme="light" />;
 }

@@ -264,36 +264,6 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
     pluginContext?.setVisiblePlugin(pluginContext.plugins[0]);
   }, [pluginContext]);
 
-  const editorResize = useDragResize({
-    direction: 'horizontal',
-    storageKey: 'editorFlex',
-  });
-  const editorToolsResize = useDragResize({
-    defaultSizeRelation: 3,
-    direction: 'vertical',
-    initiallyHidden: (() => {
-      if (props.defaultEditorToolsVisibility === 'variables' || props.defaultEditorToolsVisibility === 'headers') {
-        return;
-      }
-
-      if (typeof props.defaultEditorToolsVisibility === 'boolean') {
-        return props.defaultEditorToolsVisibility ? undefined : 'second';
-      }
-
-      return editorContext.initialVariables || editorContext.initialHeaders ? undefined : 'second';
-    })(),
-    sizeThresholdSecond: 60,
-    storageKey: 'secondaryEditorFlex',
-  });
-
-  const [activeSecondaryEditor, setActiveSecondaryEditor] = useState<'variables' | 'headers'>(() => {
-    if (props.defaultEditorToolsVisibility === 'variables' || props.defaultEditorToolsVisibility === 'headers') {
-      return props.defaultEditorToolsVisibility;
-    }
-    return !editorContext.initialVariables && editorContext.initialHeaders && isHeadersEditorEnabled
-      ? 'headers'
-      : 'variables';
-  });
   const [showDialog, setShowDialog] = useState<'settings' | 'short-keys' | null>(null);
   const [clearStorageStatus, setClearStorageStatus] = useState<'success' | 'error' | null>(null);
 
@@ -302,13 +272,13 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
   const toolbar = children.find((child) => isChildComponentType(child, GraphiQL.Toolbar)) ?? (
     <>
       <ToolbarButton onClick={prettify} label="Prettify query (Shift-Ctrl-P)">
-        <PrettifyIcon className="ex-w-8 ex-h-8 ex-block" aria-hidden="true" />
+        <PrettifyIcon className="ex-w-6 ex-h-6 ex-block" aria-hidden="true" />
       </ToolbarButton>
       <ToolbarButton onClick={merge} label="Merge fragments into query (Shift-Ctrl-M)">
-        <MergeIcon className="graphiql-toolbar-icon" aria-hidden="true" />
+        <MergeIcon className="ex-w-6 ex-h-6 ex-block" aria-hidden="true" />
       </ToolbarButton>
       <ToolbarButton onClick={copy} label="Copy query (Shift-Ctrl-C)">
-        <CopyIcon className="graphiql-toolbar-icon" aria-hidden="true" />
+        <CopyIcon className="ex-w-6 ex-h-6 ex-block" aria-hidden="true" />
       </ToolbarButton>
       {props.toolbar?.additionalContent}
       {props.toolbar?.additionalComponent && <props.toolbar.additionalComponent />}
@@ -376,20 +346,6 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
     [pluginContext]
   );
 
-  const handleToolsTabClick: MouseEventHandler<HTMLButtonElement> = useCallback(
-    (event) => {
-      if (editorToolsResize.hiddenElement === 'second') {
-        editorToolsResize.setHiddenElement(null);
-      }
-      setActiveSecondaryEditor(event.currentTarget.dataset.name as 'variables' | 'headers');
-    },
-    [editorToolsResize]
-  );
-
-  const toggleEditorTools: MouseEventHandler<HTMLButtonElement> = useCallback(() => {
-    editorToolsResize.setHiddenElement(editorToolsResize.hiddenElement === 'second' ? null : 'second');
-  }, [editorToolsResize]);
-
   const handleOpenShortKeysDialog = useCallback((isOpen: boolean) => {
     if (!isOpen) {
       setShowDialog(null);
@@ -456,7 +412,6 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
     <GraphiQLTooltip.Provider>
       <div className={`graphiql-container${className}`}>
         <ResizablePanelGroup autoSaveId="explorer" direction="horizontal" className="ex-h-full ex-max-h-full">
-          {/* TODO: Sidebar */}
           <ResizablePanel
             collapsible
             collapsedSize={3}
@@ -525,7 +480,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                     key={plugin.title}
                     value={plugin.title}
                   >
-                    <ScrollArea className="ex-flex ex-w-full ex-max-h-full ex-overflow-auto ex-px-6 ex-pt-3 ex-pb-6 ex-mb-3">
+                    <ScrollArea className="ex-flex ex-w-full ex-max-h-full ex-overflow-auto ex-px-6 ex-pt-3 ex-pb-6 ex-mb-3 [&>div>div]:!ex-block">
                       <plugin.content />
                       <ScrollBar orientation="horizontal" />
                     </ScrollArea>
@@ -533,36 +488,36 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                 ))}
               </Tabs>
             </div>
-            {/* <GraphiQLTooltip label="Re-fetch GraphQL schema">
-                <UnStyledButton
-                  type="button"
-                  disabled={schemaContext.isFetching}
-                  onClick={handleRefetchSchema}
-                  aria-label="Re-fetch GraphQL schema"
-                >
-                  <ReloadIcon className={schemaContext.isFetching ? 'graphiql-spin' : ''} aria-hidden="true" />
-                </UnStyledButton>
-              </GraphiQLTooltip>
-              <GraphiQLTooltip label="Open short keys dialog">
-                <UnStyledButton
-                  type="button"
-                  data-value="short-keys"
-                  onClick={handleShowDialog}
-                  aria-label="Open short keys dialog"
-                >
-                  <KeyboardShortcutIcon aria-hidden="true" />
-                </UnStyledButton>
-              </GraphiQLTooltip>
-              <GraphiQLTooltip label="Open settings dialog">
-                <UnStyledButton
-                  type="button"
-                  data-value="settings"
-                  onClick={handleShowDialog}
-                  aria-label="Open settings dialog"
-                >
-                  <SettingsIcon aria-hidden="true" />
-                </UnStyledButton>
-              </GraphiQLTooltip> */}
+            <GraphiQLTooltip label="Re-fetch GraphQL schema">
+              <UnStyledButton
+                type="button"
+                disabled={schemaContext.isFetching}
+                onClick={handleRefetchSchema}
+                aria-label="Re-fetch GraphQL schema"
+              >
+                <ReloadIcon className={schemaContext.isFetching ? 'graphiql-spin' : ''} aria-hidden="true" />
+              </UnStyledButton>
+            </GraphiQLTooltip>
+            <GraphiQLTooltip label="Open short keys dialog">
+              <UnStyledButton
+                type="button"
+                data-value="short-keys"
+                onClick={handleShowDialog}
+                aria-label="Open short keys dialog"
+              >
+                <KeyboardShortcutIcon aria-hidden="true" />
+              </UnStyledButton>
+            </GraphiQLTooltip>
+            <GraphiQLTooltip label="Open settings dialog">
+              <UnStyledButton
+                type="button"
+                data-value="settings"
+                onClick={handleShowDialog}
+                aria-label="Open settings dialog"
+              >
+                <SettingsIcon aria-hidden="true" />
+              </UnStyledButton>
+            </GraphiQLTooltip>
           </ResizablePanel>
 
           <ResizableHandle className="hover:ex-bg-blue-500 ex-transition-colors" withHandle />
@@ -606,8 +561,8 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                 aria-labelledby={`${TAB_CLASS_PREFIX}${editorContext.activeTabIndex}`}
               >
                 <div className={`graphiql-editors${editorContext.tabs.length === 1 ? ' full-height' : ''}`}>
-                  <div ref={editorToolsResize.firstRef}>
-                    <section className="graphiql-query-editor" aria-label="Query Editor">
+                  <ResizablePanelGroup direction="vertical">
+                    <ResizablePanel className="ex-flex ex-w-full ex-gap-x-4 ex-px-4 ex-py-2" defaultSize={80}>
                       <QueryEditor
                         editorTheme={props.editorTheme}
                         keyMap={props.keyMap}
@@ -619,87 +574,25 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                         <ExecuteButton />
                         {toolbar}
                       </div>
-                    </section>
-                  </div>
-
-                  <div ref={editorToolsResize.dragBarRef}>
-                    <div className="graphiql-editor-tools">
-                      <UnStyledButton
-                        type="button"
-                        className={
-                          activeSecondaryEditor === 'variables' && editorToolsResize.hiddenElement !== 'second'
-                            ? 'active'
-                            : ''
-                        }
-                        onClick={handleToolsTabClick}
-                        data-name="variables"
-                      >
-                        Variables
-                      </UnStyledButton>
-                      {isHeadersEditorEnabled && (
-                        <UnStyledButton
-                          type="button"
-                          className={
-                            activeSecondaryEditor === 'headers' && editorToolsResize.hiddenElement !== 'second'
-                              ? 'active'
-                              : ''
-                          }
-                          onClick={handleToolsTabClick}
-                          data-name="headers"
-                        >
-                          Headers
-                        </UnStyledButton>
-                      )}
-
-                      <GraphiQLTooltip
-                        label={editorToolsResize.hiddenElement === 'second' ? 'Show editor tools' : 'Hide editor tools'}
-                      >
-                        <UnStyledButton
-                          type="button"
-                          onClick={toggleEditorTools}
-                          aria-label={
-                            editorToolsResize.hiddenElement === 'second' ? 'Show editor tools' : 'Hide editor tools'
-                          }
-                          className="graphiql-toggle-editor-tools"
-                        >
-                          {editorToolsResize.hiddenElement === 'second' ? (
-                            <ChevronUpIcon className="graphiql-chevron-icon" aria-hidden="true" />
-                          ) : (
-                            <ChevronDownIcon className="graphiql-chevron-icon" aria-hidden="true" />
-                          )}
-                        </UnStyledButton>
-                      </GraphiQLTooltip>
-                    </div>
-                  </div>
-
-                  <section
-                    className="graphiql-editor-tool"
-                    aria-label={activeSecondaryEditor === 'variables' ? 'Variables' : 'Headers'}
-                  >
-                    <VariableEditor
-                      editorTheme={props.editorTheme}
-                      isHidden={activeSecondaryEditor !== 'variables'}
-                      keyMap={props.keyMap}
-                      onEdit={props.onEditVariables}
-                      readOnly={props.readOnly}
-                    />
-                    {isHeadersEditorEnabled && (
-                      <HeaderEditor
+                    </ResizablePanel>
+                    <ResizableHandle className="hover:ex-bg-blue-500 ex-transition-colors" withHandle />
+                    <ResizablePanel className="ex-bg-muted ex-px-4 ex-pt-2" defaultSize={20}>
+                      <div className="ex-text-sm ex-font-medium ex-text-muted-foreground">Variables</div>
+                      <VariableEditor
                         editorTheme={props.editorTheme}
-                        isHidden={activeSecondaryEditor !== 'headers'}
+                        isHidden={false}
                         keyMap={props.keyMap}
-                        onEdit={props.onEditHeaders}
+                        onEdit={props.onEditVariables}
                         readOnly={props.readOnly}
                       />
-                    )}
-                  </section>
+                    </ResizablePanel>
+                  </ResizablePanelGroup>
                 </div>
               </div>
             </div>
           </ResizablePanel>
           <ResizableHandle className="hover:ex-bg-blue-500 ex-transition-colors" withHandle />
-          <ResizablePanel className="ex-p-3 ex-relative" defaultSize={30}>
-            {/* TODO: Este es el panel con la respuesta */}
+          <ResizablePanel className="ex-px-5 ex-pt-10 ex-relative" defaultSize={30}>
             <div className="graphiql-response ex-h-full">
               {executionContext.isFetching ? <Spinner /> : null}
               <ResponseEditor
@@ -755,35 +648,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
               </ButtonGroup>
             </div>
           ) : null}
-          {!forcedTheme && (
-            <div className="graphiql-dialog-section">
-              <div>
-                <div className="graphiql-dialog-section-title">Theme</div>
-                <div className="graphiql-dialog-section-caption">Adjust how the interface appears.</div>
-              </div>
-              <ButtonGroup>
-                <GraphiQLButton type="button" className={theme === null ? 'active' : ''} onClick={handleChangeTheme}>
-                  System
-                </GraphiQLButton>
-                <GraphiQLButton
-                  type="button"
-                  className={theme === 'light' ? 'active' : ''}
-                  data-theme="light"
-                  onClick={handleChangeTheme}
-                >
-                  Light
-                </GraphiQLButton>
-                <GraphiQLButton
-                  type="button"
-                  className={theme === 'dark' ? 'active' : ''}
-                  data-theme="dark"
-                  onClick={handleChangeTheme}
-                >
-                  Dark
-                </GraphiQLButton>
-              </ButtonGroup>
-            </div>
-          )}
+
           {storageContext ? (
             <div className="graphiql-dialog-section">
               <div>

@@ -42,7 +42,7 @@ body {
     --sidebar-width: 60px;
     --toolbar-width: 40px;
 
-    --color-primary: 320, 95%, 43%;
+    --color-primary: 338, 95%, 55%;
     --color-secondary: var(--foreground);
     --color-tertiary: 188, 100%, 36%;
     --color-info: var(--link);
@@ -118,7 +118,6 @@ body {
     .graphiql-session {
       display: flex;
       flex: 1;
-      padding: 0 var(--px-8) var(--px-8);
     }
 
     /* All editors (query, variable, headers) */
@@ -126,18 +125,6 @@ body {
       display: flex;
       flex: 1;
       flex-direction: column;
-    }
-
-    /* The query editor and the toolbar */
-    .graphiql-query-editor {
-      border-bottom: 1px solid hsla(var(--color-neutral), var(--alpha-background-heavy));
-      padding-left: var(--px-8);
-      padding-right: var(--px-8);
-      padding-top: var(--px-16);
-      padding-bottom: var(--px-16);
-      column-gap: var(--px-16);
-      display: flex;
-      width: 100%;
     }
 
     .graphiql-tab {
@@ -157,14 +144,6 @@ body {
       & > * + * {
         margin-top: var(--px-8);
       }
-    }
-
-    /* The toolbar icons */
-    .graphiql-toolbar-icon {
-      color: hsla(var(--color-neutral), var(--alpha-tertiary));
-      display: block;
-      height: calc(var(--toolbar-width) - (var(--px-8) * 2));
-      width: calc(var(--toolbar-width) - (var(--px-8) * 2));
     }
 
     /* The tab bar for editor tools */
@@ -195,7 +174,7 @@ body {
 
     /* An editor tool, e.g. variable or header editor */
     .graphiql-editor-tool {
-      flex: 1;
+      height: 100%;
       padding: var(--px-16);
     }
 
@@ -225,6 +204,12 @@ body {
       }
     }
 
+    .CodeMirror-gutter-wrapper {
+      padding-top: 0.125rem;
+      font-size: 0.8125rem;
+      color: hsl(var(--muted-foreground));
+    }
+
     /* The footer below the response view */
     .graphiql-footer {
       border-top: 1px solid hsla(var(--color-neutral), var(--alpha-background-heavy));
@@ -244,11 +229,6 @@ body {
       height: var(--px-12);
       margin: var(--px-12);
       width: var(--px-12);
-    }
-
-    .CodeMirror,
-    .CodeMirror-gutters {
-      background-color: transparent;
     }
 
     /* Avoid showing native tooltips for icons with titles */
@@ -278,9 +258,51 @@ body {
     background: hsl(var(--accent-foreground) / 0.15) !important;
   }
 
+  .graphiql-editors {
+    .CodeMirror-gutters {
+      background-color: hsl(var(--muted));
+    }
+
+    .CodeMirror {
+      background-color: hsl(var(--muted));
+    }
+  }
+
   /* The Docs explorer */
   .graphiql-doc-explorer-header {
-    position: static;
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column-reverse;
+    padding-bottom: 0.25rem;
+    background-color: hsl(var(--background));
+
+    .graphiql-doc-explorer-search {
+      position: relative;
+
+      & [role='listbox'] {
+        background-color: hsl(var(--muted));
+      }
+    }
+  }
+
+  .graphiql-doc-explorer-content {
+    overflow: hidden;
+    overflow-x: auto;
+
+    & > * {
+      color: hsl(var(--muted-foreground));
+    }
+  }
+
+  .graphiql-doc-explorer-title,
+  .graphiql-history-header {
+    font-size: 1.25rem;
+    visibility: visible !important;
+  }
+
+  .graphiql-doc-explorer-header-content {
+    margin-top: 0.75rem;
   }
 
   .graphiql-doc-explorer-search-input {
@@ -288,12 +310,29 @@ body {
   }
 
   .graphiql-doc-explorer-search:not([data-state='idle']) {
-    z-index: 1;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+    border-radius: 6px;
   }
 
-  .graphiql-doc-explorer-search:not([data-state='idle']) .graphiql-doc-explorer-search-input,
-  .graphiql-doc-explorer-search [role='listbox'] {
-    background: hsl(var(--background));
+  .graphiql-doc-explorer-search:not([data-state='idle']) .graphiql-doc-explorer-search-input {
+    background: hsl(var(--muted));
+  }
+
+  .graphiql-doc-explorer-search-input input {
+    height: 1.5rem;
+    width: 100% !important;
+
+    &::-webkit-input-placeholder {
+      color: hsl(var(--muted-foreground));
+      text-align: right;
+    }
+  }
+
+  .graphiql-history-item-spacer {
+    height: 0.5rem;
+    border-bottom: 1px solid hsl(var(--border));
   }
 
   button.graphiql-history-item-action {
@@ -307,6 +346,14 @@ body {
 
   a.graphiql-doc-explorer-type-name {
     color: hsl(var(--color-primary));
+  }
+
+  a.graphiql-doc-explorer-back > svg {
+    overflow: visible;
+  }
+
+  .graphiql-history-item {
+    color: hsl(var(--muted-foreground));
   }
 }
 
