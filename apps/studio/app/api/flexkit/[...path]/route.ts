@@ -8,8 +8,6 @@ const flexkitHandler = createFlexkitApiHandler({
   headers,
 });
 
-// Export the runtime configuration
-export const { runtime } = flexkitHandler;
+export const runtime = 'edge';
 
-// Export all the HTTP methods handlers
 export const { GET, POST, PUT, PATCH, DELETE } = flexkitHandler;

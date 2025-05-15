@@ -9,7 +9,6 @@ export interface FlexkitApiHandler {
   PATCH: (request: any) => Promise<any>;
   POST: (request: any) => Promise<any>;
   PUT: (request: any) => Promise<any>;
-  runtime: string;
 }
 
 /**

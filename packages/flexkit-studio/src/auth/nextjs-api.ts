@@ -21,7 +21,7 @@ const domain = 'api.flexkit.io';
  * });
  *
  * // Export the runtime configuration
- * export const { runtime } = flexkitHandler;
+ * export const runtime = 'edge';
  *
  * // Export all the HTTP methods handlers
  * export const { GET, POST, PUT, PATCH, DELETE } = flexkitHandler;
@@ -160,6 +160,5 @@ export function createFlexkitApiHandler(dependencies: { NextResponse: any; cooki
     PATCH: (request: any) => handleRequest(request),
     POST: (request: any) => handleRequest(request),
     PUT: (request: any) => handleRequest(request),
-    runtime: 'edge',
   };
 }
