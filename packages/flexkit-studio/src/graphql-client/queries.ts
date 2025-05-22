@@ -424,7 +424,7 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
   const globalAttributes = pick(getAttributeListByScope('global', schemaAttributes) as [string], data);
   const attributesString = toPairs(globalAttributes).reduce((acc, [attributeName, value]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
-    const typedValue = stringifyValue(attributeSchema.dataType, value.value);
+    const typedValue = stringifyValue(attributeSchema.dataType, value?.value ?? null);
 
     return `${acc}\n      ${attributeName}: ${typedValue}`;
   }, '');

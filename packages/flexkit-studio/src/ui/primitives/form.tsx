@@ -120,26 +120,48 @@ const FormDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
 );
 FormDescription.displayName = 'FormDescription';
 
-type ExtendedError = FieldError & {
-  error?: {
-    value: {
-      message: string;
+interface NestedError extends Record<string, any> {
+  message?: string;
+  value?: {
+    message?: string;
+    _errors?: string[];
+    validation?: {
+      errors?: Array<{ message: string }>;
     };
   };
-  formMessageId: string;
-};
+  type?: string;
+}
 
 const FormMessage = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
   ({ className, children, ...props }, ref) => {
-    const { error, formMessageId } = useFormField() as unknown as ExtendedError;
+    const { error, formMessageId } = useFormField();
     let body = children;
 
-    if (error && 'message' in error) {
-      body = error.message as string;
+    // Improved error message extraction
+    if (error) {
+      const errorObj = error as unknown as NestedError;
+
+      // Check for direct message
+      if (errorObj.message) {
+        body = errorObj.message;
+      }
+      // Check for value.message
+      else if (errorObj.value?.message) {
+        body = errorObj.value.message;
+      }
+      // Check for nested value._errors (Zod array pattern)
+      else if (errorObj.value?._errors && errorObj.value._errors.length > 0) {
+        body = errorObj.value._errors[0];
+      }
+      // Try to extract from validation.errors (Zod pattern)
+      else if (errorObj.value?.validation?.errors && errorObj.value.validation.errors.length > 0) {
+        body = errorObj.value.validation.errors[0].message;
+      }
     }
 
-    if (error?.value) {
-      body = error.value.message;
+    // Log error for debugging
+    if (error && !body && process.env.NODE_ENV !== 'production') {
+      console.warn('FormMessage: Could not extract error message from', error);
     }
 
     if (!body) {

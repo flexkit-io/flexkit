@@ -6,25 +6,36 @@ import { CustomTextField } from './app/components/custom-input-field';
 import { CustomBooleanPreviewField } from './app/components/custom-boolean-preview-field';
 import { RatePreviewField } from './app/components/rate-preview-field';
 import '@flexkit/explorer/styles.css';
-import { products } from './app/lib/schema/products';
-import { categories } from './app/lib/schema/categories';
-import { flags } from './app/lib/schema/flags';
-import { brands } from './app/lib/schema/brands';
-import { customers } from './app/lib/schema/customers';
-import { customerAddresses } from './app/lib/schema/customer-addresses';
-import { salesOrders } from './app/lib/schema/sales-orders';
-import { salesOrderItems } from './app/lib/schema/sales-order-items';
-import { channels } from './app/lib/schema/channels';
-import { taxes } from './app/lib/schema/taxes';
-import { countries } from './app/lib/schema/countries';
-import { paymentMethods } from './app/lib/schema/payment-methods';
-import { paymentTerms } from './app/lib/schema/payment-terms';
-import { currencies } from './app/lib/schema/currencies';
-import { languages } from './app/lib/schema/languages';
+import { products } from './app/lib/schema/naturitas/products';
+import { categories } from './app/lib/schema/naturitas/categories';
+import { flags } from './app/lib/schema/naturitas/flags';
+import { brands } from './app/lib/schema/naturitas/brands';
+import { customers } from './app/lib/schema/naturitas/customers';
+import { customerAddresses } from './app/lib/schema/naturitas/customer-addresses';
+import { salesOrders } from './app/lib/schema/naturitas/sales-orders';
+import { salesOrderItems } from './app/lib/schema/naturitas/sales-order-items';
+import { channels } from './app/lib/schema/naturitas/channels';
+import { taxes } from './app/lib/schema/naturitas/taxes';
+import { countries } from './app/lib/schema/naturitas/countries';
+import { paymentMethods } from './app/lib/schema/naturitas/payment-methods';
+import { paymentTerms } from './app/lib/schema/naturitas/payment-terms';
+import { currencies } from './app/lib/schema/naturitas/currencies';
+import { languages } from './app/lib/schema/naturitas/languages';
+import { contacts } from './app/lib/schema/flexkit-crm/contacts';
+import { companies } from './app/lib/schema/flexkit-crm/companies';
+import { addresses } from './app/lib/schema/flexkit-crm/addresses';
+import { deals } from './app/lib/schema/flexkit-crm/deals';
+import { pipelineStages } from './app/lib/schema/flexkit-crm/pipeline-stages';
+import { leadSources } from './app/lib/schema/flexkit-crm/lead-sources';
+import { accountManagers } from './app/lib/schema/flexkit-crm/account-managers';
+import { crmCurrencies } from './app/lib/schema/flexkit-crm/currencies';
+import { crmProducts } from './app/lib/schema/flexkit-crm/products';
+import { crmCountries } from './app/lib/schema/flexkit-crm/countries';
+import { crmTags } from './app/lib/schema/flexkit-crm/tags';
 
 export default defineConfig([
   {
-    title: 'Flexkit',
+    title: 'Naturitas',
     projectId: 'abcdefghij',
     basePath: '/studio',
     menuGroups: [
@@ -215,10 +226,55 @@ export default defineConfig([
     ],
   },
   {
-    title: 'Demo 2',
+    title: 'Flexkit CRM',
     projectId: 'uwerfsxskp',
     basePath: '/studio',
+    menuGroups: [
+      { title: 'Contacts', name: 'contacts' },
+      { title: 'Sales', name: 'sales' },
+      { title: 'Marketing', name: 'marketing' },
+      { title: 'Activities', name: 'activities' },
+      { title: 'Config', name: 'config' },
+    ],
+    scopes: [
+      {
+        name: 'default',
+        label: 'Global',
+        isDefault: true,
+      },
+      {
+        name: 'na',
+        label: 'North America',
+      },
+      {
+        name: 'emea',
+        label: 'Europe, Middle East & Africa',
+      },
+      {
+        name: 'apac',
+        label: 'Asia Pacific',
+      },
+      {
+        name: 'latam',
+        label: 'Latin America',
+      },
+      {
+        name: 'enterprise',
+        label: 'Enterprise Division',
+      },
+      {
+        name: 'smb',
+        label: 'SMB Division',
+      },
+      {
+        name: 'government',
+        label: 'Government',
+      },
+    ],
     plugins: [
+      Desk(),
+      AssetManager(),
+      Explorer(),
       {
         name: 'demo.2.plugin',
         title: 'Demo 2 plugin',
@@ -242,6 +298,18 @@ export default defineConfig([
         },
       },
     ],
-    schema: [],
+    schema: [
+      contacts,
+      companies,
+      addresses,
+      deals,
+      pipelineStages,
+      leadSources,
+      accountManagers,
+      crmCurrencies,
+      crmProducts,
+      crmCountries,
+      crmTags,
+    ],
   },
 ]);

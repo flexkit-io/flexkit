@@ -51,14 +51,32 @@ function FormBuilder(
       formSchema.reduce((acc, fieldSchema) => {
         if (typeof fieldSchema.validation === 'undefined') return acc;
 
-        return { ...acc, [fieldSchema.name]: z.object({ value: fieldSchema.validation(z) }) };
+        // Create a clearer validation schema for each field
+        return {
+          ...acc,
+          [fieldSchema.name]: z.object({
+            // Pass through the validation with more detailed error
+            value: fieldSchema.validation(z).or(
+              z.any().refine(() => false, {
+                message: fieldSchema.label ? `${fieldSchema.label} is required` : 'Required field',
+              })
+            ),
+          }),
+        };
       }, {})
     );
   }, [formSchema]);
   type UserSchema = z.infer<typeof validationSchema>;
 
-  const form = useForm<UserSchema>({ resolver: zodResolver(validationSchema), values: formData });
-  const { control, getValues, handleSubmit, setValue, watch } = form;
+  const form = useForm<UserSchema>({
+    resolver: zodResolver(validationSchema),
+    values: formData,
+    mode: 'onBlur',
+    criteriaMode: 'all',
+  });
+
+  const { control, getValues, handleSubmit, setValue, watch, trigger, formState } = form;
+  const { errors } = formState;
   const { getContributionPointConfig } = useConfig();
 
   const formFieldComponentsMap = {
@@ -75,10 +93,13 @@ function FormBuilder(
 
   useImperativeHandle(ref, () => ({
     submit() {
-      void handleSubmit(() => {
-        setIsDirty(false);
-        onSubmit(getValues(), formData);
-      })();
+      // Force validate all fields
+      void trigger().then(() => {
+        void handleSubmit(() => {
+          setIsDirty(false);
+          onSubmit(getValues(), formData);
+        })();
+      });
     },
     hasErrors() {
       setIsDirty(true);
