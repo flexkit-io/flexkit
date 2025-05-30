@@ -87,7 +87,7 @@
     "@tiptap/core": "2.7.0",
     "@tiptap/html": "2.7.0",
     "@tiptap/pm": "2.7.0",
-    "ai": "3.3.37",
+    "ai": "4.3.16",
     "bytes": "^3.1.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
