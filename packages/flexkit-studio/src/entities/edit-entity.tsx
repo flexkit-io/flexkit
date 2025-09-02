@@ -115,7 +115,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
             },
             dialogActionSubmit: () => {
               setCurrentScope(scope);
-              appDispatch({ type: 'setScope', payload: scope });
+              appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope } });
             },
           },
         },
@@ -125,7 +125,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     }
 
     setCurrentScope(scope);
-    appDispatch({ type: 'setScope', payload: scope });
+    appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope } });
   }
 
   const saveEntity = useCallback(

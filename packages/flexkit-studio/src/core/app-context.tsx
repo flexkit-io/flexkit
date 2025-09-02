@@ -4,13 +4,13 @@ import { createContext, useContext, useReducer } from 'react';
 import type { Dispatch, ReactNode } from 'react';
 import type { ActionSetRelationship, ActionSetScope, AppContextType } from './types';
 
-const scopeStorageKey = 'core.context.scope';
-const savedScope = typeof localStorage !== 'undefined' ? localStorage.getItem(scopeStorageKey) : '';
+export const SCOPE_STORAGE_KEY = 'core.context.scope:';
+
 const initialState = {
   breadcrumbs: [],
   isRouteLoading: false,
   pageTitle: '',
-  scope: savedScope ?? 'default',
+  scope: '',
   relationships: {},
 };
 
@@ -25,11 +25,13 @@ function reducer(state: AppContextType, action: ActionSetRelationship | ActionSe
 
   switch (type) {
     case 'setScope':
-      typeof localStorage !== 'undefined' && localStorage.setItem(scopeStorageKey, payload);
+      if (typeof localStorage !== 'undefined' && payload.projectId) {
+        localStorage.setItem(`${SCOPE_STORAGE_KEY}${payload.projectId}`, payload.scope);
+      }
 
       return {
         ...state,
-        scope: payload,
+        scope: payload.scope,
       };
     case 'setRelationship':
       return {

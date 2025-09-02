@@ -29,7 +29,10 @@ export type AppContextType = {
 
 export type ActionSetScope = {
   type: 'setScope';
-  payload: string;
+  payload: {
+    projectId?: string;
+    scope: string;
+  };
 };
 
 export type ActionSetRelationship = {

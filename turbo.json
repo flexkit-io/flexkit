@@ -12,6 +12,7 @@
       "persistent": true,
       "env": ["DEBUG"]
     },
+    "start": {},
     "clean": {
       "cache": false
     },

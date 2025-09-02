@@ -1,7 +1,11 @@
-import { Outlet, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useParams, useLocation } from 'react-router-dom';
+import { find, propEq } from 'ramda';
 import { useAuth } from '../../auth/auth-context';
 import { Login } from '../../auth/login';
 import { useConfig } from '../../core/config/config-context';
+import { SCOPE_STORAGE_KEY, useAppDispatch } from '../../core/app-context';
+import type { SingleProject } from '../../core/config/types';
 import { Loading } from '../components/loading';
 import { Toaster } from '../primitives/sonner';
 import { AppBar } from './appbar';
@@ -19,7 +23,23 @@ export function Layout({ version }: Props): JSX.Element {
   const { contributions, projects } = useConfig();
   const [isLoading, auth] = useAuth();
   const { projectId } = useParams();
+  const { scopes } = find(propEq(projectId ?? '', 'projectId'))(projects) as SingleProject;
   const { apps } = contributions;
+  const appDispatch = useAppDispatch();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (scopes) {
+      const defaultScope = scopes.find((s) => s.isDefault) || scopes[0];
+      let savedScope = '';
+
+      if (typeof localStorage !== 'undefined') {
+        savedScope = localStorage.getItem(`${SCOPE_STORAGE_KEY}${projectId}`) ?? '';
+      }
+
+      appDispatch({ type: 'setScope', payload: { projectId, scope: savedScope || defaultScope.name } });
+    }
+  }, [location]);
 
   if (isLoading) {
     return <Loading />;

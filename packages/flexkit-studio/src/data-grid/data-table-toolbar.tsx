@@ -18,7 +18,7 @@ interface DataTableToolbarProps<TData> {
 export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarProps<TData>): JSX.Element {
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
-  const { scope } = useAppContext();
+  const appContext = useAppContext();
   const { projects, currentProjectId } = useConfig();
   const { scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
 
@@ -27,7 +27,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   }
 
   function handleScopeChange(value: string): void {
-    appDispatch({ type: 'setScope', payload: value });
+    appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope: value } });
   }
 
   return (
@@ -35,15 +35,19 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
       <div className="fk-flex fk-flex-1 fk-items-center fk-space-x-2">
         {scopes && scopes.length > 0 ? (
           <Select
-            defaultValue={scope}
+            defaultValue={appContext.scope}
             onValueChange={(value) => {
               handleScopeChange(value);
             }}
+            value={appContext.scope}
           >
             <SelectTrigger className="fk-w-[12rem] fk-h-8" id="project">
               <span className="fk-text-muted-foreground">Scope:</span>
               <SelectValue>
-                {(find(propEq(scope, 'name'))(scopes) as { name: string; label: string }).label}
+                {
+                  ((find(propEq(appContext.scope ?? '', 'name'))(scopes) as { name: string; label: string }) || null)
+                    ?.label
+                }
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
