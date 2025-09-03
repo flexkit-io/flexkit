@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../ui/primitives/button';
 import { DarkModeSwitch } from '../ui/components/dark-mode-switch';
 import { Loading } from '../ui/components/loading';
@@ -29,7 +29,9 @@ type Provider = {
 
 export function Login({ projectId }: { projectId: string }): JSX.Element {
   const { projects } = useConfig();
-  const [selectedProject, setSelectedProject] = useState(projects[0]);
+  const [selectedProject, setSelectedProject] = useState(
+    projects.find((project) => project.projectId === projectId) ?? projects[0]
+  );
   const [isEmailLogin, setIsEmailLogin] = useState(false);
   const { data, error, isLoading } = useSWR(apiPaths(projectId).authProviders, (url: string) =>
     fetch(url, { mode: 'cors' }).then((res) => res.json() as Promise<{ providers: Provider[] }>)
@@ -45,6 +47,10 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
     ? `${location.origin}${referal}`
     : `${location.origin}${selectedProject.basePath}/${selectedProject.projectId}`;
 
+  if (error) {
+    throw new Error('Error fetching auth providers');
+  }
+
   if (isLoading || isAuthLoading || !data) {
     return <Loading />;
   }
@@ -52,8 +58,6 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
   if (auth.user?.id) {
     return <Navigate replace state={{ from: currentRouterLocation }} to={selectedProject.basePath} />;
   }
-
-  if (error) throw error;
 
   return (
     <>

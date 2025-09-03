@@ -19,7 +19,7 @@ export const IMAGES_BASE_URL = 'https://flexkit.io/images/';
 
 export function apiPaths(projectId = ''): ApiPaths {
   return {
-    authProviders: `${baseProjectApiUrl(projectId)}/auth/providers`,
+    authProviders: `/api/flexkit/${projectId}/auth/providers`,
     completion: `/api/flexkit/${projectId}/completion`,
     currentUser: `/api/flexkit/${projectId}/users/me`,
     loginOtpConfirm: `${baseProjectApiUrl(projectId)}/auth/otp/confirm`,
