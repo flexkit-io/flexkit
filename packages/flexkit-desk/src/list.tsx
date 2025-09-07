@@ -8,6 +8,7 @@ import {
   useParams,
   Outlet,
   useEntityQuery,
+  ProjectDisabled,
 } from '@flexkit/studio';
 import {
   Skeleton,
@@ -41,7 +42,7 @@ export function List(): JSX.Element {
 
   const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };
 
-  const { isLoading, fetchMore, count, data } = useEntityQuery({
+  const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
     schema,
     scope,
@@ -73,6 +74,14 @@ export function List(): JSX.Element {
 
   const loadingData = Array(pageSize).fill({});
   const loadingColumns = getLoadingColumns(columnsDefinition);
+
+  if (isProjectDisabled) {
+    return (
+      <div className="fk-flex fk-flex-col fk-h-full fk-px-4 fk-py-3">
+        <ProjectDisabled />
+      </div>
+    );
+  }
 
   return (
     <div className="fk-flex fk-flex-col fk-h-full fk-px-4 fk-py-3">

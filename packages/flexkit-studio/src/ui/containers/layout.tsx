@@ -6,6 +6,7 @@ import { Login } from '../../auth/login';
 import { useConfig } from '../../core/config/config-context';
 import { SCOPE_STORAGE_KEY, useAppDispatch } from '../../core/app-context';
 import type { SingleProject } from '../../core/config/types';
+import { FlexkitError } from '../../core/error/errors';
 import { Loading } from '../components/loading';
 import { Toaster } from '../primitives/sonner';
 import { AppBar } from './appbar';
@@ -23,7 +24,14 @@ export function Layout({ version }: Props): JSX.Element {
   const { contributions, projects } = useConfig();
   const [isLoading, auth] = useAuth();
   const { projectId } = useParams();
-  const { scopes } = find(propEq(projectId ?? '', 'projectId'))(projects) as SingleProject;
+
+  const project = find(propEq(projectId ?? '', 'projectId'))(projects) as SingleProject | undefined;
+
+  if (!project) {
+    throw new FlexkitError('PROJECT_NOT_FOUND');
+  }
+
+  const { scopes } = project;
   const { apps } = contributions;
   const appDispatch = useAppDispatch();
   const location = useLocation();

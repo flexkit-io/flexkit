@@ -13,6 +13,7 @@ import { useEntityQuery } from '../graphql-client/use-entity-query';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityUpdateMutation } from '../graphql-client/queries';
 import type { EntityData, FormEntityItem } from '../graphql-client/types';
+import { ReadOnlyMode } from '../core/error/read-only-mode';
 import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
 import type { Entity } from '../core/types';
@@ -215,18 +216,21 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       {isLoading || !data.length ? (
         <Loading />
       ) : (
-        <FormBuilder
-          currentScope={currentScope}
-          defaultScope={defaultScope}
-          entityId={entityId}
-          entityName={entityName}
-          entityNamePlural={entityNamePlural}
-          formData={data[0]}
-          onSubmit={saveEntity}
-          ref={ref}
-          schema={schema}
-          setIsDirty={setFormIsDirty}
-        />
+        <>
+          {mutationData.isProjectReadOnly ? <ReadOnlyMode /> : null}
+          <FormBuilder
+            currentScope={currentScope}
+            defaultScope={defaultScope}
+            entityId={entityId}
+            entityName={entityName}
+            entityNamePlural={entityNamePlural}
+            formData={data[0]}
+            onSubmit={saveEntity}
+            ref={ref}
+            schema={schema}
+            setIsDirty={setFormIsDirty}
+          />
+        </>
       )}
     </DrawerModal>
   );

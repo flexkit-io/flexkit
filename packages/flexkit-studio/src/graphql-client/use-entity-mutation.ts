@@ -7,7 +7,13 @@ type EntityMutationResponse = [
   Dispatch<SetStateAction<boolean>>,
   Dispatch<SetStateAction<DocumentNode>>,
   Dispatch<SetStateAction<object>>,
-  { data: unknown; loading: boolean; error: ApolloError | undefined },
+  {
+    data: unknown;
+    loading: boolean;
+    error: ApolloError | undefined;
+    isProjectDisabled: boolean;
+    isProjectReadOnly: boolean;
+  },
 ];
 
 export function useEntityMutation(): EntityMutationResponse {
@@ -20,6 +26,38 @@ export function useEntityMutation(): EntityMutationResponse {
   const [options, setOptions] = useState<MutationHookOptions>({});
   const [mutateFunction, { data, loading, error }] = useMutation(mutation, options);
 
+  // Parse 403 error response to determine the specific error code
+  const { isProjectDisabled, isProjectReadOnly } = (() => {
+    if (error?.networkError && 'statusCode' in error.networkError && error.networkError.statusCode === 403) {
+      // Try to parse the response body to get the error code
+      try {
+        const responseBody = 'result' in error.networkError ? error.networkError.result : null;
+
+        if (responseBody && typeof responseBody === 'object' && 'code' in responseBody) {
+          const errorCode = responseBody.code;
+
+          return {
+            isProjectDisabled: errorCode === 'PROJECT_PAUSED',
+            isProjectReadOnly: errorCode === 'READ_ONLY_MODE',
+          };
+        }
+      } catch {
+        // If parsing fails, fall back to treating any 403 as project disabled for backward compatibility
+      }
+
+      // Fallback: if we can't determine the specific code, assume project is disabled
+      return {
+        isProjectDisabled: true,
+        isProjectReadOnly: false,
+      };
+    }
+
+    return {
+      isProjectDisabled: false,
+      isProjectReadOnly: false,
+    };
+  })();
+
   useEffect(() => {
     if (runMutation) {
       void mutateFunction();
@@ -27,5 +65,5 @@ export function useEntityMutation(): EntityMutationResponse {
     }
   }, [runMutation, mutateFunction]);
 
-  return [setRunMutation, setMutation, setOptions, { data, loading, error }];
+  return [setRunMutation, setMutation, setOptions, { data, loading, error, isProjectDisabled, isProjectReadOnly }];
 }

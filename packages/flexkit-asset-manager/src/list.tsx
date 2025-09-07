@@ -1,6 +1,14 @@
 import { useCallback } from 'react';
 import { find, propEq } from 'ramda';
-import { getEntitySchema, useAppContext, useConfig, useLocation, Outlet, useEntityQuery } from '@flexkit/studio';
+import {
+  getEntitySchema,
+  useAppContext,
+  useConfig,
+  useLocation,
+  Outlet,
+  useEntityQuery,
+  ProjectDisabled,
+} from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
 import { DataTable } from '@flexkit/studio/data-grid';
 import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
@@ -28,7 +36,7 @@ export function List(): JSX.Element {
     ? { where: { _id: entityId } }
     : { where: { NOT: { path: null } }, options: { offset: 0, limit: pageSize, sort: [{ _updatedAt: 'DESC' }] } };
 
-  const { isLoading, fetchMore, count, data } = useEntityQuery({
+  const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
     schema,
     scope,
@@ -60,6 +68,14 @@ export function List(): JSX.Element {
 
   const loadingData = Array(pageSize).fill({});
   const loadingColumns = getLoadingColumns(columnsDefinition);
+
+  if (isProjectDisabled) {
+    return (
+      <div className="fk-flex fk-flex-col fk-h-full fk-pl-3">
+        <ProjectDisabled />
+      </div>
+    );
+  }
 
   return (
     <div className="fk-flex fk-flex-col fk-h-full fk-pl-3">

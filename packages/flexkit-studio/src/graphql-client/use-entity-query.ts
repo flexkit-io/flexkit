@@ -21,6 +21,8 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
   data: MappedEntityItem[] | FormEntityItem[] | ImageValue[] | undefined;
   fetchMore: (args: FetchMoreOptions) => void;
   isLoading: boolean;
+  isProjectDisabled: boolean;
+  isProjectReadOnly: boolean;
 } {
   const [result, setResult] = useState<Results>({
     count: 0,
@@ -31,12 +33,45 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
     loading: isLoading,
     data,
     fetchMore: fetchNextPage,
+    error,
   } = useQuery(
     gql`
       ${entityQuery.query}
     `,
     { variables }
   );
+
+  // Parse 403 error response to determine the specific error code
+  const { isProjectDisabled, isProjectReadOnly } = (() => {
+    if (error?.networkError && 'statusCode' in error.networkError && error.networkError.statusCode === 403) {
+      // Try to parse the response body to get the error code
+      try {
+        const responseBody = 'result' in error.networkError ? error.networkError.result : null;
+
+        if (responseBody && typeof responseBody === 'object' && 'code' in responseBody) {
+          const errorCode = responseBody.code;
+
+          return {
+            isProjectDisabled: errorCode === 'PROJECT_PAUSED',
+            isProjectReadOnly: errorCode === 'READ_ONLY_MODE',
+          };
+        }
+      } catch {
+        // If parsing fails, fall back to treating any 403 as project disabled for backward compatibility
+      }
+
+      // Fallback: if we can't determine the specific code, assume project is disabled
+      return {
+        isProjectDisabled: true,
+        isProjectReadOnly: false,
+      };
+    }
+
+    return {
+      isProjectDisabled: false,
+      isProjectReadOnly: false,
+    };
+  })();
 
   const mappedResults = useCallback(
     () => mapResults({ data, entityNamePlural, isForm, schema, scope }),
@@ -65,7 +100,7 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
     setResult(mappedResults);
   }, [mappedResults]);
 
-  return { isLoading, fetchMore, count: result.count, data: result.results };
+  return { isLoading, fetchMore, count: result.count, data: result.results, isProjectDisabled, isProjectReadOnly };
 }
 
 function mapResults(

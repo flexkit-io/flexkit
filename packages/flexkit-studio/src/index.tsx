@@ -6,6 +6,7 @@ export { FlexkitStudio } from './core/flexkit-studio';
 export { useConfig } from './core/config/config-context';
 export type { ConfigContext } from './core/config/config-context';
 export { IMAGES_BASE_URL } from './core/api-paths';
+export { ProjectDisabled } from './core/error/project-disabled';
 
 // Auth
 export { useAuth } from './auth/auth-context';

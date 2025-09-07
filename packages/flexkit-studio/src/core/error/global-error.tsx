@@ -2,6 +2,7 @@
 
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
 import { DarkModeSwitch } from '../../ui/components/dark-mode-switch';
+import { isFlexkitError, getFlexkitErrorCode } from '../../core/error/errors';
 
 export function GlobalError(): JSX.Element {
   const error = useRouteError();
@@ -29,6 +30,30 @@ export function GlobalError(): JSX.Element {
           </p>
         </>
       );
+    }
+
+    if (isFlexkitError(error)) {
+      switch (getFlexkitErrorCode(error)) {
+        case 'PROJECT_NOT_FOUND':
+          return (
+            <>
+              <h1 className="fk-mb-4 fk-text-4xl fk-text-center fk-font-bold fk-tracking-tight">Project not found</h1>
+              <p className="fk-mt-2 fk-mb-2 fk-text-base fk-text-center fk-text-muted-foreground">
+                The requested project ID was not found
+              </p>
+            </>
+          );
+        case 'UNKNOWN_ERROR':
+        default:
+          return (
+            <>
+              <h1 className="fk-mb-4 fk-text-4xl fk-text-center fk-font-bold fk-tracking-tight">Oops!</h1>
+              <p className="fk-mt-2 fk-mb-2 fk-text-base fk-text-center fk-text-muted-foreground">
+                Sorry, an unexpected error has occurred. Please try again.
+              </p>
+            </>
+          );
+      }
     }
 
     if (error instanceof Error) {
