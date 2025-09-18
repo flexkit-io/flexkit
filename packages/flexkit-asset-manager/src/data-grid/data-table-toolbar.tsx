@@ -1,16 +1,6 @@
 'use client';
 
-import {
-  ArrowDown as ArrowDownIcon,
-  ArrowRight as ArrowRightIcon,
-  ArrowUp as ArrowUpIcon,
-  Circle as CircleIcon,
-  CircleHelp as QuestionMarkCircledIcon,
-  CircleGauge as StopwatchIcon,
-  CircleCheck as CheckCircledIcon,
-  CircleX as CrossCircledIcon,
-  X as ResetIcon,
-} from 'lucide-react';
+import { FilePlayIcon, ImageIcon, ImagePlayIcon, LayersIcon, SplinePointerIcon, X as ResetIcon } from 'lucide-react';
 import type { ReactTable } from '@flexkit/studio';
 import { Button, Input } from '@flexkit/studio/ui';
 import { DataTableFacetedFilter, useDispatch } from '@flexkit/studio';
@@ -22,47 +12,34 @@ interface DataTableToolbarProps<TData> {
 
 const mimeTypes = [
   {
-    value: 'image/jpeg',
-    label: 'JPEG',
-    icon: QuestionMarkCircledIcon,
-  },
-  {
-    value: 'image/png',
-    label: 'PNG',
-    icon: CircleIcon,
-  },
-  {
     value: 'image/gif',
     label: 'GIF',
-    icon: StopwatchIcon,
+    icon: ImagePlayIcon,
   },
   {
-    value: 'image/webp',
-    label: 'WebP',
-    icon: CheckCircledIcon,
+    value: 'image/jpeg',
+    label: 'JPEG',
+    icon: ImageIcon,
   },
   {
     value: 'video/mp4',
     label: 'MP4',
-    icon: CrossCircledIcon,
-  },
-];
-
-const priorities = [
-  {
-    label: 'Low',
-    value: 'low',
-    icon: ArrowDownIcon,
+    icon: FilePlayIcon,
   },
   {
-    label: 'Medium',
-    value: 'medium',
-    icon: ArrowRightIcon,
+    value: 'image/png',
+    label: 'PNG',
+    icon: LayersIcon,
   },
   {
-    label: 'High',
-    value: 'high',
-    icon: ArrowUpIcon,
+    value: 'image/svg+xml',
+    label: 'SVG',
+    icon: SplinePointerIcon,
+  },
+  {
+    value: 'image/webp',
+    label: 'WebP',
+    icon: ImageIcon,
   },
 ];
 
@@ -86,9 +63,6 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
         {table.getColumn('mimeType') && (
           <DataTableFacetedFilter column={table.getColumn('mimeType')} title="File type" options={mimeTypes} />
         )}
-        {/* {table.getColumn('priority') && (
-          <DataTableFacetedFilter column={table.getColumn('priority')} title="Priority" options={priorities} />
-        )} */}
         {isFiltered && (
           <Button variant="ghost" onClick={() => table.resetColumnFilters()} className="fk-h-8 fk-px-2 lg:fk-px-3">
             Reset

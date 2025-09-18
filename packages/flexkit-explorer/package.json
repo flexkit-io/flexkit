@@ -49,7 +49,7 @@
     "@flexkit/studio": "workspace:*",
     "@graphiql/react": "0.26.2",
     "@graphiql/toolkit": "0.11.0",
-    "lucide-react": "^0.354.0",
+    "lucide-react": "0.544.0",
     "ramda": "^0.29.1",
     "swr": "^2.2.4"
   },
