@@ -3,7 +3,7 @@
 import { FilePlayIcon, ImageIcon, ImagePlayIcon, LayersIcon, SplinePointerIcon, X as ResetIcon } from 'lucide-react';
 import type { ReactTable } from '@flexkit/studio';
 import { Button, Input } from '@flexkit/studio/ui';
-import { DataTableFacetedFilter, useDispatch } from '@flexkit/studio';
+import { DataTableFacetedFilter, useParams, useUploadAssets } from '@flexkit/studio';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
@@ -44,11 +44,12 @@ const mimeTypes = [
 ];
 
 export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarProps<TData>): JSX.Element {
-  const actionDispatch = useDispatch();
   const isFiltered = table.getState().columnFilters.length > 0;
+  const { projectId } = useParams();
+  const uploadAssets = useUploadAssets();
 
-  function handleCreate(): void {
-    actionDispatch({ type: 'AddEntity', payload: { entityName } });
+  async function handleUpload(): Promise<void> {
+    await uploadAssets({ projectId, accept: 'image/*', multiple: true, maxBytes: 4 * 1024 * 1024 });
   }
 
   return (
@@ -70,7 +71,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
           </Button>
         )}
       </div>
-      <Button className="fk-ml-auto fk-h-8 lg:fk-flex" onClick={handleCreate} size="sm" variant="default">
+      <Button className="fk-ml-auto fk-h-8 lg:fk-flex" onClick={handleUpload} size="sm" variant="default">
         Upload assets
       </Button>
     </div>

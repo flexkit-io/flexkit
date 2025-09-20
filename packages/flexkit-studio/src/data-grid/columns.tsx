@@ -49,35 +49,41 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     'textarea': TextPreviewField,
   };
 
-  const cols = attributesSchema.map((attribute) => {
-    const previewType =
-      attribute.previewType ??
-      inputTypeToPreviewFieldMap[attribute.inputType as keyof typeof inputTypeToPreviewFieldMap];
-    const previewComponent =
-      (getContributionPointConfig('previewFields', [previewType])?.[0]?.component as unknown as
-        | ComponentType<{ value: TData }>
-        | undefined) ??
-      previewFieldComponentsMap[previewType as keyof typeof previewFieldComponentsMap] ??
-      previewFieldComponentsMap['text'];
+  const cols = attributesSchema
+    .map((attribute) => {
+      const previewType =
+        attribute.previewType ??
+        inputTypeToPreviewFieldMap[attribute.inputType as keyof typeof inputTypeToPreviewFieldMap];
+      const previewComponent =
+        (getContributionPointConfig('previewFields', [previewType])?.[0]?.component as unknown as
+          | ComponentType<{ value: TData }>
+          | undefined) ??
+        previewFieldComponentsMap[previewType as keyof typeof previewFieldComponentsMap] ??
+        previewFieldComponentsMap['text'];
 
-    return {
-      accessorKey: attribute.name,
-      filterFn: (row: Row<TData>, id: string, value: string) => {
-        return value.includes(row.getValue(id));
-      },
-      header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
-      cell: ({ row }: CellContext<TData, TValue>) => {
-        const PreviewComponent = previewComponent as ComponentType<{ value: TData }>;
+      if (attribute.isHidden) {
+        return null;
+      }
 
-        // TODO: Pass the complete row data to the preview component, so it can concatenate values from other attributes (i.e. for the "image dimensions" column)
-        // console.log(row.getAllCells());
-        return <PreviewComponent value={row.getValue(attribute.name)} />;
-      },
-      enableSorting: false,
-      enableHiding: true,
-      size: attribute.options?.size ?? 150,
-    };
-  });
+      return {
+        accessorKey: attribute.name,
+        filterFn: (row: Row<TData>, id: string, value: string) => {
+          return value.includes(row.getValue(id));
+        },
+        header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
+        cell: ({ row }: CellContext<TData, TValue>) => {
+          const PreviewComponent = previewComponent as ComponentType<{ value: TData }>;
+
+          // TODO: Pass the complete row data to the preview component, so it can concatenate values from other attributes (i.e. for the "image dimensions" column)
+          // console.log(row.getAllCells());
+          return <PreviewComponent value={row.getValue(attribute.name)} />;
+        },
+        enableSorting: false,
+        enableHiding: true,
+        size: attribute.options?.size ?? 150,
+      };
+    })
+    .filter((column) => column !== null);
 
   const actions = {
     id: 'actions',

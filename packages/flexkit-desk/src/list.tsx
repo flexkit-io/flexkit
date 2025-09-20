@@ -10,15 +10,7 @@ import {
   useEntityQuery,
   ProjectDisabled,
 } from '@flexkit/studio';
-import {
-  Skeleton,
-  SidebarTrigger,
-  Separator,
-  useSidebar,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@flexkit/studio/ui';
+import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@flexkit/studio/ui';
 import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
 import { DataTable, DataTableRowActions, DataTableToolbar, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
 
@@ -38,7 +30,6 @@ export function List(): JSX.Element {
     actionsComponent: (row) =>
       dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
   });
-  const { setOpen } = useSidebar();
 
   const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };
 

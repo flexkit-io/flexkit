@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { find, propEq } from 'ramda';
 import {
-  getEntitySchema,
+  imageSchema,
   useAppContext,
   useConfig,
   useLocation,
@@ -25,11 +25,9 @@ export function List(): JSX.Element {
   const { scope } = useAppContext();
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-  const entitySchema = getEntitySchema(schema, entityName);
   const columnsDefinition = useGridColumnsDefinition({
-    attributesSchema: entitySchema?.attributes ?? [],
-    actionsComponent: (row) =>
-      dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
+    attributesSchema: imageSchema.attributes,
+    actionsComponent: (row) => dataRowActions({ entityName: imageSchema.name, entityNamePlural: entityName, row }),
   });
 
   const variables = entityId
@@ -83,12 +81,12 @@ export function List(): JSX.Element {
       <DataTable
         columns={isLoading ? loadingColumns : columnsDefinition}
         data={isLoading ? loadingData : (data ?? [])}
-        entityName={entitySchema?.name ?? ''}
+        entityName={imageSchema.name}
         pageSize={pageSize}
         onScroll={(e) => {
           fetchMoreOnBottomReached(e.target as HTMLDivElement);
         }}
-        toolbarComponent={(table) => <DataTableToolbar entityName={entitySchema?.name ?? ''} table={table} />}
+        toolbarComponent={(table) => <DataTableToolbar entityName={imageSchema.name} table={table} />}
       />
       <Outlet />
     </div>

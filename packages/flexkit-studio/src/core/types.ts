@@ -139,6 +139,7 @@ export type Attribute = {
   inputType: InputType;
   previewType?: PreviewType;
   isEditable?: boolean;
+  isHidden?: boolean;
   isPrimary?: boolean;
   isUnique?: boolean;
   isSearchable?: boolean;

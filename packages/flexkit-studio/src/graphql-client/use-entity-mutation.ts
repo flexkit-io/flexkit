@@ -1,6 +1,26 @@
 import { useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useMutation, gql } from '@apollo/client';
+import { getAssetCreateMutation } from './queries';
+import type { FormEntityItem, EntityData } from './types';
+
+export function useCreateAssetMutation(): (entityData: FormEntityItem) => Promise<void> {
+  // We generate text mutation on the fly, so define a no-op default and replace per call
+  const [mutate] = useMutation(gql`
+    mutation __noop__ {
+      __typename
+    }
+  `);
+
+  return async (entityData: FormEntityItem): Promise<void> => {
+    const mutation = getAssetCreateMutation(entityData as unknown as EntityData);
+    await mutate({
+      mutation: gql`
+        ${mutation}
+      `,
+    });
+  };
+}
 import type { ApolloError, DocumentNode, MutationHookOptions } from '@apollo/client';
 
 type EntityMutationResponse = [

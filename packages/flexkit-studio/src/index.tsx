@@ -6,6 +6,8 @@ export { FlexkitStudio } from './core/flexkit-studio';
 export { useConfig } from './core/config/config-context';
 export type { ConfigContext } from './core/config/config-context';
 export { IMAGES_BASE_URL } from './core/api-paths';
+export { useUploadAssets } from './core/upload';
+export type { UploadedFileResult } from './core/upload';
 export { ProjectDisabled } from './core/error/project-disabled';
 
 // Auth
@@ -20,7 +22,7 @@ export type { FormFieldParams } from './form/types';
 
 // GraphQL client
 export { useEntityQuery } from './graphql-client/use-entity-query';
-export type { AttributeValue, FormFieldValue, MappedEntityItem } from './graphql-client/types';
+export type { AttributeValue, FormFieldValue, MappedEntityItem, FormEntityItem } from './graphql-client/types';
 
 // Data Grid
 export {
@@ -39,6 +41,7 @@ export { DataTableFacetedFilter } from './data-grid/data-table-faceted-filter';
 // Entities
 export { useDispatch } from './entities/actions-context';
 export { getEntitySchema } from './graphql-client/queries';
+export { imageSchema } from './entities/assets-schema';
 
 export type {
   ColumnDef,

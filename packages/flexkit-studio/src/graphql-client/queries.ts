@@ -1,4 +1,5 @@
 import { filter, find, pick, propEq, toPairs, omit } from 'ramda';
+import { v4 as uuidv4 } from 'uuid';
 import { imageSchema } from '../entities/assets-schema';
 import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
 import type {
@@ -933,6 +934,31 @@ export function getRelatedItemsQuery({
       `  }\n` +
       `}\n`,
   };
+}
+
+export function getAssetCreateMutation(entityData: EntityData): string {
+  const attributes = imageSchema.attributes;
+  const pluralizedEntityName = capitalize(imageSchema.plural);
+  const _id = uuidv4();
+  const data = filterOutInvalidAttributes(attributes, entityData);
+  const globalAttributes = globalAttributesUpdate(attributes, data);
+  const responseType = imageSchema.plural;
+  const attributeNamesList = formatResponseFieldsForMutation([imageSchema], responseType, 'default');
+
+  return (
+    `mutation {\n` +
+    `  create${pluralizedEntityName}(\n` +
+    `    input: [{\n` +
+    `      _id: "${_id}"` +
+    `      ${globalAttributes}` +
+    `    }]\n` +
+    `  ) {\n` +
+    `    ${responseType} {\n` +
+    `      ${attributeNamesList}` +
+    `    }\n` +
+    `  }\n` +
+    `}\n`
+  );
 }
 
 const capitalize = (str: string): string => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { cloneElement, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactElement, UIEvent } from 'react';
 import {
   flexRender,
