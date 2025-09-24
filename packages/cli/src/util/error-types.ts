@@ -1,5 +1,3 @@
-import type { Response } from 'node-fetch';
-
 export class APIError extends Error {
   status: number;
   serverMessage: string;

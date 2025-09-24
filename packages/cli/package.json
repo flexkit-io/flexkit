@@ -21,7 +21,7 @@
     "flexkit": "./dist/index.js"
   },
   "engines": {
-    "node": ">= 16"
+    "node": ">= 22"
   },
   "devDependencies": {
     "@inquirer/checkbox": "^2.4.7",
@@ -35,7 +35,6 @@
     "@types/json-parse-better-errors": "^1.0.3",
     "@types/load-json-file": "2.0.7",
     "@types/node": "^22.1.0",
-    "@types/node-fetch": "2.6.7",
     "@types/write-json-file": "2.2.1",
     "ansi-escapes": "4.3.2",
     "arg": "5.0.2",
@@ -51,14 +50,13 @@
     "is-docker": "2.2.1",
     "json-parse-better-errors": "^1.0.2",
     "load-json-file": "3.0.0",
-    "node-fetch": "2.6.7",
     "open": "8.4.0",
     "ora": "3.4.0",
     "proxy-agent": "^6.4.0",
     "strip-ansi": "6.0.1",
     "supports-hyperlinks": "3.0.0",
     "ts-node": "10.9.2",
-    "tsup": "^7.2.0",
+    "tsup": "8.5.0",
     "type-fest": "^4.24.0",
     "typescript": "^5.3.3",
     "write-json-file": "2.2.0",

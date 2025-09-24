@@ -1,5 +1,4 @@
 import util from 'node:util';
-import type { Response } from 'node-fetch';
 import { APIError } from './error-types';
 
 /**

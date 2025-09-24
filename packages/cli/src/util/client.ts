@@ -9,8 +9,6 @@ import expand from '@inquirer/expand';
 import input from '@inquirer/input';
 import select from '@inquirer/select';
 import retry, { type RetryFunction, type Options as RetryOptions } from 'async-retry';
-import fetch, { Headers } from 'node-fetch';
-import type { BodyInit, RequestInit, Response } from 'node-fetch';
 import type {
   AuthConfig,
   FlexkitConfig,
@@ -143,6 +141,15 @@ export default class Client extends EventEmitter implements Stdio {
 
     const requestId = this.requestIdCounter++;
 
+    const {
+      json: _ignoreJson,
+      retry: _ignoreRetry,
+      projectId: _ignoreProjectId,
+      headers: _ignoreHeaders,
+      body: _ignoreBody,
+      ...requestInit
+    } = opts;
+
     return this.output.time(
       (res) => {
         if (res) {
@@ -151,7 +158,7 @@ export default class Client extends EventEmitter implements Stdio {
 
         return `#${requestId.toString()} → ${opts.method ?? 'GET'} ${url.href}`;
       },
-      fetch(url, { agent: this.agent, ...opts, headers, body })
+      fetch(url, { ...requestInit, headers, body })
     );
   }
 
