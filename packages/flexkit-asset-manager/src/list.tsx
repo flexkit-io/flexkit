@@ -27,7 +27,7 @@ export function List(): JSX.Element {
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const columnsDefinition = useGridColumnsDefinition({
     attributesSchema: imageSchema.attributes,
-    actionsComponent: (row) => dataRowActions({ entityName: imageSchema.name, entityNamePlural: entityName, row }),
+    checkboxSelect: 'multiple',
   });
 
   const variables = entityId
@@ -106,7 +106,14 @@ type DataRowActions = {
 };
 
 function dataRowActions({ entityName, entityNamePlural, row }: DataRowActions): JSX.Element {
-  return <DataTableRowActions entityName={entityName} entityNamePlural={entityNamePlural} row={row} />;
+  return (
+    <DataTableRowActions
+      entityName={entityName}
+      entityNamePlural={entityNamePlural}
+      row={row}
+      options={{ canDelete: false, canEdit: false }}
+    />
+  );
 }
 
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {

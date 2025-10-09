@@ -1,6 +1,6 @@
 'use client';
 
-import { Ellipsis, Pencil } from 'lucide-react';
+import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
 import type { Row } from '@tanstack/react-table';
 import { Button } from '../ui/primitives/button';
 import {
@@ -16,12 +16,17 @@ interface DataTableRowActionsProps<TData> {
   entityName: string;
   entityNamePlural: string;
   row: Row<TData>;
+  options: {
+    canDelete?: boolean;
+    canEdit?: boolean;
+  };
 }
 
 export function DataTableRowActions<TData>({
   entityName,
   entityNamePlural,
   row,
+  options = { canDelete: true, canEdit: true },
 }: DataTableRowActionsProps<TData>): JSX.Element {
   const actionDispatch = useDispatch();
   // @ts-expect-error -- the DataGrid's original type doesn't know about the _id property
@@ -37,24 +42,33 @@ export function DataTableRowActions<TData>({
 
   return (
     <div className="fk-flex">
-      <Button className="fk-flex fk-h-7 fk-w-7 fk-p-0 fk-mr-1" onClick={handleEdit} variant="ghost">
-        <Pencil className="fk-h-4 fk-w-4" />
-        <span className="fk-sr-only">Edit</span>
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button className="fk-flex fk-h-7 fk-w-7 fk-p-0" variant="ghost">
-            <Ellipsis className="fk-h-4 fk-w-4" />
-            <span className="fk-sr-only">Additional actions</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[160px]">
-          <DropdownMenuItem onClick={handleEdit}>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Duplicate</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleDelete}>Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {options.canEdit && (
+        <Button className="fk-flex fk-h-7 fk-w-7 fk-p-0 fk-mr-1" onClick={handleEdit} variant="ghost">
+          <Pencil className="fk-h-4 fk-w-4" />
+          <span className="fk-sr-only">Edit</span>
+        </Button>
+      )}
+      {options.canDelete && !options.canEdit && (
+        <Button className="fk-flex fk-h-7 fk-w-7 fk-p-0 fk-mr-1" onClick={handleDelete} variant="ghost">
+          <Trash2 className="fk-h-4 fk-w-4" />
+          <span className="fk-sr-only">Delete</span>
+        </Button>
+      )}
+      {options.canEdit && options.canDelete && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="fk-flex fk-h-7 fk-w-7 fk-p-0" variant="ghost">
+              <Ellipsis className="fk-h-4 fk-w-4" />
+              <span className="fk-sr-only">Additional actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[160px]">
+            <DropdownMenuItem onClick={handleEdit}>Edit</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleDelete}>Delete</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }

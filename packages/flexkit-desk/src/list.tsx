@@ -29,6 +29,7 @@ export function List(): JSX.Element {
     attributesSchema: entitySchema?.attributes ?? [],
     actionsComponent: (row) =>
       dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
+    checkboxSelect: 'multiple',
   });
 
   const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };

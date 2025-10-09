@@ -99,7 +99,7 @@ body {
     --link: 212 100% 48%;
 
     --destructive: 357 100% 69%;
-    --destructive-foreground: 350 67% 12%;
+    --destructive-foreground: 0 0% 100%;
 
     --success: 212 100% 48%;
     --success-foreground: 215 100% 91%;

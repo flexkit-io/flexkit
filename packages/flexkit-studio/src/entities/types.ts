@@ -53,6 +53,7 @@ export type ActionDeleteEntity = {
   payload: {
     entityId: string;
     entityName: string;
+    silent?: boolean;
   };
 };
 

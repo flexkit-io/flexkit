@@ -22,7 +22,10 @@ export type { FormFieldParams } from './form/types';
 
 // GraphQL client
 export { useEntityQuery } from './graphql-client/use-entity-query';
+export { useEntityMutation } from './graphql-client/use-entity-mutation';
 export type { AttributeValue, FormFieldValue, MappedEntityItem, FormEntityItem } from './graphql-client/types';
+export { getEntityDeleteMutation } from './graphql-client/queries';
+export { gql } from '@apollo/client';
 
 // Data Grid
 export {

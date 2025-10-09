@@ -20,6 +20,15 @@ export default function Delete({ action }: Props): JSX.Element {
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const entityName = action.payload.entityName === '_image' ? 'image' : action.payload.entityName.toLowerCase();
 
+  if (action.payload.silent) {
+    // fire immediately without confirmation
+    setTimeout(() => {
+      handleDeletion();
+    }, 0);
+
+    return <></>;
+  }
+
   const dialogOptions = {
     dialogTitle: `Delete ${entityName}`,
     dialogMessage: `Are you sure you want to delete the selected ${entityName}? The item will be deleted permanently.`,
