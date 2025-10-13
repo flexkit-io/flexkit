@@ -40,6 +40,7 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
   classNames?: {
     wrapper?: string;
     table?: string;
+    row?: string;
   };
   columns: ColumnDef<AttributeValue, TValue>[];
   data: TData[];
@@ -137,7 +138,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
               {headerGroup.headers.map((header) => {
                 return (
                   <TableHead
-                    className="fk-flex fk-items-center"
+                    className={cn('fk-flex fk-items-center', header.column.id === 'actions' && 'fk-pl-0')}
                     colSpan={header.colSpan}
                     key={header.id}
                     style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
@@ -163,7 +164,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
                 <TableRow
                   className={`${(table.options.meta as ExtendedDataTable).getRowBackground(
                     row
-                  )} fk-flex fk-absolute fk-w-full`}
+                  )} fk-flex fk-absolute fk-w-full ${classNames?.row ?? ''}`}
                   data-index={virtualRow.index}
                   data-state={row.getIsSelected() && 'selected'}
                   key={virtualRow.key}
@@ -174,7 +175,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
-                      className="fk-flex fk-items-center fk-truncate"
+                      className={cn('fk-flex fk-items-center fk-truncate', cell.column.id === 'actions' && '!fk-pl-0')}
                       key={cell.id}
                       style={{
                         width: cell.column.getSize(),

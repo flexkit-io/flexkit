@@ -7,12 +7,14 @@ import {
   Download as DownloadIcon,
   Ellipsis as EllipsisIcon,
   Image as ImageIcon,
+  File as FileOutlineIcon,
   Maximize2,
   RefreshCwOff as ClearFieldIcon,
   Search as SearchIcon,
   Upload as UploadIcon,
   X as ClearIcon,
 } from 'lucide-react';
+import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
 import { toast } from 'sonner';
 import type { FormFieldValue, ImageValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
@@ -31,7 +33,7 @@ import { apiPaths, IMAGES_BASE_URL } from '../../core/api-paths';
 import { useOuterClick } from '../../ui/hooks/use-outer-click';
 import type { FormFieldParams } from '../types';
 
-export function Uploader({ control, fieldSchema, getValues, setValue }: FormFieldParams<'image'>): JSX.Element {
+export function Uploader({ control, fieldSchema, getValues, setValue }: FormFieldParams<'asset'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
   const { projectId } = useParams();
   const [isOpen, setIsOpen] = useState(false);
@@ -43,6 +45,73 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
   const id = useId();
   useOuterClick(wrapperRef, setIsOpen, '[data-radix-popper-content-wrapper]');
 
+  function getExtensionFromMime(mime: string | undefined): string | undefined {
+    if (!mime) {
+      return undefined;
+    }
+
+    const map: Record<string, string> = {
+      'application/pdf': 'pdf',
+      'application/zip': 'zip',
+      'application/x-zip-compressed': 'zip',
+      'application/json': 'json',
+      'text/csv': 'csv',
+      'text/plain': 'txt',
+      'application/msword': 'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'application/vnd.ms-powerpoint': 'ppt',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+      'application/vnd.apple.keynote': 'key',
+      'application/vnd.apple.numbers': 'numbers',
+      'application/vnd.apple.pages': 'pages',
+      'application/x-7z-compressed': '7z',
+      'application/x-rar-compressed': 'rar',
+      'application/xml': 'xml',
+      'video/mp4': 'mp4',
+      'video/quicktime': 'mov',
+      'audio/mpeg': 'mp3',
+      'audio/wav': 'wav',
+    };
+
+    if (map[mime]) {
+      return map[mime];
+    }
+
+    const parts = mime.split('/');
+
+    if (parts.length === 2) {
+      const sub = parts[1];
+
+      if (sub.includes('svg')) {
+        return 'svg';
+      }
+
+      return sub.toLowerCase();
+    }
+
+    return undefined;
+  }
+
+  function getFileExtension(originalFilename: string | undefined, mime: string | undefined): string {
+    if (originalFilename && originalFilename.includes('.')) {
+      const ext = originalFilename.split('.').pop();
+
+      if (ext) {
+        return ext.toLowerCase();
+      }
+    }
+
+    const fromMime = getExtensionFromMime(mime);
+
+    if (fromMime) {
+      return fromMime;
+    }
+
+    return 'file';
+  }
+
   async function handleInput(file: File | null, previousValue: FormFieldValue | undefined): Promise<void> {
     if (!file) {
       return;
@@ -53,25 +122,34 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      setBase64PreviewImage(e.target?.result as string);
+    const isImage = file.type.startsWith('image/');
 
-      img.onload = function () {
-        setValue(name, {
-          ...(getValues(name)?.value as ImageValue),
-          value: {
+    if (isImage) {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const img = new Image();
+
+        setBase64PreviewImage(e.target?.result as string);
+
+        img.onload = function () {
+          setValue(name, {
             ...(getValues(name)?.value as ImageValue),
-            width: img.width,
-            height: img.height,
-          },
-        });
+            value: {
+              ...(getValues(name)?.value as ImageValue),
+              width: img.width,
+              height: img.height,
+            },
+          });
+        };
+
+        img.src = reader.result as string;
       };
 
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    } else {
+      setBase64PreviewImage(null);
+    }
 
     setSaving(true);
 
@@ -93,6 +171,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
           size: file.size,
           mimeType: file.type,
           lqip: data.lqip,
+          ...(isImage ? {} : { width: undefined, height: undefined }),
         },
       });
     } catch (error) {
@@ -209,7 +288,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                 {!(field.value?.value as ImageValue)?.path && !base64PreviewImage ? (
                   <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
                     <div className="fk-flex fk-h-full fk-items-center fk-text-muted-foreground fk-text-sm fk-font-light">
-                      <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" /> Drag or paste image here
+                      <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" /> Drag or paste file here
                     </div>
                     <Button
                       className="fk-ml-auto fk-h-7 fk-rounded fk-text-muted-foreground"
@@ -229,11 +308,35 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                 {/* When there is an image, show the image and its metadata */}
                 {(field.value?.value as ImageValue | undefined)?.path && !isOpen ? (
                   <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
-                    <img
-                      className="fk-w-8 fk-h-8 fk-mr-2 fk-rounded fk-object-scale-down"
-                      src={`${IMAGES_BASE_URL}${(field.value?.value as ImageValue).path}?w=128&h=128&f=webp`}
-                      alt="Uploaded"
-                    />
+                    {(() => {
+                      const value = field.value?.value as ImageValue;
+                      const mime = value?.mimeType;
+                      const path = value?.path || '';
+                      const isImage = Boolean(
+                        (mime && mime.startsWith('image/')) || /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(path)
+                      );
+
+                      if (isImage) {
+                        return (
+                          <img
+                            className="fk-w-8 fk-h-8 fk-mr-2 fk-rounded fk-object-scale-down"
+                            src={`${IMAGES_BASE_URL}${value.path}?w=128&h=128&f=webp`}
+                            alt="Uploaded"
+                          />
+                        );
+                      }
+
+                      const ext = getFileExtension(value.originalFilename, value.mimeType);
+                      const style = (
+                        defaultStyles as Record<string, Record<string, string | number | boolean | undefined>>
+                      )[ext];
+
+                      return (
+                        <div className="fk-w-8 fk-h-8 fk-mr-2 fk-rounded fk-bg-transparent fk-flex fk-items-center fk-justify-center [&>svg]:fk-h-full [&>svg]:fk-w-auto">
+                          <FileTypeIcon extension={ext} {...(style || {})} />
+                        </div>
+                      );
+                    })()}
                     {bytes((field.value?.value as ImageValue).size)}
                     <span className="fk-block fk-w-px fk-h-5 fk-mx-2 fk-bg-border" />
                     {(field.value?.value as ImageValue).mimeType}
@@ -255,6 +358,14 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                     Loading image...
                   </div>
                 )}
+                {!(field.value?.value as ImageValue)?.path && !base64PreviewImage && saving ? (
+                  <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
+                    <div className="fk-w-7 fk-h-7 fk-mr-2 fk-rounded fk-bg-muted fk-flex fk-items-center fk-justify-center">
+                      <FileOutlineIcon className="fk-h-4 fk-w-4 fk-text-muted-foreground" />
+                    </div>
+                    Uploading file...
+                  </div>
+                ) : null}
                 {/* When there is an image, show the dropdown menu */}
                 {(field.value?.value as ImageValue)?.path ? (
                   <div className="fk-absolute fk-top-0 fk-right-10">
@@ -285,7 +396,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" />
-                            <span>Select image</span>
+                            <span>Select file</span>
                           </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
@@ -374,13 +485,43 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
               >
                 <CollapsibleContent className="fk-w-full">
                   <div className="fk-flex fk-w-full fk-h-[30vh]" id={`image-dropdown-${name}`}>
-                    {(field.value?.value as ImageValue | undefined)?.path ? (
-                      <img
-                        className="fk-w-full fk-rounded-md fk-object-scale-down"
-                        src={`${IMAGES_BASE_URL}${(field.value?.value as ImageValue).path}?w=624&h=624&f=webp`}
-                        alt="Uploaded"
-                      />
-                    ) : null}
+                    {(field.value?.value as ImageValue | undefined)?.path
+                      ? (() => {
+                          const value = field.value?.value as ImageValue;
+                          const mime = value?.mimeType;
+                          const path = value?.path || '';
+                          const isImage = Boolean(
+                            (mime && mime.startsWith('image/')) || /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(path)
+                          );
+
+                          if (isImage) {
+                            return (
+                              <img
+                                className="fk-w-full fk-rounded-md fk-object-scale-down"
+                                src={`${IMAGES_BASE_URL}${value.path}?w=624&h=624&f=webp`}
+                                alt="Uploaded"
+                              />
+                            );
+                          }
+
+                          const ext = getFileExtension(value.originalFilename, value.mimeType);
+                          const style = (
+                            defaultStyles as Record<string, Record<string, string | number | boolean | undefined>>
+                          )[ext];
+
+                          return (
+                            <div className="fk-w-full fk-h-full fk-rounded-md fk-bg-muted/40 fk-flex fk-flex-col fk-items-center fk-justify-center fk-text-muted-foreground">
+                              <div className="fk-w-16 fk-h-16 fk-rounded fk-bg-transparent fk-flex fk-items-center fk-justify-center [&>svg]:fk-h-full [&>svg]:fk-w-auto">
+                                <FileTypeIcon extension={ext} {...(style || {})} />
+                              </div>
+                              <div className="fk-mt-3 fk-text-sm">
+                                {value.originalFilename || 'File'} · {bytes(value.size)} · {value.mimeType}
+                              </div>
+                              <div className="fk-mt-1 fk-text-xs">Preview not available</div>
+                            </div>
+                          );
+                        })()
+                      : null}
                   </div>
                 </CollapsibleContent>
               </Collapsible>

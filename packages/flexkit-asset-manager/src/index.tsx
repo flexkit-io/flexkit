@@ -1,6 +1,6 @@
 import { FileStack as FileStackIcon } from 'lucide-react';
 import type { PluginOptions } from '@flexkit/studio';
-import { Image } from './data-grid/preview-components/image';
+import { Asset } from './data-grid/preview-components/asset';
 import { Root } from './root';
 
 export function AssetManager(): PluginOptions {
@@ -17,9 +17,9 @@ export function AssetManager(): PluginOptions {
         },
       ],
       previewFields: {
-        imagePreviewField: {
-          component: Image,
-          description: 'Image preview field for the asset manager',
+        assetPreviewField: {
+          component: Asset,
+          description: 'Asset preview field for the asset manager',
         },
       },
     },

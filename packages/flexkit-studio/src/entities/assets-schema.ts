@@ -1,12 +1,12 @@
 import type { Entity } from '../core/types';
 
-export const imageSchema: Entity = {
-  name: '_image',
-  plural: '_images',
+export const assetSchema: Entity = {
+  name: '_asset',
+  plural: '_assets',
   attributes: [
     {
       name: 'path',
-      label: 'Image',
+      label: 'Asset',
       scope: 'global',
       options: {
         size: 140,
@@ -14,7 +14,7 @@ export const imageSchema: Entity = {
       isEditable: true,
       dataType: 'string',
       inputType: 'text',
-      previewType: 'imagePreviewField',
+      previewType: 'assetPreviewField',
       defaultValue: '',
     },
     {

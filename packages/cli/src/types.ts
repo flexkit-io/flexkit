@@ -81,12 +81,12 @@ type DataType =
   | 'point'
   | 'string'
   | 'time'
-  | 'image';
+  | 'asset';
 
 type InputType =
   | 'datetime'
   | 'editor'
-  | 'image'
+  | 'asset'
   | 'number'
   | 'relationship'
   | 'select'
@@ -130,7 +130,7 @@ type SelectOptions = CommonOptions & {
   list: SelectList[] | GroupedSelectList[];
 };
 
-type ImageOptions = CommonOptions & {
+type AssetOptions = CommonOptions & {
   accept?: string;
 };
 
@@ -145,7 +145,7 @@ type NumberOptions = CommonOptions & {
 
 export type AttributeOptions = {
   select: SelectOptions;
-  image: ImageOptions;
+  asset: AssetOptions;
   datetime: DateTimeOptions;
   number: NumberOptions;
   [key: string]: CommonOptions;
@@ -168,7 +168,7 @@ export type Attribute = {
     mode: 'single' | 'multiple';
     field: string;
   };
-} & ({ dataType: 'image' } | { dataType: Exclude<DataType, 'image'>; scope: ScopeType });
+} & ({ dataType: 'asset' } | { dataType: Exclude<DataType, 'asset'>; scope: ScopeType });
 
 export interface ProjectOptions {
   title?: string;

@@ -155,8 +155,8 @@ export const products = defineEntity({
         size: 160,
         comment: 'The main image of the product',
       },
-      dataType: 'image',
-      inputType: 'image',
+      dataType: 'asset',
+      inputType: 'asset',
       scope: 'global', // TODO: Images have global scope. The type should be adjusted to not require a scope when inputType is image
       defaultValue: '',
     },

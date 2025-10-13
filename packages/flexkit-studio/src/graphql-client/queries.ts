@@ -1,6 +1,6 @@
 import { filter, find, pick, propEq, toPairs, omit } from 'ramda';
 import { v4 as uuidv4 } from 'uuid';
-import { imageSchema } from '../entities/assets-schema';
+import { assetSchema } from '../entities/assets-schema';
 import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
 import type {
   AttributeValue,
@@ -62,7 +62,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
     const attributesNameList = relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
-      if (relatedAttribute.dataType === 'image') {
+      if (relatedAttribute.dataType === 'asset') {
         return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n    `;
       }
 
@@ -406,7 +406,7 @@ function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attr
   }
 
   const filteredAttributes = attributes.filter(
-    (attribute) => attribute.scope === type && attribute.inputType !== 'image'
+    (attribute) => attribute.scope === type && attribute.inputType !== 'asset'
   );
 
   return filteredAttributes.map((attribute) => attribute.name);
@@ -416,7 +416,7 @@ function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attr
  * Get all attributes that are of type image.
  */
 function getImageAttributes(attributes: Attribute[]): Attribute['name'][] {
-  const filteredAttributes = filter(propEq('image', 'dataType'))(attributes);
+  const filteredAttributes = filter(propEq('asset', 'dataType'))(attributes);
 
   return filteredAttributes.map((attribute) => attribute.name);
 }
@@ -654,7 +654,7 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
           }
         }
 
-        if (attribute.inputType === 'image') {
+        if (attribute.inputType === 'asset') {
           return `${str}  ${attribute.name} {\n    _id\n    originalFilename\n    mimeType\n    path\n    size\n    height\n    width\n    lqip\n  }\n`;
         }
 
@@ -684,10 +684,10 @@ export function getEntityDeleteMutation(entityName: string, schema: Schema, _id:
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
   const localAttributes = localAttributesDelete(attributes, _id);
 
-  if (entityName === '_image') {
+  if (entityName === '_asset') {
     return (
       `mutation deleteEntity($where: ${entityName}Where) {\n` +
-      `  delete_images(\n` +
+      `  delete_assets(\n` +
       `    where: $where\n` +
       `  ) {\n` +
       `    nodesDeleted\n` +
@@ -937,13 +937,13 @@ export function getRelatedItemsQuery({
 }
 
 export function getAssetCreateMutation(entityData: EntityData): string {
-  const attributes = imageSchema.attributes;
-  const pluralizedEntityName = capitalize(imageSchema.plural);
+  const attributes = assetSchema.attributes;
+  const pluralizedEntityName = capitalize(assetSchema.plural);
   const _id = uuidv4();
   const data = filterOutInvalidAttributes(attributes, entityData);
   const globalAttributes = globalAttributesUpdate(attributes, data);
-  const responseType = imageSchema.plural;
-  const attributeNamesList = formatResponseFieldsForMutation([imageSchema], responseType, 'default');
+  const responseType = assetSchema.plural;
+  const attributeNamesList = formatResponseFieldsForMutation([assetSchema], responseType, 'default');
 
   return (
     `mutation {\n` +
@@ -966,8 +966,8 @@ const capitalize = (str: string): string => {
 };
 
 export function getEntitySchema(schema: Schema, entityNamePlural: string): Entity | undefined {
-  if (entityNamePlural === '_images') {
-    return imageSchema;
+  if (entityNamePlural === '_assets') {
+    return assetSchema;
   }
 
   return find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;

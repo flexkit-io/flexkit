@@ -64,7 +64,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   }
 
   function handleBatchDelete(): void {
-    const itemLabel = entityName === '_image' ? 'image' : entityName.toLowerCase();
+    const itemLabel = entityName === '_asset' ? 'asset' : entityName.toLowerCase();
 
     actionDispatch({
       type: 'AlertDialog',

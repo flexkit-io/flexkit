@@ -60,12 +60,12 @@ export type DataType =
   | 'point'
   | 'string'
   | 'time'
-  | 'image';
+  | 'asset';
 
 export type InputType =
   | 'datetime'
   | 'editor'
-  | 'image'
+  | 'asset'
   | 'number'
   | 'relationship'
   | 'select'
@@ -109,7 +109,7 @@ export type SelectOptions = CommonOptions & {
   list: SelectList[] | GroupedSelectList[];
 };
 
-export type ImageOptions = CommonOptions & {
+export type AssetOptions = CommonOptions & {
   accept?: string;
 };
 
@@ -124,7 +124,7 @@ export type NumberOptions = CommonOptions & {
 
 export type AttributeOptions = {
   select: SelectOptions;
-  image: ImageOptions;
+  asset: AssetOptions;
   datetime: DateTimeOptions;
   number: NumberOptions;
   text: CommonOptions;

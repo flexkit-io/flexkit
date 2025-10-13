@@ -16,7 +16,7 @@ interface DataTableRowActionsProps<TData> {
   entityName: string;
   entityNamePlural: string;
   row: Row<TData>;
-  options: {
+  options?: {
     canDelete?: boolean;
     canEdit?: boolean;
   };

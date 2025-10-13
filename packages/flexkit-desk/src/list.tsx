@@ -9,6 +9,7 @@ import {
   Outlet,
   useEntityQuery,
   ProjectDisabled,
+  SchemaError,
 } from '@flexkit/studio';
 import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@flexkit/studio/ui';
 import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
@@ -77,6 +78,7 @@ export function List(): JSX.Element {
 
   return (
     <div className="fk-flex fk-flex-col fk-h-full fk-px-4 fk-py-3">
+      <SchemaError />
       <div className="fk-flex fk-items-center fk-mb-4 fk-gap-2">
         <Tooltip>
           <TooltipTrigger asChild>

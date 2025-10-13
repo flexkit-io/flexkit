@@ -9,6 +9,8 @@ export { IMAGES_BASE_URL } from './core/api-paths';
 export { useUploadAssets } from './core/upload';
 export type { UploadedFileResult } from './core/upload';
 export { ProjectDisabled } from './core/error/project-disabled';
+export { SchemaError } from './core/error/schema-error';
+export { useGraphQLError } from './graphql-client/graphql-context';
 
 // Auth
 export { useAuth } from './auth/auth-context';
@@ -44,7 +46,7 @@ export { DataTableFacetedFilter } from './data-grid/data-table-faceted-filter';
 // Entities
 export { useDispatch } from './entities/actions-context';
 export { getEntitySchema } from './graphql-client/queries';
-export { imageSchema } from './entities/assets-schema';
+export { assetSchema } from './entities/assets-schema';
 
 export type {
   ColumnDef,

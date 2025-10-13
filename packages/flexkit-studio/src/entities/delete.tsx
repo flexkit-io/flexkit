@@ -18,7 +18,7 @@ export default function Delete({ action }: Props): JSX.Element {
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const [runMutation, setMutation, setOptions] = useEntityMutation();
-  const entityName = action.payload.entityName === '_image' ? 'image' : action.payload.entityName.toLowerCase();
+  const entityName = action.payload.entityName === '_asset' ? 'asset' : action.payload.entityName.toLowerCase();
 
   if (action.payload.silent) {
     // fire immediately without confirmation

@@ -1,13 +1,14 @@
 import { useCallback } from 'react';
 import { find, propEq } from 'ramda';
 import {
-  imageSchema,
+  assetSchema,
   useAppContext,
   useConfig,
   useLocation,
   Outlet,
   useEntityQuery,
   ProjectDisabled,
+  SchemaError,
 } from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
 import { DataTable } from '@flexkit/studio/data-grid';
@@ -18,7 +19,7 @@ import { DataTableToolbar } from './data-grid/data-table-toolbar';
 const pageSize = 25;
 
 export function List(): JSX.Element {
-  const entityName = '_images';
+  const entityName = '_assets';
   const { search } = useLocation();
   const query = new URLSearchParams(search);
   const entityId = query.get('id');
@@ -26,7 +27,7 @@ export function List(): JSX.Element {
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const columnsDefinition = useGridColumnsDefinition({
-    attributesSchema: imageSchema.attributes,
+    attributesSchema: assetSchema.attributes,
     checkboxSelect: 'multiple',
   });
 
@@ -77,16 +78,18 @@ export function List(): JSX.Element {
 
   return (
     <div className="fk-flex fk-flex-col fk-h-full fk-pl-3">
+      <SchemaError />
       <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">Asset Manager</h2>
       <DataTable
+        classNames={{ row: 'fk-h-20' }}
         columns={isLoading ? loadingColumns : columnsDefinition}
         data={isLoading ? loadingData : (data ?? [])}
-        entityName={imageSchema.name}
+        entityName={assetSchema.name}
         pageSize={pageSize}
         onScroll={(e) => {
           fetchMoreOnBottomReached(e.target as HTMLDivElement);
         }}
-        toolbarComponent={(table) => <DataTableToolbar entityName={imageSchema.name} table={table} />}
+        toolbarComponent={(table) => <DataTableToolbar entityName={assetSchema.name} table={table} />}
       />
       <Outlet />
     </div>
@@ -98,23 +101,6 @@ type AttributeValue = {
   [key: string]: string | AttributeValue | null;
   __typename: string;
 };
-
-type DataRowActions = {
-  entityName: string;
-  entityNamePlural: string;
-  row: Row<AttributeValue>;
-};
-
-function dataRowActions({ entityName, entityNamePlural, row }: DataRowActions): JSX.Element {
-  return (
-    <DataTableRowActions
-      entityName={entityName}
-      entityNamePlural={entityNamePlural}
-      row={row}
-      options={{ canDelete: false, canEdit: false }}
-    />
-  );
-}
 
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({

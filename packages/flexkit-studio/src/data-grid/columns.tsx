@@ -7,7 +7,7 @@ import { Checkbox } from '../ui/primitives/checkbox';
 import { Boolean as BooleanPrefiewField } from './preview-components/boolean';
 import { Text as TextPreviewField } from './preview-components/text';
 import { Editor as EditorPreviewField } from './preview-components/editor';
-import { Image as ImagePreviewField } from './preview-components/image';
+import { Asset as AssetPreviewField } from './preview-components/asset';
 import { DateTime as DateTimePreviewField } from './preview-components/datetime';
 
 type Props<TData> = {
@@ -27,7 +27,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   const inputTypeToPreviewFieldMap = {
     'datetime': 'datetime',
     'editor': 'editor',
-    'image': 'image',
+    'asset': 'asset',
     'number': 'text',
     'relationship': 'text',
     'select': 'text',
@@ -40,7 +40,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     'date': TextPreviewField,
     'datetime': DateTimePreviewField,
     'editor': EditorPreviewField,
-    'image': ImagePreviewField,
+    'asset': AssetPreviewField,
     'number': TextPreviewField,
     'relationship': TextPreviewField,
     'select': TextPreviewField,

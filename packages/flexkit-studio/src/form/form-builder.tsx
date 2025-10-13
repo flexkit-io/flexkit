@@ -82,7 +82,7 @@ function FormBuilder(
   const formFieldComponentsMap = {
     datetime: DateTimeField,
     editor: EditorField,
-    image: UploaderField,
+    asset: UploaderField,
     number: NumberField,
     relationship: RelationshipField,
     select: SelectField,
