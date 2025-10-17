@@ -42,6 +42,17 @@ export {
   FormField,
 } from './ui/primitives/form';
 export { Input } from './ui/primitives/input';
+export {
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+  CommandShortcut,
+} from './ui/primitives/command';
 export { Label } from './ui/primitives/label';
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/primitives/resizable';
 export type { ImperativePanelHandle } from 'react-resizable-panels';

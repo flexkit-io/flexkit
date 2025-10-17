@@ -3,7 +3,10 @@
 import { createContext, useContext, useMemo } from 'react';
 import { has, path } from 'ramda';
 import { useParams } from 'react-router-dom';
+import { assetSchema } from '../../entities/assets-schema';
+import { tagSchema } from '../../entities/tags-schema';
 import type { AppOptions, PluginOptions, ProjectOptions } from './types';
+import type { Entity } from '../types';
 
 type Contributes = NonNullable<PluginOptions['contributes']>;
 export interface ConfigContext {
@@ -11,6 +14,7 @@ export interface ConfigContext {
     apps: AppOptions[] | [];
   };
   currentProjectId?: string;
+  currentProjectSchema: Entity[];
   getContributionPointConfig: <T extends keyof Contributes>(
     contributionPoint: T,
     subPath?: string[]
@@ -24,6 +28,7 @@ const ConfigContext = createContext<ConfigContext>({
     apps: [],
   },
   currentProjectId: undefined,
+  currentProjectSchema: [],
   getContributionPointConfig: () => [],
   plugins: [] as PluginOptions[],
   projects: [] as ProjectOptions[],
@@ -45,15 +50,29 @@ export function ConfigProvider({
    * every time the URL changes.
    */
   const { projectId: currentProjectId } = useParams<{ projectId: string }>();
+  const enhancedConfig = useMemo(() => {
+    const upsertReservedEntities = (schema: Entity[]): Entity[] => {
+      const withoutReserved = schema.filter(
+        (entity) => entity.name !== assetSchema.name && entity.name !== tagSchema.name
+      );
 
-  const globalFlattenedConfig = useMemo(() => flattenConfigByProperty(['plugins'], config), [config]);
+      return [...withoutReserved, assetSchema, tagSchema];
+    };
+
+    return config.map((project) => ({
+      ...project,
+      schema: upsertReservedEntities(project.schema),
+    }));
+  }, [config]);
+
+  const globalFlattenedConfig = useMemo(() => flattenConfigByProperty(['plugins'], enhancedConfig), [enhancedConfig]);
   const currentProjectFlattenedConfig = useMemo(
     () =>
       flattenConfigByProperty(
         ['plugins'],
-        config.filter((item) => item.projectId === currentProjectId)
+        enhancedConfig.filter((item) => item.projectId === currentProjectId)
       ),
-    [config, currentProjectId]
+    [enhancedConfig, currentProjectId]
   );
   const allPlugins = globalFlattenedConfig.filter(
     (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
@@ -68,6 +87,7 @@ export function ConfigProvider({
         apps: _getContributionPointConfig('apps', [], currentProjectPlugins),
       },
       currentProjectId,
+      currentProjectSchema: enhancedConfig.find((item) => item.projectId === currentProjectId)?.schema ?? [],
       getContributionPointConfig: <T extends keyof Contributes>(
         contributionPoint: T,
         subPath: string[] = []

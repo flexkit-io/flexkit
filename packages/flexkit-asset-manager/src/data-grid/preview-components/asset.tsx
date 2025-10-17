@@ -3,7 +3,6 @@ import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
 
 export function Asset({ value }: { value: string }): JSX.Element | null {
-  console.log('Asset', value);
   if (!value) {
     return null;
   }

@@ -11,7 +11,29 @@ import {
 } from 'lucide-react';
 import type { ReactTable } from '@flexkit/studio';
 import { Button, Input } from '@flexkit/studio/ui';
-import { DataTableFacetedFilter, useParams, useUploadAssets, useDispatch } from '@flexkit/studio';
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandItem,
+  CommandGroup,
+  CommandEmpty,
+  CommandSeparator,
+} from '@flexkit/studio/ui';
+import {
+  DataTableFacetedFilter,
+  useParams,
+  useUploadAssets,
+  useDispatch,
+  useEntityQuery,
+  useEntityMutation,
+  useAppContext,
+  gql,
+  tagSchema,
+  useConfig,
+} from '@flexkit/studio';
+import { useCallback, useMemo, useState } from 'react';
+import { getEntityUpdateMutation } from '../../../flexkit-studio/src/graphql-client/queries';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
@@ -56,6 +78,11 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   const { projectId } = useParams();
   const uploadAssets = useUploadAssets();
   const dispatch = useDispatch();
+  const { scope } = useAppContext();
+  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [runMutation, setMutation, setOptions] = useEntityMutation();
+  const { currentProjectSchema: schema } = useConfig();
 
   async function handleUpload(): Promise<void> {
     await uploadAssets({ projectId, accept: 'image/*', multiple: true, maxBytes: 4 * 1024 * 1024 });
@@ -65,6 +92,17 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   const selectedIds: string[] = table
     .getSelectedRowModel()
     .rows.map((row) => (row.original as unknown as { _id: string })._id);
+
+  // Load tags for the selector
+  const { data: tagsData } = useEntityQuery({
+    entityNamePlural: '_tags',
+    schema,
+    scope,
+    variables: { where: {}, options: { limit: 500, offset: 0, sort: [{ name: 'ASC' }] } },
+  });
+  const allTags = Array.isArray(tagsData)
+    ? (tagsData as unknown[]).map((t) => ({ _id: (t as { _id: string })._id, name: (t as { name: string }).name }))
+    : [];
 
   async function handleBatchDelete(): Promise<void> {
     dispatch({
@@ -95,6 +133,43 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
     });
   }
 
+  const handleAddTagsToSelected = useCallback(async (): Promise<void> => {
+    if (selectedIds.length === 0 || selectedTagIds.length === 0) {
+      return;
+    }
+
+    // Build relationship connect for multiple tags
+    const dataToMutate = {
+      tags: {
+        relationships: {
+          connect: selectedTagIds.map((id) => ({ _id: id })),
+        },
+        disabled: false,
+        scope,
+      },
+    } as unknown as Record<string, unknown>;
+
+    await Promise.all(
+      selectedIds.map(async (_id) => {
+        const mutation = getEntityUpdateMutation('_assets', _id, scope, schema, {}, dataToMutate as never);
+        await new Promise<void>((resolve) => {
+          setMutation(gql`
+            ${mutation}
+          `);
+          setOptions({
+            variables: { where: { _id } },
+            onCompleted: () => resolve(),
+          });
+          runMutation(true);
+        });
+      })
+    );
+
+    setIsTagDialogOpen(false);
+    setSelectedTagIds([]);
+    table.resetRowSelection();
+  }, [runMutation, scope, selectedIds, selectedTagIds, setMutation, setOptions, table]);
+
   return (
     <div className="fk-flex fk-items-center fk-justify-between">
       <div className="fk-flex fk-flex-1 fk-items-center fk-space-x-2">
@@ -115,13 +190,49 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
         )}
       </div>
       {selectedIds.length > 0 ? (
-        <Button className="fk-h-8 fk-mr-2 lg:fk-flex" onClick={handleBatchDelete} size="sm" variant="destructive">
-          <Trash2 className="fk-mr-2 fk-h-4 fk-w-4" /> Delete ({selectedIds.length})
-        </Button>
+        <div className="fk-flex fk-items-center fk-gap-2">
+          <Button className="fk-h-8 lg:fk-flex" onClick={() => setIsTagDialogOpen(true)} size="sm" variant="secondary">
+            Add tags
+          </Button>
+          <Button className="fk-h-8 fk-mr-2 lg:fk-flex" onClick={handleBatchDelete} size="sm" variant="destructive">
+            <Trash2 className="fk-mr-2 fk-h-4 fk-w-4" /> Delete ({selectedIds.length})
+          </Button>
+        </div>
       ) : null}
       <Button className="fk-ml-auto fk-h-8 lg:fk-flex" onClick={handleUpload} size="sm" variant="default">
         Upload assets
       </Button>
+
+      <CommandDialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
+        <CommandInput placeholder="Search tags..." />
+        <CommandList>
+          <CommandEmpty>No tags found.</CommandEmpty>
+          <CommandGroup heading="Tags">
+            {allTags.map((tag) => {
+              const isSelected = selectedTagIds.includes(tag._id);
+              return (
+                <CommandItem
+                  key={tag._id}
+                  onSelect={() => {
+                    setSelectedTagIds((prev) =>
+                      isSelected ? prev.filter((id) => id !== tag._id) : [...prev, tag._id]
+                    );
+                  }}
+                >
+                  <input className="fk-mr-2" checked={isSelected} onChange={() => {}} type="checkbox" />
+                  {tag.name}
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+          <CommandSeparator />
+          <div className="fk-p-2">
+            <Button className="fk-w-full" onClick={handleAddTagsToSelected} disabled={selectedTagIds.length === 0}>
+              Add tag(s) to selected assets
+            </Button>
+          </div>
+        </CommandList>
+      </CommandDialog>
     </div>
   );
 }

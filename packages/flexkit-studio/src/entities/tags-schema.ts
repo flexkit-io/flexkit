@@ -3,6 +3,9 @@ import type { Entity } from '../core/types';
 export const tagSchema: Entity = {
   name: '_tag',
   plural: '_tags',
+  menu: {
+    hidden: true,
+  },
   attributes: [
     {
       name: 'name',
@@ -30,6 +33,19 @@ export const tagSchema: Entity = {
       inputType: 'text',
       previewType: 'text',
       defaultValue: '',
+    },
+    {
+      name: 'assets',
+      label: 'Assets',
+      scope: 'relationship',
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'originalFilename',
+        entity: '_asset',
+      },
     },
   ],
 };

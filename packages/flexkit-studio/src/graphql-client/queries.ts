@@ -178,9 +178,13 @@ export function mapQueryResult(
         const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
         const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
         const primaryAttribute = getPrimaryAttribute(relatedEntity?.attributes ?? []);
-        const primaryAttributeName = primaryAttribute.name;
-        const primaryAttributeScope = primaryAttribute.scope;
+        const primaryAttributeName = primaryAttribute?.name ?? '';
+        const primaryAttributeScope = primaryAttribute?.scope ?? 'global';
         const localValue = entity[attributeName] as AttributeValue | null;
+
+        if (!primaryAttributeName) {
+          throw new Error(`There is an error in the schema for the relationship attribute "${attributeName}"`);
+        }
 
         if (Array.isArray(localValue)) {
           return {

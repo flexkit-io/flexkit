@@ -3,6 +3,9 @@ import type { Entity } from '../core/types';
 export const assetSchema: Entity = {
   name: '_asset',
   plural: '_assets',
+  menu: {
+    hidden: true,
+  },
   attributes: [
     {
       name: 'path',
@@ -106,6 +109,19 @@ export const assetSchema: Entity = {
       inputType: 'text',
       previewType: 'text',
       defaultValue: '',
+    },
+    {
+      name: 'tags',
+      label: 'Tags',
+      scope: 'relationship',
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'name',
+        entity: '_tag',
+      },
     },
   ],
 };

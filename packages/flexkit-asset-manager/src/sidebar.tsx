@@ -21,7 +21,7 @@ import {
   useEntityMutation,
   useEntityQuery,
   getEntityDeleteMutation,
-  tagSchema,
+  useConfig,
 } from '@flexkit/studio';
 import { getEntityCreateMutation, getEntityQuery } from '../../flexkit-studio/src/graphql-client/queries';
 import type { EntityData } from '../../flexkit-studio/src/graphql-client/types';
@@ -30,7 +30,7 @@ type TagItem = { _id: string; name: string };
 
 export function Sidebar(): JSX.Element {
   const { scope } = useAppContext();
-  const schema = useMemo(() => [tagSchema], []);
+  const { currentProjectSchema: schema } = useConfig();
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const [newTagName, setNewTagName] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
