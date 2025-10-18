@@ -5,12 +5,22 @@ import {
   ImageIcon,
   ImagePlayIcon,
   LayersIcon,
+  ListChecks,
+  MinusIcon,
   SplinePointerIcon,
-  Trash2,
+  TagIcon,
+  Trash2Icon,
   X as ResetIcon,
 } from 'lucide-react';
 import type { ReactTable } from '@flexkit/studio';
 import { Button, Input } from '@flexkit/studio/ui';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@flexkit/studio/ui';
 import {
   CommandDialog,
   CommandInput,
@@ -80,7 +90,9 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   const dispatch = useDispatch();
   const { scope } = useAppContext();
   const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
+  const [isRemoveTagDialogOpen, setIsRemoveTagDialogOpen] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedRemoveTagIds, setSelectedRemoveTagIds] = useState<string[]>([]);
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const { currentProjectSchema: schema } = useConfig();
 
@@ -149,26 +161,56 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
       },
     } as unknown as Record<string, unknown>;
 
-    await Promise.all(
-      selectedIds.map(async (_id) => {
-        const mutation = getEntityUpdateMutation('_assets', _id, scope, schema, {}, dataToMutate as never);
-        await new Promise<void>((resolve) => {
-          setMutation(gql`
-            ${mutation}
-          `);
-          setOptions({
-            variables: { where: { _id } },
-            onCompleted: () => resolve(),
-          });
-          runMutation(true);
-        });
-      })
-    );
+    const mutation = getEntityUpdateMutation('_assets', selectedIds[0] ?? '', scope, schema, {}, dataToMutate as never);
+
+    await new Promise<void>((resolve) => {
+      setMutation(gql`
+        ${mutation}
+      `);
+      setOptions({
+        variables: { where: { _id_IN: selectedIds } },
+        onCompleted: () => resolve(),
+      });
+      runMutation(true);
+    });
 
     setIsTagDialogOpen(false);
     setSelectedTagIds([]);
     table.resetRowSelection();
   }, [runMutation, scope, selectedIds, selectedTagIds, setMutation, setOptions, table]);
+
+  const handleRemoveTagsFromSelected = useCallback(async (): Promise<void> => {
+    if (selectedIds.length === 0 || selectedRemoveTagIds.length === 0) {
+      return;
+    }
+
+    const dataToMutate = {
+      tags: {
+        relationships: {
+          disconnect: selectedRemoveTagIds,
+        },
+        disabled: false,
+        scope,
+      },
+    } as unknown as Record<string, unknown>;
+
+    const mutation = getEntityUpdateMutation('_assets', selectedIds[0] ?? '', scope, schema, {}, dataToMutate as never);
+
+    await new Promise<void>((resolve) => {
+      setMutation(gql`
+        ${mutation}
+      `);
+      setOptions({
+        variables: { where: { _id_IN: selectedIds } },
+        onCompleted: () => resolve(),
+      });
+      runMutation(true);
+    });
+
+    setIsRemoveTagDialogOpen(false);
+    setSelectedRemoveTagIds([]);
+    table.resetRowSelection();
+  }, [runMutation, scope, selectedIds, selectedRemoveTagIds, setMutation, setOptions, table]);
 
   return (
     <div className="fk-flex fk-items-center fk-justify-between">
@@ -191,12 +233,26 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
       </div>
       {selectedIds.length > 0 ? (
         <div className="fk-flex fk-items-center fk-gap-2">
-          <Button className="fk-h-8 lg:fk-flex" onClick={() => setIsTagDialogOpen(true)} size="sm" variant="secondary">
-            Add tags
-          </Button>
-          <Button className="fk-h-8 fk-mr-2 lg:fk-flex" onClick={handleBatchDelete} size="sm" variant="destructive">
-            <Trash2 className="fk-mr-2 fk-h-4 fk-w-4" /> Delete ({selectedIds.length})
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="fk-h-8 fk-mr-2 lg:fk-flex" size="sm" variant="secondary">
+                Actions <ListChecks className="fk-ml-2 fk-h-4 fk-w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="fk-w-[240px]">
+              <DropdownMenuItem onClick={() => setIsTagDialogOpen(true)}>
+                <TagIcon className="fk-mr-2 fk-h-4 fk-w-4" /> Add tag
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsRemoveTagDialogOpen(true)}>
+                <MinusIcon className="fk-mr-2 fk-h-4 fk-w-4" /> Remove tag
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleBatchDelete} className="fk-text-destructive">
+                <Trash2Icon className="fk-mr-2 fk-h-4 fk-w-4" /> Delete asset{selectedIds.length > 1 ? 's' : ''} (
+                {selectedIds.length})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ) : null}
       <Button className="fk-ml-auto fk-h-8 lg:fk-flex" onClick={handleUpload} size="sm" variant="default">
@@ -229,6 +285,41 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
           <div className="fk-p-2">
             <Button className="fk-w-full" onClick={handleAddTagsToSelected} disabled={selectedTagIds.length === 0}>
               Add tag(s) to selected assets
+            </Button>
+          </div>
+        </CommandList>
+      </CommandDialog>
+
+      <CommandDialog open={isRemoveTagDialogOpen} onOpenChange={setIsRemoveTagDialogOpen}>
+        <CommandInput placeholder="Search tags..." />
+        <CommandList>
+          <CommandEmpty>No tags found.</CommandEmpty>
+          <CommandGroup heading="Tags">
+            {allTags.map((tag) => {
+              const isSelected = selectedRemoveTagIds.includes(tag._id);
+              return (
+                <CommandItem
+                  key={tag._id}
+                  onSelect={() => {
+                    setSelectedRemoveTagIds((prev) =>
+                      isSelected ? prev.filter((id) => id !== tag._id) : [...prev, tag._id]
+                    );
+                  }}
+                >
+                  <input className="fk-mr-2" checked={isSelected} onChange={() => {}} type="checkbox" />
+                  {tag.name}
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+          <CommandSeparator />
+          <div className="fk-p-2">
+            <Button
+              className="fk-w-full"
+              onClick={handleRemoveTagsFromSelected}
+              disabled={selectedRemoveTagIds.length === 0}
+            >
+              Remove tag(s) from selected assets
             </Button>
           </div>
         </CommandList>
