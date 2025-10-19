@@ -117,6 +117,10 @@ export const assetSchema: Entity = {
       dataType: 'string',
       inputType: 'relationship',
       defaultValue: '',
+      previewType: 'tags',
+      options: {
+        size: 300,
+      },
       relationship: {
         mode: 'multiple',
         field: 'name',

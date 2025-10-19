@@ -11,10 +11,19 @@ export type { UploadedFileResult } from './core/upload';
 export { ProjectDisabled } from './core/error/project-disabled';
 export { SchemaError } from './core/error/schema-error';
 export { useGraphQLError } from './graphql-client/graphql-context';
+export { useSearch } from './core/use-search';
 
 // Core types
 export type { AppOptions, FormFieldProps, LogoProps, PluginOptions, SingleProject } from './core/config/types';
-export type { Attribute, Entity, DataType, Schema, ScopeType } from './core/types';
+export type {
+  Attribute,
+  Entity,
+  DataType,
+  Schema,
+  ScopeType,
+  SearchRequestProps,
+  SearchResultItem,
+} from './core/types';
 
 // Auth
 export { useAuth } from './auth/auth-context';
@@ -30,7 +39,12 @@ export type { FormFieldParams } from './form/types';
 export { useEntityQuery } from './graphql-client/use-entity-query';
 export { useEntityMutation } from './graphql-client/use-entity-mutation';
 export type { AttributeValue, FormFieldValue, MappedEntityItem, FormEntityItem } from './graphql-client/types';
-export { getEntityDeleteMutation, getEntityCreateMutation, getEntityQuery } from './graphql-client/queries';
+export {
+  getEntityDeleteMutation,
+  getEntityCreateMutation,
+  getEntityQuery,
+  getEntityUpdateMutation,
+} from './graphql-client/queries';
 export { gql } from '@apollo/client';
 
 // Data Grid

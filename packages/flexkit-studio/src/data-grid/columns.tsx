@@ -9,6 +9,7 @@ import { Text as TextPreviewField } from './preview-components/text';
 import { Editor as EditorPreviewField } from './preview-components/editor';
 import { Asset as AssetPreviewField } from './preview-components/asset';
 import { DateTime as DateTimePreviewField } from './preview-components/datetime';
+import { Tags as TagsPreviewField } from './preview-components/tags';
 
 type Props<TData> = {
   attributesSchema: Attribute[];
@@ -47,6 +48,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     'switch': BooleanPrefiewField,
     'text': TextPreviewField,
     'textarea': TextPreviewField,
+    'tags': TagsPreviewField,
   };
 
   const cols = attributesSchema

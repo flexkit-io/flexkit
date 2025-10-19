@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FilePlayIcon,
   ImageIcon,
@@ -10,9 +11,11 @@ import {
   SplinePointerIcon,
   TagIcon,
   Trash2Icon,
+  LoaderCircle,
+  Search as SearchIcon,
   X as ResetIcon,
 } from 'lucide-react';
-import type { ReactTable } from '@flexkit/studio';
+import type { ReactTable, SearchRequestProps } from '@flexkit/studio';
 import { Button, Input } from '@flexkit/studio/ui';
 import {
   DropdownMenu,
@@ -40,13 +43,14 @@ import {
   useAppContext,
   gql,
   useConfig,
+  getEntityUpdateMutation,
+  useSearch,
 } from '@flexkit/studio';
-import { useCallback, useState } from 'react';
-import { getEntityUpdateMutation } from '../../../flexkit-studio/src/graphql-client/queries';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
   table: ReactTable<TData>;
+  onSearchWhereChange?: (where: Record<string, unknown>) => void;
 }
 
 const mimeTypes = [
@@ -82,7 +86,11 @@ const mimeTypes = [
   },
 ];
 
-export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarProps<TData>): JSX.Element {
+export function DataTableToolbar<TData>({
+  entityName,
+  table,
+  onSearchWhereChange,
+}: DataTableToolbarProps<TData>): JSX.Element {
   const isFiltered = table.getState().columnFilters.length > 0;
   const { projectId } = useParams();
   const uploadAssets = useUploadAssets();
@@ -94,6 +102,30 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   const [selectedRemoveTagIds, setSelectedRemoveTagIds] = useState<string[]>([]);
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const { currentProjectSchema: schema } = useConfig();
+  const [search, setSearch] = useState('');
+  const textWhereRef = useRef<Record<string, unknown>>({});
+  const filterWhereRef = useRef<Record<string, unknown>>({});
+
+  function getBaseSearchRequest(): SearchRequestProps {
+    return {
+      searchRequests: {
+        searches: [{ collection: '_assets' }, { collection: '_tags' }],
+      },
+      commonParams: { q: '' },
+    };
+  }
+
+  const baseSearchRequest = useMemo(() => getBaseSearchRequest(), []);
+  const [searchQuery, setSearchQuery] = useState<SearchRequestProps>(baseSearchRequest);
+  const { results, isLoading } = useSearch(projectId ?? '', searchQuery);
+  const lastWhereRef = useRef<string>('');
+
+  const debouncedSetSearchQuery = useCallback(
+    debounce((query: string) => {
+      setSearchQuery({ ...baseSearchRequest, commonParams: { q: query } });
+    }, 300),
+    [baseSearchRequest]
+  );
 
   async function handleUpload(): Promise<void> {
     await uploadAssets({ projectId, accept: 'image/*', multiple: true, maxBytes: 4 * 1024 * 1024 });
@@ -114,6 +146,109 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   const allTags = Array.isArray(tagsData)
     ? (tagsData as unknown[]).map((t) => ({ _id: (t as { _id: string })._id, name: (t as { name: string }).name }))
     : [];
+
+  // Load a sample of assets to derive dynamic mime type options
+  const { data: mimeSampleData } = useEntityQuery({
+    entityNamePlural: '_assets',
+    schema,
+    scope,
+    variables: { where: {}, options: { limit: 500, offset: 0, sort: [{ _updatedAt: 'DESC' }] } },
+  });
+
+  type AssetItem = { _id: string; mimeType?: string | null };
+
+  function getMimeLabel(mime: string): string {
+    if (mime === 'image/gif') {
+      return 'GIF';
+    }
+
+    if (mime === 'image/jpeg') {
+      return 'JPEG';
+    }
+
+    if (mime === 'video/mp4') {
+      return 'MP4';
+    }
+
+    if (mime === 'image/png') {
+      return 'PNG';
+    }
+
+    if (mime === 'image/svg+xml') {
+      return 'SVG';
+    }
+
+    if (mime === 'image/webp') {
+      return 'WebP';
+    }
+
+    const parts = mime.split('/');
+
+    if (parts.length === 2 && parts[1]) {
+      return parts[1].toUpperCase();
+    }
+
+    return mime;
+  }
+
+  function getMimeIcon(mime: string) {
+    if (mime === 'image/svg+xml') {
+      return SplinePointerIcon;
+    }
+
+    if (mime.startsWith('image/')) {
+      return ImageIcon;
+    }
+
+    if (mime.startsWith('video/')) {
+      return FilePlayIcon;
+    }
+
+    return LayersIcon;
+  }
+
+  const dynamicMimeOptions = useMemo(() => {
+    const items = Array.isArray(mimeSampleData) ? (mimeSampleData as unknown as AssetItem[]) : [];
+    const unique = new Set<string>();
+
+    for (const item of items) {
+      const value = item.mimeType ?? '';
+
+      if (value) {
+        unique.add(value);
+      }
+    }
+
+    const values = Array.from(unique.values()).sort();
+
+    return values.map((value) => ({ value, label: getMimeLabel(value), icon: getMimeIcon(value) }));
+  }, [mimeSampleData]);
+
+  const mimeTypeOptions = dynamicMimeOptions.length > 0 ? dynamicMimeOptions : mimeTypes;
+
+  function emitCombinedWhere(): void {
+    if (!onSearchWhereChange) {
+      return;
+    }
+
+    const clauses: Record<string, unknown>[] = [];
+
+    if (Object.keys(textWhereRef.current).length > 0) {
+      clauses.push(textWhereRef.current);
+    }
+
+    if (Object.keys(filterWhereRef.current).length > 0) {
+      clauses.push(filterWhereRef.current);
+    }
+
+    const combinedWhere = clauses.length === 0 ? {} : clauses.length === 1 ? clauses[0] : { AND: clauses };
+    const whereKey = JSON.stringify(combinedWhere);
+
+    if (lastWhereRef.current !== whereKey) {
+      lastWhereRef.current = whereKey;
+      onSearchWhereChange(combinedWhere);
+    }
+  }
 
   async function handleBatchDelete(): Promise<void> {
     dispatch({
@@ -212,20 +347,117 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
     table.resetRowSelection();
   }, [runMutation, scope, selectedIds, selectedRemoveTagIds, setMutation, setOptions, table]);
 
+  useEffect(() => {
+    if (!onSearchWhereChange) {
+      return;
+    }
+
+    const safeResults = results ?? [];
+    const trimmed = search.trim();
+
+    let nextWhere: Record<string, unknown> = {};
+
+    if (trimmed.length === 0) {
+      nextWhere = {};
+    } else if (safeResults.length === 0) {
+      nextWhere = { _id_IN: [] };
+    } else {
+      const assetIdClauses = safeResults.filter((r) => r._entityNamePlural === '_assets').map((r) => ({ _id: r._id }));
+
+      const tagClauses = safeResults
+        .filter((r) => r._entityNamePlural === '_tags')
+        .map((r) => ({ tagsConnection_SOME: { node: { _id: r._id } } }));
+
+      const orClauses = [...assetIdClauses, ...tagClauses];
+      nextWhere = orClauses.length > 0 ? { OR: orClauses } : { _id_IN: [] };
+    }
+
+    textWhereRef.current = nextWhere;
+    emitCombinedWhere();
+  }, [onSearchWhereChange, results, search]);
+
+  // Watch column filter changes (e.g., mime type) and push server-side where
+  const columnFiltersKey = JSON.stringify(table.getState().columnFilters);
+
+  useEffect(() => {
+    if (!onSearchWhereChange) {
+      return;
+    }
+
+    const mimeFilter = table.getState().columnFilters.find((f) => f.id === 'mimeType');
+    const values = (Array.isArray(mimeFilter?.value) ? (mimeFilter?.value as unknown[]) : []) as string[];
+
+    if (values.length > 0) {
+      filterWhereRef.current = { mimeType_IN: values } as Record<string, unknown>;
+    } else {
+      filterWhereRef.current = {};
+    }
+
+    emitCombinedWhere();
+  }, [columnFiltersKey, onSearchWhereChange, table]);
+
   return (
     <div className="fk-flex fk-items-center fk-justify-between">
       <div className="fk-flex fk-flex-1 fk-items-center fk-space-x-2">
-        <Input
-          placeholder="Filter tasks..."
-          // value={(table.getColumn('title')?.getFilterValue() as string) ?? ''}
-          // onChange={(event) => table.getColumn('title')?.setFilterValue(event.target.value)}
-          className="fk-h-8 fk-w-[150px] lg:fk-w-[250px]"
-        />
+        <div className="fk-relative">
+          {isLoading ? (
+            <LoaderCircle className="fk-absolute fk-left-2 fk-top-2 fk-h-4 fk-w-4 fk-shrink-0 fk-opacity-50 fk-animate-spin" />
+          ) : (
+            <SearchIcon className="fk-absolute fk-left-2 fk-top-2 fk-h-4 fk-w-4 fk-shrink-0 fk-opacity-50" />
+          )}
+          <Input
+            placeholder="Search assets..."
+            value={search}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearch(value);
+
+              if (value.trim().length === 0) {
+                setSearchQuery({ ...baseSearchRequest, commonParams: { q: '' } });
+
+                if (onSearchWhereChange) {
+                  onSearchWhereChange({});
+                }
+
+                return;
+              }
+
+              debouncedSetSearchQuery(value);
+            }}
+            className="fk-h-8 fk-w-[150px] lg:fk-w-[250px] fk-pl-8"
+          />
+          {search ? (
+            <button
+              aria-label="Clear search"
+              className="fk-absolute fk-right-2 fk-top-2 fk-text-muted-foreground hover:fk-text-foreground"
+              onClick={() => {
+                setSearch('');
+                setSearchQuery({ ...baseSearchRequest, commonParams: { q: '' } });
+                if (onSearchWhereChange) {
+                  onSearchWhereChange({});
+                }
+              }}
+              type="button"
+            >
+              <ResetIcon className="fk-h-4 fk-w-4" />
+            </button>
+          ) : null}
+        </div>
         {table.getColumn('mimeType') && (
-          <DataTableFacetedFilter column={table.getColumn('mimeType')} title="File type" options={mimeTypes} />
+          <DataTableFacetedFilter column={table.getColumn('mimeType')} title="File type" options={mimeTypeOptions} />
         )}
         {isFiltered && (
-          <Button variant="ghost" onClick={() => table.resetColumnFilters()} className="fk-h-8 fk-px-2 lg:fk-px-3">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              table.resetColumnFilters();
+
+              if (onSearchWhereChange) {
+                onSearchWhereChange({});
+              }
+            }}
+            className="fk-h-8 fk-px-2 lg:fk-px-3"
+          >
             Reset
             <ResetIcon className="fk-ml-2 fk-h-4 fk-w-4" />
           </Button>
@@ -326,4 +558,13 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
       </CommandDialog>
     </div>
   );
+}
+
+function debounce<TArgs extends unknown[]>(fn: (...args: TArgs) => void, ms = 300) {
+  let timeoutId: ReturnType<typeof setTimeout>;
+
+  return function (this: unknown, ...args: TArgs) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(this, args), ms);
+  };
 }

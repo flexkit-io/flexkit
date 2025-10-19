@@ -257,6 +257,7 @@ export function Sidebar(): JSX.Element {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
+                      className="fk-text-destructive"
                       onClick={() => {
                         setTagToDelete(tag);
                         setIsDeleteOpen(true);

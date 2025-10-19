@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { find, propEq } from 'ramda';
 import {
   assetSchema,
@@ -31,9 +31,22 @@ export function List(): JSX.Element {
     checkboxSelect: 'multiple',
   });
 
-  const variables = entityId
-    ? { where: { _id: entityId } }
-    : { where: { NOT: { path: null } }, options: { offset: 0, limit: pageSize, sort: [{ _updatedAt: 'DESC' }] } };
+  const [searchWhere, setSearchWhere] = useState<Record<string, unknown>>({});
+
+  const whereBase = entityId ? { _id: entityId } : { NOT: { path: null } };
+  const where = useMemo(() => {
+    if (!searchWhere || Object.keys(searchWhere).length === 0) {
+      return whereBase;
+    }
+
+    if (entityId) {
+      return whereBase; // ignore search when a single asset is selected via id
+    }
+
+    return { AND: [whereBase, searchWhere] } as Record<string, unknown>;
+  }, [entityId, searchWhere]);
+
+  const variables = { where, options: { offset: 0, limit: pageSize, sort: [{ _updatedAt: 'DESC' }] } };
 
   const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
@@ -89,7 +102,13 @@ export function List(): JSX.Element {
         onScroll={(e) => {
           fetchMoreOnBottomReached(e.target as HTMLDivElement);
         }}
-        toolbarComponent={(table) => <DataTableToolbar entityName={assetSchema.name} table={table} />}
+        toolbarComponent={(table) => (
+          <DataTableToolbar
+            entityName={assetSchema.name}
+            table={table}
+            onSearchWhereChange={(w) => setSearchWhere(w)}
+          />
+        )}
       />
       <Outlet />
     </div>
