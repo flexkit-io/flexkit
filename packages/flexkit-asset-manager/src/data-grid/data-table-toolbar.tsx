@@ -39,10 +39,9 @@ import {
   useEntityMutation,
   useAppContext,
   gql,
-  tagSchema,
   useConfig,
 } from '@flexkit/studio';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { getEntityUpdateMutation } from '../../../flexkit-studio/src/graphql-client/queries';
 
 interface DataTableToolbarProps<TData> {
@@ -128,6 +127,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
               : `Are you sure you want to delete the selected asset? The item will be deleted permanently.`,
           dialogCancelTitle: 'Cancel',
           dialogActionLabel: 'Delete',
+          isDestructive: true,
           dialogActionCancel: () => {},
           dialogActionSubmit: () => {
             for (const id of selectedIds) {
@@ -261,7 +261,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
 
       <CommandDialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
         <CommandInput placeholder="Search tags..." />
-        <CommandList>
+        <CommandList className="fk-h-[300px]">
           <CommandEmpty>No tags found.</CommandEmpty>
           <CommandGroup heading="Tags">
             {allTags.map((tag) => {
@@ -281,18 +281,18 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
               );
             })}
           </CommandGroup>
-          <CommandSeparator />
-          <div className="fk-p-2">
-            <Button className="fk-w-full" onClick={handleAddTagsToSelected} disabled={selectedTagIds.length === 0}>
-              Add tag(s) to selected assets
-            </Button>
-          </div>
         </CommandList>
+        <CommandSeparator />
+        <div className="fk-p-2">
+          <Button className="fk-w-full" onClick={handleAddTagsToSelected} disabled={selectedTagIds.length === 0}>
+            Add tag(s) to selected assets
+          </Button>
+        </div>
       </CommandDialog>
 
       <CommandDialog open={isRemoveTagDialogOpen} onOpenChange={setIsRemoveTagDialogOpen}>
         <CommandInput placeholder="Search tags..." />
-        <CommandList>
+        <CommandList className="fk-h-[300px]">
           <CommandEmpty>No tags found.</CommandEmpty>
           <CommandGroup heading="Tags">
             {allTags.map((tag) => {
@@ -312,17 +312,17 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
               );
             })}
           </CommandGroup>
-          <CommandSeparator />
-          <div className="fk-p-2">
-            <Button
-              className="fk-w-full"
-              onClick={handleRemoveTagsFromSelected}
-              disabled={selectedRemoveTagIds.length === 0}
-            >
-              Remove tag(s) from selected assets
-            </Button>
-          </div>
         </CommandList>
+        <CommandSeparator />
+        <div className="fk-p-2">
+          <Button
+            className="fk-w-full"
+            onClick={handleRemoveTagsFromSelected}
+            disabled={selectedRemoveTagIds.length === 0}
+          >
+            Remove tag(s) from selected assets
+          </Button>
+        </div>
       </CommandDialog>
     </div>
   );

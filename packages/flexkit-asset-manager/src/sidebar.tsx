@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { PlusIcon, TagIcon, Trash2Icon } from 'lucide-react';
+import { Loader2, PlusIcon, TagIcon, Ellipsis } from 'lucide-react';
 import {
   Button,
   Input,
@@ -9,7 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
   DialogTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -23,8 +29,12 @@ import {
   getEntityDeleteMutation,
   useConfig,
 } from '@flexkit/studio';
-import { getEntityCreateMutation, getEntityQuery } from '../../flexkit-studio/src/graphql-client/queries';
-import type { EntityData } from '../../flexkit-studio/src/graphql-client/types';
+import {
+  getEntityCreateMutation,
+  getEntityQuery,
+  getEntityUpdateMutation,
+} from '../../flexkit-studio/src/graphql-client/queries';
+import type { EntityData, FormEntityItem } from '../../flexkit-studio/src/graphql-client/types';
 
 type TagItem = { _id: string; name: string };
 
@@ -36,6 +46,11 @@ export function Sidebar(): JSX.Element {
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState<boolean>(false);
   const [tagToDelete, setTagToDelete] = useState<TagItem | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
+  const [tagToEdit, setTagToEdit] = useState<TagItem | null>(null);
+  const [editTagName, setEditTagName] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const entityName = '_tag';
   const entityNamePlural = '_tags';
@@ -59,6 +74,7 @@ export function Sidebar(): JSX.Element {
       return;
     }
 
+    setIsSubmitting(true);
     const _id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
     const entityData = { name: { value: name, disabled: false, scope: 'default' } } as unknown as EntityData;
     const mutation = getEntityCreateMutation(entityNamePlural, schema, entityData, _id);
@@ -81,10 +97,12 @@ export function Sidebar(): JSX.Element {
       });
       runMutation(true);
     });
+    setIsSubmitting(false);
   }, [entityNamePlural, runMutation, schema, scope, setMutation, setOptions, newTagName]);
 
   const handleDelete = useCallback(
     async (_id: string): Promise<void> => {
+      setIsDeleting(true);
       const mutation = getEntityDeleteMutation(entityName, schema, _id);
       const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
       const refreshQuery = gql`
@@ -104,9 +122,54 @@ export function Sidebar(): JSX.Element {
         });
         runMutation(true);
       });
+      setIsDeleting(false);
     },
     [entityName, entityNamePlural, runMutation, schema, scope, setMutation, setOptions]
   );
+
+  const handleRename = useCallback(async (): Promise<void> => {
+    const name = editTagName.trim();
+
+    if (!name || !tagToEdit) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const dataToMutate = { name: { value: name, disabled: false, scope: 'default' } } as unknown as EntityData;
+    const originalData = {} as unknown as FormEntityItem;
+    const mutation = getEntityUpdateMutation(
+      entityNamePlural,
+      tagToEdit._id,
+      scope,
+      schema,
+      originalData,
+      dataToMutate
+    );
+    const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
+    const refreshQuery = gql`
+      ${entityQuery.query}
+    `;
+
+    await new Promise<void>((resolve) => {
+      setMutation(gql`
+        ${mutation}
+      `);
+      setOptions({
+        variables: { where: { _id: tagToEdit._id } },
+        refetchQueries: [refreshQuery],
+        onCompleted: () => {
+          setIsEditOpen(false);
+          setTagToEdit(null);
+          setEditTagName('');
+          resolve();
+        },
+      });
+      runMutation(true);
+    });
+
+    setIsSubmitting(false);
+  }, [editTagName, entityNamePlural, runMutation, schema, scope, setMutation, setOptions, tagToEdit]);
 
   return (
     <div className="fk-flex fk-h-full fk-max-h-screen fk-flex-col fk-gap-2">
@@ -126,6 +189,7 @@ export function Sidebar(): JSX.Element {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>New tag</DialogTitle>
+                    <DialogDescription className="fk-sr-only">Create a new tag</DialogDescription>
                   </DialogHeader>
                   <div className="fk-flex fk-gap-2">
                     <Input
@@ -141,7 +205,8 @@ export function Sidebar(): JSX.Element {
                     />
                   </div>
                   <DialogFooter>
-                    <Button onClick={handleCreate} variant="default">
+                    <Button disabled={isSubmitting} onClick={handleCreate} variant="default">
+                      {isSubmitting ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
                       Add
                     </Button>
                   </DialogFooter>
@@ -165,38 +230,97 @@ export function Sidebar(): JSX.Element {
             tags.map((tag) => (
               <div
                 key={tag._id}
-                className="fk-group fk-flex fk-items-center fk-justify-between fk-rounded fk-border fk-border-border fk-bg-card fk-px-3 fk-py-2"
+                className="fk-group fk-flex fk-items-center fk-justify-between fk-rounded fk-border fk-border-border fk-bg-card fk-px-3 fk-py-1"
               >
                 <span className="fk-text-sm">{tag.name}</span>
-                <Button
-                  aria-label={`Remove ${tag.name}`}
-                  title={`Remove ${tag.name}`}
-                  onClick={() => {
-                    setTagToDelete(tag);
-                    setIsDeleteOpen(true);
-                  }}
-                  variant="ghost"
-                  size="icon"
-                  className="fk-h-7 fk-w-7 fk-text-muted-foreground hover:fk-text-foreground"
-                >
-                  <Trash2Icon className="fk-h-4 fk-w-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label={`Actions for ${tag.name}`}
+                      title={`Actions for ${tag.name}`}
+                      variant="ghost"
+                      size="icon"
+                      className="fk-h-7 fk-w-7 fk-text-muted-foreground hover:fk-text-foreground"
+                    >
+                      <Ellipsis className="fk-h-4 fk-w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[160px]">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setTagToEdit(tag);
+                        setEditTagName(tag.name);
+                        setIsEditOpen(true);
+                      }}
+                    >
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setTagToDelete(tag);
+                        setIsDeleteOpen(true);
+                      }}
+                    >
+                      Remove
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))
           )}
         </div>
       </ScrollArea>
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit tag</DialogTitle>
+            <DialogDescription className="fk-sr-only">Rename an existing tag</DialogDescription>
+          </DialogHeader>
+          <div className="fk-flex fk-gap-2">
+            <Input
+              autoFocus
+              value={editTagName}
+              placeholder="Tag name"
+              onChange={(e) => setEditTagName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  void handleRename();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={isSubmitting}
+              variant="secondary"
+              onClick={() => {
+                setIsEditOpen(false);
+                setTagToEdit(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button disabled={isSubmitting} onClick={handleRename} variant="default">
+              {isSubmitting ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete tag</DialogTitle>
+            <DialogDescription className="fk-sr-only">Confirm deletion of a tag</DialogDescription>
           </DialogHeader>
           <div className="fk-text-sm fk-text-muted-foreground">
-            Are you sure you want to delete{' '}
+            Are you sure you want to delete the tag{' '}
             <span className="fk-font-semibold fk-text-foreground">{tagToDelete?.name}</span>?
           </div>
           <DialogFooter>
             <Button
+              disabled={isDeleting}
               variant="secondary"
               onClick={() => {
                 setIsDeleteOpen(false);
@@ -206,6 +330,7 @@ export function Sidebar(): JSX.Element {
               Cancel
             </Button>
             <Button
+              disabled={isDeleting}
               variant="destructive"
               onClick={() => {
                 if (!tagToDelete) {
@@ -219,6 +344,7 @@ export function Sidebar(): JSX.Element {
                 })();
               }}
             >
+              {isDeleting ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
               Delete
             </Button>
           </DialogFooter>

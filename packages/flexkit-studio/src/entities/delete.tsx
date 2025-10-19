@@ -23,7 +23,7 @@ export default function Delete({ action }: Props): JSX.Element {
   if (action.payload.silent) {
     // fire immediately without confirmation
     setTimeout(() => {
-      handleDeletion();
+      void handleDeletion();
     }, 0);
 
     return <></>;
@@ -34,28 +34,30 @@ export default function Delete({ action }: Props): JSX.Element {
     dialogMessage: `Are you sure you want to delete the selected ${entityName}? The item will be deleted permanently.`,
     dialogCancelTitle: 'Cancel',
     dialogActionLabel: 'Delete',
-    dialogActionSubmit: () => {
-      handleDeletion();
-    },
+    isDestructive: true,
+    dialogActionSubmit: () => handleDeletion(),
   };
 
-  function handleDeletion(): void {
+  function handleDeletion(): Promise<void> {
     const _id = action.payload.entityId;
     const mutation = getEntityDeleteMutation(action.payload.entityName, schema, _id);
 
-    setMutation(gql`
-      ${mutation}
-    `);
-    setOptions({
-      variables: { where: { _id } },
-      update(cache: { evict: (arg0: { id: string }) => void }) {
-        cache.evict({ id: _id });
-      },
-      onCompleted: () => {
-        toast.success('Item successfully deleted.');
-      },
+    return new Promise<void>((resolve) => {
+      setMutation(gql`
+        ${mutation}
+      `);
+      setOptions({
+        variables: { where: { _id } },
+        update(cache: { evict: (arg0: { id: string }) => void }) {
+          cache.evict({ id: _id });
+        },
+        onCompleted: () => {
+          toast.success('Item successfully deleted.');
+          resolve();
+        },
+      });
+      runMutation(true);
     });
-    runMutation(true);
   }
 
   return <AlertDialog options={dialogOptions} />;

@@ -1,6 +1,7 @@
 import { filter, find, pick, propEq, toPairs, omit } from 'ramda';
 import { v4 as uuidv4 } from 'uuid';
 import { assetSchema } from '../entities/assets-schema';
+import { tagSchema } from '../entities/tags-schema';
 import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
 import type {
   AttributeValue,
@@ -947,7 +948,7 @@ export function getAssetCreateMutation(entityData: EntityData): string {
   const data = filterOutInvalidAttributes(attributes, entityData);
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const responseType = assetSchema.plural;
-  const attributeNamesList = formatResponseFieldsForMutation([assetSchema], responseType, 'default');
+  const attributeNamesList = formatResponseFieldsForMutation([assetSchema, tagSchema], responseType, 'default');
 
   return (
     `mutation {\n` +

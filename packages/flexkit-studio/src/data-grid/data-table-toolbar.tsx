@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { find, propEq } from 'ramda';
 import type { Table } from '@tanstack/react-table';
-import { Trash2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { toast } from 'sonner';
 import { Button } from '../ui/primitives/button';
@@ -27,6 +28,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   const { projects, currentProjectId } = useConfig();
   const { scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const [runMutation, setMutation, setOptions] = useEntityMutation();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Collect selected entity ids from the table
   // @ts-expect-error -- the DataGrid's original type doesn't know about the _id property
@@ -77,7 +79,9 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
               : `Are you sure you want to delete the selected ${itemLabel}? The item will be deleted permanently.`,
           dialogCancelTitle: 'Cancel',
           dialogActionLabel: 'Delete',
+          isDestructive: true,
           dialogActionSubmit: async () => {
+            setIsDeleting(true);
             try {
               for (const id of selectedIds) {
                 // eslint-disable-next-line no-await-in-loop
@@ -89,6 +93,8 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
               toast.success(selectedIds.length > 1 ? 'Items successfully deleted.' : 'Item successfully deleted.');
             } catch {
               toast.error('Failed to delete selected items.');
+            } finally {
+              setIsDeleting(false);
             }
           },
           dialogActionCancel: () => {
@@ -131,11 +137,28 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
         <DataTableViewOptions table={table} />
       </div>
       {selectedIds.length > 0 ? (
-        <Button className="fk-h-8 fk-mr-2 lg:fk-flex" onClick={handleBatchDelete} size="sm" variant="destructive">
-          <Trash2 className="fk-mr-2 fk-h-4 fk-w-4" /> Delete ({selectedIds.length})
+        <Button
+          className="fk-h-8 fk-mr-2 lg:fk-flex"
+          disabled={isDeleting}
+          onClick={handleBatchDelete}
+          size="sm"
+          variant="destructive"
+        >
+          {isDeleting ? (
+            <Loader2 className="fk-mr-2 fk-h-4 fk-w-4 fk-animate-spin" />
+          ) : (
+            <Trash2 className="fk-mr-2 fk-h-4 fk-w-4" />
+          )}
+          Delete ({selectedIds.length})
         </Button>
       ) : null}
-      <Button className="fk-ml-auto fk-h-8 lg:fk-flex" onClick={handleCreate} size="sm" variant="default">
+      <Button
+        className="fk-ml-auto fk-h-8 lg:fk-flex"
+        disabled={isDeleting}
+        onClick={handleCreate}
+        size="sm"
+        variant="default"
+      >
         Create
       </Button>
     </div>

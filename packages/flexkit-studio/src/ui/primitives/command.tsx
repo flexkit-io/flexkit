@@ -5,7 +5,7 @@ import { type DialogProps } from '@radix-ui/react-dialog';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Search } from 'lucide-react';
 import { cn } from 'src/ui/lib/utils';
-import { Dialog, DialogContent } from 'src/ui/primitives/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from 'src/ui/primitives/dialog';
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -29,6 +29,10 @@ function CommandDialog({ children, ...props }: CommandDialogProps): JSX.Element 
   return (
     <Dialog {...props}>
       <DialogContent className="fk-overflow-hidden fk-p-0 fk-shadow-lg">
+        <DialogHeader className="fk-sr-only">
+          <DialogTitle>Command menu</DialogTitle>
+          <DialogDescription>Search and run actions</DialogDescription>
+        </DialogHeader>
         <Command className="[&_[cmdk-group-heading]]:fk-px-2 [&_[cmdk-group-heading]]:fk-font-medium [&_[cmdk-group-heading]]:fk-text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:fk-pt-0 [&_[cmdk-group]]:fk-px-2 [&_[cmdk-input-wrapper]_svg]:fk-h-5 [&_[cmdk-input-wrapper]_svg]:fk-w-5 [&_[cmdk-input]]:fk-h-12 [&_[cmdk-item]]:fk-px-2 [&_[cmdk-item]]:fk-py-3 [&_[cmdk-item]_svg]:fk-h-5 [&_[cmdk-item]_svg]:fk-w-5">
           {children}
         </Command>

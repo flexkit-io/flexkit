@@ -74,6 +74,7 @@ export type ActionAlertDialog = {
       dialogActionLabel: string;
       dialogActionCancel: () => void;
       dialogActionSubmit: () => void;
+      isDestructive?: boolean;
     };
   };
 };
