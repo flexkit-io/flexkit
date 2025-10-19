@@ -226,6 +226,10 @@ export function DataTableToolbar<TData>({
 
   const mimeTypeOptions = dynamicMimeOptions.length > 0 ? dynamicMimeOptions : mimeTypes;
 
+  const tagOptions = useMemo(() => {
+    return allTags.map((t) => ({ value: t._id, label: t.name }));
+  }, [allTags]);
+
   function emitCombinedWhere(): void {
     if (!onSearchWhereChange) {
       return;
@@ -385,12 +389,28 @@ export function DataTableToolbar<TData>({
     }
 
     const mimeFilter = table.getState().columnFilters.find((f) => f.id === 'mimeType');
-    const values = (Array.isArray(mimeFilter?.value) ? (mimeFilter?.value as unknown[]) : []) as string[];
+    const mimeValues = (Array.isArray(mimeFilter?.value) ? (mimeFilter?.value as unknown[]) : []) as string[];
 
-    if (values.length > 0) {
-      filterWhereRef.current = { mimeType_IN: values } as Record<string, unknown>;
-    } else {
+    const tagsFilter = table.getState().columnFilters.find((f) => f.id === 'tags');
+    const tagValues = (Array.isArray(tagsFilter?.value) ? (tagsFilter?.value as unknown[]) : []) as string[];
+
+    const clauses: Record<string, unknown>[] = [];
+
+    if (mimeValues.length > 0) {
+      clauses.push({ mimeType_IN: mimeValues } as Record<string, unknown>);
+    }
+
+    if (tagValues.length > 0) {
+      const orTags = tagValues.map((id) => ({ tagsConnection_SOME: { node: { _id: id } } }));
+      clauses.push(orTags.length === 1 ? orTags[0] : { OR: orTags });
+    }
+
+    if (clauses.length === 0) {
       filterWhereRef.current = {};
+    } else if (clauses.length === 1) {
+      filterWhereRef.current = clauses[0] as Record<string, unknown>;
+    } else {
+      filterWhereRef.current = { AND: clauses } as Record<string, unknown>;
     }
 
     emitCombinedWhere();
@@ -445,6 +465,9 @@ export function DataTableToolbar<TData>({
         </div>
         {table.getColumn('mimeType') && (
           <DataTableFacetedFilter column={table.getColumn('mimeType')} title="File type" options={mimeTypeOptions} />
+        )}
+        {table.getColumn('tags') && (
+          <DataTableFacetedFilter column={table.getColumn('tags')} title="Tags" options={tagOptions} />
         )}
         {isFiltered && (
           <Button

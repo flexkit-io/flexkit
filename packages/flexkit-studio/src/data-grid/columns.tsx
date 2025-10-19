@@ -67,10 +67,18 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
         return null;
       }
 
+      const isTagsPreview = previewType === 'tags';
+
       return {
         accessorKey: attribute.name,
-        filterFn: (row: Row<TData>, id: string, value: string) => {
-          return value.includes(row.getValue(id));
+        filterFn: (row: Row<TData>, id: string, value: string | string[]) => {
+          if (isTagsPreview) {
+            return true;
+          }
+
+          const selectedValues = Array.isArray(value) ? value : [value];
+
+          return selectedValues.includes(row.getValue(id));
         },
         header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
         cell: ({ row }: CellContext<TData, TValue>) => {
