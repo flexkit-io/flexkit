@@ -4,6 +4,7 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "license": "MIT",
   "exports": {
     ".": "./dist/index.js"
   },
@@ -19,9 +20,6 @@
   },
   "bin": {
     "flexkit": "./dist/index.js"
-  },
-  "engines": {
-    "node": ">= 22"
   },
   "devDependencies": {
     "@inquirer/checkbox": "^2.4.7",
@@ -61,5 +59,11 @@
     "typescript": "^5.3.3",
     "write-json-file": "2.2.0",
     "xdg-app-paths": "8.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">= 18"
   }
 }

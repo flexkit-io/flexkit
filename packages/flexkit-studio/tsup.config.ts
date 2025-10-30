@@ -8,5 +8,5 @@ export default defineConfig((options) => ({
   dts: true,
   sourcemap: true,
   minify: !options.watch,
-  external: ['react'],
+  external: ['react', 'react-dom'],
 }));

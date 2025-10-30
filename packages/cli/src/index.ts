@@ -32,6 +32,7 @@ import getConfig from './util/get-config';
 import loginCommand from './commands/login';
 import logoutCommand from './commands/logout';
 import syncCommand from './commands/sync';
+import whoamiCommand from './commands/whoami';
 import doLoginPrompt from './util/login/prompt';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
@@ -225,7 +226,7 @@ const main = async (): Promise<number | undefined> => {
     return 2;
   }
 
-  const subcommandsWithoutToken = ['login', 'logout', 'help', 'init'];
+  const subcommandsWithoutToken = ['login', 'logout', 'help', 'init', 'whoami'];
 
   // Prompt for login if there is no current token
   if (
@@ -278,6 +279,9 @@ const main = async (): Promise<number | undefined> => {
           break;
         case 'sync':
           func = syncCommand;
+          break;
+        case 'whoami':
+          func = whoamiCommand;
           break;
         default:
           func = null;

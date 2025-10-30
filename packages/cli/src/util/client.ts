@@ -200,10 +200,13 @@ export default class Client extends EventEmitter implements Stdio {
     opts?: FetchOptions
   ): AsyncGenerator<T & { pagination: PaginationOptions }> {
     const endpoint = typeof url === 'string' ? new URL(url, this.apiUrl) : new URL(url.href);
+
     if (!endpoint.searchParams.has('limit')) {
       endpoint.searchParams.set('limit', '100');
     }
+
     let next: number | null | undefined;
+
     do {
       if (next) {
         // Small sleep to avoid rate limiting

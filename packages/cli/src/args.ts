@@ -9,22 +9,11 @@ export const help = (): string => `
 
     ${chalk.dim('Basic')}
 
-      deploy               [path]      Performs a deployment ${chalk.bold('(default)')}
-      dev                              Start a local development server
-      env                              Manages the Environment Variables for your current Project
-      git                              Manage Git provider repository for your current Project
       help                 [cmd]       Displays complete help for [cmd]
       init                 [example]   Initialize an example project
-      inspect              [id]        Displays information related to a deployment
-      link                 [path]      Link local directory to a Flexkit Project
-      ls | list            [app]       Lists deployments
       login                [email]     Logs into your Flexkit's account
       logout                           Logs out of your account
-      promote              [url|id]    Promote an existing deployment to current
-      pull                 [path]      Pull your Project Settings from the cloud
-      redeploy             [url|id]    Rebuild and deploy a previous deployment.
-      rollback             [url|id]    Quickly revert back to a previous deployment
-      switch               [scope]     Switches between different scopes
+      sync                             Synchronize the current schema with the backend to ensure your data structure is up-to-date
 
     ${chalk.dim('Advanced')}
 

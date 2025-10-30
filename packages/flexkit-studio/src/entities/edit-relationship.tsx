@@ -366,7 +366,7 @@ function SearchBar({
       ) : (
         <SearchIcon className="fk-absolute fk-left-4 fk-top-3 fk-h-4 fk-w-4 fk-shrink-0 fk-opacity-50" />
       )}
-      <Input className="fk-w-full fk-pl-11" onChange={handleSearchChange} placeholder="Search" value={search} />
+      <Input className="fk-w-full !fk-pl-11" onChange={handleSearchChange} placeholder="Search" value={search} />
     </div>
   );
 }

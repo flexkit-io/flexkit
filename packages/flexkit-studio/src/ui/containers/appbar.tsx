@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, MoreHorizontal, PackageCheck, PackageX, Palette, Settings, Wrench } from 'lucide-react';
-import { NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
+import { Link, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../primitives/button';
 import type { AppOptions } from '../../core/config/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../primitives/tooltip';
@@ -151,13 +151,11 @@ export function AppBar({ apps, version }: Props): JSX.Element {
               <Palette className="fk-mr-2 fk-h-4 fk-w-4" />
               <span>Theme</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => {
-                //
-              }}
-            >
-              <Wrench className="fk-mr-2 fk-h-4 fk-w-4" />
-              <span>Manage project</span>
+            <DropdownMenuItem asChild>
+              <Link to={`https://flexkit.io/dashboard/*/${projectId}`} target="_blank" rel="noopener noreferrer">
+                <Wrench className="fk-mr-2 fk-h-4 fk-w-4" />
+                <span>Manage project</span>
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

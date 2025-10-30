@@ -1,4 +1,6 @@
 {
+  "name": "flexkit",
+  "version": "0.0.0",
   "private": true,
   "scripts": {
     "build": "turbo run build",
@@ -7,17 +9,20 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "clean": "turbo clean && rm -rf node_modules",
-    "ui:add": "pnpm --filter @flexkit/studio ui:add"
+    "ui:add": "pnpm --filter @flexkit/studio ui:add",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo run build --filter=@flexkit/cli^... --filter=@flexkit/asset-manager^... --filter=@flexkit/desk^... --filter=@flexkit/explorer^... --filter=@flexkit/studio^... && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "2.29.7",
     "eslint": "^8.57.0",
     "prettier": "^3.0.3",
     "tsconfig": "workspace:*",
     "turbo": "latest"
   },
   "packageManager": "pnpm@9.1.4",
-  "name": "flexkit",
   "engines": {
-    "node": ">=22"
+    "node": ">=20.9.0"
   }
 }

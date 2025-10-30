@@ -1,5 +1,7 @@
 {
   "name": "create-flexkit-app",
+  "version": "0.0.1",
+  "license": "MIT",
   "bin": {
     "create-flexkit-app": "./dist/index.js"
   },
@@ -16,5 +18,8 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
