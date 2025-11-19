@@ -204,7 +204,7 @@ const main = async (): Promise<number | undefined> => {
   //  * a path to deploy (as in: `vercel path/`)
   //  * a subcommand (as in: `vercel ls`)
   // eslint-disable-next-line prefer-destructuring -- this way is easier to read
-  const subcommand = argv.args[2];
+  let subcommand = argv.args[2];
   // eslint-disable-next-line prefer-destructuring -- this way is easier to read
   const subSubCommand = argv.args[3];
 
@@ -224,6 +224,11 @@ const main = async (): Promise<number | undefined> => {
     output.print(help());
 
     return 2;
+  }
+
+  if (subcommand === 'help') {
+    subcommand = subSubCommand;
+    client.argv.push('-h');
   }
 
   const subcommandsWithoutToken = ['login', 'logout', 'help', 'init', 'whoami'];
@@ -262,6 +267,35 @@ const main = async (): Promise<number | undefined> => {
 
       return 1;
     }
+  }
+
+  if (typeof argv.flags['--token'] === 'string') {
+    const token: string = argv.flags['--token'];
+
+    if (token.length === 0) {
+      output.prettyError({
+        message: `You defined ${paramOutput('--token')}, but it's missing a value`,
+        link: 'https://err.sh/vercel/missing-token-value',
+      });
+
+      return 1;
+    }
+
+    const isValidToken = /^flk-[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{15}$/i.test(token);
+
+    if (!isValidToken) {
+      output.prettyError({
+        message: `You defined ${paramOutput(
+          '--token'
+        )}, but its value is invalid. Expected format: flk-<32 hex characters (0-9, a-f)>`,
+        link: 'https://err.sh/vercel/invalid-token-value',
+      });
+
+      return 1;
+    }
+
+    client.authConfig.token = token;
+    client.authConfig.skipWrite = true;
   }
 
   let exitCode;

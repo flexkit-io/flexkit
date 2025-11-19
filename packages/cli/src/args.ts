@@ -7,26 +7,10 @@ export const help = (): string => `
 
   ${chalk.dim('Commands:')}
 
-    ${chalk.dim('Basic')}
-
       help                 [cmd]       Displays complete help for [cmd]
-      init                 [example]   Initialize an example project
       login                [email]     Logs into your Flexkit's account
       logout                           Logs out of your account
       sync                             Synchronize the current schema with the backend to ensure your data structure is up-to-date
-
-    ${chalk.dim('Advanced')}
-
-      alias                [cmd]       Manages your domain aliases
-      bisect                           Use binary search to find the deployment that introduced a bug
-      certs                [cmd]       Manages your SSL certificates
-      dns                  [name]      Manages your DNS records
-      domains              [name]      Manages your domain names
-      logs                 [url]       Displays the logs for a deployment
-      projects                         Manages your Projects
-      rm | remove          [id]        Removes a deployment
-      secrets              [name]      Manages your global Secrets, for use in Environment Variables
-      teams                            Manages your teams
       whoami                           Shows the username of the currently logged in user
 
   ${chalk.dim('Global Options:')}
@@ -43,19 +27,11 @@ export const help = (): string => `
 
   ${chalk.dim('Examples:')}
 
-  ${chalk.gray('–')} Deploy the current directory
+  ${chalk.gray('–')} Synchronize the current schema with the dataset (cd into your project directory where your flexkit.config.ts file is located)
 
-    ${chalk.cyan(`$ flexkit`)}
+    ${chalk.cyan(`$ flexkit sync`)}
 
-  ${chalk.gray('–')} Deploy a custom path
+  ${chalk.gray('–')} Show the usage information for the sub command ${chalk.dim('`sync`')}
 
-    ${chalk.cyan(`$ flexkit /usr/src/project`)}
-
-  ${chalk.gray('–')} Deploy with Environment Variables
-
-    ${chalk.cyan(`$ flexkit -e NODE_ENV=production`)}
-
-  ${chalk.gray('–')} Show the usage information for the sub command ${chalk.dim('`list`')}
-
-    ${chalk.cyan(`$ flexkit help list`)}
+    ${chalk.cyan(`$ flexkit help sync`)}
 `;

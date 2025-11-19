@@ -75,7 +75,7 @@ const globalCommandOptions: CommandOption[] = [
     shorthand: 'A',
     type: String,
     argument: 'FILE',
-    description: 'Path to the local `vercel.json` file',
+    description: 'Path to the local `flexkit.config.ts` file of your project',
     deprecated: false,
   },
   {
@@ -83,7 +83,7 @@ const globalCommandOptions: CommandOption[] = [
     shorthand: 'Q',
     type: String,
     argument: 'DIR',
-    description: 'Path to the global `.vercel` directory',
+    description: 'Path to the global configuration directory',
     deprecated: false,
   },
   {

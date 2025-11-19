@@ -52,6 +52,7 @@ export const writeToAuthConfigFile = (authConfig: AuthConfig): void => {
   if (authConfig.skipWrite) {
     return;
   }
+
   try {
     writeJsonFileSync(AUTH_CONFIG_FILE_PATH, authConfig, {
       indent: 2,

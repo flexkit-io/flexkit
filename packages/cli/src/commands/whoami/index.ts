@@ -35,7 +35,9 @@ export default async function main(client: Client): Promise<number> {
   const url = new URL('/api/auth/user', client.authUrl);
 
   try {
+    output.spinner('');
     const res = await client.fetch<WhoAmIResponse>(url.href);
+    output.stopSpinner();
     const name = (res.display_name && res.display_name.trim()) || (res.email && res.email.trim()) || '';
 
     if (name) {
@@ -48,6 +50,8 @@ export default async function main(client: Client): Promise<number> {
 
     return 1;
   } catch (err: unknown) {
+    output.stopSpinner();
+
     if (isAPIError(err)) {
       if (err.status === 401) {
         output.log(`You are not logged in. Please log in first by running ${getCommandName('login')}`);

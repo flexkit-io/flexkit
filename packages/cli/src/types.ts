@@ -11,7 +11,6 @@ export interface AuthConfig {
 export interface GlobalConfig {
   '// Note'?: string;
   '// Docs'?: string;
-  currentTeam?: string;
   collectMetrics?: boolean;
   api?: string;
 }
