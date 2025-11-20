@@ -95,8 +95,8 @@ export default class Client extends EventEmitter implements Stdio {
         input({ theme, ...options }, { input: this.stdin, output: this.stderr }),
       checkbox: <T>(options: Parameters<typeof checkbox<T>>[0]) =>
         checkbox<T>({ theme, ...options }, { input: this.stdin, output: this.stderr }),
-      expand: (options: Parameters<typeof expand>[0]) =>
-        expand({ theme, ...options }, { input: this.stdin, output: this.stderr }),
+      expand: <Value>(options: Parameters<typeof expand<Value>>[0]) =>
+        expand<Value>({ theme, ...options }, { input: this.stdin, output: this.stderr }),
       confirm: (options: Parameters<typeof confirm>[0]) =>
         confirm({ theme, ...options }, { input: this.stdin, output: this.stderr }),
       select: <T>(options: Parameters<typeof select<T>>[0]) =>
@@ -104,8 +104,8 @@ export default class Client extends EventEmitter implements Stdio {
     };
   }
 
-  retry<T>(fn: RetryFunction<T>, { retries = 3, maxTimeout = Infinity } = {}): Promise<T> {
-    return retry(fn, {
+  retry<T>(fn: RetryFunction<T, Error>, { retries = 3, maxTimeout = Infinity } = {}): Promise<T> {
+    return retry<T>(fn, {
       retries,
       maxTimeout,
       onRetry: this._onRetry,
@@ -220,8 +220,14 @@ export default class Client extends EventEmitter implements Stdio {
     } while (next);
   }
 
-  _onRetry = (error: Error): void => {
-    this.output.debug(`Retrying: ${error.toString()}\n${error.stack ?? ''}`);
+  _onRetry = (error: unknown, attempt: number): void => {
+    if (error instanceof Error) {
+      this.output.debug(`Retrying (attempt ${attempt.toString()}): ${error.toString()}\n${error.stack ?? ''}`);
+
+      return;
+    }
+
+    this.output.debug(`Retrying (attempt ${attempt.toString()}): ${String(error)}`);
   };
 
   get cwd(): string {

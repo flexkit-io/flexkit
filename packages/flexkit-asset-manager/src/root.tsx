@@ -1,6 +1,6 @@
 'use client';
 
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@flexkit/studio/ui';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@flexkit/core/ui';
 import { Sidebar } from './sidebar';
 import { List } from './list';
 

@@ -10,10 +10,10 @@ import {
   useEntityQuery,
   ProjectDisabled,
   SchemaError,
-} from '@flexkit/studio';
-import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@flexkit/studio/ui';
-import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
-import { DataTable, DataTableRowActions, DataTableToolbar, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
+} from '@flexkit/core';
+import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@flexkit/core/ui';
+import type { ColumnDef, SingleProject, Row } from '@flexkit/core';
+import { DataTable, DataTableRowActions, DataTableToolbar, useGridColumnsDefinition } from '@flexkit/core/data-grid';
 
 const pageSize = 25;
 

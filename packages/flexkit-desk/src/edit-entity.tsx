@@ -1,4 +1,4 @@
-import { useParams } from '@flexkit/studio';
+import { useParams } from '@flexkit/core';
 
 export function EditEntity(): JSX.Element {
   const { entity, id } = useParams();

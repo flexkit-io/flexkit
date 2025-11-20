@@ -117,7 +117,9 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
       return;
     }
 
-    if (file.size > bytes('4MB')) {
+    const fileSizeLimit = bytes('4MB');
+
+    if (file.size > (fileSizeLimit ?? 0)) {
       toast.error('File size too big (max 4MB)');
       return;
     }

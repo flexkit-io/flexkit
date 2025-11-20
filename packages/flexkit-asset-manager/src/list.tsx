@@ -9,11 +9,11 @@ import {
   useEntityQuery,
   ProjectDisabled,
   SchemaError,
-} from '@flexkit/studio';
-import { Skeleton } from '@flexkit/studio/ui';
-import { DataTable } from '@flexkit/studio/data-grid';
-import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
-import { DataTableRowActions, useGridColumnsDefinition } from '@flexkit/studio/data-grid';
+} from '@flexkit/core';
+import { Skeleton } from '@flexkit/core/ui';
+import { DataTable } from '@flexkit/core/data-grid';
+import type { ColumnDef, SingleProject, Row } from '@flexkit/core';
+import { DataTableRowActions, useGridColumnsDefinition } from '@flexkit/core/data-grid';
 import { DataTableToolbar } from './data-grid/data-table-toolbar';
 
 const pageSize = 25;

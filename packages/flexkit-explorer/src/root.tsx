@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { createGraphiQLFetcher } from '@graphiql/toolkit';
-import { useConfig } from '@flexkit/studio';
+import { useConfig } from '@flexkit/core';
 import { GraphiQL } from './components/graphiql';
 import '@graphiql/react/dist/style.css';
 

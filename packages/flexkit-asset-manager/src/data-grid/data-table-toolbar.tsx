@@ -15,15 +15,15 @@ import {
   Search as SearchIcon,
   X as ResetIcon,
 } from 'lucide-react';
-import type { ReactTable, SearchRequestProps } from '@flexkit/studio';
-import { Button, Input } from '@flexkit/studio/ui';
+import type { ReactTable, SearchRequestProps } from '@flexkit/core';
+import { Button, Input } from '@flexkit/core/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@flexkit/studio/ui';
+} from '@flexkit/core/ui';
 import {
   CommandDialog,
   CommandInput,
@@ -32,7 +32,7 @@ import {
   CommandGroup,
   CommandEmpty,
   CommandSeparator,
-} from '@flexkit/studio/ui';
+} from '@flexkit/core/ui';
 import {
   DataTableFacetedFilter,
   useParams,
@@ -45,7 +45,7 @@ import {
   useConfig,
   getEntityUpdateMutation,
   useSearch,
-} from '@flexkit/studio';
+} from '@flexkit/core';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
@@ -427,6 +427,7 @@ export function DataTableToolbar<TData>({
           )}
           <Input
             placeholder="Search assets..."
+            name="search-assets"
             value={search}
             onChange={(e) => {
               const value = e.target.value;

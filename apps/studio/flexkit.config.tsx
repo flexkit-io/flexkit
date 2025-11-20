@@ -1,11 +1,8 @@
 import { defineConfig } from '@flexkit/studio/ssr';
-import { AssetManager } from '@flexkit/asset-manager';
-import { Desk } from '@flexkit/desk';
-import { Explorer } from '@flexkit/explorer';
+import { AssetManager, Desk, Explorer } from '@flexkit/studio/plugins';
 import { CustomTextField } from './app/components/custom-input-field';
 import { CustomBooleanPreviewField } from './app/components/custom-boolean-preview-field';
 import { RatePreviewField } from './app/components/rate-preview-field';
-import '@flexkit/explorer/styles.css';
 import { products } from './app/lib/schema/naturitas/products';
 import { categories } from './app/lib/schema/naturitas/categories';
 import { flags } from './app/lib/schema/naturitas/flags';
