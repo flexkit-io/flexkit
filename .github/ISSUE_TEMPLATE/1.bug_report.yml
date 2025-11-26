@@ -1,0 +1,80 @@
+name: Report an issue
+description: Report a Flexkit issue.
+type: Bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template is used for reporting a Flexkit issue.
+
+        Feature requests should be opened in [discussions](https://github.com/orgs/flexkit-io/discussions/new?category=ideas). For more information about opening a feature request, [read more](https://github.com/vercel/next.js/blob/canary/contributing/core/adding-features.md).
+
+        Documentation requests should also be opened in [discussions](https://github.com/orgs/flexkit-io/discussions/new?category=ideas).
+
+        Before opening a new issue, please do a [search](https://github.com/vercel/next.js/issues) of existing issues and :+1: upvote the existing issue instead. This will result in a quicker resolution.
+
+        If you need help with your own project, you can start a discussion in the ["Help"](https://github.com/orgs/flexkit-io/discussions/categories/help) section.
+  - type: input
+    attributes:
+      label: Link to the code that reproduces this issue
+      description: |
+        A link to a **public** GitHub repository or a CodeSandbox minimal reproduction. Minimal reproductions should include only the relevant code that contribute to the issue.
+
+        Please make sure test your minimal reproduction on the latest version. It is highly likely that the issue you are experiencing is already fixed.
+
+        **Skipping this/providing an invalid link will result in the issue being closed.**
+      placeholder: 'https://github.com/user/my-minimal-nextjs-issue-reproduction'
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: To Reproduce
+      description: A step-by-step description of how to reproduce the issue, based on the linked reproduction. Screenshots can be provided in the issue body below. If using code blocks, make sure that [syntax highlighting is correct](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-and-highlighting-code-blocks#syntax-highlighting) and double check that the rendered preview is not broken.
+      placeholder: |
+        1. Start the application in development (pnpm dev)
+        2. Click X
+        3. Y will happen
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Current vs. Expected behavior
+      description: |
+        A clear and concise description of what the bug is (e.g., screenshots, logs, etc.), and what you expected to happen.
+
+        **Skipping this/failure to provide complete information of the bug will result in the issue being closed.**
+      placeholder: 'Following the steps from the previous section, I expected A to happen, but I observed B instead.'
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Provide environment information
+      description: Please run `next info` in the root directory of your project and paste the results. You might need to use `npx --no-install next info` if next is not in the current PATH.
+      render: bash
+      placeholder: |
+        Operating System:
+          Platform: darwin
+          Arch: arm64
+          Version: Darwin Kernel Version 23.6.0
+        Binaries:
+          Node: 20.17.0
+          npm: 10.8.2
+          Yarn: 1.22.22
+          pnpm: 9.10.0
+        Relevant Packages:
+          next: 15.0.0-canary.148
+          eslint-config-next: 15.0.0-canary.148
+          react: 19.0.0-rc-3dfd5d9e-20240910
+          react-dom: 19.0.0-rc-3dfd5d9e-20240910
+          typescript: 5.6.2
+        Next.js Config:
+          output: N/A
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: |
+        Any extra information that might help us investigate. For example, where are you deploying your application (Vercel, Docker, other platform)? Is it only reproducible on that platform, or locally too? Is the issue only happening in a specific browser? etc.
+      placeholder: |
+        I tested my reproduction against different releases, and the first one that introduced the bug was x.y.z, since reverting to x.z.y works.

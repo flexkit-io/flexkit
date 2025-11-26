@@ -38,7 +38,7 @@ export default async function main(client: Client): Promise<number> {
     output.spinner('');
     const res = await client.fetch<WhoAmIResponse>(url.href);
     output.stopSpinner();
-    const name = (res.display_name && res.display_name.trim()) || (res.email && res.email.trim()) || '';
+    const name = res.display_name?.trim() ?? res.email?.trim() ?? '';
 
     if (name) {
       output.log(name);
