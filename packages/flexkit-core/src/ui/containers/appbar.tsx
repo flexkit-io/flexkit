@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, MoreHorizontal, PackageCheck, PackageX, Palette, Settings, Wrench } from 'lucide-react';
+import { MoreHorizontal, PackageCheck, PackageX, Settings, Wrench } from 'lucide-react';
 import { Link, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../primitives/button';
 import type { AppOptions } from '../../core/config/types';
@@ -10,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
 } from '../primitives/dropdown-menu';
 
 type Props = {
@@ -133,7 +132,8 @@ export function AppBar({ apps, version }: Props): JSX.Element {
             </DropdownMenuTrigger>
           </Tooltip>
           <DropdownMenuContent align="start" className="fk-w-60" side="right">
-            <DropdownMenuItem
+            {/* TODO: add command menu functionality */}
+            {/* <DropdownMenuItem
               onSelect={() => {
                 //
               }}
@@ -142,15 +142,16 @@ export function AppBar({ apps, version }: Props): JSX.Element {
               <span>Command Menu</span>
               <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
+            <DropdownMenuSeparator /> */}
+            {/* TODO: add theme menu functionality - perhaps a Slack-like theme selector */}
+            {/* <DropdownMenuItem
               onSelect={() => {
                 //
               }}
             >
               <Palette className="fk-mr-2 fk-h-4 fk-w-4" />
               <span>Theme</span>
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuItem asChild>
               <Link to={`https://flexkit.io/dashboard/*/${projectId}`} target="_blank" rel="noopener noreferrer">
                 <Wrench className="fk-mr-2 fk-h-4 fk-w-4" />
