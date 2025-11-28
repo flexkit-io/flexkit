@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, MoreHorizontal, PackageCheck, PackageX, Palette, Settings, Wrench } from 'lucide-react';
+import { MoreHorizontal, PackageCheck, PackageX, Settings, Wrench } from 'lucide-react';
 import { Link, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../primitives/button';
 import type { AppOptions } from '../../core/config/types';
@@ -10,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
 } from '../primitives/dropdown-menu';
 
 type Props = {
