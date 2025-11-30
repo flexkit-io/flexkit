@@ -16,7 +16,7 @@
     "ui:add": "pnpm --filter @flexkit/studio ui:add",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "turbo run build --filter=@flexkit/cli^... --filter=@flexkit/asset-manager^... --filter=@flexkit/desk^... --filter=@flexkit/explorer^... --filter=@flexkit/studio^... && changeset publish"
+    "release": "turbo run build --filter=...@flexkit/cli --filter=...@flexkit/studio && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "2.29.7",
