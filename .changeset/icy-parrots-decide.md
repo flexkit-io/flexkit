@@ -7,3 +7,4 @@
 ---
 
 Refactor dependency bundling to include Flexkit's core and plugins
+Upgrade @apollo/client to v4.x
