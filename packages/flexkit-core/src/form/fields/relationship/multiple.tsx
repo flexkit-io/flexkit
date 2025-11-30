@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { Dispatch, SyntheticEvent } from 'react';
-import { useLazyQuery, gql } from '@apollo/client';
+import { gql } from '@apollo/client';
+import { useLazyQuery } from '@apollo/client/react';
 import type { Row } from '@tanstack/react-table';
 import { find, map, prop, propEq, uniq, uniqBy } from 'ramda';
 import { Link, Maximize2, X as ClearIcon } from 'lucide-react';
@@ -172,7 +173,7 @@ export default function MultipleRelationship({
             },
           },
         })
-          .then(({ data: res }) => {
+          .then(({ data: res }: { data: (EntityQueryResults & EntityQueryAggregate) | undefined }) => {
             if (!res) {
               return;
             }

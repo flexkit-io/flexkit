@@ -1,8 +1,11 @@
 'use client';
 
-import { ApolloClient, ApolloProvider, InMemoryCache, defaultDataIdFromObject, from, HttpLink } from '@apollo/client';
+import { ApolloClient, InMemoryCache, defaultDataIdFromObject, from, HttpLink } from '@apollo/client';
 import type { ApolloLink } from '@apollo/client';
-import { onError } from '@apollo/client/link/error';
+import { ApolloProvider } from '@apollo/client/react';
+import { ErrorLink } from '@apollo/client/link/error';
+import { CombinedGraphQLErrors, CombinedProtocolErrors } from '@apollo/client/errors';
+import { getServerError, parseErrorBody } from './error-utils';
 import { useConfig } from '../core/config/config-context';
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
@@ -24,53 +27,53 @@ function useGraphQLError(): GraphQLErrorContextValue {
 }
 
 function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): ApolloLink {
-  return onError(({ graphQLErrors, networkError }) => {
-    if (graphQLErrors)
-      graphQLErrors.forEach(({ message, locations, path }) => {
-        // eslint-disable-next-line -- intended dev-only console log
+  return new ErrorLink(({ error }) => {
+    if (CombinedGraphQLErrors.is(error)) {
+      error.errors.forEach(({ message, locations, path }) => {
         console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
       });
+    } else if (CombinedProtocolErrors.is(error)) {
+      error.errors.forEach(({ message, extensions }) => {
+        console.log(`[Protocol error]: Message: ${message}, Extensions: ${JSON.stringify(extensions)}`);
+      });
+    }
 
-    const status =
-      (networkError && 'statusCode' in networkError
-        ? (networkError as { statusCode?: number }).statusCode
-        : undefined) ?? undefined;
+    const serverError = getServerError(error);
 
-    if (status === 400) {
+    if (serverError?.statusCode === 400) {
+      const responseBody = parseErrorBody<Record<string, unknown>>(serverError.bodyText);
       let message: string | null = null;
 
-      try {
-        const responseBody =
-          'result' in (networkError as object) ? (networkError as { result?: unknown }).result : null;
+      if (responseBody && typeof responseBody === 'object') {
+        if (typeof responseBody.message === 'string') {
+          message = responseBody.message;
+        } else if (Array.isArray((responseBody as { errors?: unknown }).errors)) {
+          const errorsArray = (responseBody as { errors?: unknown }).errors as unknown[];
+          const firstError = errorsArray[0] as { message?: unknown } | undefined;
 
-        if (responseBody && typeof responseBody === 'object') {
-          const body = responseBody as Record<string, unknown>;
-
-          if (typeof body.message === 'string') {
-            message = body.message;
-          } else if (Array.isArray((body as { errors?: unknown }).errors)) {
-            const errorsArray = (body as { errors?: unknown }).errors as unknown[];
-            const firstError = errorsArray[0] as { message?: unknown } | undefined;
-
-            if (firstError && typeof firstError.message === 'string') {
-              message = firstError.message;
-            }
-          } else if (typeof (body as { error?: unknown }).error === 'string') {
-            message = (body as { error?: unknown }).error as string;
-          } else {
-            message = JSON.stringify(body);
+          if (firstError && typeof firstError.message === 'string') {
+            message = firstError.message;
           }
+        } else if (typeof (responseBody as { error?: unknown }).error === 'string') {
+          message = (responseBody as { error?: unknown }).error as string;
+        } else {
+          message = JSON.stringify(responseBody);
         }
-      } catch {
-        // ignore parse errors
+      } else {
+        message = serverError.bodyText;
       }
 
       setSchemaErrorMessage(message ?? 'There is an error in your Flexkit schema (flexkit.config.ts).');
     }
 
-    if (networkError) {
-      // eslint-disable-next-line -- intended dev-only console log
-      console.log(`[Network error]: ${networkError}`);
+    if (serverError) {
+      console.log(`[Network error]: ${serverError.message}`);
+
+      return;
+    }
+
+    if (error) {
+      console.log(`[Network error]: ${error.message}`);
     }
   });
 }
@@ -85,7 +88,7 @@ function additiveLink(currentProjectId: string, setSchemaErrorMessage: (msg: str
 function client(
   currentProjectId: string | undefined,
   setSchemaErrorMessage: (msg: string | null) => void
-): ApolloClient<unknown> {
+): ApolloClient {
   return new ApolloClient({
     link: additiveLink(currentProjectId ?? '', setSchemaErrorMessage),
     cache: new InMemoryCache({

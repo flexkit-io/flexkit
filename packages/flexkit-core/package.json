@@ -24,7 +24,8 @@
   },
   "sideEffects": [
     "**/*.css",
-    "./dist/index.css"
+    "./dist/index.css",
+    "./dist/**/chunk-*.js"
   ],
   "files": [
     "dist/**"
@@ -60,7 +61,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
-    "@apollo/client": "^3.10.4",
+    "@apollo/client": "4.0.9",
     "@hookform/resolvers": "^3.3.2",
     "@lexical/code": "^0.12.2",
     "@lexical/html": "^0.12.2",

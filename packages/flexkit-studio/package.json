@@ -22,13 +22,17 @@
     "src/styles.css"
   ],
   "scripts": {
-    "build": "tsup src/index.ts src/ssr.ts src/plugins.ts src/ui.ts src/data-grid.ts --format esm,cjs --dts",
-    "dev": "tsup src/index.ts src/ssr.ts src/plugins.ts src/ui.ts src/data-grid.ts --format esm,cjs --watch --dts",
+    "build": "tsup src/index.ts src/ssr.ts src/plugins.ts src/ui.ts src/data-grid.ts --format esm --dts",
+    "dev": "tsup src/index.ts src/ssr.ts src/plugins.ts src/ui.ts src/data-grid.ts --format esm --watch --dts",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "ui:add": "pnpm dlx shadcn@latest add"
   },
   "devDependencies": {
+    "@flexkit/asset-manager": "workspace:*",
+    "@flexkit/core": "workspace:*",
+    "@flexkit/desk": "workspace:*",
+    "@flexkit/explorer": "workspace:*",
     "@types/node": "^20.5.2",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
@@ -38,12 +42,6 @@
     "tsconfig": "workspace:*",
     "tsup": "8.5.0",
     "typescript": "^5.3.3"
-  },
-  "dependencies": {
-    "@flexkit/core": "workspace:*",
-    "@flexkit/asset-manager": "workspace:*",
-    "@flexkit/desk": "workspace:*",
-    "@flexkit/explorer": "workspace:*"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
