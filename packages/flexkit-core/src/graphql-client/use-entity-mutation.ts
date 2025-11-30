@@ -1,27 +1,26 @@
 import { useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { useMutation, gql } from '@apollo/client';
+import { gql } from '@apollo/client';
+import type { DocumentNode, ErrorLike } from '@apollo/client';
+import { useApolloClient, useMutation } from '@apollo/client/react';
+import type { MutationHookOptions } from '@apollo/client/react';
 import { getAssetCreateMutation } from './queries';
 import type { FormEntityItem, EntityData } from './types';
+import { getServerError, parseErrorBody } from './error-utils';
 
 export function useCreateAssetMutation(): (entityData: FormEntityItem) => Promise<void> {
-  // We generate text mutation on the fly, so define a no-op default and replace per call
-  const [mutate] = useMutation(gql`
-    mutation __noop__ {
-      __typename
-    }
-  `);
+  const apolloClient = useApolloClient();
 
   return async (entityData: FormEntityItem): Promise<void> => {
     const mutation = getAssetCreateMutation(entityData as unknown as EntityData);
-    await mutate({
+
+    await apolloClient.mutate({
       mutation: gql`
         ${mutation}
       `,
     });
   };
 }
-import type { ApolloError, DocumentNode, MutationHookOptions } from '@apollo/client';
 
 type EntityMutationResponse = [
   Dispatch<SetStateAction<boolean>>,
@@ -30,7 +29,7 @@ type EntityMutationResponse = [
   {
     data: unknown;
     loading: boolean;
-    error: ApolloError | undefined;
+    error: ErrorLike | undefined;
     isProjectDisabled: boolean;
     isProjectReadOnly: boolean;
   },
@@ -47,25 +46,28 @@ export function useEntityMutation(): EntityMutationResponse {
   const [mutateFunction, { data, loading, error }] = useMutation(mutation, options);
 
   // Parse 403 error response to determine the specific error code
+  const serverError = getServerError(error);
+
   const { isProjectDisabled, isProjectReadOnly } = (() => {
-    if (error?.networkError && 'statusCode' in error.networkError && error.networkError.statusCode === 403) {
-      // Try to parse the response body to get the error code
-      try {
-        const responseBody = 'result' in error.networkError ? error.networkError.result : null;
+    if (serverError?.statusCode === 403) {
+      const responseBody = parseErrorBody<{ code?: string }>(serverError.bodyText);
 
-        if (responseBody && typeof responseBody === 'object' && 'code' in responseBody) {
-          const errorCode = responseBody.code;
-
+      if (responseBody && typeof responseBody.code === 'string') {
+        if (responseBody.code === 'PROJECT_PAUSED') {
           return {
-            isProjectDisabled: errorCode === 'PROJECT_PAUSED',
-            isProjectReadOnly: errorCode === 'READ_ONLY_MODE',
+            isProjectDisabled: true,
+            isProjectReadOnly: false,
           };
         }
-      } catch {
-        // If parsing fails, fall back to treating any 403 as project disabled for backward compatibility
+
+        if (responseBody.code === 'READ_ONLY_MODE') {
+          return {
+            isProjectDisabled: false,
+            isProjectReadOnly: true,
+          };
+        }
       }
 
-      // Fallback: if we can't determine the specific code, assume project is disabled
       return {
         isProjectDisabled: true,
         isProjectReadOnly: false,

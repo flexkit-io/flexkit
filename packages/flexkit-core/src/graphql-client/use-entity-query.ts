@@ -1,6 +1,8 @@
 import { useEffect, useCallback, useState } from 'react';
 import { prop, uniqBy } from 'ramda';
-import { useQuery, gql } from '@apollo/client';
+import { gql } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
+import { getServerError, parseErrorBody } from './error-utils';
 import { getEntityQuery, mapQueryResult, mapQueryResultForFormFields } from './queries';
 import type {
   EntityQueryAggregate,
@@ -34,7 +36,7 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
     data,
     fetchMore: fetchNextPage,
     error,
-  } = useQuery(
+  } = useQuery<EntityQueryResults & EntityQueryAggregate>(
     gql`
       ${entityQuery.query}
     `,
@@ -42,25 +44,28 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
   );
 
   // Parse 403 error response to determine the specific error code
+  const serverError = getServerError(error);
+
   const { isProjectDisabled, isProjectReadOnly } = (() => {
-    if (error?.networkError && 'statusCode' in error.networkError && error.networkError.statusCode === 403) {
-      // Try to parse the response body to get the error code
-      try {
-        const responseBody = 'result' in error.networkError ? error.networkError.result : null;
+    if (serverError?.statusCode === 403) {
+      const responseBody = parseErrorBody<{ code?: string }>(serverError.bodyText);
 
-        if (responseBody && typeof responseBody === 'object' && 'code' in responseBody) {
-          const errorCode = responseBody.code;
-
+      if (responseBody && typeof responseBody.code === 'string') {
+        if (responseBody.code === 'PROJECT_PAUSED') {
           return {
-            isProjectDisabled: errorCode === 'PROJECT_PAUSED',
-            isProjectReadOnly: errorCode === 'READ_ONLY_MODE',
+            isProjectDisabled: true,
+            isProjectReadOnly: false,
           };
         }
-      } catch {
-        // If parsing fails, fall back to treating any 403 as project disabled for backward compatibility
+
+        if (responseBody.code === 'READ_ONLY_MODE') {
+          return {
+            isProjectDisabled: false,
+            isProjectReadOnly: true,
+          };
+        }
       }
 
-      // Fallback: if we can't determine the specific code, assume project is disabled
       return {
         isProjectDisabled: true,
         isProjectReadOnly: false,
