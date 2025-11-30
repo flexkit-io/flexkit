@@ -17,7 +17,9 @@ export default defineConfig((options) => ({
   entry: ['src/index.ts', 'src/ssr.ts', 'src/plugins.ts', 'src/ui.ts', 'src/data-grid.ts'],
   format: ['esm'],
   platform: 'browser',
-  dts: true,
+  dts: {
+    resolve: ['@flexkit/core', '@flexkit/asset-manager', '@flexkit/desk', '@flexkit/explorer'],
+  },
   sourcemap: true,
   minify: !options.watch,
   external: ['react', 'react-dom', 'react/jsx-runtime'],
