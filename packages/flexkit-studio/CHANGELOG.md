@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.4
+
+### Patch Changes
+
+- 9eedd67: Fix package export config
+
 ## 0.0.3
 
 ### Patch Changes
