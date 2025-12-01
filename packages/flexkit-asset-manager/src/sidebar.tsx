@@ -20,7 +20,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@flexkit/core/ui';
+} from '@flexkit/studio/ui';
 import {
   gql,
   useAppContext,
@@ -28,9 +28,9 @@ import {
   useEntityQuery,
   getEntityDeleteMutation,
   useConfig,
-} from '@flexkit/core';
-import { getEntityCreateMutation, getEntityQuery, getEntityUpdateMutation } from '@flexkit/core';
-import type { EntityData, FormEntityItem } from '@flexkit/core';
+} from '@flexkit/studio';
+import { getEntityCreateMutation, getEntityQuery, getEntityUpdateMutation } from '@flexkit/studio';
+import type { EntityData, FormEntityItem } from '@flexkit/studio';
 
 type TagItem = { _id: string; name: string };
 

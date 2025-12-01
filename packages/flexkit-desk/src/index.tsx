@@ -1,5 +1,5 @@
 import { Layout as LayoutIcon } from 'lucide-react';
-import type { PluginOptions } from '@flexkit/core';
+import type { PluginOptions } from '@flexkit/studio';
 import { Root } from './root';
 import { List } from './list';
 import { EditEntity } from './edit-entity';

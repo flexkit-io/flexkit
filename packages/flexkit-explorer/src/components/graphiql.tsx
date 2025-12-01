@@ -62,8 +62,8 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@flexkit/core/ui';
-import type { ImperativePanelHandle } from '@flexkit/core/ui';
+} from '@flexkit/studio/ui';
+import type { ImperativePanelHandle } from '@flexkit/studio/ui';
 import type { TabState } from './types';
 
 export type GraphiQLToolbarConfig = {

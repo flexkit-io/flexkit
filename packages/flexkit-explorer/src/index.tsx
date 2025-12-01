@@ -1,5 +1,5 @@
 import { SquarePlay as SquarePlayIcon } from 'lucide-react';
-import type { PluginOptions } from '@flexkit/core';
+import type { PluginOptions } from '@flexkit/studio';
 import { Root } from './root';
 
 export function Explorer(): PluginOptions {
