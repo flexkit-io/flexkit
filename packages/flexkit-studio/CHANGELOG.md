@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.6
+
+### Patch Changes
+
+- 937bdf3: Make API handler compatible with Next.js 15+
+
 ## 0.0.5
 
 ### Patch Changes
