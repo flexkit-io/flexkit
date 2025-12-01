@@ -1,5 +1,13 @@
 # @flexkit/desk
 
+## 0.0.5
+
+### Patch Changes
+
+- 526357c: Unbundle the Studio core from the plugins. Now each package is published separately to NPM.
+- Updated dependencies [526357c]
+  - @flexkit/studio@0.0.5
+
 ## 0.0.4
 
 ### Patch Changes
