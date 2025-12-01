@@ -1,5 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
-import type { Attribute, Scopes } from '../types';
+import type { Attribute, AttributeOptions, Scopes } from '../types';
 import type { FormFieldParams } from '../../form/types';
 import type { Entity } from '../types';
 export interface LogoProps {
@@ -18,7 +18,7 @@ interface SearchProps {
   schema: Entity[];
 }
 
-export interface FormFieldProps extends FormFieldParams {}
+export interface FormFieldProps extends FormFieldParams<keyof AttributeOptions> {}
 
 type UserNavProps = {
   projectId: string;

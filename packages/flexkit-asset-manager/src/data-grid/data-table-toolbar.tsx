@@ -15,16 +15,9 @@ import {
   Search as SearchIcon,
   X as ResetIcon,
 } from 'lucide-react';
-import type { ReactTable, SearchRequestProps } from '@flexkit/core';
-import { Button, Input } from '@flexkit/core/ui';
+import type { ReactTable, SearchRequestProps } from '@flexkit/studio';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@flexkit/core/ui';
-import {
+  Button,
   CommandDialog,
   CommandInput,
   CommandList,
@@ -32,7 +25,13 @@ import {
   CommandGroup,
   CommandEmpty,
   CommandSeparator,
-} from '@flexkit/core/ui';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Input,
+} from '@flexkit/studio/ui';
 import {
   DataTableFacetedFilter,
   useParams,
@@ -45,7 +44,7 @@ import {
   useConfig,
   getEntityUpdateMutation,
   useSearch,
-} from '@flexkit/core';
+} from '@flexkit/studio';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;

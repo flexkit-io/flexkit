@@ -1,5 +1,5 @@
-import { IMAGES_BASE_URL } from '@flexkit/core';
-import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '@flexkit/core/ui';
+import { IMAGES_BASE_URL } from '@flexkit/studio';
+import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '@flexkit/studio/ui';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
 
 export function Asset({ value }: { value: string }): JSX.Element | null {

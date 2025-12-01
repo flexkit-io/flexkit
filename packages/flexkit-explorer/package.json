@@ -1,7 +1,6 @@
 {
   "name": "@flexkit/explorer",
   "version": "0.0.4",
-  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "style": "dist/index.css",
@@ -32,7 +31,7 @@
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },
   "devDependencies": {
-    "@flexkit/core": "workspace:*",
+    "@flexkit/studio": "workspace:*",
     "@types/node": "^20.5.2",
     "@types/ramda": "^0.29.7",
     "@types/react": "^18.2.0",
@@ -57,8 +56,11 @@
     "swr": "^2.2.4"
   },
   "peerDependencies": {
-    "@flexkit/core": "workspace:*",
+    "@flexkit/studio": "workspace:*",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

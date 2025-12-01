@@ -1,7 +1,7 @@
 import { find, propEq } from 'ramda';
-import { Outlet, useAuth, useConfig } from '@flexkit/core';
-import { Sidebar, SidebarInset, SidebarProvider } from '@flexkit/core/ui';
-import type { SingleProject } from '@flexkit/core';
+import { Outlet, useAuth, useConfig } from '@flexkit/studio';
+import { Sidebar, SidebarInset, SidebarProvider } from '@flexkit/studio/ui';
+import type { SingleProject } from '@flexkit/studio';
 
 const SIDEBAR_COOKIE_NAME = 'flexkit:sidebar:state';
 

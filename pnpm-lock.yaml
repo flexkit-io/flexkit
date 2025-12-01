@@ -229,9 +229,9 @@ importers:
         specifier: ^2.2.4
         version: 2.3.7(react@18.3.1)
     devDependencies:
-      '@flexkit/core':
+      '@flexkit/studio':
         specifier: workspace:*
-        version: link:../flexkit-core
+        version: link:../flexkit-studio
       '@types/node':
         specifier: ^20.5.2
         version: 20.19.25
@@ -278,7 +278,138 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  packages/flexkit-core:
+  packages/flexkit-desk:
+    dependencies:
+      debug:
+        specifier: ^4.3.4
+        version: 4.4.3
+      lucide-react:
+        specifier: 0.544.0
+        version: 0.544.0(react@18.3.1)
+      ramda:
+        specifier: ^0.29.1
+        version: 0.29.1
+      swr:
+        specifier: ^2.2.4
+        version: 2.3.7(react@18.3.1)
+    devDependencies:
+      '@flexkit/studio':
+        specifier: workspace:*
+        version: link:../flexkit-studio
+      '@types/debug':
+        specifier: ^4.1.12
+        version: 4.1.12
+      '@types/node':
+        specifier: ^20.5.2
+        version: 20.19.25
+      '@types/ramda':
+        specifier: ^0.29.7
+        version: 0.29.12
+      '@types/react':
+        specifier: ^18.2.0
+        version: 18.3.27
+      '@types/react-dom':
+        specifier: ^18.2.0
+        version: 18.3.7(@types/react@18.3.27)
+      autoprefixer:
+        specifier: ^10.4.16
+        version: 10.4.20(postcss@8.4.41)
+      eslint-config-custom:
+        specifier: workspace:*
+        version: link:../eslint-config-custom
+      postcss:
+        specifier: ^8.4.31
+        version: 8.4.41
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      tailwind-config:
+        specifier: workspace:*
+        version: link:../tailwind-config
+      tailwindcss:
+        specifier: 3.4.10
+        version: 3.4.10(ts-node@10.9.2(@types/node@20.19.25)(typescript@5.9.3))
+      tsconfig:
+        specifier: workspace:*
+        version: link:../tsconfig
+      tsup:
+        specifier: 8.5.0
+        version: 8.5.0(jiti@1.21.7)(postcss@8.4.41)(typescript@5.9.3)(yaml@2.8.2)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/flexkit-explorer:
+    dependencies:
+      '@graphiql/react':
+        specifier: 0.26.2
+        version: 0.26.2(@codemirror/language@6.0.0)(@types/node@20.19.25)(@types/react-dom@18.3.7(@types/react@18.3.27))(@types/react@18.3.27)(graphql-ws@5.14.2(graphql@16.12.0))(graphql@16.12.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@graphiql/toolkit':
+        specifier: 0.11.0
+        version: 0.11.0(@types/node@20.19.25)(graphql-ws@5.14.2(graphql@16.12.0))(graphql@16.12.0)
+      graphql-ws:
+        specifier: 5.14.2
+        version: 5.14.2(graphql@16.12.0)
+      lucide-react:
+        specifier: 0.544.0
+        version: 0.544.0(react@18.3.1)
+      ramda:
+        specifier: ^0.29.1
+        version: 0.29.1
+      swr:
+        specifier: ^2.2.4
+        version: 2.3.7(react@18.3.1)
+    devDependencies:
+      '@flexkit/studio':
+        specifier: workspace:*
+        version: link:../flexkit-studio
+      '@types/node':
+        specifier: ^20.5.2
+        version: 20.19.25
+      '@types/ramda':
+        specifier: ^0.29.7
+        version: 0.29.12
+      '@types/react':
+        specifier: ^18.2.0
+        version: 18.3.27
+      '@types/react-dom':
+        specifier: ^18.2.0
+        version: 18.3.7(@types/react@18.3.27)
+      autoprefixer:
+        specifier: ^10.4.16
+        version: 10.4.20(postcss@8.4.41)
+      eslint-config-custom:
+        specifier: workspace:*
+        version: link:../eslint-config-custom
+      postcss:
+        specifier: ^8.4.31
+        version: 8.4.41
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      tailwind-config:
+        specifier: workspace:*
+        version: link:../tailwind-config
+      tailwindcss:
+        specifier: 3.4.10
+        version: 3.4.10(ts-node@10.9.2(@types/node@20.19.25)(typescript@5.9.3))
+      tsconfig:
+        specifier: workspace:*
+        version: link:../tsconfig
+      tsup:
+        specifier: 8.5.0
+        version: 8.5.0(jiti@1.21.7)(postcss@8.4.41)(typescript@5.9.3)(yaml@2.8.2)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/flexkit-studio:
     dependencies:
       '@apollo/client':
         specifier: 4.0.9
@@ -503,9 +634,6 @@ importers:
       postcss:
         specifier: ^8.4.31
         version: 8.4.41
-      postcss-import:
-        specifier: 16.1.1
-        version: 16.1.1(postcss@8.4.41)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -521,179 +649,6 @@ importers:
       tailwindcss-animate:
         specifier: 1.0.7
         version: 1.0.7(tailwindcss@3.4.10(ts-node@10.9.2(@types/node@20.19.25)(typescript@5.9.3)))
-      tsconfig:
-        specifier: workspace:*
-        version: link:../tsconfig
-      tsup:
-        specifier: 8.5.0
-        version: 8.5.0(jiti@1.21.7)(postcss@8.4.41)(typescript@5.9.3)(yaml@2.8.2)
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-
-  packages/flexkit-desk:
-    dependencies:
-      debug:
-        specifier: ^4.3.4
-        version: 4.4.3
-      lucide-react:
-        specifier: 0.544.0
-        version: 0.544.0(react@18.3.1)
-      ramda:
-        specifier: ^0.29.1
-        version: 0.29.1
-      swr:
-        specifier: ^2.2.4
-        version: 2.3.7(react@18.3.1)
-    devDependencies:
-      '@flexkit/core':
-        specifier: workspace:*
-        version: link:../flexkit-core
-      '@types/debug':
-        specifier: ^4.1.12
-        version: 4.1.12
-      '@types/node':
-        specifier: ^20.5.2
-        version: 20.19.25
-      '@types/ramda':
-        specifier: ^0.29.7
-        version: 0.29.12
-      '@types/react':
-        specifier: ^18.2.0
-        version: 18.3.27
-      '@types/react-dom':
-        specifier: ^18.2.0
-        version: 18.3.7(@types/react@18.3.27)
-      autoprefixer:
-        specifier: ^10.4.16
-        version: 10.4.20(postcss@8.4.41)
-      eslint-config-custom:
-        specifier: workspace:*
-        version: link:../eslint-config-custom
-      postcss:
-        specifier: ^8.4.31
-        version: 8.4.41
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
-      tailwind-config:
-        specifier: workspace:*
-        version: link:../tailwind-config
-      tailwindcss:
-        specifier: 3.4.10
-        version: 3.4.10(ts-node@10.9.2(@types/node@20.19.25)(typescript@5.9.3))
-      tsconfig:
-        specifier: workspace:*
-        version: link:../tsconfig
-      tsup:
-        specifier: 8.5.0
-        version: 8.5.0(jiti@1.21.7)(postcss@8.4.41)(typescript@5.9.3)(yaml@2.8.2)
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-
-  packages/flexkit-explorer:
-    dependencies:
-      '@graphiql/react':
-        specifier: 0.26.2
-        version: 0.26.2(@codemirror/language@6.0.0)(@types/node@20.19.25)(@types/react-dom@18.3.7(@types/react@18.3.27))(@types/react@18.3.27)(graphql-ws@5.14.2(graphql@16.12.0))(graphql@16.12.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@graphiql/toolkit':
-        specifier: 0.11.0
-        version: 0.11.0(@types/node@20.19.25)(graphql-ws@5.14.2(graphql@16.12.0))(graphql@16.12.0)
-      graphql-ws:
-        specifier: 5.14.2
-        version: 5.14.2(graphql@16.12.0)
-      lucide-react:
-        specifier: 0.544.0
-        version: 0.544.0(react@18.3.1)
-      ramda:
-        specifier: ^0.29.1
-        version: 0.29.1
-      swr:
-        specifier: ^2.2.4
-        version: 2.3.7(react@18.3.1)
-    devDependencies:
-      '@flexkit/core':
-        specifier: workspace:*
-        version: link:../flexkit-core
-      '@types/node':
-        specifier: ^20.5.2
-        version: 20.19.25
-      '@types/ramda':
-        specifier: ^0.29.7
-        version: 0.29.12
-      '@types/react':
-        specifier: ^18.2.0
-        version: 18.3.27
-      '@types/react-dom':
-        specifier: ^18.2.0
-        version: 18.3.7(@types/react@18.3.27)
-      autoprefixer:
-        specifier: ^10.4.16
-        version: 10.4.20(postcss@8.4.41)
-      eslint-config-custom:
-        specifier: workspace:*
-        version: link:../eslint-config-custom
-      postcss:
-        specifier: ^8.4.31
-        version: 8.4.41
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
-      tailwind-config:
-        specifier: workspace:*
-        version: link:../tailwind-config
-      tailwindcss:
-        specifier: 3.4.10
-        version: 3.4.10(ts-node@10.9.2(@types/node@20.19.25)(typescript@5.9.3))
-      tsconfig:
-        specifier: workspace:*
-        version: link:../tsconfig
-      tsup:
-        specifier: 8.5.0
-        version: 8.5.0(jiti@1.21.7)(postcss@8.4.41)(typescript@5.9.3)(yaml@2.8.2)
-      typescript:
-        specifier: ^5.3.3
-        version: 5.9.3
-
-  packages/flexkit-studio:
-    devDependencies:
-      '@flexkit/asset-manager':
-        specifier: workspace:*
-        version: link:../flexkit-asset-manager
-      '@flexkit/core':
-        specifier: workspace:*
-        version: link:../flexkit-core
-      '@flexkit/desk':
-        specifier: workspace:*
-        version: link:../flexkit-desk
-      '@flexkit/explorer':
-        specifier: workspace:*
-        version: link:../flexkit-explorer
-      '@types/node':
-        specifier: ^20.5.2
-        version: 20.19.25
-      '@types/react':
-        specifier: ^18.2.0
-        version: 18.3.27
-      '@types/react-dom':
-        specifier: ^18.2.0
-        version: 18.3.7(@types/react@18.3.27)
-      eslint-config-custom:
-        specifier: workspace:*
-        version: link:../eslint-config-custom
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
       tsconfig:
         specifier: workspace:*
         version: link:../tsconfig
@@ -5118,12 +5073,6 @@ packages:
   postcss-import@15.1.0:
     resolution: {integrity: sha512-hpr+J05B2FVYUAXHeK1YyI267J/dDDhMU6B6civm8hSY1jYJnBXxzKDKDswzJmtLHryrjhnDjqqp/49t8FALew==}
     engines: {node: '>=14.0.0'}
-    peerDependencies:
-      postcss: ^8.0.0
-
-  postcss-import@16.1.1:
-    resolution: {integrity: sha512-2xVS1NCZAfjtVdvXiyegxzJ447GyqCeEI5V7ApgQVOWnros1p5lGNovJNapwPpMombyFBfqDwt7AD3n2l0KOfQ==}
-    engines: {node: '>=18.0.0'}
     peerDependencies:
       postcss: ^8.0.0
 
@@ -11245,13 +11194,6 @@ snapshots:
   possible-typed-array-names@1.1.0: {}
 
   postcss-import@15.1.0(postcss@8.4.41):
-    dependencies:
-      postcss: 8.4.41
-      postcss-value-parser: 4.2.0
-      read-cache: 1.0.0
-      resolve: 1.22.11
-
-  postcss-import@16.1.1(postcss@8.4.41):
     dependencies:
       postcss: 8.4.41
       postcss-value-parser: 4.2.0
