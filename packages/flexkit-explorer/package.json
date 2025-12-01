@@ -25,8 +25,8 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup src/index.tsx --format esm --dts --external react & tailwindcss -i ./src/styles.css -o dist/index.css",
-    "dev": "tsup src/index.tsx --format esm --watch --dts --external react & tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
+    "build": "tsup src/index.tsx --format esm --dts --external react && tailwindcss -i ./src/styles.css -o dist/index.css",
+    "dev": "tsup src/index.tsx --format esm --watch --dts --external react && tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },
