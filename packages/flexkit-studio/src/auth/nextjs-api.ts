@@ -31,8 +31,8 @@ export function createFlexkitApiHandler(dependencies: { NextResponse: any; cooki
   const { NextResponse, cookies, headers } = dependencies;
 
   const handleGet = async (request: any): Promise<any> => {
-    const cookieStore = cookies();
-    const headersList = headers();
+    const cookieStore = await cookies();
+    const headersList = await headers();
     const sessionToken = cookieStore.get('sessionToken')?.value ?? '';
     const contentType = headersList.get('content-type');
     const { pathname, search } = request.nextUrl;
@@ -107,8 +107,8 @@ export function createFlexkitApiHandler(dependencies: { NextResponse: any; cooki
     }
 
     // Regular API forwarding logic
-    const cookieStore = cookies();
-    const headersList = headers();
+    const cookieStore = await cookies();
+    const headersList = await headers();
     const token = cookieStore.get('sessionToken')?.value ?? '';
     const contentType = headersList.get('content-type');
     const [, , , projectId] = pathname.split('/');

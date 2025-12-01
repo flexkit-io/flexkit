@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/primitives/button';
 import { DarkModeSwitch } from '../ui/components/dark-mode-switch';
 import { Loading } from '../ui/components/loading';
