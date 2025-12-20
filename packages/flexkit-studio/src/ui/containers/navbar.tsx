@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { Suspense, startTransition } from 'react';
 import { useTheme } from 'next-themes';
 import type { ProjectOptions } from '../../core/config/types';
 import { useContributedComponent } from '../../core/use-contributed-component';
@@ -19,18 +20,28 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
   const navigate = useNavigate();
 
   function handleSearchSelection(item: { entityName: string; entityNamePlural: string; entityId: string }) {
-    navigate(`${basePath}/${projectId}/desk/list/${item.entityNamePlural}?id=${item.entityId}`);
+    startTransition(() => {
+      navigate(`${basePath}/${projectId}/desk/list/${item.entityNamePlural}?id=${item.entityId}`);
+    });
   }
 
   return (
     <div className="fk-flex fk-basis-14 fk-min-h-[3.5rem] fk-px-3 fk-gap-x-4 fk-border-b fk-border-border fk-z-20">
-      <Logo theme={resolvedTheme} title="Flexkit Studio" />
+      <Suspense fallback={null}>
+        <Logo theme={resolvedTheme} title="Flexkit Studio" />
+      </Suspense>
       <div className="fk-flex fk-grow fk-shrink fk-items-center fk-gap-x-4 px-4">
-        <ProjectSelector projectId={projectId} projects={projects} />
-        <Search onSelect={handleSearchSelection} projectId={projectId} schema={schema} />
+        <Suspense fallback={null}>
+          <ProjectSelector projectId={projectId} projects={projects} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <Search onSelect={handleSearchSelection} projectId={projectId} schema={schema} />
+        </Suspense>
       </div>
       <div className="fk-flex fk-items-center">
-        <UserNav projectId={projectId} />
+        <Suspense fallback={null}>
+          <UserNav projectId={projectId} />
+        </Suspense>
       </div>
     </div>
   );

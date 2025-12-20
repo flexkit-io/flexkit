@@ -1,9 +1,21 @@
 {
   "name": "@flexkit/studio",
   "version": "0.0.6",
+  "description": "Flexkit Studio - Build custom internal tools like PIMs, CRMs, and ERPs with a flexible React UI and a graph-backed API",
+  "keywords": [
+    "flexkit",
+    "studio",
+    "react",
+    "nextjs",
+    "node",
+    "pim",
+    "crm",
+    "erp",
+    "graphql"
+  ],
   "type": "module",
   "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "license": "MIT",
   "repository": {
@@ -13,26 +25,43 @@
   },
   "exports": {
     ".": "./dist/index.js",
-    "./data-grid": "./dist/data-grid/index.js",
-    "./ssr": "./dist/ssr.js",
+    "./nextjs": "./dist/nextjs.js",
+    "./astro": "./dist/astro.js",
+    "./hono": "./dist/hono.js",
+    "./express": "./dist/express.js",
+    "./tanstack-start": "./dist/tanstack-start.js",
     "./ui": "./dist/ui.js",
     "./tailwind.config": "./tailwind.config.ts",
     "./styles.css": "./dist/index.css"
   },
   "typesVersions": {
     "*": {
-      "ssr": [
-        "./dist/ssr.d.ts"
+      "nextjs": [
+        "./dist/nextjs.d.ts"
+      ],
+      "astro": [
+        "./dist/astro.d.ts"
+      ],
+      "hono": [
+        "./dist/hono.d.ts"
+      ],
+      "express": [
+        "./dist/express.d.ts"
+      ],
+      "tanstack-start": [
+        "./dist/tanstack-start.d.ts"
       ]
     }
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "files": [
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup src/index.tsx src/ssr.tsx src/ui.tsx src/data-grid/index.tsx --format esm --dts --external react && tailwindcss -i ./src/styles.css -o dist/index.css",
-    "dev": "tsup src/index.tsx src/ssr.tsx src/ui.tsx src/data-grid/index.tsx --format esm --watch --dts --external react && tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
+    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/ssr.tsx src/nextjs.ts src/astro.ts src/hono.ts src/express.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config",
+    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch & tsup --config tsup.config.ts --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "ui:add": "pnpm dlx shadcn@latest add"
@@ -105,7 +134,7 @@
     "graphql": "^16.8.1",
     "lexical": "^0.12.2",
     "lowlight": "3.1.0",
-    "lucide-react": "0.544.0",
+    "lucide-react": "0.555.0",
     "next-themes": "^0.2.1",
     "novel": "0.5.0",
     "ramda": "^0.29.1",

@@ -23,9 +23,12 @@ export function useSearch(
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const swrKey = searchRequest?.commonParams.q ? JSON.stringify(searchRequest) : null;
   const { data, error, isLoading } = useSWR(swrKey, () =>
-    fetch(apiPaths(projectId).search, { body: JSON.stringify(searchRequest), method: 'POST', mode: 'cors' }).then(
-      (res) => res.json() as Promise<{ results: RawSearchResultItems }>
-    )
+    fetch(apiPaths(projectId).search, {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(searchRequest),
+      method: 'POST',
+      mode: 'cors',
+    }).then((res) => res.json() as Promise<{ results: RawSearchResultItems }>)
   );
   const results = mapResults(data?.results ?? [], projectId, schema, scope, defaultScope);
 

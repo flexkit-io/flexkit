@@ -35,28 +35,27 @@ export function Text({ control, fieldSchema, setValue }: FormFieldParams<'text'>
           <FormLabel htmlFor={id}>{label}</FormLabel>
           {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
-            <>
-              <Input
-                className={`fk-w-full fk-mt-[0.1875rem] ${
-                  !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
-                }`}
-                disabled={isEditable === false || field.value?.disabled}
-                id={id}
-                {...field}
-                onChange={(event) => {
-                  handleInput(event, field.value);
-                }}
-                value={(field.value?.value as string) || ''}
-              />
-              <DefaultValueSwitch
-                checked={field.value?.disabled ?? false}
-                onChange={(checked) => {
-                  handleCheckbox(checked, field.value);
-                }}
-                scope={field.value?.scope}
-              />
-            </>
+            <Input
+              className={`fk-w-full fk-mt-[0.1875rem] ${
+                !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
+              }`}
+              disabled={isEditable === false || field.value?.disabled}
+              id={id}
+              {...field}
+              onChange={(event) => {
+                handleInput(event, field.value);
+              }}
+              value={(field.value?.value as string) || ''}
+            />
           </FormControl>
+
+          <DefaultValueSwitch
+            checked={field.value?.disabled ?? false}
+            onChange={(checked) => {
+              handleCheckbox(checked, field.value);
+            }}
+            scope={field.value?.scope}
+          />
           <FormMessage />
         </FormItem>
       )}

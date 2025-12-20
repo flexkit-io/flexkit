@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { find, propEq } from 'ramda';
 import {
   assetSchema,
+  DataTable,
   useAppContext,
   useConfig,
   useLocation,
@@ -9,11 +10,10 @@ import {
   useEntityQuery,
   ProjectDisabled,
   SchemaError,
+  useGridColumnsDefinition,
 } from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
-import { DataTable } from '@flexkit/studio/data-grid';
-import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
-import { useGridColumnsDefinition } from '@flexkit/studio/data-grid';
+import type { ColumnDef, SingleProject } from '@flexkit/studio';
 import { DataTableToolbar } from './data-grid/data-table-toolbar';
 
 const pageSize = 25;

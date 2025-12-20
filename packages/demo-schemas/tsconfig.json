@@ -1,0 +1,18 @@
+{
+  "extends": "tsconfig/react-library.json",
+  "include": ["."],
+  "exclude": ["dist", "build", "node_modules"],
+  "declaration": true,
+  "declarationMap": true,
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@styles/*": ["styles/*"],
+      "@public/*": ["public/*"],
+      "@lib/*": ["lib/*"],
+      "react": ["./node_modules/@types/react"],
+      "@types/react": ["./node_modules/@types/react"]
+    },
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"]
+  }
+}

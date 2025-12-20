@@ -51,30 +51,28 @@ export function Number({ control, fieldSchema, setValue }: FormFieldParams<'numb
           <FormLabel htmlFor={id}>{label}</FormLabel>
           {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
-            <>
-              <Input
-                className={`fk-w-full fk-mt-[0.1875rem] ${
-                  !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
-                }`}
-                disabled={isEditable === false || field.value?.disabled}
-                id={id}
-                {...field}
-                onChange={(event) => {
-                  handleInput(event, field.value);
-                }}
-                step={dataType === 'float' ? 'any' : '1'}
-                type="number"
-                value={(field.value?.value as string | number | undefined) ?? ''}
-              />
-              <DefaultValueSwitch
-                checked={field.value?.disabled ?? false}
-                onChange={(checked) => {
-                  handleCheckbox(checked, field.value);
-                }}
-                scope={field.value?.scope}
-              />
-            </>
+            <Input
+              className={`fk-w-full fk-mt-[0.1875rem] ${
+                !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
+              }`}
+              disabled={isEditable === false || field.value?.disabled}
+              id={id}
+              {...field}
+              onChange={(event) => {
+                handleInput(event, field.value);
+              }}
+              step={dataType === 'float' ? 'any' : '1'}
+              type="number"
+              value={(field.value?.value as string | number | undefined) ?? ''}
+            />
           </FormControl>
+          <DefaultValueSwitch
+            checked={field.value?.disabled ?? false}
+            onChange={(checked) => {
+              handleCheckbox(checked, field.value);
+            }}
+            scope={field.value?.scope}
+          />
           <FormMessage />
         </FormItem>
       )}

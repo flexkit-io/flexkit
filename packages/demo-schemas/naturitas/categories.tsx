@@ -1,0 +1,135 @@
+import { FolderTree as FolderTreeIcon } from 'lucide-react';
+import { defineEntity } from '@flexkit/studio';
+
+export const categories = defineEntity({
+  name: 'category',
+  plural: 'categories',
+  menu: {
+    label: 'Categories',
+    group: 'catalog',
+    icon: <FolderTreeIcon />,
+  },
+  attributes: [
+    {
+      name: 'name',
+      label: 'Name',
+      scope: 'local',
+      options: {
+        size: 260,
+        comment: 'The name of the category',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      isSearchable: true,
+      isPrimary: true,
+      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'description',
+      label: 'Description',
+      scope: 'local',
+      options: {
+        size: 260,
+        comment: 'A short description of the category',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      validation: (z) => z.string().min(1, { message: 'Description is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'bottomDescription',
+      label: 'Bottom Description',
+      scope: 'local',
+      options: {
+        size: 260,
+        comment: 'Description shwon at the bottom of the category page',
+      },
+      dataType: 'string',
+      inputType: 'editor',
+      defaultValue: '',
+    },
+    {
+      name: 'isInMenu',
+      label: 'Is in Menu',
+      scope: 'local',
+      options: {
+        size: 100,
+        comment: 'Whether the category is shown in the menu',
+      },
+      dataType: 'boolean',
+      inputType: 'switch',
+      previewType: 'customBooleanPreviewField',
+    },
+    {
+      name: 'path',
+      label: 'Path',
+      scope: 'local',
+      options: {
+        size: 260,
+        comment: 'URL path',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      validation: (z) => z.string().min(1, { message: 'Path is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'pathSegment',
+      label: 'Path Segment',
+      scope: 'local',
+      options: {
+        size: 260,
+        comment: 'URL path segment',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      validation: (z) => z.string(),
+      defaultValue: '',
+    },
+    {
+      name: 'metaTitle',
+      label: 'Meta Title',
+      scope: 'local',
+      options: {
+        size: 260,
+        comment: 'The meta-title of the category',
+      },
+      dataType: 'string',
+      inputType: 'textWithCounter',
+      validation: (z) => z.string().optional(),
+      defaultValue: '',
+    },
+    {
+      name: 'metaDescription',
+      label: 'Meta Description',
+      scope: 'local',
+      options: {
+        size: 260,
+        comment: 'The meta-description of the category',
+      },
+      dataType: 'string',
+      inputType: 'textWithCounter',
+      validation: (z) => z.string().optional(),
+      defaultValue: '',
+    },
+    {
+      name: 'products',
+      label: 'Products',
+      scope: 'relationship',
+      options: {
+        size: 260,
+        comment: 'Products related to this flag',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'name',
+        entity: 'product',
+      },
+    },
+  ],
+});
