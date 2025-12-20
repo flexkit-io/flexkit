@@ -49,6 +49,7 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
   onEntitySelectionChange?: (rowSelection: string[]) => void;
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   pageSize?: number;
+  rowHeightEstimate?: number;
   rowAdditionState?: MultipleRelationshipConnection;
   rowDeletionState?: string[];
   toolbarComponent?: (table: Table<AttributeValue>) => ReactElement;
@@ -56,6 +57,20 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
 
 interface ExtendedDataTable extends TableMeta<unknown> {
   getRowBackground: (row: Row<AttributeValue>) => string;
+}
+
+function inferRowHeightEstimate(rowClassName?: string): number | undefined {
+  if (!rowClassName) {
+    return undefined;
+  }
+
+  const tokens = rowClassName.split(/\s+/);
+
+  if (tokens.includes('fk-h-20')) {
+    return 80;
+  }
+
+  return undefined;
 }
 
 export function DataTable<TData extends AttributeValue, TValue>({
@@ -66,6 +81,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
   onEntitySelectionChange,
   onScroll,
   pageSize,
+  rowHeightEstimate,
   rowAdditionState,
   rowDeletionState,
   toolbarComponent,
@@ -111,7 +127,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
   const { rows } = table.getRowModel();
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
-    estimateSize: () => 45, //estimate row height for accurate scrollbar dragging
+    estimateSize: () => rowHeightEstimate ?? inferRowHeightEstimate(classNames?.row) ?? 45, // estimate row height for accurate scrollbar dragging
     getScrollElement: () => scrollRef.current,
     //measure dynamic row height, except in firefox because it measures table border height incorrectly
     measureElement:
@@ -120,6 +136,9 @@ export function DataTable<TData extends AttributeValue, TValue>({
         : undefined,
     overscan: 5,
   });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
 
   function handleRowSelectionChange(updaterFn: Updater<RowSelectionState>): void {
     const selectedIds = typeof updaterFn === 'function' ? Object.keys(updaterFn(rowSelection)) : Object.keys(updaterFn);
@@ -153,11 +172,11 @@ export function DataTable<TData extends AttributeValue, TValue>({
         <TableBody
           className="fk-grid fk-relative"
           style={{
-            height: `${rowVirtualizer.getTotalSize().toString()}px`, //tells scrollbar how big the table is
+            height: `${totalSize.toString()}px`, //tells scrollbar how big the table is
           }}
         >
-          {rowVirtualizer.getVirtualItems().length ? (
-            rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          {virtualItems.length ? (
+            virtualItems.map((virtualRow) => {
               const row = rows[virtualRow.index];
 
               return (

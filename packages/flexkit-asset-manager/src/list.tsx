@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { find, propEq } from 'ramda';
 import {
   assetSchema,
@@ -55,15 +55,31 @@ export function List(): JSX.Element {
     variables,
   });
 
+  const lastRequestedOffsetRef = useRef<number | null>(null);
+  const isInitialLoading = isLoading && (data == null || data.length === 0);
+
   // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
   const fetchMoreOnBottomReached = useCallback(
     (containerRefElement?: HTMLDivElement | null) => {
       const rowsCount = data?.length ?? 0;
 
+      if (isLoading) {
+        return;
+      }
+
       if (containerRefElement && count > 0 && rowsCount > 0) {
         const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
+        const remaining = scrollHeight - scrollTop - clientHeight;
+        const threshold = Math.min(500, Math.floor(clientHeight * 0.75));
+
         //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < count) {
+        if (remaining < threshold && rowsCount < count) {
+          if (lastRequestedOffsetRef.current === rowsCount) {
+            return;
+          }
+
+          lastRequestedOffsetRef.current = rowsCount;
+
           fetchMore({
             variables: {
               options: {
@@ -95,12 +111,12 @@ export function List(): JSX.Element {
       <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">Asset Manager</h2>
       <DataTable
         classNames={{ row: 'fk-h-20' }}
-        columns={isLoading ? loadingColumns : columnsDefinition}
-        data={isLoading ? loadingData : (data ?? [])}
+        columns={isInitialLoading ? loadingColumns : columnsDefinition}
+        data={isInitialLoading ? loadingData : (data ?? [])}
         entityName={assetSchema.name}
         pageSize={pageSize}
         onScroll={(e) => {
-          fetchMoreOnBottomReached(e.target as HTMLDivElement);
+          fetchMoreOnBottomReached(e.currentTarget as HTMLDivElement);
         }}
         toolbarComponent={(table) => (
           <DataTableToolbar

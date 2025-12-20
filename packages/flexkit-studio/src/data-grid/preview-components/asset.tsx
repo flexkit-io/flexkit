@@ -1,6 +1,7 @@
 import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
 import { IMAGES_BASE_URL } from '../../core/api-paths';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
+import { useCachedImageSrc } from '../../ui/hooks/use-cached-image-src';
 
 export type Asset = {
   _id: string;
@@ -32,17 +33,29 @@ export function Asset({ value }: { value: Asset }) {
 
   const fullUrl = path.endsWith('.svg') ? `${IMAGES_BASE_URL}${path}` : `${IMAGES_BASE_URL}${path}?w=624&h=624&f=webp`;
 
+  const cachedThumbnailSrc = useCachedImageSrc(thumbnaillUrl);
+
   return (
     <div className="fk-z-10">
       <TooltipProvider>
         {isImage ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <img src={thumbnaillUrl} alt="asset" className="fk-w-7 fk-h-7 fk-cursor-zoom-in" />
+              <img
+                alt="asset"
+                className="fk-w-7 fk-h-7 fk-cursor-zoom-in fk-bg-muted/40 fk-rounded-sm"
+                decoding="async"
+                src={cachedThumbnailSrc ?? undefined}
+              />
             </TooltipTrigger>
             <TooltipPortal>
               <TooltipContent>
-                <img src={fullUrl} alt="asset" className="fk-w-52 fk-h-52" />
+                <img
+                  alt="asset"
+                  className="fk-w-52 fk-h-52 fk-bg-muted/40 fk-rounded-sm"
+                  decoding="async"
+                  src={fullUrl}
+                />
               </TooltipContent>
             </TooltipPortal>
           </Tooltip>
