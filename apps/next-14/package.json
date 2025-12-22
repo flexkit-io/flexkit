@@ -6,7 +6,7 @@
     "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 next dev --port 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@flexkit/asset-manager": "workspace:*",
@@ -21,11 +21,11 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "14.2.35",
     "@types/node": "^20",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "autoprefixer": "^10.4.16",
+    "eslint": "^9",
     "eslint-config-custom": "workspace:*",
     "postcss": "^8.4.31",
     "tailwind-config": "workspace:*",

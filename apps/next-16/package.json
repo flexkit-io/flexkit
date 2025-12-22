@@ -6,7 +6,7 @@
     "dev": "NODE_TLS_REJECT_UNAUTHORIZED=0 next dev --port 3002",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@flexkit/asset-manager": "workspace:*",

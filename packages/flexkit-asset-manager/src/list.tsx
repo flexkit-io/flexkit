@@ -16,6 +16,8 @@ import { Skeleton } from '@flexkit/studio/ui';
 import type { ColumnDef, SingleProject } from '@flexkit/studio';
 import { DataTableToolbar } from './data-grid/data-table-toolbar';
 
+type WhereClause = { [key: string]: unknown };
+
 const pageSize = 25;
 
 export function List(): JSX.Element {
@@ -31,7 +33,7 @@ export function List(): JSX.Element {
     checkboxSelect: 'multiple',
   });
 
-  const [searchWhere, setSearchWhere] = useState<Record<string, unknown>>({});
+  const [searchWhere, setSearchWhere] = useState<WhereClause>({});
 
   const whereBase = entityId ? { _id: entityId } : { NOT: { path: null } };
   const where = useMemo(() => {
@@ -43,7 +45,7 @@ export function List(): JSX.Element {
       return whereBase; // ignore search when a single asset is selected via id
     }
 
-    return { AND: [whereBase, searchWhere] } as Record<string, unknown>;
+    return { AND: [whereBase, searchWhere] } as WhereClause;
   }, [entityId, searchWhere]);
 
   const variables = { where, options: { offset: 0, limit: pageSize, sort: [{ _updatedAt: 'DESC' }] } };

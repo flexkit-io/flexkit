@@ -1,62 +1,92 @@
-const { resolve } = require("node:path");
+import js from '@eslint/js';
+import globals from 'globals';
+import importPlugin from 'eslint-plugin-import';
+import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import tseslint from 'typescript-eslint';
 
-const project = resolve(process.cwd(), "tsconfig.json");
-
-/*
- * This is a custom ESLint configuration for use with
- * internal (bundled by their consumer) libraries
- * that utilize React.
- *
- * This config extends the Vercel Engineering Style Guide.
- * For more information, see https://github.com/vercel/style-guide
- *
- */
-
-module.exports = {
-  extends: [
-    "@vercel/style-guide/eslint/browser",
-    "@vercel/style-guide/eslint/typescript",
-    "@vercel/style-guide/eslint/react",
-  ].map(require.resolve),
-  parserOptions: {
-    project,
+export default tseslint.config(
+  {
+    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '**/.turbo/**'],
   },
-  globals: {
-    JSX: true,
-  },
-  settings: {
-    "import/resolver": {
-      typescript: {
-        project,
+
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+
+  {
+    files: ['**/*.{ts,tsx,js,jsx}'],
+    languageOptions: {
+      parser: tseslint.parser,
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+      },
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
       },
     },
-  },
-  ignorePatterns: ["node_modules/", "dist/", ".eslintrc.js"],
+    plugins: {
+      import: importPlugin,
+      'jsx-a11y': jsxA11yPlugin,
+      react: reactPlugin,
+      'react-hooks': reactHooksPlugin,
+    },
+    settings: {
+      react: {
+        version: 'detect',
+      },
+    },
+    rules: {
+      'import/no-default-export': 'off',
+      'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
 
-  rules: {
-    "import/no-default-export": "off",
-    "no-unused-vars": [1, { args: "after-used", argsIgnorePattern: "^_" }],
-    "prefer-const": [
-      "error",
-      { destructuring: "any", ignoreReadBeforeAssign: false },
-    ],
-    quotes: [2, "single", { avoidEscape: true, allowTemplateLiterals: true }],
-    semi: ["warn", "always"],
-    indent: ["warn", 2, { SwitchCase: 1 }],
-    "no-multi-spaces": ["error"],
-    "no-var": ["error"],
-    "no-new-object": ["error"],
-    "object-shorthand": ["error", "always"],
-    "quote-props": ["error", "as-needed", { keywords: true }],
-    "prefer-object-spread": "error",
-    "no-array-constructor": "error",
-    "prefer-destructuring": ["error", { object: true, array: true }],
-    "import/no-extraneous-dependencies": ["error", { devDependencies: true }],
-    "@typescript-eslint/no-unsafe-assignment": "off",
-    "@typescript-eslint/consistent-type-definitions": "off",
-    "@typescript-eslint/consistent-indexed-object-style": [
-      "error",
-      "index-signature",
-    ],
+      'no-unused-vars': 'off',
+      'no-multi-spaces': 'error',
+      'no-new-object': 'error',
+      'no-array-constructor': 'error',
+      'no-var': 'error',
+
+      'object-shorthand': ['error', 'always'],
+      'prefer-object-spread': 'error',
+      'quote-props': 'off',
+      quotes: [2, 'single', { avoidEscape: true, allowTemplateLiterals: true }],
+      semi: ['warn', 'always'],
+
+      'prefer-const': ['warn', { destructuring: 'any', ignoreReadBeforeAssign: false }],
+      'prefer-destructuring': 'off',
+
+      '@typescript-eslint/no-unused-vars': ['warn', { args: 'after-used', argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-expressions': [
+        'warn',
+        { allowShortCircuit: true, allowTernary: true, allowTaggedTemplates: true },
+      ],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/consistent-type-definitions': 'off',
+      '@typescript-eslint/consistent-indexed-object-style': 'off',
+      '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/no-unsafe-function-type': 'off',
+
+      'react/jsx-uses-react': 'off',
+      'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off',
+
+      'react-hooks/rules-of-hooks': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
   },
-};
+
+  {
+    files: ['**/*.config.{js,cjs}', '**/next.config.js', '**/postcss.config.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        ...globals.node,
+      },
+    },
+  }
+);

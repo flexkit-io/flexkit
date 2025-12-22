@@ -3,9 +3,9 @@ import { defineConfig } from '@flexkit/studio';
 import { AssetManager } from '@flexkit/asset-manager';
 import { Desk } from '@flexkit/desk';
 import { Explorer } from '@flexkit/explorer';
-import { CustomTextField } from './app/components/custom-input-field';
-import { CustomBooleanPreviewField } from './app/components/custom-boolean-preview-field';
-import { RatePreviewField } from './app/components/rate-preview-field';
+import { CustomTextField } from 'demo-schemas/components/custom-input-field';
+import { CustomBooleanPreviewField } from 'demo-schemas/components/custom-boolean-preview-field';
+import { RatePreviewField } from 'demo-schemas/components/rate-preview-field';
 import { products } from 'demo-schemas/naturitas/products';
 import { categories } from 'demo-schemas/naturitas/categories';
 import { flags } from 'demo-schemas/naturitas/flags';
@@ -76,6 +76,7 @@ export default defineConfig([
           formFields: {
             // <-- this is a list of custom form fields that can be used in the desk app. It's an object, because existing fields can be overwritten.
             textWithCounter: {
+              // @ts-expect-error - Expected props type mismatch due to the different version of React
               component: CustomTextField,
               description: 'An example override of the text field',
             },

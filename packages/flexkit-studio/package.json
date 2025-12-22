@@ -27,8 +27,6 @@
     ".": "./dist/index.js",
     "./nextjs": "./dist/nextjs.js",
     "./astro": "./dist/astro.js",
-    "./hono": "./dist/hono.js",
-    "./express": "./dist/express.js",
     "./tanstack-start": "./dist/tanstack-start.js",
     "./ui": "./dist/ui.js",
     "./tailwind.config": "./tailwind.config.ts",
@@ -42,12 +40,6 @@
       "astro": [
         "./dist/astro.d.ts"
       ],
-      "hono": [
-        "./dist/hono.d.ts"
-      ],
-      "express": [
-        "./dist/express.d.ts"
-      ],
       "tanstack-start": [
         "./dist/tanstack-start.d.ts"
       ]
@@ -60,7 +52,7 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/ssr.tsx src/nextjs.ts src/astro.ts src/hono.ts src/express.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config",
+    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/ssr.tsx src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config",
     "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch & tsup --config tsup.config.ts --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",

@@ -49,8 +49,10 @@ import {
 interface DataTableToolbarProps<TData> {
   entityName: string;
   table: ReactTable<TData>;
-  onSearchWhereChange?: (where: Record<string, unknown>) => void;
+  onSearchWhereChange?: (where: WhereClause) => void;
 }
+
+type WhereClause = { [key: string]: unknown };
 
 const mimeTypes = [
   {
@@ -102,8 +104,8 @@ export function DataTableToolbar<TData>({
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const { currentProjectSchema: schema } = useConfig();
   const [search, setSearch] = useState('');
-  const textWhereRef = useRef<Record<string, unknown>>({});
-  const filterWhereRef = useRef<Record<string, unknown>>({});
+  const textWhereRef = useRef<WhereClause>({});
+  const filterWhereRef = useRef<WhereClause>({});
 
   function getBaseSearchRequest(): SearchRequestProps {
     return {
@@ -234,7 +236,7 @@ export function DataTableToolbar<TData>({
       return;
     }
 
-    const clauses: Record<string, unknown>[] = [];
+    const clauses: WhereClause[] = [];
 
     if (Object.keys(textWhereRef.current).length > 0) {
       clauses.push(textWhereRef.current);
@@ -297,7 +299,7 @@ export function DataTableToolbar<TData>({
         disabled: false,
         scope,
       },
-    } as unknown as Record<string, unknown>;
+    } as unknown as WhereClause;
 
     const mutation = getEntityUpdateMutation('_assets', selectedIds[0] ?? '', scope, schema, {}, dataToMutate as never);
 
@@ -330,7 +332,7 @@ export function DataTableToolbar<TData>({
         disabled: false,
         scope,
       },
-    } as unknown as Record<string, unknown>;
+    } as unknown as WhereClause;
 
     const mutation = getEntityUpdateMutation('_assets', selectedIds[0] ?? '', scope, schema, {}, dataToMutate as never);
 
@@ -358,7 +360,7 @@ export function DataTableToolbar<TData>({
     const safeResults = results ?? [];
     const trimmed = search.trim();
 
-    let nextWhere: Record<string, unknown> = {};
+    let nextWhere: WhereClause = {};
 
     if (trimmed.length === 0) {
       nextWhere = {};
@@ -393,10 +395,10 @@ export function DataTableToolbar<TData>({
     const tagsFilter = table.getState().columnFilters.find((f) => f.id === 'tags');
     const tagValues = (Array.isArray(tagsFilter?.value) ? (tagsFilter?.value as unknown[]) : []) as string[];
 
-    const clauses: Record<string, unknown>[] = [];
+    const clauses: WhereClause[] = [];
 
     if (mimeValues.length > 0) {
-      clauses.push({ mimeType_IN: mimeValues } as Record<string, unknown>);
+      clauses.push({ mimeType_IN: mimeValues } as WhereClause);
     }
 
     if (tagValues.length > 0) {
@@ -407,9 +409,9 @@ export function DataTableToolbar<TData>({
     if (clauses.length === 0) {
       filterWhereRef.current = {};
     } else if (clauses.length === 1) {
-      filterWhereRef.current = clauses[0] as Record<string, unknown>;
+      filterWhereRef.current = clauses[0] as WhereClause;
     } else {
-      filterWhereRef.current = { AND: clauses } as Record<string, unknown>;
+      filterWhereRef.current = { AND: clauses } as WhereClause;
     }
 
     emitCombinedWhere();
@@ -429,7 +431,7 @@ export function DataTableToolbar<TData>({
             name="search-assets"
             value={search}
             onChange={(e) => {
-              const value = e.target.value;
+              const { value } = e.target;
               setSearch(value);
 
               if (value.trim().length === 0) {

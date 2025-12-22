@@ -4,7 +4,8 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Flexkit Studio',
-  description: 'Empower Your Business with Effortless Data Management and Workflow Automation',
+  description:
+    'The open-source React platform for building internal tools, PIMs, CRMs, ERPs, and custom business data apps - fast.',
   icons: {
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     icon: [

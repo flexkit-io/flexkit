@@ -8,7 +8,7 @@
  * Once the promise has resolved, the next invocation of the returned function
  * will re-invoke the original function again.
  */
-export function sharedPromise<P extends any[], V, T>(fn: (this: T, ...args: P) => Promise<V>) {
+export function sharedPromise<P extends unknown[], V, T>(fn: (this: T, ...args: P) => Promise<V>) {
   let promise: Promise<V> | null = null;
   return function (this: T, ...args: P) {
     if (!promise) {
