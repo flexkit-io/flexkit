@@ -108,7 +108,7 @@ export function DateTime({ control, fieldSchema, getValues, setValue }: FormFiel
                       const timeValue = e.target.value;
                       const [hours, minutes] = timeValue.split(':');
 
-                      let date = field.value?.value ? new Date(field.value.value as string) : new Date();
+                      const date = field.value?.value ? new Date(field.value.value as string) : new Date();
                       date.setHours(parseInt(hours));
                       date.setMinutes(parseInt(minutes));
 

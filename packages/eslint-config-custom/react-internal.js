@@ -57,9 +57,14 @@ export default tseslint.config(
       semi: ['warn', 'always'],
 
       'prefer-const': ['warn', { destructuring: 'any', ignoreReadBeforeAssign: false }],
-      'prefer-destructuring': 'off',
+      'prefer-destructuring': ['error', { object: true, array: true }],
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-debugger': 'error',
 
-      '@typescript-eslint/no-unused-vars': ['warn', { args: 'after-used', argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { args: 'after-used', argsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       '@typescript-eslint/no-unused-expressions': [
         'warn',
         { allowShortCircuit: true, allowTernary: true, allowTaggedTemplates: true },
