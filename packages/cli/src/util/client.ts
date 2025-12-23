@@ -150,11 +150,12 @@ export default class Client extends EventEmitter implements Stdio {
       ...requestInit
     } = opts;
 
-    const isFlexkitTestHost = url.hostname === 'flexkit.test' || url.hostname.endsWith('.flexkit.test');
+    // For local testing purposes
+    // const isFlexkitTestHost = url.hostname === 'flexkit.test' || url.hostname.endsWith('.flexkit.test');
 
-    if (isFlexkitTestHost) {
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-    }
+    // if (isFlexkitTestHost) {
+    //   process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+    // }
 
     return this.output.time(
       (res) => {
