@@ -13,3 +13,4 @@ Add multi-framework Flexkit API handlers (Next.js, Astro, TanStack Start)
 - Improve React 18/19 compatibility in asset-related UI
 - Asset Manager: improve toolbar search/filter behavior used for server-side querying
 - CLI: minor improvements to spinner + shared promise utility
+- CLI: improve error handling for `sync` command
