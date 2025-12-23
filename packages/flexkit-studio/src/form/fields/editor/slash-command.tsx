@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { createSuggestionItems } from 'novel/extensions';
 import { Command, renderItems } from 'novel/extensions';
+// TODO: Add image upload function
 // import { uploadFn } from './image-upload';
 
 export const suggestionItems = createSuggestionItems([
@@ -108,8 +109,8 @@ export const suggestionItems = createSuggestionItems([
       input.accept = 'image/*';
       input.onchange = async () => {
         if (input.files?.length) {
-          const file = input.files[0];
-          const pos = editor.view.state.selection.from;
+          // const file = input.files[0];
+          // const pos = editor.view.state.selection.from;
           // uploadFn(file, editor.view, pos);
         }
       };
@@ -125,7 +126,7 @@ export const suggestionItems = createSuggestionItems([
       const videoLink = prompt('Please enter Youtube Video Link');
       //From https://regexr.com/3dj5t
       const ytregex = new RegExp(
-        /^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$/
+        /^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w-]+\?v=|embed\/|v\/)?)([\w-]+)(\S+)?$/
       );
 
       if (ytregex.test(videoLink ?? '')) {

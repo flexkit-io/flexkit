@@ -8,7 +8,7 @@ export interface StopSpinner {
 }
 
 export default function wait(opts: ora.Options, delay: number = 300): StopSpinner {
-  let text = opts.text;
+  let { text } = opts;
   let spinner: ora.Ora | null = null;
 
   if (typeof text !== 'string') {
@@ -24,6 +24,7 @@ export default function wait(opts: ora.Options, delay: number = 300): StopSpinne
 
   const stop = () => {
     clearTimeout(timeout);
+
     if (spinner) {
       spinner.stop();
       spinner = null;
@@ -41,6 +42,7 @@ export default function wait(opts: ora.Options, delay: number = 300): StopSpinne
 
     set(v: string) {
       text = v;
+
       if (spinner) {
         spinner.text = chalk.gray(v);
       }

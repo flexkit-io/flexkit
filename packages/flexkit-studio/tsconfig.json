@@ -6,8 +6,8 @@
     "baseUrl": ".",
     "paths": {
       "@ui/*": ["src/ui/*"]
-    }
-  },
-  "declaration": true,
-  "declarationMap": true
+    },
+    "declaration": true,
+    "declarationMap": true
+  }
 }

@@ -6,6 +6,48 @@ import { errorToString, isAPIError } from '../../util/error-utils';
 import { help } from '../help';
 import { syncCommand } from './command';
 
+function logProjectSyncError(output: Client['output'], projectId: string, err: unknown): void {
+  let handled = false;
+
+  if (!isAPIError(err)) {
+    output.debug(`[${projectId}] ${errorToString(err)}`);
+
+    return;
+  }
+
+  if (err.status === 401) {
+    output.log(`[${projectId}] You are not logged in. Please log in first by running ${getCommandName(`login`)}`);
+    handled = true;
+  }
+
+  if (err.status !== 200 && !handled) {
+    output.debug(`[${projectId}] ${err.message}`);
+    handled = true;
+  }
+
+  if (err.status === 400) {
+    if (Array.isArray(err.serverMessage)) {
+      err.serverMessage.forEach((error: unknown) => {
+        if (typeof error === 'object' && error !== null && 'message' in error) {
+          output.error(`[${projectId}] ${String((error as { message: unknown }).message)}`);
+
+          return;
+        }
+
+        output.error(`[${projectId}] ${String(error)}`);
+      });
+    } else {
+      output.error(`[${projectId}] ${String(err.serverMessage)}`);
+    }
+
+    handled = true;
+  }
+
+  if (!handled) {
+    output.debug(`[${projectId}] ${errorToString(err)}`);
+  }
+}
+
 export default async function main(client: Client): Promise<number> {
   let argv;
   const { output } = client;
@@ -38,61 +80,55 @@ export default async function main(client: Client): Promise<number> {
   }
 
   output.spinner('Syncing the schema', 200);
-  let exitCode = 0;
+  const { projects } = client.flexkitConfig;
 
-  try {
-    await Promise.all(
-      client.flexkitConfig.projects.map(async (project) => {
-        return await client.fetch('/generate-sdl', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            schema: project.schema ?? [],
-            scopes: project.scopes ?? [],
-          }),
-          projectId: project.projectId,
-        });
-      })
-    );
-  } catch (err: unknown) {
-    let handled = false;
-    exitCode = 1;
+  const results = await Promise.allSettled(
+    projects.map(async (project) => {
+      await client.fetch('/generate-sdl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          schema: project.schema ?? [],
+          scopes: project.scopes ?? [],
+        }),
+        projectId: project.projectId,
+      });
+    })
+  );
 
-    if (isAPIError(err)) {
-      if (err.status === 401) {
-        output.log(`You are not logged in. Please log in first by running ${getCommandName(`login`)}`);
-        handled = true;
-      }
+  const succeededProjectIds: string[] = [];
+  const failedProjectIds: string[] = [];
 
-      if (err.status !== 200 && !handled) {
-        output.debug(err.message);
-        handled = true;
-      }
+  for (const [idx, result] of results.entries()) {
+    const projectId = projects[idx]?.projectId ?? 'unknown';
 
-      if (err.status === 400) {
-        if (Array.isArray(err.serverMessage)) {
-          err.serverMessage.forEach((error: { message: string }) => {
-            output.error(error.message);
-          });
-        } else {
-          output.error(err.serverMessage);
-        }
-        handled = true;
-      }
+    if (result.status === 'fulfilled') {
+      succeededProjectIds.push(projectId);
+
+      continue;
     }
 
-    if (!handled) {
-      output.debug(errorToString(err));
-    }
+    failedProjectIds.push(projectId);
+    logProjectSyncError(output, projectId, result.reason);
   }
 
-  if (exitCode === 0) {
-    output.log('The schema has been synced!');
-  } else {
-    output.error('Failed syncing the schema');
+  if (succeededProjectIds.length > 0) {
+    const projectsLabel = succeededProjectIds.length === 1 ? succeededProjectIds[0]! : succeededProjectIds.join(', ');
+    const projectWord = succeededProjectIds.length === 1 ? 'project' : 'projects';
+
+    output.log(`The schema has been synced for ${projectWord} ${projectsLabel}!`);
   }
 
-  return exitCode;
+  if (failedProjectIds.length > 0) {
+    const projectsLabel = failedProjectIds.length === 1 ? failedProjectIds[0]! : failedProjectIds.join(', ');
+    const projectWord = failedProjectIds.length === 1 ? 'project' : 'projects';
+
+    output.error(`Failed syncing the schema for ${projectWord} ${projectsLabel}`);
+
+    return 1;
+  }
+
+  return 0;
 }

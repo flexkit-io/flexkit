@@ -40,27 +40,25 @@ export function Textarea({ control, fieldSchema, getValues, setValue }: FormFiel
             </div>
           </div>
           <FormControl>
-            <>
-              <TextareaPrimitive
-                className={`fk-w-full fk-mt-[0.1875rem] ${
-                  !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
-                }`}
-                disabled={isEditable === false || field.value?.disabled}
-                {...field}
-                onChange={(event) => {
-                  handleInput(event, field.value);
-                }}
-                value={(field.value?.value as string) || ''}
-              />
-              <DefaultValueSwitch
-                checked={field.value?.disabled ?? false}
-                onChange={(checked) => {
-                  handleCheckbox(checked, field.value);
-                }}
-                scope={field.value?.scope}
-              />
-            </>
+            <TextareaPrimitive
+              className={`fk-w-full fk-mt-[0.1875rem] ${
+                !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
+              }`}
+              disabled={isEditable === false || field.value?.disabled}
+              {...field}
+              onChange={(event) => {
+                handleInput(event, field.value);
+              }}
+              value={(field.value?.value as string) || ''}
+            />
           </FormControl>
+          <DefaultValueSwitch
+            checked={field.value?.disabled ?? false}
+            onChange={(checked) => {
+              handleCheckbox(checked, field.value);
+            }}
+            scope={field.value?.scope}
+          />
           <FormMessage />
         </FormItem>
       )}

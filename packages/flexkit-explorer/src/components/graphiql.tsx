@@ -3,13 +3,10 @@ import type { ComponentType, MouseEventHandler, PropsWithChildren, ReactNode, Re
 import {
   Button as GraphiQLButton,
   ButtonGroup,
-  ChevronDownIcon,
-  ChevronUpIcon,
   CopyIcon,
   Dialog,
   ExecuteButton,
   GraphiQLProvider,
-  HeaderEditor,
   KeyboardShortcutIcon,
   MergeIcon,
   PlusIcon,
@@ -25,7 +22,6 @@ import {
   Tooltip as GraphiQLTooltip,
   UnStyledButton,
   useCopyQuery,
-  useDragResize,
   useEditorContext,
   useExecutionContext,
   useMergeQuery,
@@ -233,7 +229,6 @@ const THEMES = ['light', 'dark', 'system'] as const;
 const TAB_CLASS_PREFIX = 'graphiql-session-tab-';
 
 export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
-  const isHeadersEditorEnabled = props.isHeadersEditorEnabled ?? true;
   const editorContext = useEditorContext({ nonNull: true });
   const executionContext = useExecutionContext({ nonNull: true });
   const schemaContext = useSchemaContext({ nonNull: true });
@@ -250,7 +245,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
   const merge = useMergeQuery();
   const prettify = usePrettifyEditors();
 
-  const { theme, setTheme } = useTheme(props.defaultTheme);
+  const { setTheme } = useTheme(props.defaultTheme);
 
   useEffect(() => {
     if (forcedTheme === 'system') {
@@ -301,14 +296,6 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
       editorContext.setShouldPersistHeaders(event.currentTarget.dataset.value === 'true');
     },
     [editorContext]
-  );
-
-  const handleChangeTheme: MouseEventHandler<HTMLButtonElement> = useCallback(
-    (event) => {
-      const selectedTheme = event.currentTarget.dataset.theme as 'light' | 'dark' | undefined;
-      setTheme(selectedTheme || null);
-    },
-    [setTheme]
   );
 
   const handleAddTab = (): void => {
@@ -738,10 +725,27 @@ function GraphiQLFooter<TProps>(props: PropsWithChildren<TProps>): ReactElement 
 GraphiQLFooter.displayName = 'GraphiQLFooter';
 
 // Determines if the React child is of the same type of the provided React component
-function isChildComponentType<T extends ComponentType>(child: any, component: T): child is T {
-  if (child?.type?.displayName && child.type.displayName === component.displayName) {
+function isChildComponentType<T extends ComponentType>(
+  child: ReactNode,
+  component: T
+): child is ReactElement<unknown, T> {
+  const element = typeof child === 'object' && child !== null ? (child as ReactElement) : null;
+
+  if (!element) {
+    return false;
+  }
+
+  const childType = element.type as unknown;
+
+  if (
+    typeof childType === 'object' &&
+    childType !== null &&
+    'displayName' in childType &&
+    typeof (childType as { displayName?: unknown }).displayName === 'string' &&
+    (childType as { displayName: string }).displayName === component.displayName
+  ) {
     return true;
   }
 
-  return child.type === component;
+  return element.type === component;
 }

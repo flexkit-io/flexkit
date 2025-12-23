@@ -1,6 +1,15 @@
 import { IMAGES_BASE_URL } from '@flexkit/studio';
 import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '@flexkit/studio/ui';
+import type { ComponentType } from 'react';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
+
+// Temporary fix due to runtime mismatch between React 18 and React 19 types
+type FileTypeIconCompatProps = {
+  extension: string;
+  [key: string]: string | number | boolean | undefined;
+};
+
+const FileTypeIconCompat = FileTypeIcon as unknown as ComponentType<FileTypeIconCompatProps>;
 
 export function Asset({ value }: { value: string }): JSX.Element | null {
   if (!value) {
@@ -12,7 +21,7 @@ export function Asset({ value }: { value: string }): JSX.Element | null {
   const isImage = /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(path);
 
   const getExtensionFromPath = (p: string): string => {
-    const clean = p.split('?')[0];
+    const [clean] = p.split('?');
     const parts = clean.split('.');
 
     if (parts.length > 1) {
@@ -49,10 +58,12 @@ export function Asset({ value }: { value: string }): JSX.Element | null {
                 {(() => {
                   const ext = getExtensionFromPath(path);
                   const style = (
-                    defaultStyles as Record<string, Record<string, string | number | boolean | undefined>>
+                    defaultStyles as unknown as {
+                      [key: string]: { [key: string]: string | number | boolean | undefined } | undefined;
+                    }
                   )[ext];
 
-                  return <FileTypeIcon extension={ext} {...(style || {})} />;
+                  return <FileTypeIconCompat extension={ext} {...(style || {})} />;
                 })()}
               </div>
             </TooltipTrigger>

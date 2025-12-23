@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-// eslint-disable-next-line import/order -- this import is needed before any other imports
 import { isErrnoException, isError, errorToString } from './util/error-utils';
 
 try {
@@ -8,7 +7,6 @@ try {
   process.cwd();
 } catch (err: unknown) {
   if (isError(err) && err.message.includes('uv_cwd')) {
-    // eslint-disable-next-line no-console -- Log to stderr
     console.error('Error: The current working directory does not exist.');
     process.exit(1);
   }
@@ -335,7 +333,6 @@ const main = async (): Promise<number | undefined> => {
     if (isErrnoException(err) && err.code === 'ENOTFOUND') {
       // Error message will look like the following:
       // "request to https://api.vercel.com/v2/user failed, reason: getaddrinfo ENOTFOUND api.vercel.com"
-      // eslint-disable-next-line prefer-named-capture-group -- Changing to a capture group would require a ES2018 target
       const matches = /getaddrinfo ENOTFOUND (.*)$/.exec(err.message || '');
 
       if (matches?.[1]) {
@@ -358,7 +355,6 @@ const main = async (): Promise<number | undefined> => {
     if (isErrnoException(err) && err.code === 'ECONNRESET') {
       // Error message will look like the following:
       // request to https://api.vercel.com/v2/user failed, reason: socket hang up
-      // eslint-disable-next-line prefer-named-capture-group -- Changing to a capture group would require a ES2018 target
       const matches = /request to https:\/\/(.*?)\//.exec(err.message || '');
       const hostname = matches?.[1];
       if (hostname) {
@@ -408,11 +404,9 @@ const handleRejection = (err: unknown): void => {
     if (err instanceof Error) {
       handleUnexpected(err);
     } else {
-      // eslint-disable-next-line no-console -- CLI output
       console.error(errorOutput(`An unexpected rejection occurred\n  ${err as string}`));
     }
   } else {
-    // eslint-disable-next-line no-console -- CLI output
     console.error(errorOutput('An unexpected empty rejection occurred'));
   }
 
@@ -420,7 +414,6 @@ const handleRejection = (err: unknown): void => {
 };
 
 const handleUnexpected = (err: Error): void => {
-  // eslint-disable-next-line no-console -- CLI output
   console.error(errorOutput(`An unexpected error occurred!\n${err.stack ?? ''}`));
 
   process.exit(1);

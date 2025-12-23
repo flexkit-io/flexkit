@@ -1,6 +1,16 @@
 import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
 import { IMAGES_BASE_URL } from '../../core/api-paths';
+import type { ComponentType } from 'react';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
+import { useCachedImageSrc } from '../../ui/hooks/use-cached-image-src';
+
+// Temporary fix due to runtime mismatch between React 18 and React 19 types
+type FileTypeIconCompatProps = {
+  extension: string;
+  [key: string]: string | number | boolean | undefined;
+};
+
+const FileTypeIconCompat = FileTypeIcon as unknown as ComponentType<FileTypeIconCompatProps>;
 
 export type Asset = {
   _id: string;
@@ -8,12 +18,9 @@ export type Asset = {
 };
 
 export function Asset({ value }: { value: Asset }) {
-  if (!value?.path) {
-    return null;
-  }
-
-  const path = value.path;
-  const isImage = /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(path);
+  const path = value?.path ?? '';
+  const hasPath = Boolean(path);
+  const isImage = hasPath && /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(path);
 
   const getExtensionFromPath = (p: string): string => {
     const clean = p.split('?')[0];
@@ -26,11 +33,23 @@ export function Asset({ value }: { value: Asset }) {
     return 'file';
   };
 
-  const thumbnaillUrl = path.endsWith('.svg')
-    ? `${IMAGES_BASE_URL}${path}`
-    : `${IMAGES_BASE_URL}${path}?w=84&h=84&f=webp`;
+  const thumbnaillUrl = hasPath
+    ? path.endsWith('.svg')
+      ? `${IMAGES_BASE_URL}${path}`
+      : `${IMAGES_BASE_URL}${path}?w=84&h=84&f=webp`
+    : null;
 
-  const fullUrl = path.endsWith('.svg') ? `${IMAGES_BASE_URL}${path}` : `${IMAGES_BASE_URL}${path}?w=624&h=624&f=webp`;
+  const fullUrl = hasPath
+    ? path.endsWith('.svg')
+      ? `${IMAGES_BASE_URL}${path}`
+      : `${IMAGES_BASE_URL}${path}?w=624&h=624&f=webp`
+    : '';
+
+  const cachedThumbnailSrc = useCachedImageSrc(thumbnaillUrl);
+
+  if (!hasPath) {
+    return null;
+  }
 
   return (
     <div className="fk-z-10">
@@ -38,11 +57,21 @@ export function Asset({ value }: { value: Asset }) {
         {isImage ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <img src={thumbnaillUrl} alt="asset" className="fk-w-7 fk-h-7 fk-cursor-zoom-in" />
+              <img
+                alt="asset"
+                className="fk-w-7 fk-h-7 fk-cursor-zoom-in fk-bg-muted/40 fk-rounded-sm"
+                decoding="async"
+                src={cachedThumbnailSrc ?? undefined}
+              />
             </TooltipTrigger>
             <TooltipPortal>
               <TooltipContent>
-                <img src={fullUrl} alt="asset" className="fk-w-52 fk-h-52" />
+                <img
+                  alt="asset"
+                  className="fk-w-52 fk-h-52 fk-bg-muted/40 fk-rounded-sm"
+                  decoding="async"
+                  src={fullUrl}
+                />
               </TooltipContent>
             </TooltipPortal>
           </Tooltip>
@@ -56,7 +85,7 @@ export function Asset({ value }: { value: Asset }) {
                     defaultStyles as Record<string, Record<string, string | number | boolean | undefined>>
                   )[ext];
 
-                  return <FileTypeIcon extension={ext} {...(style || {})} />;
+                  return <FileTypeIconCompat extension={ext} {...(style || {})} />;
                 })()}
               </div>
             </TooltipTrigger>

@@ -51,88 +51,86 @@ export function DateTime({ control, fieldSchema, getValues, setValue }: FormFiel
           <FormLabel htmlFor={id}>{label}</FormLabel>
           {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
-            <>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    className={cn(
-                      'fk-w-full fk-justify-start fk-h-10 fk-text-left fk-font-normal hover:fk-bg-transparent fk-relative',
-                      !field.value?.value && 'fk-text-muted-foreground',
-                      !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
-                    )}
-                    disabled={isEditable === false || field.value?.disabled}
-                    id={id}
-                    variant="outline"
-                  >
-                    <div className="fk-flex fk-items-center fk-w-full">
-                      <span className="fk-flex-grow">
-                        {field.value?.value
-                          ? format(new Date(field.value.value as string), 'PPP') +
-                            ' at ' +
-                            format(new Date(field.value.value as string), 'HH:mm')
-                          : 'Pick a date and time'}
-                      </span>
-                      <div className="fk-flex fk-items-center fk-gap-1">
-                        {field.value?.value && (
-                          <span
-                            className="fk-p-2 fk-text-muted-foreground hover:fk-text-accent-foreground fk-cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleClearing(e);
-                            }}
-                            role="button"
-                            aria-label="Clear date"
-                          >
-                            <ClearIcon className="fk-h-4 fk-w-4" />
-                          </span>
-                        )}
-                        <CalendarIcon className="fk-h-4 fk-w-4 fk-text-muted-foreground hover:fk-text-accent-foreground" />
-                      </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  className={cn(
+                    'fk-w-full fk-justify-start fk-h-10 fk-text-left fk-font-normal hover:fk-bg-transparent fk-relative',
+                    !field.value?.value && 'fk-text-muted-foreground',
+                    !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
+                  )}
+                  disabled={isEditable === false || field.value?.disabled}
+                  id={id}
+                  variant="outline"
+                >
+                  <div className="fk-flex fk-items-center fk-w-full">
+                    <span className="fk-flex-grow">
+                      {field.value?.value
+                        ? format(new Date(field.value.value as string), 'PPP') +
+                          ' at ' +
+                          format(new Date(field.value.value as string), 'HH:mm')
+                        : 'Pick a date and time'}
+                    </span>
+                    <div className="fk-flex fk-items-center fk-gap-1">
+                      {field.value?.value && (
+                        <span
+                          className="fk-p-2 fk-text-muted-foreground hover:fk-text-accent-foreground fk-cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleClearing(e);
+                          }}
+                          role="button"
+                          aria-label="Clear date"
+                        >
+                          <ClearIcon className="fk-h-4 fk-w-4" />
+                        </span>
+                      )}
+                      <CalendarIcon className="fk-h-4 fk-w-4 fk-text-muted-foreground hover:fk-text-accent-foreground" />
                     </div>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="fk-w-auto fk-p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value?.value ? new Date(field.value.value as string) : undefined}
-                    onSelect={(date) => handleSelect(date, field.value)}
-                    initialFocus
-                  />
-                  <div className="fk-p-3 fk-border-t fk-border-border">
-                    <label htmlFor="time" className="fk-text-sm fk-font-medium">
-                      Time
-                    </label>
-                    <Input
-                      className="fk-mt-1 fk-w-[90px]"
-                      id="time"
-                      onChange={(e) => {
-                        const timeValue = e.target.value;
-                        const [hours, minutes] = timeValue.split(':');
-
-                        let date = field.value?.value ? new Date(field.value.value as string) : new Date();
-                        date.setHours(parseInt(hours));
-                        date.setMinutes(parseInt(minutes));
-
-                        setValue(name, {
-                          ...field.value,
-                          value: date.toISOString(),
-                        });
-                      }}
-                      type="time"
-                      value={field.value?.value ? format(new Date(field.value.value as string), 'HH:mm') : ''}
-                    />
                   </div>
-                </PopoverContent>
-              </Popover>
-              <DefaultValueSwitch
-                checked={field.value?.disabled ?? false}
-                onChange={(checked) => {
-                  handleCheckbox(checked, field.value);
-                }}
-                scope={field.value?.scope}
-              />
-            </>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="fk-w-auto fk-p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={field.value?.value ? new Date(field.value.value as string) : undefined}
+                  onSelect={(date) => handleSelect(date, field.value)}
+                  initialFocus
+                />
+                <div className="fk-p-3 fk-border-t fk-border-border">
+                  <label htmlFor="time" className="fk-text-sm fk-font-medium">
+                    Time
+                  </label>
+                  <Input
+                    className="fk-mt-1 fk-w-[90px]"
+                    id="time"
+                    onChange={(e) => {
+                      const timeValue = e.target.value;
+                      const [hours, minutes] = timeValue.split(':');
+
+                      const date = field.value?.value ? new Date(field.value.value as string) : new Date();
+                      date.setHours(parseInt(hours));
+                      date.setMinutes(parseInt(minutes));
+
+                      setValue(name, {
+                        ...field.value,
+                        value: date.toISOString(),
+                      });
+                    }}
+                    type="time"
+                    value={field.value?.value ? format(new Date(field.value.value as string), 'HH:mm') : ''}
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
           </FormControl>
+          <DefaultValueSwitch
+            checked={field.value?.disabled ?? false}
+            onChange={(checked) => {
+              handleCheckbox(checked, field.value);
+            }}
+            scope={field.value?.scope}
+          />
           <FormMessage />
         </FormItem>
       )}

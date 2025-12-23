@@ -12,6 +12,8 @@ export { ProjectDisabled } from './core/error/project-disabled';
 export { SchemaError } from './core/error/schema-error';
 export { useGraphQLError } from './graphql-client/graphql-context';
 export { useSearch } from './core/use-search';
+export { defineConfig } from './core/config/define-config';
+export { defineEntity } from './core/config/define-entity';
 
 // Core types
 export type { AppOptions, FormFieldProps, LogoProps, PluginOptions, SingleProject } from './core/config/types';
@@ -66,6 +68,11 @@ export {
 } from '@tanstack/react-table';
 export { useVirtualizer } from '@tanstack/react-virtual';
 export { DataTableFacetedFilter } from './data-grid/data-table-faceted-filter';
+export { useGridColumnsDefinition } from './data-grid/columns';
+export { DataTableRowActions } from './data-grid/data-table-row-actions';
+export { DataTableToolbar } from './data-grid/data-table-toolbar';
+export { DataTableViewOptions } from './data-grid/data-table-view-options';
+export { DataTable } from './data-grid/data-table';
 
 // Entities
 export { useDispatch } from './entities/actions-context';

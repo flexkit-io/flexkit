@@ -1,10 +1,19 @@
 {
   "name": "@flexkit/desk",
   "version": "0.0.6",
+  "description": "Core Flexkit Studio plugin that powers the main interface for browsing entities, managing attributes, and performing CRUD operations on structured business data.",
+  "keywords": [
+    "flexkit",
+    "studio",
+    "react",
+    "node",
+    "desk",
+    "flexkit-plugin"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "style": "dist/index.css",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "license": "MIT",
   "repository": {
@@ -25,13 +34,15 @@
       ]
     }
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "files": [
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup src/index.tsx --format esm --dts --external react && tailwindcss -i ./src/styles.css -o dist/index.css",
-    "dev": "tsup src/index.tsx --format esm --watch --dts --external react && tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
+    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup src/index.tsx --format esm --dts --external react",
+    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch & tsup src/index.tsx --format esm --watch --dts --external react",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },
@@ -55,7 +66,7 @@
   },
   "dependencies": {
     "debug": "^4.3.4",
-    "lucide-react": "0.544.0",
+    "lucide-react": "0.555.0",
     "ramda": "^0.29.1",
     "swr": "^2.2.4"
   },

@@ -86,75 +86,73 @@ export default function Editor({
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
-            <>
-              <EditorRoot>
-                <EditorContent
-                  className="fk-relative fk-w-full fk-max-w-screen-lg fk-rounded-md fk-border fk-border-input fk-ring-offset-background focus-within:fk-outline-none focus-within:fk-ring-2 focus-within:fk-ring-ring focus-within:fk-ring-offset-2"
-                  editable={isEditable !== false && !field.value?.disabled}
-                  editorProps={{
-                    handleDOMEvents: {
-                      keydown: (_view, event) => handleCommandNavigation(event),
-                    },
-                    handlePaste: (view, event) => handleImagePaste(view, event, uploadFn),
-                    handleDrop: (view, event, _slice, moved) => handleImageDrop(view, event, moved, uploadFn),
-                    attributes: {
-                      class:
-                        'fk-prose prose-lg dark:fk-prose-invert prose-headings:fk-font-title fk-min-h-[150px] fk-font-default fk-rounded-md ' +
-                        'focus:fk-outline-none fk-max-w-full fk-bg-background ',
-                    },
-                  }}
-                  extensions={extensions}
-                  initialContent={content}
-                  immediatelyRender={true}
-                  onUpdate={({ editor }) => {
-                    debouncedUpdates(editor, field.value);
-                  }}
-                  slotAfter={<ImageResizer />}
-                >
-                  <EditorCommand className="fk-z-50 fk-h-auto fk-max-h-[330px] fk-overflow-y-auto fk-rounded-md fk-border fk-border-muted fk-bg-background fk-px-1 fk-py-2 fk-shadow-md fk-transition-all fk-pointer-events-auto">
-                    <EditorCommandEmpty className="fk-px-2 fk-text-muted-foreground">No results</EditorCommandEmpty>
-                    <EditorCommandList>
-                      {suggestionItems.map((item) => (
-                        <EditorCommandItem
-                          value={item.title}
-                          onCommand={(val) => item.command?.(val)}
-                          className="fk-flex fk-w-full fk-items-center fk-space-x-2 fk-rounded-md fk-px-2 fk-py-1 fk-text-left fk-text-sm hover:fk-bg-muted aria-selected:fk-bg-muted"
-                          key={item.title}
-                        >
-                          <div className="fk-flex fk-h-10 fk-w-10 fk-items-center fk-justify-center fk-rounded-md fk-border fk-border-muted fk-bg-background">
-                            {item.icon}
-                          </div>
-                          <div>
-                            <p className="fk-font-medium">{item.title}</p>
-                            <p className="fk-text-xs fk-text-muted-foreground">{item.description}</p>
-                          </div>
-                        </EditorCommandItem>
-                      ))}
-                    </EditorCommandList>
-                  </EditorCommand>
-                  <GenerativeMenuSwitch open={openAI} onOpenChange={setOpenAI}>
-                    <Separator orientation="vertical" />
-                    <NodeSelector open={openNode} onOpenChange={setOpenNode} />
-                    <Separator orientation="vertical" />
-                    <LinkSelector open={openLink} onOpenChange={setOpenLink} />
-                    <Separator orientation="vertical" />
-                    <MathSelector />
-                    <Separator orientation="vertical" />
-                    <TextButtons />
-                    <Separator orientation="vertical" />
-                    <ColorSelector open={openColor} onOpenChange={setOpenColor} />
-                  </GenerativeMenuSwitch>
-                </EditorContent>
-              </EditorRoot>
-              <DefaultValueSwitch
-                checked={field.value?.disabled ?? false}
-                onChange={(checked) => {
-                  handleCheckbox(checked, field.value);
+            <EditorRoot>
+              <EditorContent
+                className="fk-relative fk-w-full fk-max-w-screen-lg fk-rounded-md fk-border fk-border-input fk-ring-offset-background focus-within:fk-outline-none focus-within:fk-ring-2 focus-within:fk-ring-ring focus-within:fk-ring-offset-2"
+                editable={isEditable !== false && !field.value?.disabled}
+                editorProps={{
+                  handleDOMEvents: {
+                    keydown: (_view, event) => handleCommandNavigation(event),
+                  },
+                  handlePaste: (view, event) => handleImagePaste(view, event, uploadFn),
+                  handleDrop: (view, event, _slice, moved) => handleImageDrop(view, event, moved, uploadFn),
+                  attributes: {
+                    class:
+                      'fk-prose prose-lg dark:fk-prose-invert prose-headings:fk-font-title fk-min-h-[150px] fk-font-default fk-rounded-md ' +
+                      'focus:fk-outline-none fk-max-w-full fk-bg-background ',
+                  },
                 }}
-                scope={field.value?.scope}
-              />
-            </>
+                extensions={extensions}
+                initialContent={content}
+                immediatelyRender={true}
+                onUpdate={({ editor }) => {
+                  debouncedUpdates(editor, field.value);
+                }}
+                slotAfter={<ImageResizer />}
+              >
+                <EditorCommand className="fk-z-50 fk-h-auto fk-max-h-[330px] fk-overflow-y-auto fk-rounded-md fk-border fk-border-muted fk-bg-background fk-px-1 fk-py-2 fk-shadow-md fk-transition-all fk-pointer-events-auto">
+                  <EditorCommandEmpty className="fk-px-2 fk-text-muted-foreground">No results</EditorCommandEmpty>
+                  <EditorCommandList>
+                    {suggestionItems.map((item) => (
+                      <EditorCommandItem
+                        value={item.title}
+                        onCommand={(val) => item.command?.(val)}
+                        className="fk-flex fk-w-full fk-items-center fk-space-x-2 fk-rounded-md fk-px-2 fk-py-1 fk-text-left fk-text-sm hover:fk-bg-muted aria-selected:fk-bg-muted"
+                        key={item.title}
+                      >
+                        <div className="fk-flex fk-h-10 fk-w-10 fk-items-center fk-justify-center fk-rounded-md fk-border fk-border-muted fk-bg-background">
+                          {item.icon}
+                        </div>
+                        <div>
+                          <p className="fk-font-medium">{item.title}</p>
+                          <p className="fk-text-xs fk-text-muted-foreground">{item.description}</p>
+                        </div>
+                      </EditorCommandItem>
+                    ))}
+                  </EditorCommandList>
+                </EditorCommand>
+                <GenerativeMenuSwitch open={openAI} onOpenChange={setOpenAI}>
+                  <Separator orientation="vertical" />
+                  <NodeSelector open={openNode} onOpenChange={setOpenNode} />
+                  <Separator orientation="vertical" />
+                  <LinkSelector open={openLink} onOpenChange={setOpenLink} />
+                  <Separator orientation="vertical" />
+                  <MathSelector />
+                  <Separator orientation="vertical" />
+                  <TextButtons />
+                  <Separator orientation="vertical" />
+                  <ColorSelector open={openColor} onOpenChange={setOpenColor} />
+                </GenerativeMenuSwitch>
+              </EditorContent>
+            </EditorRoot>
           </FormControl>
+          <DefaultValueSwitch
+            checked={field.value?.disabled ?? false}
+            onChange={(checked) => {
+              handleCheckbox(checked, field.value);
+            }}
+            scope={field.value?.scope}
+          />
           <FormMessage />
         </FormItem>
       )}

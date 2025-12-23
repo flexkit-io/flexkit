@@ -1,10 +1,19 @@
 {
   "name": "@flexkit/asset-manager",
   "version": "0.0.6",
+  "description": "Flexkit plugin for browsing and managing assets in a project.",
+  "keywords": [
+    "flexkit",
+    "studio",
+    "react",
+    "node",
+    "assets",
+    "flexkit-plugin"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "style": "dist/index.css",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "license": "MIT",
   "repository": {
@@ -33,8 +42,8 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tsup src/index.tsx --format esm --dts --external react && tailwindcss -i ./src/styles.css -o dist/index.css",
-    "dev": "tsup src/index.tsx --format esm --watch --dts --external react && tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
+    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup src/index.tsx --format esm --dts --external react",
+    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch & tsup src/index.tsx --format esm --watch --dts --external react",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },
@@ -58,7 +67,7 @@
   },
   "dependencies": {
     "react-file-icon": "1.6.0",
-    "lucide-react": "0.544.0",
+    "lucide-react": "0.555.0",
     "ramda": "^0.29.1",
     "swr": "^2.2.4"
   },

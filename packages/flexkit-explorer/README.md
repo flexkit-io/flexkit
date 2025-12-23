@@ -39,7 +39,7 @@ npm install @flexkit/explorer
 
 ```ts
 // `flexkit.config.ts`:
-import { defineConfig } from '@flexkit/studio/ssr';
+import { defineConfig } from '@flexkit/studio';
 import { Explorer } from '@flexkit/explorer';
 
 export default defineConfig({

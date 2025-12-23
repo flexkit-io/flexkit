@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["studio"]
+  "ignore": ["astro-5", "next-14", "next-16", "tanstack-start"]
 }

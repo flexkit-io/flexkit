@@ -1,6 +1,9 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig((options) => ({
+  banner: {
+    js: "import './index.css';",
+  },
   treeshake: true,
   splitting: true,
   entry: ['src/**/*.tsx'],

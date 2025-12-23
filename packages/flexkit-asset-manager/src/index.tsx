@@ -1,5 +1,3 @@
-import './styles.css';
-
 import { FileStack as FileStackIcon } from 'lucide-react';
 import type { PluginOptions } from '@flexkit/studio';
 import { Asset } from './data-grid/preview-components/asset';

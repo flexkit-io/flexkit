@@ -2,8 +2,6 @@
   "name": "tailwind-config",
   "version": "0.0.1",
   "private": true,
-  "main": "index.ts",
-  "types": "index.ts",
   "devDependencies": {
     "@tailwindcss/typography": "0.5.15",
     "@types/node": "22.5.4",

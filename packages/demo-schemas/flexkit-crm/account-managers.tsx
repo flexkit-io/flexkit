@@ -1,0 +1,126 @@
+import { Users } from 'lucide-react';
+import { defineEntity } from '@flexkit/studio';
+
+export const accountManagers = defineEntity({
+  name: 'accountManager',
+  plural: 'accountManagers',
+  menu: {
+    label: 'Account Managers',
+    group: 'config',
+    icon: <Users />,
+  },
+  attributes: [
+    {
+      name: 'firstName',
+      label: 'First Name',
+      scope: 'global',
+      options: {
+        size: 200,
+        comment: 'First name of the user',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      isSearchable: true,
+      validation: (z) => z.string().min(1, { message: 'First name is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'lastName',
+      label: 'Last Name',
+      scope: 'global',
+      options: {
+        size: 200,
+        comment: 'Last name of the user',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      isSearchable: true,
+      validation: (z) => z.string().min(1, { message: 'Last name is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'email',
+      label: 'Email',
+      scope: 'global',
+      options: {
+        size: 260,
+        comment: 'Email address of the user',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      isSearchable: true,
+      isPrimary: true,
+      validation: (z) => z.string().email({ message: 'Invalid email address' }),
+      defaultValue: '',
+    },
+    {
+      name: 'role',
+      label: 'Role',
+      scope: 'global',
+      options: {
+        list: [
+          { label: 'Administrator', value: 'admin' },
+          { label: 'Manager', value: 'manager' },
+          { label: 'Sales Representative', value: 'sales' },
+          { label: 'Support Agent', value: 'support' },
+          { label: 'Marketing Specialist', value: 'marketing' },
+        ],
+        size: 180,
+        comment: 'Role of the user in the system',
+      },
+      dataType: 'string',
+      inputType: 'select',
+      validation: (z) => z.string().min(1, { message: 'Role is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'isActive',
+      label: 'Active',
+      scope: 'global',
+      options: {
+        size: 120,
+        comment: 'Whether this user is active',
+      },
+      dataType: 'boolean',
+      inputType: 'switch',
+      defaultValue: '',
+    },
+    {
+      name: 'phone',
+      label: 'Phone',
+      scope: 'global',
+      options: {
+        size: 160,
+        comment: 'Phone number of the user',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      defaultValue: '',
+    },
+    {
+      name: 'avatar',
+      label: 'Avatar',
+      options: {
+        accept: 'image/*',
+        size: 160,
+        comment: 'Profile avatar of the user',
+      },
+      dataType: 'asset',
+      inputType: 'asset',
+      scope: 'global',
+      defaultValue: '',
+    },
+    {
+      name: 'timezone',
+      label: 'Timezone',
+      scope: 'global',
+      options: {
+        size: 180,
+        comment: 'Timezone of the user',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      defaultValue: '',
+    },
+  ],
+});
