@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/desk",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Core Flexkit Studio plugin that powers the main interface for browsing entities, managing attributes, and performing CRUD operations on structured business data.",
   "keywords": [
     "flexkit",

@@ -1,5 +1,14 @@
 # @flexkit/explorer
 
+## 0.0.8
+
+### Patch Changes
+
+- cc3d3e2: - Upgrade dependencies
+  - Fix API proxy to handle streaming bodies
+- Updated dependencies [cc3d3e2]
+  - @flexkit/studio@0.0.8
+
 ## 0.0.7
 
 ### Patch Changes
