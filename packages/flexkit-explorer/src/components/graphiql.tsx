@@ -1,5 +1,12 @@
 import { Children, Fragment, useCallback, useState, useEffect, useMemo, useRef } from 'react';
-import type { ComponentType, MouseEventHandler, PropsWithChildren, ReactNode, ReactElement } from 'react';
+import type {
+  ComponentProps,
+  ComponentType,
+  MouseEventHandler,
+  PropsWithChildren,
+  ReactNode,
+  ReactElement,
+} from 'react';
 import {
   Button as GraphiQLButton,
   ButtonGroup,
@@ -34,7 +41,6 @@ import {
   isMacOs,
 } from '@graphiql/react';
 import type {
-  GraphiQLProviderProps,
   Theme,
   UseHeaderEditorArgs,
   UseQueryEditorArgs,
@@ -42,6 +48,7 @@ import type {
   UseVariableEditorArgs,
   WriteableEditorProps,
 } from '@graphiql/react';
+import { HISTORY_PLUGIN, HistoryContextProvider } from '@graphiql/plugin-history';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import {
   Button,
@@ -81,7 +88,16 @@ export type GraphiQLToolbarConfig = {
  *
  * https://graphiql-test.netlify.app/typedoc/modules/graphiql.html#graphiqlprops
  */
-export type GraphiQLProps = Omit<GraphiQLProviderProps, 'children'> & GraphiQLInterfaceProps;
+export type GraphiQLProps = Omit<ComponentProps<typeof GraphiQLProvider>, 'children'> &
+  GraphiQLInterfaceProps & {
+    /**
+     * The maximum number of executed operations to store in history.
+     *
+     * GraphiQL v0.31 extracted the history functionality into `@graphiql/plugin-history`,
+     * so this is no longer a prop on `@graphiql/react`'s `GraphiQLProvider`.
+     */
+    maxHistoryLength?: number;
+  };
 
 /**
  * The top-level React component for GraphiQL, intended to encompass the entire
@@ -124,6 +140,16 @@ export function GraphiQL({
     throw new TypeError('The `GraphiQL` component requires a `fetcher` function to be passed as prop.');
   }
 
+  const mergedPlugins = useMemo(() => {
+    const userPlugins = plugins ?? [];
+
+    if (userPlugins.some((plugin) => plugin.title === HISTORY_PLUGIN.title)) {
+      return userPlugins;
+    }
+
+    return [HISTORY_PLUGIN, ...userPlugins];
+  }, [plugins]);
+
   return (
     <GraphiQLProvider
       getDefaultFieldNames={getDefaultFieldNames}
@@ -136,12 +162,11 @@ export function GraphiQL({
       headers={headers}
       inputValueDeprecation={inputValueDeprecation}
       introspectionQueryName={introspectionQueryName}
-      maxHistoryLength={maxHistoryLength}
       onEditOperationName={onEditOperationName}
       onSchemaChange={onSchemaChange}
       onTabChange={onTabChange}
       onTogglePluginVisibility={onTogglePluginVisibility}
-      plugins={plugins}
+      plugins={mergedPlugins}
       visiblePlugin={visiblePlugin}
       operationName={operationName}
       query={query}
@@ -153,13 +178,15 @@ export function GraphiQL({
       validationRules={validationRules}
       variables={variables}
     >
-      <GraphiQLInterface
-        confirmCloseTab={confirmCloseTab}
-        showPersistHeadersSettings={shouldPersistHeaders !== false}
-        disableTabs={props.disableTabs ?? false}
-        forcedTheme={props.forcedTheme}
-        {...props}
-      />
+      <HistoryContextProvider maxHistoryLength={maxHistoryLength}>
+        <GraphiQLInterface
+          confirmCloseTab={confirmCloseTab}
+          showPersistHeadersSettings={shouldPersistHeaders !== false}
+          disableTabs={props.disableTabs ?? false}
+          forcedTheme={props.forcedTheme}
+          {...props}
+        />
+      </HistoryContextProvider>
     </GraphiQLProvider>
   );
 }

@@ -215,6 +215,16 @@ export function createFlexkitTanStackHandler(): EventHandler {
       contentType,
     });
 
+    if (result.type === 'response') {
+      const headers = new Headers(result.headers);
+
+      if (result.setCookie) {
+        headers.set('Set-Cookie', result.setCookie);
+      }
+
+      return new Response(result.body as BodyInit | null, { status: result.status, headers });
+    }
+
     return applyResultToResponse(result, event);
   };
 }
@@ -276,6 +286,10 @@ export function createFlexkitFetchHandler(): (request: Request) => Promise<Respo
 
     if (result.type === 'text') {
       return new Response(result.body as string, { status: result.status, headers });
+    }
+
+    if (result.type === 'response') {
+      return new Response(result.body as BodyInit | null, { status: result.status, headers });
     }
 
     headers.set('Content-Type', 'application/json');

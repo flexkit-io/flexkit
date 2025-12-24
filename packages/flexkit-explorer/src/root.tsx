@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import { createGraphiQLFetcher } from '@graphiql/toolkit';
 import { useConfig } from '@flexkit/studio';
 import { GraphiQL } from './components/graphiql';
-import '@graphiql/react/dist/style.css';
+import '@graphiql/react/style.css';
+import '@graphiql/plugin-history/style.css';
 
 export function Root(): JSX.Element {
   const { currentProjectId } = useConfig();

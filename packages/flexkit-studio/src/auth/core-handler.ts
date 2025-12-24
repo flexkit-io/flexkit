@@ -10,16 +10,93 @@ export interface FlexkitHandlerContext {
   contentType: string | null;
 }
 
-export interface FlexkitHandlerResult {
-  type: 'json' | 'redirect' | 'text';
-  status: number;
-  body?: unknown;
-  headers?: Record<string, string>;
-  setCookie?: string;
+type FlexkitHandlerHeaders = { [key: string]: string };
+
+export type FlexkitHandlerResult =
+  | {
+      type: 'redirect';
+      status: number;
+      headers?: FlexkitHandlerHeaders;
+      setCookie?: string;
+    }
+  | {
+      type: 'text';
+      status: number;
+      body: string;
+      headers?: FlexkitHandlerHeaders;
+      setCookie?: string;
+    }
+  | {
+      type: 'json';
+      status: number;
+      body: unknown;
+      headers?: FlexkitHandlerHeaders;
+      setCookie?: string;
+    }
+  | {
+      type: 'response';
+      status: number;
+      body: BodyInit | null;
+      headers?: FlexkitHandlerHeaders;
+      setCookie?: string;
+    };
+
+const hopByHopHeaders = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+]);
+
+function sanitizeForwardHeaders(headers: Headers): Headers {
+  const sanitized = new Headers();
+
+  headers.forEach((value, key) => {
+    const normalizedKey = key.toLowerCase();
+
+    if (hopByHopHeaders.has(normalizedKey)) {
+      return;
+    }
+
+    if (normalizedKey === 'host') {
+      return;
+    }
+
+    if (normalizedKey === 'content-length') {
+      return;
+    }
+
+    if (normalizedKey === 'content-encoding') {
+      return;
+    }
+
+    if (normalizedKey === 'accept-encoding') {
+      return;
+    }
+
+    sanitized.set(key, value);
+  });
+
+  return sanitized;
+}
+
+function headersToObject(headers: Headers): { [key: string]: string } {
+  const result: { [key: string]: string } = {};
+
+  headers.forEach((value, key) => {
+    result[key] = value;
+  });
+
+  return result;
 }
 
 export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<FlexkitHandlerResult> {
   const { request, pathname, search, sessionToken, contentType } = ctx;
+  const { body: requestBody, method } = request;
 
   // Handle get-token endpoint
   if (pathname === '/api/flexkit/get-token') {
@@ -47,7 +124,7 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
   }
 
   // Handle set-token endpoint
-  if (pathname === '/api/flexkit/set-token' && request.method === 'POST') {
+  if (pathname === '/api/flexkit/set-token' && method === 'POST') {
     const url = new URL(request.url);
     const redirect = url.searchParams.get('redirect') ?? '/';
     let sid = '';
@@ -75,7 +152,7 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
   let body: string | ReadableStream<Uint8Array> | null | undefined;
   let forwardContentType = contentType ?? 'application/json';
 
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
+  if (method !== 'GET' && method !== 'HEAD') {
     const normalizedContentType = (contentType ?? '').toLowerCase();
     const isJson = normalizedContentType.includes('application/json');
     const isTextPlain = normalizedContentType.startsWith('text/plain');
@@ -93,19 +170,28 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
           forwardContentType = contentType ?? 'text/plain';
         }
       } else {
-        body = request.body;
+        body = requestBody;
       }
     } catch {
       body = undefined;
     }
   }
 
+  const forwardHeaders = sanitizeForwardHeaders(request.headers);
+
+  if (sessionToken) {
+    forwardHeaders.set('Cookie', `sessionToken=${sessionToken}`);
+  } else {
+    forwardHeaders.delete('Cookie');
+  }
+
+  if (method !== 'GET' && method !== 'HEAD') {
+    forwardHeaders.set('Content-Type', forwardContentType);
+  }
+
   const requestInit: RequestInit = {
-    headers: {
-      'Content-Type': forwardContentType,
-      Cookie: `sessionToken=${sessionToken}`,
-    },
-    method: request.method,
+    headers: forwardHeaders,
+    method,
     body,
   };
 
@@ -120,13 +206,12 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     return { type: 'json', status: 204, body: { status: 204 } };
   }
 
-  if (response.headers.get('content-type')?.includes('text/plain')) {
-    const text = await response.text();
+  const responseHeaders = sanitizeForwardHeaders(response.headers);
 
-    return { type: 'text', status: response.status, body: text };
-  }
-
-  const jsonData = await response.json();
-
-  return { type: 'json', status: response.status, body: jsonData };
+  return {
+    type: 'response',
+    status: response.status,
+    body: response.body,
+    headers: headersToObject(responseHeaders),
+  };
 }

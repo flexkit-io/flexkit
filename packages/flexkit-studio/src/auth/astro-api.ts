@@ -32,6 +32,10 @@ function resultToResponse(result: FlexkitHandlerResult): Response {
     return new Response(result.body as string, { status: result.status, headers });
   }
 
+  if (result.type === 'response') {
+    return new Response(result.body as BodyInit | null, { status: result.status, headers });
+  }
+
   headers.set('Content-Type', 'application/json');
 
   return new Response(JSON.stringify(result.body), { status: result.status, headers });
