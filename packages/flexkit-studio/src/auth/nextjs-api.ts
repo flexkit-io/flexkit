@@ -9,6 +9,7 @@ interface NextRequest {
   nextUrl: { pathname: string; search: string };
   json: () => Promise<unknown>;
   body: ReadableStream<Uint8Array> | null;
+  headers: Headers;
 }
 
 interface NextResponseStatic {
@@ -30,27 +31,44 @@ interface FlexkitNextDependencies {
   headers: () => Promise<HeadersList> | HeadersList;
 }
 
+type FlexkitHandlerResultWithResponse =
+  | FlexkitHandlerResult
+  | {
+      type: 'response';
+      status: number;
+      body: BodyInit | null;
+      headers?: { [key: string]: string };
+      setCookie?: string;
+    };
+
 /**
  * Converts a FlexkitHandlerResult to a Next.js Response
  */
-function resultToNextResponse(result: FlexkitHandlerResult, NextResponse: NextResponseStatic): Response {
-  const headers: Record<string, string> = { ...result.headers };
+function resultToNextResponse(result: FlexkitHandlerResultWithResponse, NextResponse: NextResponseStatic): Response {
+  const responseHeaders = new Headers(result.headers);
 
   if (result.setCookie) {
-    headers['Set-Cookie'] = result.setCookie;
+    responseHeaders.set('Set-Cookie', result.setCookie);
   }
 
   if (result.type === 'redirect') {
     return new NextResponse('Redirecting...', {
       status: result.status,
-      headers,
+      headers: responseHeaders,
     });
   }
 
   if (result.type === 'text') {
     return new NextResponse(result.body as string, {
       status: result.status,
-      headers,
+      headers: responseHeaders,
+    });
+  }
+
+  if (result.type === 'response') {
+    return new NextResponse(result.body as BodyInit | null, {
+      status: result.status,
+      headers: responseHeaders,
     });
   }
 
@@ -93,27 +111,31 @@ export function createFlexkitApiHandler(dependencies: FlexkitNextDependencies) {
     const cookieStore = await cookies();
     const headersList = await headers();
     const sessionToken = cookieStore.get('sessionToken')?.value ?? '';
-    const contentType = headersList.get('content-type');
+    const contentType = request.headers.get('content-type') ?? headersList.get('content-type');
     const { pathname, search } = request.nextUrl;
 
     // Create a standard Request object from the Next.js request
+    const requestHeaders = new Headers(request.headers);
+
+    if (!requestHeaders.has('Content-Type')) {
+      requestHeaders.set('Content-Type', contentType ?? 'application/json');
+    }
+
     const standardRequest = new Request(request.url, {
       method: request.method,
-      headers: {
-        'Content-Type': contentType ?? 'application/json',
-      },
+      headers: requestHeaders,
       body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
       // @ts-expect-error - duplex is required for streaming bodies
       duplex: 'half',
     });
 
-    const result = await handleFlexkitRequest({
+    const result = (await handleFlexkitRequest({
       request: standardRequest,
       pathname,
       search,
       sessionToken,
       contentType,
-    });
+    })) as FlexkitHandlerResultWithResponse;
 
     return resultToNextResponse(result, NextResponse);
   };

@@ -1,6 +1,5 @@
 import { EditorBubble, useEditor } from 'novel';
-import { removeAIHighlight } from 'novel/extensions';
-import {} from 'novel/plugins';
+import { removeAIHighlight } from 'novel';
 import { Fragment, type ReactNode, useEffect } from 'react';
 import { Button } from '../../../../ui/primitives/button';
 import Magic from '../icons/magic';
@@ -22,7 +21,7 @@ export default function GenerativeMenuSwitch({
     if (!editor) return;
 
     if (!open) removeAIHighlight(editor);
-  }, [open]);
+  }, [editor, open]);
 
   if (!editor) return null;
 

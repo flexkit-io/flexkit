@@ -59,7 +59,7 @@
     "strip-ansi": "6.0.1",
     "supports-hyperlinks": "3.0.0",
     "ts-node": "10.9.2",
-    "tsup": "8.5.0",
+    "tsup": "8.5.1",
     "type-fest": "^4.24.0",
     "typescript": "^5.3.3",
     "write-json-file": "2.2.0",

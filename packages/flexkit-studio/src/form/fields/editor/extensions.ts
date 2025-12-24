@@ -7,7 +7,6 @@ import {
   GlobalDragHandle,
   HighlightExtension,
   HorizontalRule,
-  MarkdownExtension,
   Placeholder,
   StarterKit,
   TaskItem,
@@ -19,9 +18,10 @@ import {
   Twitter,
   Youtube,
   Mathematics,
-} from 'novel/extensions';
+  UploadImagesPlugin,
+} from 'novel';
 import { Extensions } from '@tiptap/core';
-import { UploadImagesPlugin } from 'novel/plugins';
+import { Markdown } from 'tiptap-markdown';
 import { cx } from 'class-variance-authority';
 import { common, createLowlight } from 'lowlight';
 
@@ -35,6 +35,17 @@ const tiptapLink = TiptapLink.configure({
       'fk-text-muted-foreground fk-underline fk-underline-offset-[3px] hover:fk-text-primary fk-transition-colors fk-cursor-pointer'
     ),
   },
+});
+
+const markdownExtension = Markdown.configure({
+  html: true,
+  tightLists: true,
+  tightListClass: 'tight',
+  bulletListMarker: '-',
+  linkify: false,
+  breaks: false,
+  transformPastedText: false,
+  transformCopiedText: false,
 });
 
 const tiptapImage = TiptapImage.extend({
@@ -152,7 +163,7 @@ export const defaultExtensions: Extensions = [
   mathematics,
   characterCount,
   TiptapUnderline,
-  MarkdownExtension,
+  markdownExtension,
   HighlightExtension,
   TextStyle,
   Color,

@@ -52,8 +52,8 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/ssr.tsx src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config",
-    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch & tsup --config tsup.config.ts --watch",
+    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config",
+    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch & tsup --config tsup.config.ts --watch & tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "ui:add": "pnpm dlx shadcn@latest add"
@@ -77,10 +77,11 @@
     "tailwindcss": "3.4.10",
     "tailwindcss-animate": "1.0.7",
     "tsconfig": "workspace:*",
-    "tsup": "8.5.0",
+    "tsup": "8.5.1",
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@ai-sdk/react": "3.0.3",
     "@apollo/client": "4.0.9",
     "@hookform/resolvers": "^3.3.2",
     "@lexical/code": "^0.12.2",
@@ -119,7 +120,7 @@
     "bytes": "^3.1.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
-    "cmdk": "^1.0.0",
+    "cmdk": "^1.1.1",
     "date-fns": "4.1.0",
     "debug": "^4.3.4",
     "fuse.js": "7.0.0",
@@ -128,20 +129,21 @@
     "lowlight": "3.1.0",
     "lucide-react": "0.555.0",
     "next-themes": "^0.2.1",
-    "novel": "0.5.0",
+    "novel": "1.0.2",
     "ramda": "^0.29.1",
-    "react-day-picker": "8.10.1",
+    "react-day-picker": "^9.7.0",
     "react-file-icon": "1.6.0",
     "react-hook-form": "^7.47.0",
     "react-markdown": "9.0.1",
-    "react-resizable-panels": "^1.0.6",
+    "react-resizable-panels": "^3.0.6",
     "react-router-dom": "^6.21.0",
     "sonner": "^1.4.3",
     "swr": "^2.2.4",
     "tailwind-merge": "^2.0.0",
+    "tiptap-markdown": "0.8.10",
     "use-debounce": "10.0.3",
     "uuid": "^9.0.1",
-    "vaul": "^0.9.4",
+    "vaul": "1.1.2",
     "zod": "^3.22.4"
   },
   "peerDependencies": {

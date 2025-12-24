@@ -8,11 +8,14 @@ import {
   EditorCommandList,
   EditorContent,
   EditorRoot,
+  handleCommandNavigation,
+  handleImageDrop,
+  handleImagePaste,
+  ImageResizer,
   type EditorInstance,
   type JSONContent,
+  type SuggestionItem,
 } from 'novel';
-import { ImageResizer, handleCommandNavigation } from 'novel/extensions';
-import { handleImageDrop, handleImagePaste } from 'novel/plugins';
 import { useDebouncedCallback } from 'use-debounce';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
 import { Separator } from '../../../ui/primitives/separator';
@@ -41,7 +44,7 @@ export default function Editor({
 
   try {
     initialValue = defaultValue?.value ? JSON.parse(defaultValue.value as string) : undefined;
-  } catch (e) {
+  } catch {
     initialValue = undefined;
   }
 
@@ -71,7 +74,8 @@ export default function Editor({
   // TODO: replace this with a real upload function.
   // See: https://github.com/steven-tey/novel/blob/ecdb5d2ff5d3e6ab5f5af95b5a81de3ab4e8a0e9/apps/web/components/tailwind/image-upload.ts
   const uploadFn = (file: File) => {
-    console.log('Uploading file', file);
+    // eslint-disable-next-line no-console
+    console.log('Image uploader not yet implemented', file);
 
     return Promise.resolve('https://via.placeholder.com/150');
   };
@@ -113,7 +117,7 @@ export default function Editor({
                 <EditorCommand className="fk-z-50 fk-h-auto fk-max-h-[330px] fk-overflow-y-auto fk-rounded-md fk-border fk-border-muted fk-bg-background fk-px-1 fk-py-2 fk-shadow-md fk-transition-all fk-pointer-events-auto">
                   <EditorCommandEmpty className="fk-px-2 fk-text-muted-foreground">No results</EditorCommandEmpty>
                   <EditorCommandList>
-                    {suggestionItems.map((item) => (
+                    {suggestionItems.map((item: SuggestionItem) => (
                       <EditorCommandItem
                         value={item.title}
                         onCommand={(val) => item.command?.(val)}
