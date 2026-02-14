@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.9
+
+### Patch Changes
+
+- b2d3057: Fix bug that prevented the editor component to properly update when changing scopes
+
 ## 0.0.8
 
 ### Patch Changes

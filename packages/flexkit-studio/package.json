@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/studio",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Flexkit Studio - Build custom internal tools like PIMs, CRMs, and ERPs with a flexible React UI and a graph-backed API",
   "keywords": [
     "flexkit",
