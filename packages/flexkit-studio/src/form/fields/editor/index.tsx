@@ -33,6 +33,50 @@ import GenerativeMenuSwitch from './generative/generative-menu-switch';
 
 const extensions = [...defaultExtensions, slashCommand];
 
+function isJSONContent(value: unknown): value is JSONContent {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const maybe = value as { type?: unknown; content?: unknown };
+
+  if (typeof maybe.type !== 'string' && typeof maybe.type !== 'undefined') {
+    return false;
+  }
+
+  if (!Array.isArray(maybe.content) && typeof maybe.content !== 'undefined') {
+    return false;
+  }
+
+  return true;
+}
+
+function parseEditorValue(value: FormFieldValue['value'] | undefined): JSONContent | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return undefined;
+    }
+
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+
+      if (isJSONContent(parsed)) {
+        return parsed;
+      }
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (isJSONContent(value)) {
+    return value;
+  }
+
+  return undefined;
+}
+
 export default function Editor({
   control,
   defaultValue,
@@ -40,15 +84,6 @@ export default function Editor({
   setValue,
 }: FormFieldParams<'editor'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
-  let initialValue;
-
-  try {
-    initialValue = defaultValue?.value ? JSON.parse(defaultValue.value as string) : undefined;
-  } catch {
-    initialValue = undefined;
-  }
-
-  const [content, setContent] = useState<JSONContent | undefined>(initialValue);
   const [openAI, setOpenAI] = useState(false);
   const [openNode, setOpenNode] = useState(false);
   const [openLink, setOpenLink] = useState(false);
@@ -57,7 +92,6 @@ export default function Editor({
   const debouncedUpdates = useDebouncedCallback((editor: EditorInstance, previousValue: FormFieldValue | undefined) => {
     const json = editor.getJSON();
 
-    setContent(json);
     setValue(name, {
       ...previousValue,
       value: JSON.stringify(json),
@@ -83,7 +117,6 @@ export default function Editor({
   return (
     <FormField
       control={control}
-      defaultValue={defaultValue}
       name={name}
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
@@ -92,6 +125,7 @@ export default function Editor({
           <FormControl>
             <EditorRoot>
               <EditorContent
+                key={`${name}:${field.value?.scope ?? defaultValue.scope}:${String(field.value?.disabled ?? defaultValue.disabled)}`}
                 className="fk-relative fk-w-full fk-max-w-screen-lg fk-rounded-md fk-border fk-border-input fk-ring-offset-background focus-within:fk-outline-none focus-within:fk-ring-2 focus-within:fk-ring-ring focus-within:fk-ring-offset-2"
                 editable={isEditable !== false && !field.value?.disabled}
                 editorProps={{
@@ -107,7 +141,7 @@ export default function Editor({
                   },
                 }}
                 extensions={extensions}
-                initialContent={content}
+                initialContent={parseEditorValue(field.value?.value ?? defaultValue.value)}
                 immediatelyRender={true}
                 onUpdate={({ editor }) => {
                   debouncedUpdates(editor, field.value);
