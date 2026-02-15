@@ -29,6 +29,7 @@ import Client from './util/client';
 import getConfig from './util/get-config';
 import loginCommand from './commands/login';
 import logoutCommand from './commands/logout';
+import projectCommand from './commands/project';
 import syncCommand from './commands/sync';
 import whoamiCommand from './commands/whoami';
 import doLoginPrompt from './util/login/prompt';
@@ -308,6 +309,9 @@ const main = async (): Promise<number | undefined> => {
           break;
         case 'logout':
           func = logoutCommand;
+          break;
+        case 'project':
+          func = projectCommand;
           break;
         case 'sync':
           func = syncCommand;
