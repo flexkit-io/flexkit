@@ -10,6 +10,7 @@ export const help = (): string => `
       help                 [cmd]       Displays complete help for [cmd]
       login                [email]     Logs into your Flexkit's account
       logout                           Logs out of your account
+      project                          Manage projects (ls, add, rm)
       sync                             Synchronize the current schema with the backend to ensure your data structure is up-to-date
       whoami                           Shows the username of the currently logged in user
 

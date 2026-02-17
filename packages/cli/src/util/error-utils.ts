@@ -56,23 +56,35 @@ export const normalizeError = (error: unknown): Error => {
 };
 
 export default async function responseError(res: Response, fallbackMessage = null): Promise<APIError> {
-  let bodyError;
+  let body: unknown;
 
   if (!res.ok) {
-    let body: { error: { message: string } } | undefined;
-
     try {
-      body = (await res.json()) as { error: { message: string } };
-    } catch (err) {
-      // body = '';
+      body = await res.json();
+    } catch {
+      body = undefined;
     }
-
-    bodyError = body ? body.error : {};
   }
 
-  const msg = bodyError?.message ?? fallbackMessage ?? 'Response Error';
+  let message: string | null = fallbackMessage;
+  let details: object | undefined;
 
-  return new APIError(msg, res, bodyError);
+  if (isObject(body)) {
+    details = body;
+    const maybeError = body.error;
+
+    if (typeof maybeError === 'string') {
+      message = maybeError;
+    }
+
+    if (isObject(maybeError) && typeof maybeError.message === 'string') {
+      const { message: nestedMessage } = maybeError;
+      message = nestedMessage;
+      details = { ...body, ...maybeError };
+    }
+  }
+
+  return new APIError(message ?? 'Response Error', res, details);
 }
 
 export function isAPIError(v: unknown): v is APIError {
