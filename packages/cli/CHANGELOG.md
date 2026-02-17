@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.0.3
+
+### Patch Changes
+
+- 2f04c25: CLI: Add 'project' command
+
 ## 0.0.2
 
 ### Patch Changes
