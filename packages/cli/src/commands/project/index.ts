@@ -324,7 +324,7 @@ export default async function main(client: Client): Promise<number> {
 
   const [, subcommand, input] = argv.args;
   const scope = argv.flags['--scope'];
-  const jsonOutput = argv.flags['--json'];
+  const jsonOutput = argv.flags['--json'] ?? false;
 
   if (argv.flags['--help']) {
     return printHelp(client, subcommand);
