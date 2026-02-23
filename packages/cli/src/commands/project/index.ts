@@ -109,7 +109,7 @@ function getApiErrorMessage(err: Error): string {
     return err.error;
   }
 
-  if (typeof err.serverMessage === 'string' && err.serverMessage !== 'Response Error X') {
+  if (typeof err.serverMessage === 'string' && err.serverMessage !== 'Response Error') {
     return err.serverMessage;
   }
 
