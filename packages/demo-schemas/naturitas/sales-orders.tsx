@@ -167,7 +167,6 @@ export const salesOrders = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isPrimary: true,
       isSearchable: true,
       defaultValue: '',
       relationship: {

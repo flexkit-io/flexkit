@@ -29,8 +29,8 @@ import Client from './util/client';
 import getConfig from './util/get-config';
 import loginCommand from './commands/login';
 import logoutCommand from './commands/logout';
+import deployCommand from './commands/deploy';
 import projectCommand from './commands/project';
-import syncCommand from './commands/sync';
 import whoamiCommand from './commands/whoami';
 import doLoginPrompt from './util/login/prompt';
 
@@ -304,6 +304,9 @@ const main = async (): Promise<number | undefined> => {
       let func: ((client: Client) => Promise<number>) | null;
 
       switch (subcommand) {
+        case 'deploy':
+          func = deployCommand;
+          break;
         case 'login':
           func = loginCommand;
           break;
@@ -312,9 +315,6 @@ const main = async (): Promise<number | undefined> => {
           break;
         case 'project':
           func = projectCommand;
-          break;
-        case 'sync':
-          func = syncCommand;
           break;
         case 'whoami':
           func = whoamiCommand;

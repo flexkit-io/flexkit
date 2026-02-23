@@ -3,15 +3,15 @@ import chalk from 'chalk';
 export const help = (): string => `
   ${chalk.bold(`Flexkit CLI`)} [options] <command | path>
 
-  ${chalk.dim('For deploy command help, run `flexkit deploy --help`')}
+  ${chalk.dim('For command help, run `flexkit <command> --help`')}
 
   ${chalk.dim('Commands:')}
 
+      deploy                           Deploy the current schema and observe progress in real time
       help                 [cmd]       Displays complete help for [cmd]
       login                [email]     Logs into your Flexkit's account
       logout                           Logs out of your account
       project                          Manage projects (ls, add, rm)
-      sync                             Synchronize the current schema with the backend to ensure your data structure is up-to-date
       whoami                           Shows the username of the currently logged in user
 
   ${chalk.dim('Global Options:')}
@@ -28,11 +28,11 @@ export const help = (): string => `
 
   ${chalk.dim('Examples:')}
 
-  ${chalk.gray('–')} Synchronize the current schema with the dataset (cd into your project directory where your flexkit.config.ts file is located)
+  ${chalk.gray('–')} Deploy the current schema (run from the folder containing your flexkit.config.ts file)
 
-    ${chalk.cyan(`$ flexkit sync`)}
+    ${chalk.cyan(`$ flexkit deploy`)}
 
-  ${chalk.gray('–')} Show the usage information for the sub command ${chalk.dim('`sync`')}
+  ${chalk.gray('–')} Show the usage information for the sub command ${chalk.dim('`deploy`')}
 
-    ${chalk.cyan(`$ flexkit help sync`)}
+    ${chalk.cyan(`$ flexkit help deploy`)}
 `;
