@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.0.6
+
+### Patch Changes
+
+- eb522b7: Add esbuild dependency
+
 ## 0.0.5
 
 ### Patch Changes
