@@ -290,6 +290,10 @@ importers:
         version: 5.1.0
 
   packages/cli:
+    dependencies:
+      esbuild:
+        specifier: 0.23.1
+        version: 0.23.1
     devDependencies:
       '@inquirer/checkbox':
         specifier: ^2.4.7
@@ -351,9 +355,6 @@ importers:
       email-validator:
         specifier: 2.0.4
         version: 2.0.4
-      esbuild:
-        specifier: 0.23.1
-        version: 0.23.1
       eslint-config-custom:
         specifier: workspace:*
         version: link:../eslint-config-custom

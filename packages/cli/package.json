@@ -1,6 +1,7 @@
 {
   "name": "@flexkit/cli",
   "version": "0.0.4",
+  "description": "Flexkit CLI is the command-line interface for managing Flexkit projects from your terminal.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -26,6 +27,9 @@
   "bin": {
     "flexkit": "./dist/index.js"
   },
+  "dependencies": {
+    "esbuild": "0.23.1"
+  },
   "devDependencies": {
     "@inquirer/checkbox": "^2.4.7",
     "@inquirer/confirm": "^3.1.22",
@@ -47,7 +51,6 @@
     "chalk": "4.1.0",
     "cli-table3": "0.6.3",
     "email-validator": "2.0.4",
-    "esbuild": "0.23.1",
     "eslint-config-custom": "workspace:*",
     "fs-extra": "11.2.0",
     "is-docker": "2.2.1",
