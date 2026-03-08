@@ -106,9 +106,9 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
       banner: {
         js: `
           import { createRequire } from 'module';
-          import React from 'react';
+          import __flexkitReact from 'react';
           const require = createRequire(import.meta.url);
-          globalThis.React = React;
+          globalThis.React = __flexkitReact;
           globalThis.__require = require;
           globalThis.__util = require('util');
         `,
@@ -117,8 +117,13 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
         {
           name: 'handle-node-builtins',
           setup(build) {
-            build.onResolve({ filter: /^react$/ }, () => ({
-              path: 'react',
+            build.onResolve({ filter: /^react(?:\/jsx-runtime|\/jsx-dev-runtime)?$/ }, (args) => ({
+              path: args.path,
+              external: true,
+            }));
+
+            build.onResolve({ filter: /^react-dom(?:\/client|\/server|\/test-utils)?$/ }, (args) => ({
+              path: args.path,
               external: true,
             }));
 
