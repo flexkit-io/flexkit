@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.12
+
+### Patch Changes
+
+- 98eadea: Fix bug with SWR used in file not marked with use client directive
+
 ## 0.0.11
 
 ### Patch Changes
