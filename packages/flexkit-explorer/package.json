@@ -70,7 +70,7 @@
     "graphql-ws": "5.14.2",
     "lucide-react": "0.555.0",
     "ramda": "^0.29.1",
-    "swr": "^2.2.4"
+    "swr": "2.2.5"
   },
   "peerDependencies": {
     "@flexkit/studio": "workspace:*",

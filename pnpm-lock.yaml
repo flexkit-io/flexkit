@@ -464,8 +464,8 @@ importers:
         specifier: 1.6.0
         version: 1.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       swr:
-        specifier: ^2.2.4
-        version: 2.3.8(react@18.3.1)
+        specifier: 2.2.5
+        version: 2.2.5(react@18.3.1)
     devDependencies:
       '@flexkit/studio':
         specifier: workspace:*
@@ -528,8 +528,8 @@ importers:
         specifier: ^0.29.1
         version: 0.29.1
       swr:
-        specifier: ^2.2.4
-        version: 2.3.8(react@18.3.1)
+        specifier: 2.2.5
+        version: 2.2.5(react@18.3.1)
     devDependencies:
       '@flexkit/studio':
         specifier: workspace:*
@@ -601,8 +601,8 @@ importers:
         specifier: ^0.29.1
         version: 0.29.1
       swr:
-        specifier: ^2.2.4
-        version: 2.3.8(react@18.3.1)
+        specifier: 2.2.5
+        version: 2.2.5(react@18.3.1)
     devDependencies:
       '@flexkit/studio':
         specifier: workspace:*
@@ -824,8 +824,8 @@ importers:
         specifier: ^1.4.3
         version: 1.7.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       swr:
-        specifier: ^2.2.4
-        version: 2.3.8(react@18.3.1)
+        specifier: 2.2.5
+        version: 2.2.5(react@18.3.1)
       tailwind-merge:
         specifier: ^2.0.0
         version: 2.6.0
@@ -8008,10 +8008,10 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
-  swr@2.3.8:
-    resolution: {integrity: sha512-gaCPRVoMq8WGDcWj9p4YWzCMPHzE0WNl6W8ADIx9c3JBEIdMkJGMzW+uzXvxHMltwcYACr9jP+32H8/hgwMR7w==}
+  swr@2.2.5:
+    resolution: {integrity: sha512-QtxqyclFeAsxEUeZIYmsaQ0UjimSq1RZ9Un7I68/0ClKK/U3LoyQunwkQfJZr2fc22DfIXLNDc2wFyTEikCUpg==}
     peerDependencies:
-      react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react: ^16.11.0 || ^17.0.0 || ^18.0.0
 
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
@@ -8953,7 +8953,7 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.19(zod@3.25.76)
       ai: 6.0.116(zod@3.25.76)
       react: 18.3.1
-      swr: 2.3.8(react@18.3.1)
+      swr: 2.2.5(react@18.3.1)
       throttleit: 2.1.0
     transitivePeerDependencies:
       - zod
@@ -16409,7 +16409,7 @@ snapshots:
       clsx: 2.1.1
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-      swr: 2.3.8(react@18.3.1)
+      swr: 2.2.5(react@18.3.1)
 
   react@18.3.1:
     dependencies:
@@ -17076,9 +17076,9 @@ snapshots:
       picocolors: 1.1.1
       sax: 1.4.3
 
-  swr@2.3.8(react@18.3.1):
+  swr@2.2.5(react@18.3.1):
     dependencies:
-      dequal: 2.0.3
+      client-only: 0.0.1
       react: 18.3.1
       use-sync-external-store: 1.6.0(react@18.3.1)
 
