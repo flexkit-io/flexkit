@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/explorer",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Flexkit plugin for running and debugging GraphQL queries in a graphical interactive in-browser GraphQL IDE",
   "keywords": [
     "flexkit",

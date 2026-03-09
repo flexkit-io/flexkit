@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.10
+
+### Patch Changes
+
+- 3d56ae9: Upgrade dependencies
+
 ## 0.0.9
 
 ### Patch Changes
