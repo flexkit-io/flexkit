@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/asset-manager",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Flexkit plugin for browsing and managing assets in a project.",
   "keywords": [
     "flexkit",
