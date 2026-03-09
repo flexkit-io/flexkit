@@ -8,6 +8,6 @@ const flexkitHandler = createFlexkitApiHandler({
   headers,
 });
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export const { GET, POST, PUT, PATCH, DELETE } = flexkitHandler;

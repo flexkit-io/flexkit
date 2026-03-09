@@ -98,7 +98,7 @@ function resultToNextResponse(result: FlexkitHandlerResultWithResponse, NextResp
  * });
  *
  * // Export the runtime configuration (optional, for edge runtime)
- * export const runtime = 'edge';
+ * export const runtime = 'nodejs';
  *
  * // Export all the HTTP methods handlers
  * export const { GET, POST, PUT, PATCH, DELETE } = flexkitHandler;
