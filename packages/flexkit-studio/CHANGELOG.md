@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.11
+
+### Patch Changes
+
+- 3d16726: Upgrade SWR package
+
 ## 0.0.10
 
 ### Patch Changes

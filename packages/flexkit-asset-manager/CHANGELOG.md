@@ -1,5 +1,13 @@
 # @flexkit/asset-manager
 
+## 0.0.11
+
+### Patch Changes
+
+- 3d16726: Upgrade SWR package
+- Updated dependencies [3d16726]
+  - @flexkit/studio@0.0.11
+
 ## 0.0.10
 
 ### Patch Changes
