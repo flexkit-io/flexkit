@@ -1,3 +1,5 @@
+'use client';
+
 import useSWR from 'swr';
 import { find, propEq } from 'ramda';
 import { apiPaths } from './api-paths';
