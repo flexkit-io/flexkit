@@ -138,7 +138,7 @@
     "react-resizable-panels": "^3.0.6",
     "react-router-dom": "^6.21.0",
     "sonner": "^1.4.3",
-    "swr": "^2.2.4",
+    "swr": "2.2.5",
     "tailwind-merge": "^2.0.0",
     "tiptap-markdown": "0.8.10",
     "use-debounce": "10.0.3",
