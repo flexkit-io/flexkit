@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.13
+
+### Patch Changes
+
+- 7e0b90c: Fix bundling issue with the SWR package (Attempted import error: 'swr' does not contain a default export)
+
 ## 0.0.12
 
 ### Patch Changes
