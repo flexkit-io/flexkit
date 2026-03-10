@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.14
+
+### Patch Changes
+
+- e03c4e4: Revert noExternal config for srw and @ai-sdk/react packages
+
 ## 0.0.13
 
 ### Patch Changes
