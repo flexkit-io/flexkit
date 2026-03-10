@@ -16,5 +16,4 @@ export default defineConfig((options) => ({
   sourcemap: true,
   minify: !options.watch,
   external: ['react', 'react-dom'],
-  noExternal: ['@ai-sdk/react', 'swr'],
 }));

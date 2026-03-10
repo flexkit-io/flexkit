@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@flexkit/studio'],
+  /* config options here */
 };
 
 export default nextConfig;
