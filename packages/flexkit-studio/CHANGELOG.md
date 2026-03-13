@@ -1,5 +1,13 @@
 # @flexkit/studio
 
+## 0.0.15
+
+### Patch Changes
+
+- daffc94: Export Lucide React icons from @flexkit/studio/icons
+  Upgrade SWR
+  Fix TS warnings related to Novel editor
+
 ## 0.0.14
 
 ### Patch Changes
