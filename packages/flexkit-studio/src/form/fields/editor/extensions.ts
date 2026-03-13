@@ -20,7 +20,6 @@ import {
   Mathematics,
   UploadImagesPlugin,
 } from 'novel';
-import { Extensions } from '@tiptap/core';
 import { Markdown } from 'tiptap-markdown';
 import { cx } from 'class-variance-authority';
 import { common, createLowlight } from 'lowlight';
@@ -148,7 +147,7 @@ const mathematics = Mathematics.configure({
 
 const characterCount = CharacterCount.configure();
 
-export const defaultExtensions: Extensions = [
+export const defaultExtensions: readonly unknown[] = [
   starterKit,
   placeholder,
   tiptapLink,

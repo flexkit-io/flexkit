@@ -1,5 +1,5 @@
 import { JSX } from "react";
-import { CircleCheckBig, CircleX } from "lucide-react";
+import { CircleCheckBig, CircleX } from "@flexkit/studio/icons";
 
 export function CustomBooleanPreviewField({
   value,

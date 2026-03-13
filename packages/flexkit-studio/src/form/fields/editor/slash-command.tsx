@@ -13,6 +13,7 @@ import {
   Youtube,
 } from 'lucide-react';
 import { Command, createSuggestionItems, renderItems } from 'novel';
+import { asNovelEditorWithRichCommands } from './novel-editor';
 // TODO: Add image upload function
 // import { uploadFn } from './image-upload';
 
@@ -68,7 +69,13 @@ export const suggestionItems = createSuggestionItems([
     searchTerms: ['unordered', 'point'],
     icon: <List size={18} />,
     command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).toggleBulletList().run();
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor.chain().focus().deleteRange(range).toggleBulletList().run();
     },
   },
   {
@@ -77,7 +84,13 @@ export const suggestionItems = createSuggestionItems([
     searchTerms: ['ordered'],
     icon: <ListOrdered size={18} />,
     command: ({ editor, range }) => {
-      editor.chain().focus().deleteRange(range).toggleOrderedList().run();
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor.chain().focus().deleteRange(range).toggleOrderedList().run();
     },
   },
   {
@@ -85,8 +98,21 @@ export const suggestionItems = createSuggestionItems([
     description: 'Capture a quote.',
     searchTerms: ['blockquote'],
     icon: <TextQuote size={18} />,
-    command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).toggleNode('paragraph', 'paragraph').toggleBlockquote().run(),
+    command: ({ editor, range }) => {
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .toggleNode('paragraph', 'paragraph')
+        .toggleBlockquote()
+        .run();
+    },
   },
   {
     title: 'Code',
