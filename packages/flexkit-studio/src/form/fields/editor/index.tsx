@@ -12,6 +12,7 @@ import {
   handleImageDrop,
   handleImagePaste,
   ImageResizer,
+  type EditorContentProps,
   type EditorInstance,
   type JSONContent,
   type SuggestionItem,
@@ -31,7 +32,7 @@ import { MathSelector } from './selectors/math-selector';
 import { TextButtons } from './selectors/text-buttons';
 import GenerativeMenuSwitch from './generative/generative-menu-switch';
 
-const extensions = [...defaultExtensions, slashCommand];
+const extensions = [...defaultExtensions, slashCommand] as unknown as NonNullable<EditorContentProps['extensions']>;
 
 function isJSONContent(value: unknown): value is JSONContent {
   if (!value || typeof value !== 'object') {

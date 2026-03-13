@@ -28,6 +28,7 @@
     "./nextjs": "./dist/nextjs.js",
     "./astro": "./dist/astro.js",
     "./tanstack-start": "./dist/tanstack-start.js",
+    "./icons": "./dist/icons.js",
     "./ui": "./dist/ui.js",
     "./tailwind.config": "./tailwind.config.ts",
     "./styles.css": "./dist/index.css"
@@ -42,6 +43,9 @@
       ],
       "tanstack-start": [
         "./dist/tanstack-start.d.ts"
+      ],
+      "icons": [
+        "./dist/icons.d.ts"
       ]
     }
   },
@@ -127,7 +131,7 @@
     "graphql": "^16.8.1",
     "lexical": "^0.12.2",
     "lowlight": "3.1.0",
-    "lucide-react": "0.555.0",
+    "lucide-react": "0.577.0",
     "next-themes": "^0.2.1",
     "novel": "1.0.2",
     "ramda": "^0.29.1",
@@ -138,7 +142,7 @@
     "react-resizable-panels": "^3.0.6",
     "react-router-dom": "^6.21.0",
     "sonner": "^1.4.3",
-    "swr": "2.2.5",
+    "swr": "^2.4.1",
     "tailwind-merge": "^2.0.0",
     "tiptap-markdown": "0.8.10",
     "use-debounce": "10.0.3",

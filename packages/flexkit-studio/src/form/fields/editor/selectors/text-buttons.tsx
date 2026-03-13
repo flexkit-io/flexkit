@@ -3,6 +3,7 @@ import { cn } from '../../../../ui/lib/utils';
 import { BoldIcon, CodeIcon, ItalicIcon, StrikethroughIcon, UnderlineIcon } from 'lucide-react';
 import { EditorBubbleItem, useEditor } from 'novel';
 import type { SelectorItem } from './node-selector';
+import { asNovelEditorWithRichCommands } from '../novel-editor';
 
 export const TextButtons = () => {
   const { editor } = useEditor();
@@ -13,13 +14,29 @@ export const TextButtons = () => {
     {
       name: 'bold',
       isActive: (editor) => editor != null && editor.isActive('bold'),
-      command: (editor) => editor?.chain().focus().toggleBold().run(),
+      command: (editor) => {
+        const richEditor = asNovelEditorWithRichCommands(editor);
+
+        if (!richEditor) {
+          return;
+        }
+
+        richEditor.chain().focus().toggleBold().run();
+      },
       icon: BoldIcon,
     },
     {
       name: 'italic',
       isActive: (editor) => editor != null && editor.isActive('italic'),
-      command: (editor) => editor?.chain().focus().toggleItalic().run(),
+      command: (editor) => {
+        const richEditor = asNovelEditorWithRichCommands(editor);
+
+        if (!richEditor) {
+          return;
+        }
+
+        richEditor.chain().focus().toggleItalic().run();
+      },
       icon: ItalicIcon,
     },
     {
@@ -31,13 +48,29 @@ export const TextButtons = () => {
     {
       name: 'strike',
       isActive: (editor) => editor != null && editor.isActive('strike'),
-      command: (editor) => editor?.chain().focus().toggleStrike().run(),
+      command: (editor) => {
+        const richEditor = asNovelEditorWithRichCommands(editor);
+
+        if (!richEditor) {
+          return;
+        }
+
+        richEditor.chain().focus().toggleStrike().run();
+      },
       icon: StrikethroughIcon,
     },
     {
       name: 'code',
       isActive: (editor) => editor != null && editor.isActive('code'),
-      command: (editor) => editor?.chain().focus().toggleCode().run(),
+      command: (editor) => {
+        const richEditor = asNovelEditorWithRichCommands(editor);
+
+        if (!richEditor) {
+          return;
+        }
+
+        richEditor.chain().focus().toggleCode().run();
+      },
       icon: CodeIcon,
     },
   ];

@@ -14,7 +14,6 @@
     "@flexkit/explorer": "workspace:*",
     "@flexkit/studio": "workspace:*",
     "demo-schemas": "workspace:*",
-    "lucide-react": "0.555.0",
     "next": "16.1.1",
     "react": "19.2.0",
     "react-dom": "19.2.0"

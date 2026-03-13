@@ -8,6 +8,7 @@ export default defineConfig((options) => ({
   splitting: true,
   entry: {
     index: 'src/index.tsx',
+    icons: 'src/icons.ts',
     ui: 'src/ui.tsx',
   },
   format: ['esm'],

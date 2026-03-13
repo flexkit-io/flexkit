@@ -6,7 +6,7 @@
     "@flexkit/studio": "workspace:*",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "lucide-react": "0.555.0",
+    "lucide-react": "0.577.0",
     "react": "^18.2.0",
     "tsconfig": "workspace:*",
     "typescript": "^5.3.3"

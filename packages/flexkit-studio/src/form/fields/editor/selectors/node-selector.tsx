@@ -15,12 +15,13 @@ import { EditorBubbleItem, useEditor } from 'novel';
 import { Button } from '../../../../ui/primitives/button';
 import { PopoverContent, PopoverTrigger } from '../../../../ui/primitives/popover';
 import { Popover } from '@radix-ui/react-popover';
+import { asNovelEditorWithRichCommands, type NovelEditorInput } from '../novel-editor';
 
 export type SelectorItem = {
   name: string;
   icon: LucideIcon;
-  command: (editor: ReturnType<typeof useEditor>['editor']) => void;
-  isActive: (editor: ReturnType<typeof useEditor>['editor']) => boolean;
+  command: (editor: NovelEditorInput) => void;
+  isActive: (editor: NovelEditorInput) => boolean;
 };
 
 const items: SelectorItem[] = [
@@ -38,19 +39,43 @@ const items: SelectorItem[] = [
   {
     name: 'Heading 1',
     icon: Heading1,
-    command: (editor) => editor?.chain().focus().clearNodes().toggleHeading({ level: 1 }).run(),
+    command: (editor) => {
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor.chain().focus().clearNodes().toggleHeading({ level: 1 }).run();
+    },
     isActive: (editor) => editor != null && editor.isActive('heading', { level: 1 }),
   },
   {
     name: 'Heading 2',
     icon: Heading2,
-    command: (editor) => editor?.chain().focus().clearNodes().toggleHeading({ level: 2 }).run(),
+    command: (editor) => {
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor.chain().focus().clearNodes().toggleHeading({ level: 2 }).run();
+    },
     isActive: (editor) => editor != null && editor.isActive('heading', { level: 2 }),
   },
   {
     name: 'Heading 3',
     icon: Heading3,
-    command: (editor) => editor?.chain().focus().clearNodes().toggleHeading({ level: 3 }).run(),
+    command: (editor) => {
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor.chain().focus().clearNodes().toggleHeading({ level: 3 }).run();
+    },
     isActive: (editor) => editor != null && editor.isActive('heading', { level: 3 }),
   },
   {
@@ -62,19 +87,43 @@ const items: SelectorItem[] = [
   {
     name: 'Bullet List',
     icon: ListOrdered,
-    command: (editor) => editor?.chain().focus().clearNodes().toggleBulletList().run(),
+    command: (editor) => {
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor.chain().focus().clearNodes().toggleBulletList().run();
+    },
     isActive: (editor) => editor != null && editor.isActive('bulletList'),
   },
   {
     name: 'Numbered List',
     icon: ListOrdered,
-    command: (editor) => editor?.chain().focus().clearNodes().toggleOrderedList().run(),
+    command: (editor) => {
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor.chain().focus().clearNodes().toggleOrderedList().run();
+    },
     isActive: (editor) => editor != null && editor.isActive('orderedList'),
   },
   {
     name: 'Quote',
     icon: TextQuote,
-    command: (editor) => editor?.chain().focus().clearNodes().toggleBlockquote().run(),
+    command: (editor) => {
+      const richEditor = asNovelEditorWithRichCommands(editor);
+
+      if (!richEditor) {
+        return;
+      }
+
+      richEditor.chain().focus().clearNodes().toggleBlockquote().run();
+    },
     isActive: (editor) => editor != null && editor.isActive('blockquote'),
   },
   {
