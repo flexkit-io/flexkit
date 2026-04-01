@@ -57,7 +57,7 @@
   ],
   "scripts": {
     "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config",
-    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch & tsup --config tsup.config.ts --watch & tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config --watch",
+    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch=always & tsup --config tsup.config.ts --watch & tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "ui:add": "pnpm dlx shadcn@latest add"
