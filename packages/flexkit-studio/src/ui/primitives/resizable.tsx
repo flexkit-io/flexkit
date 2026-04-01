@@ -14,7 +14,7 @@ function ResizablePanelGroup({
   );
 }
 
-const ResizablePanel = ResizablePrimitive.Panel;
+const ResizablePanel: typeof ResizablePrimitive.Panel = ResizablePrimitive.Panel;
 
 function ResizableHandle({
   withHandle,
