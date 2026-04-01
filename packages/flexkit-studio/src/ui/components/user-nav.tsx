@@ -1,4 +1,4 @@
-import { useTheme } from 'next-themes';
+import { useTheme } from '../theme-context';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../primitives/avatar';
 import { Button } from '../primitives/button';

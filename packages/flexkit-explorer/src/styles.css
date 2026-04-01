@@ -5,11 +5,13 @@
 :root {
   --tab-background: 0 0% 100%;
   --tab-foreground: 240 5.9% 10%;
+  --tab-active-foreground: 0 0% 98%;
 }
 
 .dark {
   --tab-background: 240 5.9% 23%;
   --tab-foreground: 0 0% 98%;
+  --tab-active-foreground: 240 5.9% 23%;
 }
 
 html,
@@ -132,8 +134,24 @@ body {
       background-color: hsl(var(--tab-background));
 
       &.graphiql-tab-active {
-        color: hsl(var(--background));
+        color: hsl(var(--tab-active-foreground));
         background-color: hsl(var(--foreground));
+
+        .graphiql-tab-close {
+          color: hsl(var(--tab-active-foreground));
+          background-color: hsl(var(--foreground));
+        }
+      }
+
+      .graphiql-tab-close {
+        box-shadow: none;
+        color: hsl(var(--tab-foreground));
+        background-color: hsl(var(--tab-background));
+
+        &:hover {
+          background-color: hsl(var(--muted-foreground));
+          color: hsl(var(--tab-background));
+        }
       }
     }
 

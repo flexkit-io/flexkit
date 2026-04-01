@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Suspense, startTransition } from 'react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '../theme-context';
 import type { ProjectOptions } from '../../core/config/types';
 import { useContributedComponent } from '../../core/use-contributed-component';
 
