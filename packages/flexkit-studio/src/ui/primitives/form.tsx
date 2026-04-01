@@ -6,7 +6,7 @@ import type { ControllerProps, FieldPath, FieldError, FieldValues } from 'react-
 import { cn } from 'src/ui/lib/utils';
 import { Label } from 'src/ui/primitives/label';
 
-const Form = FormProvider;
+const Form: typeof FormProvider = FormProvider;
 
 type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
