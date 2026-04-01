@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '../theme-context';
 import { ToggleGroup, ToggleGroupItem } from '../primitives/toggle-group';
 
 export function DarkModeSwitch(): JSX.Element | null {
