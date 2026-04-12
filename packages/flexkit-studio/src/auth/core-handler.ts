@@ -52,6 +52,28 @@ const hopByHopHeaders = new Set([
   'upgrade',
 ]);
 
+function getBearerToken(authorizationHeader: string | null): string {
+  if (!authorizationHeader) {
+    return '';
+  }
+
+  const [scheme, token, ...rest] = authorizationHeader.trim().split(/\s+/);
+
+  if (rest.length > 0) {
+    return '';
+  }
+
+  if (!scheme || !token) {
+    return '';
+  }
+
+  if (scheme.toLowerCase() !== 'bearer') {
+    return '';
+  }
+
+  return token;
+}
+
 function sanitizeForwardHeaders(headers: Headers): Headers {
   const sanitized = new Headers();
 
@@ -178,11 +200,17 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
   }
 
   const forwardHeaders = sanitizeForwardHeaders(request.headers);
+  const bearerToken = getBearerToken(request.headers.get('authorization'));
+  const effectiveSessionToken = sessionToken || bearerToken;
 
-  if (sessionToken) {
-    forwardHeaders.set('Cookie', `sessionToken=${sessionToken}`);
-  } else {
+  forwardHeaders.delete('Authorization');
+
+  if (!effectiveSessionToken) {
     forwardHeaders.delete('Cookie');
+  }
+
+  if (effectiveSessionToken) {
+    forwardHeaders.set('Cookie', `sessionToken=${effectiveSessionToken}`);
   }
 
   if (method !== 'GET' && method !== 'HEAD') {
