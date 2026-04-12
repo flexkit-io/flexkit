@@ -1,5 +1,15 @@
 # @flexkit/asset-manager
 
+## 0.0.16
+
+### Patch Changes
+
+- Updated dependencies [eb01a1a]
+- Updated dependencies [92faeda]
+- Updated dependencies [1b1ab0d]
+- Updated dependencies [7706f86]
+  - @flexkit/studio@0.0.16
+
 ## 0.0.15
 
 ### Patch Changes

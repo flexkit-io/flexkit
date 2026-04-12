@@ -1,5 +1,14 @@
 # @flexkit/studio
 
+## 0.0.16
+
+### Patch Changes
+
+- eb01a1a: Fix type error in Resizable component
+- 92faeda: Solves the following console error: "Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client."
+- 1b1ab0d: Fix type error in Drawer component
+- 7706f86: Allow auth inside Vercel sandboxes
+
 ## 0.0.15
 
 ### Patch Changes
