@@ -1,5 +1,4 @@
 import { useId, useRef, useState } from 'react';
-import type { ComponentType } from 'react';
 import type { SyntheticEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import bytes from 'bytes';
@@ -33,14 +32,6 @@ import {
 import { apiPaths, IMAGES_BASE_URL } from '../../core/api-paths';
 import { useOuterClick } from '../../ui/hooks/use-outer-click';
 import type { FormFieldParams } from '../types';
-
-// Temporary fix due to runtime mismatch between React 18 and React 19 types
-type FileTypeIconCompatProps = {
-  extension: string;
-  [key: string]: string | number | boolean | undefined;
-};
-
-const FileTypeIconCompat = FileTypeIcon as unknown as ComponentType<FileTypeIconCompatProps>;
 
 export function Uploader({ control, fieldSchema, getValues, setValue }: FormFieldParams<'asset'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
@@ -91,7 +82,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
     const parts = mime.split('/');
 
     if (parts.length === 2) {
-      const sub = parts[1];
+      const [, sub] = parts;
 
       if (sub.includes('svg')) {
         return 'svg';
@@ -344,7 +335,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
 
                       return (
                         <div className="fk-w-8 fk-h-8 fk-mr-2 fk-rounded fk-bg-transparent fk-flex fk-items-center fk-justify-center [&>svg]:fk-h-full [&>svg]:fk-w-auto">
-                          <FileTypeIconCompat extension={ext} {...(style || {})} />
+                          <FileTypeIcon extension={ext} {...(style || {})} />
                         </div>
                       );
                     })()}
@@ -523,7 +514,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                           return (
                             <div className="fk-w-full fk-h-full fk-rounded-md fk-bg-muted/40 fk-flex fk-flex-col fk-items-center fk-justify-center fk-text-muted-foreground">
                               <div className="fk-w-16 fk-h-16 fk-rounded fk-bg-transparent fk-flex fk-items-center fk-justify-center [&>svg]:fk-h-full [&>svg]:fk-w-auto">
-                                <FileTypeIconCompat extension={ext} {...(style || {})} />
+                                <FileTypeIcon extension={ext} {...(style || {})} />
                               </div>
                               <div className="fk-mt-3 fk-text-sm">
                                 {value.originalFilename || 'File'} · {bytes(value.size)} · {value.mimeType}

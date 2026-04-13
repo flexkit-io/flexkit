@@ -1,16 +1,7 @@
 import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
 import { IMAGES_BASE_URL } from '../../core/api-paths';
-import type { ComponentType } from 'react';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
 import { useCachedImageSrc } from '../../ui/hooks/use-cached-image-src';
-
-// Temporary fix due to runtime mismatch between React 18 and React 19 types
-type FileTypeIconCompatProps = {
-  extension: string;
-  [key: string]: string | number | boolean | undefined;
-};
-
-const FileTypeIconCompat = FileTypeIcon as unknown as ComponentType<FileTypeIconCompatProps>;
 
 export type Asset = {
   _id: string;
@@ -23,7 +14,7 @@ export function Asset({ value }: { value: Asset }) {
   const isImage = hasPath && /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(path);
 
   const getExtensionFromPath = (p: string): string => {
-    const clean = p.split('?')[0];
+    const [clean] = p.split('?');
     const parts = clean.split('.');
 
     if (parts.length > 1) {
@@ -85,7 +76,7 @@ export function Asset({ value }: { value: Asset }) {
                     defaultStyles as Record<string, Record<string, string | number | boolean | undefined>>
                   )[ext];
 
-                  return <FileTypeIconCompat extension={ext} {...(style || {})} />;
+                  return <FileTypeIcon extension={ext} {...(style || {})} />;
                 })()}
               </div>
             </TooltipTrigger>
