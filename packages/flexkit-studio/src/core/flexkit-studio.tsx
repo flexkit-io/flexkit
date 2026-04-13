@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { ComponentType } from 'react';
 import { debug } from 'debug';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import type { RouterProviderProps } from 'react-router-dom';
 import { ThemeProvider } from '../ui/theme-context';
 import { Layout } from '../ui/containers/layout';
 import { Root } from '../ui/containers/root';
@@ -12,6 +14,8 @@ import { getApps } from './config/config-context';
 import { GlobalError } from './error/global-error';
 import { ErrorBoundary } from './error/error-boundary';
 import type { Config, ProjectOptions, SingleProject } from './config/types';
+
+const RouterProviderCompat = RouterProvider as unknown as ComponentType<RouterProviderProps>;
 
 /**
  * AppContext:
@@ -79,7 +83,7 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
     <ThemeProvider attribute="class" defaultTheme="system" disableTransitionOnChange enableSystem>
       <AppProvider>
         <ActionsProvider>
-          <RouterProvider router={router} />
+          <RouterProviderCompat router={router} />
         </ActionsProvider>
       </AppProvider>
     </ThemeProvider>
