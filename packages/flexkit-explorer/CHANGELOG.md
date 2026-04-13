@@ -1,5 +1,17 @@
 # @flexkit/explorer
 
+## 0.0.16
+
+### Patch Changes
+
+- Updated dependencies [c727184]
+- Updated dependencies [eb01a1a]
+- Updated dependencies [92faeda]
+- Updated dependencies [c344bf9]
+- Updated dependencies [1b1ab0d]
+- Updated dependencies [7706f86]
+  - @flexkit/studio@0.0.16
+
 ## 0.0.15
 
 ### Patch Changes
