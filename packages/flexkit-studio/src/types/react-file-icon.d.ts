@@ -4,9 +4,11 @@ declare module 'react-file-icon' {
   export type IconType =
     | '3d'
     | 'acrobat'
+    | 'android'
     | 'audio'
     | 'binary'
     | 'code'
+    | 'code2'
     | 'compressed'
     | 'document'
     | 'drive'
