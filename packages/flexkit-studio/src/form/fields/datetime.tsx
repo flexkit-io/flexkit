@@ -49,7 +49,7 @@ export function DateTime({ control, fieldSchema, getValues, setValue }: FormFiel
           }}
         >
           <FormLabel htmlFor={id}>{label}</FormLabel>
-          {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <Popover>
               <PopoverTrigger asChild>

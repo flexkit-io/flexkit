@@ -49,7 +49,7 @@ export function Number({ control, fieldSchema, setValue }: FormFieldParams<'numb
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
           <FormLabel htmlFor={id}>{label}</FormLabel>
-          {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+          {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <Input
               className={`fk-w-full fk-mt-[0.1875rem] ${
