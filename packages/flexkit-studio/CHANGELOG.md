@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.17
+
+### Patch Changes
+
+- 7da8d4c: Fix error when optional 'options' field in schema is missing
+
 ## 0.0.16
 
 ### Patch Changes
