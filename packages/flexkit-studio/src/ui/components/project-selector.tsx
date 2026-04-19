@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { joinBasePath } from '../../core/base-path';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../primitives/select';
 import type { ProjectOptions } from '../../core/config/types';
 
@@ -22,7 +23,7 @@ export function ProjectSelector({ projectId, projects }: Props): JSX.Element {
         const { basePath } = currentProject;
 
         setSelectedProject(currentProject);
-        navigate(`${basePath}/${currentProject.projectId}`);
+        navigate(joinBasePath(basePath, currentProject.projectId));
       }}
     >
       <SelectTrigger className="fk-w-[12rem] fk-h-9 fk-py-1" id="project">

@@ -1,3 +1,5 @@
+import { joinBasePath } from './base-path';
+
 const domain = 'flexkit.io';
 export const baseApiUrl = `https://${domain}`;
 const baseProjectApiUrl = (projectId?: string): string =>
@@ -24,7 +26,13 @@ export function apiPaths(projectId = ''): ApiPaths {
     currentUser: `/api/flexkit/${projectId}/users/me`,
     loginOtpConfirm: `${baseProjectApiUrl(projectId)}/auth/otp/confirm`,
     loginOtpSend: `${baseProjectApiUrl(projectId)}/auth/otp/send`,
-    logout: (basePath: string) => `/api/flexkit/${projectId}/auth/logout?redirect=/${basePath}/${projectId}`,
+    logout: (basePath: string) => {
+      const params = new URLSearchParams({
+        redirect: joinBasePath(basePath, projectId),
+      });
+
+      return `/api/flexkit/${projectId}/auth/logout?${params.toString()}`;
+    },
     search: `/api/flexkit/${projectId}/search`,
     sessionId: `${baseProjectApiUrl(projectId)}/api/auth/login/session`,
     upload: `/api/flexkit/${projectId}/upload`,

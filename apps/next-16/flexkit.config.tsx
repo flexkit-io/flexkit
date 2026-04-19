@@ -37,7 +37,7 @@ export default defineConfig([
   {
     title: 'Naturitas',
     projectId: 'abcdefghij',
-    basePath: '/studio',
+    basePath: '/',
     menuGroups: [
       { title: 'Catalog', name: 'catalog' },
       { title: 'Operations', name: 'operations' },
@@ -229,7 +229,7 @@ export default defineConfig([
   {
     title: 'Flexkit CRM',
     projectId: 'uwerfsxskp',
-    basePath: '/studio',
+    basePath: '/',
     menuGroups: [
       { title: 'Contacts', name: 'contacts' },
       { title: 'Sales', name: 'sales' },

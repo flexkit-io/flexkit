@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Suspense, startTransition } from 'react';
 import { useTheme } from '../theme-context';
 import type { ProjectOptions } from '../../core/config/types';
+import { joinBasePath } from '../../core/base-path';
 import { useContributedComponent } from '../../core/use-contributed-component';
 
 type Props = {
@@ -21,7 +22,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
 
   function handleSearchSelection(item: { entityName: string; entityNamePlural: string; entityId: string }) {
     startTransition(() => {
-      navigate(`${basePath}/${projectId}/desk/list/${item.entityNamePlural}?id=${item.entityId}`);
+      navigate(joinBasePath(basePath, projectId, 'desk', 'list', item.entityNamePlural) + `?id=${item.entityId}`);
     });
   }
 
