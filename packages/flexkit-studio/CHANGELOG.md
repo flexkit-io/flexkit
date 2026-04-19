@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.18
+
+### Patch Changes
+
+- 943fb28: Allow the Studio to load on any pathname
+
 ## 0.0.17
 
 ### Patch Changes
