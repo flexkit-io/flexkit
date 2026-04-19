@@ -9,6 +9,7 @@ import { Loading } from '../ui/components/loading';
 import { Label } from '../ui/primitives/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { apiPaths } from '../core/api-paths';
+import { joinBasePath } from '../core/base-path';
 import { useConfig } from '../core/config/config-context';
 import { useAuth } from './auth-context';
 import EmailLogin from './email';
@@ -45,7 +46,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
 
   const fromPath = referal.includes(selectedProject.projectId)
     ? `${location.origin}${referal}`
-    : `${location.origin}${selectedProject.basePath}/${selectedProject.projectId}`;
+    : `${location.origin}${joinBasePath(selectedProject.basePath, selectedProject.projectId)}`;
 
   if (error) {
     throw new Error('Error fetching auth providers');

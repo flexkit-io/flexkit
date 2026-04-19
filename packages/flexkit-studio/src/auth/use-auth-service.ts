@@ -3,10 +3,13 @@
 import useSWR from 'swr';
 import { useParams } from 'react-router-dom';
 import { apiPaths } from '../core/api-paths';
+import { useConfig } from '../core/config/config-context';
 import type { AuthService, User } from './types';
 
 export default function useAuthService(): AuthService {
   const { projectId } = useParams();
+  const { projects } = useConfig();
+  const currentProject = projects.find((project) => project.projectId === projectId) ?? projects[0];
   const { data: user, isLoading: isLoadingUser } = useSWR(apiPaths(projectId ?? '').currentUser, (url: string) =>
     fetch(url, { mode: 'cors', credentials: 'include' }).then((res) => res.json() as Promise<User>)
   );
@@ -18,7 +21,7 @@ export default function useAuthService(): AuthService {
       user,
       logout: async () => {
         // wipe remote session
-        await fetch(apiPaths(projectId ?? '').logout('/studio'), {
+        await fetch(apiPaths(projectId ?? '').logout(currentProject?.basePath ?? '/'), {
           method: 'POST',
           mode: 'cors',
           credentials: 'include',

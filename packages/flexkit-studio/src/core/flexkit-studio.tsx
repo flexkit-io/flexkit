@@ -10,6 +10,7 @@ import { Layout } from '../ui/containers/layout';
 import { Root } from '../ui/containers/root';
 import { ActionsProvider } from '../entities/actions-context';
 import { AppProvider } from './app-context';
+import { normalizeBasePath } from './base-path';
 import { getApps } from './config/config-context';
 import { GlobalError } from './error/global-error';
 import { ErrorBoundary } from './error/error-boundary';
@@ -41,6 +42,8 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
   const configArray: ProjectOptions[] = Array.isArray(config)
     ? config.map((project) => mapConfig(project))
     : [mapConfig(config)];
+  const [defaultProject] = configArray;
+  const basePath = normalizeBasePath(defaultProject?.basePath);
   const apps = getApps(configArray);
 
   useEffect(() => {
@@ -54,12 +57,12 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
 
   const router = createBrowserRouter([
     {
-      path: '/studio',
+      path: basePath,
       element: <Root config={configArray} />,
       errorElement: <GlobalError />,
       children: [
         {
-          path: '/studio/:projectId',
+          path: ':projectId',
           element: <Layout version={{ current: '1.0.0', latest: '1.0.0', isCurrent: true }} />,
           children: apps.map((app) => ({
             path: app.name,
@@ -92,7 +95,7 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
 
 function mapConfig(project: SingleProject | ProjectOptions): ProjectOptions {
   return {
-    basePath: project.basePath ?? '/',
+    basePath: normalizeBasePath(project.basePath),
     menuGroups: project.menuGroups ?? [],
     icon: project.icon,
     plugins: project.plugins,
