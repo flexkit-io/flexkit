@@ -1,13 +1,6 @@
-const ACTION_TYPE = {
-  AddEntity: 'addEntity',
-  AlertDialog: 'alertDialog',
-  DeleteEntity: 'deleteEntity',
-  Dismiss: 'dismiss',
-  EditEntity: 'editEntity',
-  EditRelationship: 'editRelationship',
-} as const;
+import type { SingleRelationshipConnection } from '../core/types';
 
-export type ActionType = keyof typeof ACTION_TYPE;
+export type ActionType = 'AddEntity' | 'AlertDialog' | 'DeleteEntity' | 'Dismiss' | 'EditEntity' | 'EditRelationship';
 
 export type Action =
   | ActionAddEntity
@@ -42,6 +35,8 @@ export type ActionEditRelationship = {
     connectionName?: string;
     entityId?: string;
     entityName: string;
+    initialAssetPath?: string;
+    initialConnection?: SingleRelationshipConnection;
     relationshipId: string;
     mode: 'single' | 'multiple';
     assetAccept?: string;

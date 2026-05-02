@@ -25,7 +25,7 @@ export default function DrawerModal({
   children,
   depth,
   isFocused,
-  onFormChange,
+  onFormChange: _onFormChange,
   onClose,
   title,
 }: Props): JSX.Element {
@@ -87,7 +87,7 @@ export default function DrawerModal({
           </Button>
         </DrawerHeader>
         <Separator />
-        <div className="fk-px-4 fk-pt-6 fk-h-full fk-min-h-full fk-overflow-y-auto fk-pb-16" data-vaul-no-drag>
+        <div className="fk-min-h-0 fk-px-4 fk-pt-6 fk-h-full fk-overflow-y-auto fk-pb-16" data-vaul-no-drag>
           {children}
         </div>
       </DrawerContent>

@@ -34,6 +34,11 @@ type Props = {
 
 const PAGE_SIZE = 25;
 
+type SelectedRelationshipRow = {
+  id: string;
+  value: SingleRelationshipConnection['value'];
+};
+
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({
     ...column,
@@ -45,8 +50,17 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const { relationships, scope } = useAppContext();
-  const { assetAccept, connectedEntitiesCount, connectionName, entityId, entityName, mode, relationshipId } =
-    action.payload;
+  const {
+    assetAccept,
+    connectedEntitiesCount,
+    connectionName,
+    entityId,
+    entityName,
+    initialAssetPath,
+    initialConnection,
+    mode,
+    relationshipId,
+  } = action.payload;
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
@@ -55,19 +69,33 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const uploadAssets = useUploadAssets();
   const isAssetPicker = entityName === '_asset';
   const entityLabel = isAssetPicker ? 'asset' : (entitySchema?.menu?.label ?? entityName.toLowerCase());
-  const selectTitle = isAssetPicker ? 'Select assets' : `Select ${entityLabel}`;
+  const selectTitle = isAssetPicker && mode === 'single' ? 'Select asset' : `Select ${isAssetPicker ? 'assets' : entityLabel}`;
+  const uploadButtonLabel = mode === 'single' ? 'Upload asset' : 'Upload assets';
   const [searchResultIds, setSearchResultIds] = useState<{ _id: string }[]>([]);
+
+  let initialSingleSelectionState: SelectedRelationshipRow[] = [];
+
+  if (initialConnection) {
+    initialSingleSelectionState = [
+      {
+        id: initialConnection._id,
+        value: initialConnection.value,
+      },
+    ];
+  } else if (relationshipContext?.connect) {
+    const connection = relationshipContext.connect as SingleRelationshipConnection;
+
+    initialSingleSelectionState = [
+      {
+        id: connection._id,
+        value: connection.value,
+      },
+    ];
+  }
 
   const initialSelectionState =
     mode === 'single'
-      ? relationshipContext?.connect
-        ? [
-            {
-              id: (relationshipContext.connect as SingleRelationshipConnection)._id,
-              value: (relationshipContext.connect as SingleRelationshipConnection).value,
-            },
-          ]
-        : []
+      ? initialSingleSelectionState
       : (relationshipContext?.connect as MultipleRelationshipConnection | undefined)?.map((item) => ({
           id: item._id,
           value: item.value,
@@ -122,6 +150,25 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const loadingData = Array(5).fill({});
   const loadingColumns = getLoadingColumns(columns);
 
+  useEffect(() => {
+    if (mode !== 'single' || selectedRows.length > 0 || !initialAssetPath || !data?.length) {
+      return;
+    }
+
+    const matchedAsset = data.find((row) => row.path === initialAssetPath);
+
+    if (!matchedAsset?._id || typeof matchedAsset._id !== 'string') {
+      return;
+    }
+
+    setSelectedRows([
+      {
+        id: matchedAsset._id,
+        value: matchedAsset as SingleRelationshipConnection['value'],
+      },
+    ]);
+  }, [data, initialAssetPath, mode, selectedRows.length]);
+
   const handleClose = useCallback(
     (_id: Action['_id']) => {
       actionDispatch({ type: 'Dismiss', _id, payload: {} });
@@ -161,8 +208,8 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       const [selected] = selectedRows;
 
       connect = {
-        _id: selected.id ?? '',
-        value: selected.value,
+        _id: selected?.id ?? '',
+        value: selected?.value ?? null,
       } as SingleRelationshipConnection;
     }
 
@@ -259,11 +306,17 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     const uploadedAssets = await uploadAssets({
       projectId: currentProjectId,
       accept: assetAccept ?? 'image/*',
-      multiple: true,
+      multiple: mode === 'multiple',
       maxBytes: 4 * 1024 * 1024,
     });
 
     setSelectedRows((currentRows) => {
+      if (mode === 'single') {
+        const [uploadedAsset] = uploadedAssets;
+
+        return uploadedAsset ? [{ id: uploadedAsset._id, value: uploadedAsset.asset }] : currentRows;
+      }
+
       const selectedIds = new Set(currentRows.map((row) => row.id));
       const nextRows = uploadedAssets
         .filter((uploaded) => !selectedIds.has(uploaded._id))
@@ -289,15 +342,17 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
           >
             Select
           </Button>
-          <Button
-            className="fk-px-8"
-            onClick={() => {
-              handleCreateEntity();
-            }}
-            variant="outline"
-          >
-            {`Create ${entityLabel}`}
-          </Button>
+          {!isAssetPicker ? (
+            <Button
+              className="fk-px-8"
+              onClick={() => {
+                handleCreateEntity();
+              }}
+              variant="outline"
+            >
+              {`Create ${entityLabel}`}
+            </Button>
+          ) : null}
           {isAssetPicker ? (
             <Button
               className="fk-px-8"
@@ -307,7 +362,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
               variant="outline"
             >
               <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
-              Upload assets
+              {uploadButtonLabel}
             </Button>
           ) : null}
         </>
@@ -319,30 +374,32 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       }}
       title={selectTitle}
     >
-      <DataTable
-        columns={isInitialLoading ? loadingColumns : columns}
-        data={isInitialLoading ? loadingData : (data ?? [])}
-        entityName={entitySchema?.name ?? ''}
-        initialSelectionState={
-          selectedRows?.reduce(
-            (acc, selected) => ({ ...acc, ...(selected.id ? { [selected.id]: true } : {}) }),
-            {}
-          ) as {
-            [_id: string]: boolean;
+      <div className="fk-h-[calc(100vh-10rem)] fk-min-h-0">
+        <DataTable
+          columns={isInitialLoading ? loadingColumns : columns}
+          data={isInitialLoading ? loadingData : (data ?? [])}
+          entityName={entitySchema?.name ?? ''}
+          initialSelectionState={
+            selectedRows?.reduce(
+              (acc, selected) => ({ ...acc, ...(selected.id ? { [selected.id]: true } : {}) }),
+              {}
+            ) as {
+              [_id: string]: boolean;
+            }
           }
-        }
-        onEntitySelectionChange={handleSelectionChange}
-        onScroll={(e) => {
-          fetchMoreOnBottomReached(e.target as HTMLDivElement);
-        }}
-        toolbarComponent={() => (
-          <SearchBar
-            entityNamePlural={entityNamePlural}
-            projectId={currentProjectId ?? ''}
-            setSearchResultIds={setSearchResultIds}
-          />
-        )}
-      />
+          onEntitySelectionChange={handleSelectionChange}
+          onScroll={(e) => {
+            fetchMoreOnBottomReached(e.target as HTMLDivElement);
+          }}
+          toolbarComponent={() => (
+            <SearchBar
+              entityNamePlural={entityNamePlural}
+              projectId={currentProjectId ?? ''}
+              setSearchResultIds={setSearchResultIds}
+            />
+          )}
+        />
+      </div>
     </DrawerModal>
   );
 }

@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { SyntheticEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import bytes from 'bytes';
@@ -31,19 +31,60 @@ import {
 } from '../../ui/primitives/dropdown-menu';
 import { apiPaths, IMAGES_BASE_URL } from '../../core/api-paths';
 import { useOuterClick } from '../../ui/hooks/use-outer-click';
+import { useAppContext, useAppDispatch } from '../../core/app-context';
+import type { SingleRelationshipConnection } from '../../core/types';
+import { useDispatch } from '../../entities/actions-context';
 import type { FormFieldParams } from '../types';
 
-export function Uploader({ control, fieldSchema, getValues, setValue }: FormFieldParams<'asset'>): JSX.Element {
-  const { name, label, isEditable, options } = fieldSchema;
+export function Uploader({
+  control,
+  entityId,
+  fieldSchema,
+  getValues,
+  setValue,
+}: FormFieldParams<'asset'>): JSX.Element {
+  const { name, label, options } = fieldSchema;
   const { projectId } = useParams();
+  const actionDispatch = useDispatch();
+  const appDispatch = useAppDispatch();
+  const { relationships } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const inputFile = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const selectedAssetIdRef = useRef<string | null>(null);
   const [base64PreviewImage, setBase64PreviewImage] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [saving, setSaving] = useState(false);
   const id = useId();
+  const relationshipId = useId();
   useOuterClick(wrapperRef, setIsOpen, '[data-radix-popper-content-wrapper]');
+
+  useEffect(() => {
+    const connection = relationships[relationshipId]?.connect as SingleRelationshipConnection | undefined;
+
+    if (!connection || selectedAssetIdRef.current === connection._id) {
+      return;
+    }
+
+    const selectedAsset = normalizeSelectedAsset(connection.value);
+
+    if (!selectedAsset) {
+      return;
+    }
+
+    const currentValue = getValues(name);
+    const currentAsset = currentValue?.value as ImageValue | undefined;
+
+    selectedAssetIdRef.current = connection._id;
+    setBase64PreviewImage(null);
+    setValue(name, {
+      ...currentValue,
+      value: {
+        ...selectedAsset,
+        _id: currentAsset?._id ?? '',
+      },
+    });
+  }, [getValues, name, relationshipId, relationships, setValue]);
 
   function getExtensionFromMime(mime: string | undefined): string | undefined {
     if (!mime) {
@@ -126,6 +167,8 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
 
     const isImage = file.type.startsWith('image/');
 
+    selectedAssetIdRef.current = null;
+
     if (isImage) {
       const reader = new FileReader();
 
@@ -192,6 +235,7 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
 
   function handleClearing(event: SyntheticEvent): void {
     event.stopPropagation();
+    selectedAssetIdRef.current = null;
     setValue(name, {
       ...getValues(name),
       _id: '',
@@ -213,6 +257,47 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
     event.preventDefault();
     event.stopPropagation();
     inputFile.current?.click();
+  }
+
+  function handleSelectAsset(event: SyntheticEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsOpen(false);
+
+    const currentAsset = getValues(name)?.value as ImageValue | undefined;
+    const selectedAssetId = selectedAssetIdRef.current ?? getReusableAssetId(currentAsset);
+    const initialConnection = selectedAssetId
+      ? {
+          _id: selectedAssetId,
+          value: currentAsset,
+        }
+      : undefined;
+
+    appDispatch({
+      type: 'setRelationship',
+      payload: {
+        [relationshipId]: {
+          connect: initialConnection,
+          disconnect: [],
+        },
+      },
+    });
+
+    window.setTimeout(() => {
+      actionDispatch({
+        type: 'EditRelationship',
+        payload: {
+          assetAccept: options?.accept,
+          connectedEntitiesCount: 0,
+          entityId,
+          entityName: '_asset',
+          initialAssetPath: currentAsset?.path,
+          initialConnection,
+          relationshipId,
+          mode: 'single',
+        },
+      });
+    }, 0);
   }
 
   function handleDownload(event: SyntheticEvent, fieldValue: FormFieldValue | undefined): void {
@@ -301,7 +386,11 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                       <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
                       Upload
                     </Button>
-                    <Button className="fk-ml-2 fk-h-7 fk-rounded fk-text-muted-foreground" variant="ghost">
+                    <Button
+                      className="fk-ml-2 fk-h-7 fk-rounded fk-text-muted-foreground"
+                      onClick={handleSelectAsset}
+                      variant="ghost"
+                    >
                       <SearchIcon className="fk-mr-2 fk-h-4 fk-w-4" />
                       Select
                     </Button>
@@ -371,13 +460,19 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                 {/* When there is an image, show the dropdown menu */}
                 {(field.value?.value as ImageValue)?.path ? (
                   <div className="fk-absolute fk-top-0 fk-right-10">
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 className="fk-h-8 fk-w-8 fk-ml-auto fk-mt-[0.1875rem] fk-rounded"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                }}
+                                onPointerDown={(event) => {
+                                  event.stopPropagation();
+                                }}
                                 size="icon"
                                 variant="ghost"
                               >
@@ -396,9 +491,9 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
                             <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
                             <span>Upload</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleSelectAsset}>
                             <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" />
-                            <span>Select file</span>
+                            <span>Select asset</span>
                           </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
@@ -551,4 +646,31 @@ export function Uploader({ control, fieldSchema, getValues, setValue }: FormFiel
       )}
     />
   );
+}
+
+function normalizeSelectedAsset(value: unknown): ImageValue | null {
+  if (!value || typeof value !== 'object' || !('_id' in value) || !('path' in value)) {
+    return null;
+  }
+
+  const asset = value as Partial<ImageValue>;
+
+  return {
+    _id: String(asset._id ?? ''),
+    path: String(asset.path ?? ''),
+    originalFilename: String(asset.originalFilename ?? ''),
+    size: Number(asset.size ?? 0),
+    mimeType: String(asset.mimeType ?? ''),
+    lqip: String(asset.lqip ?? ''),
+    width: Number(asset.width ?? 0),
+    height: Number(asset.height ?? 0),
+  };
+}
+
+function getReusableAssetId(asset: ImageValue | undefined): string {
+  if (!asset?._id || asset._id.includes(':')) {
+    return '';
+  }
+
+  return asset._id;
 }
