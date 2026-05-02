@@ -8,6 +8,7 @@ import {
   useLocation,
   Outlet,
   useEntityQuery,
+  useGraphQLError,
   ProjectDisabled,
   SchemaError,
   useGridColumnsDefinition,
@@ -26,6 +27,7 @@ export function List(): JSX.Element {
   const query = new URLSearchParams(search);
   const entityId = query.get('id');
   const { scope } = useAppContext();
+  const { schemaErrorMessage } = useGraphQLError();
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const columnsDefinition = useGridColumnsDefinition({
@@ -111,23 +113,25 @@ export function List(): JSX.Element {
     <div className="fk-flex fk-flex-col fk-h-full fk-pl-3">
       <SchemaError />
       <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">Asset Manager</h2>
-      <DataTable
-        classNames={{ row: 'fk-h-20' }}
-        columns={isInitialLoading ? loadingColumns : columnsDefinition}
-        data={isInitialLoading ? loadingData : (data ?? [])}
-        entityName={assetSchema.name}
-        pageSize={pageSize}
-        onScroll={(e) => {
-          fetchMoreOnBottomReached(e.currentTarget as HTMLDivElement);
-        }}
-        toolbarComponent={(table) => (
-          <DataTableToolbar
-            entityName={assetSchema.name}
-            table={table}
-            onSearchWhereChange={(w) => setSearchWhere(w)}
-          />
-        )}
-      />
+      {!schemaErrorMessage ? (
+        <DataTable
+          classNames={{ row: 'fk-h-20' }}
+          columns={isInitialLoading ? loadingColumns : columnsDefinition}
+          data={isInitialLoading ? loadingData : (data ?? [])}
+          entityName={assetSchema.name}
+          pageSize={pageSize}
+          onScroll={(e) => {
+            fetchMoreOnBottomReached(e.currentTarget as HTMLDivElement);
+          }}
+          toolbarComponent={(table) => (
+            <DataTableToolbar
+              entityName={assetSchema.name}
+              table={table}
+              onSearchWhereChange={(w) => setSearchWhere(w)}
+            />
+          )}
+        />
+      ) : null}
       <Outlet />
     </div>
   );

@@ -5,7 +5,7 @@ import type { ApolloLink } from '@apollo/client';
 import { ApolloProvider } from '@apollo/client/react';
 import { ErrorLink } from '@apollo/client/link/error';
 import { CombinedGraphQLErrors, CombinedProtocolErrors } from '@apollo/client/errors';
-import { getServerError, parseErrorBody } from './error-utils';
+import { getGraphQLSchemaMismatchMessage, getServerError, parseErrorBody } from './error-utils';
 import { useConfig } from '../core/config/config-context';
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
@@ -28,13 +28,21 @@ function useGraphQLError(): GraphQLErrorContextValue {
 
 function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): ApolloLink {
   return new ErrorLink(({ error }) => {
+    const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(error);
+
+    if (schemaMismatchMessage) {
+      setSchemaErrorMessage(schemaMismatchMessage);
+
+      return;
+    }
+
     if (CombinedGraphQLErrors.is(error)) {
       error.errors.forEach(({ message, locations, path }) => {
-        console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
+        console.warn(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
       });
     } else if (CombinedProtocolErrors.is(error)) {
       error.errors.forEach(({ message, extensions }) => {
-        console.log(`[Protocol error]: Message: ${message}, Extensions: ${JSON.stringify(extensions)}`);
+        console.warn(`[Protocol error]: Message: ${message}, Extensions: ${JSON.stringify(extensions)}`);
       });
     }
 
@@ -45,17 +53,27 @@ function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): A
       let message: string | null = null;
 
       if (responseBody && typeof responseBody === 'object') {
-        if (typeof responseBody.message === 'string') {
-          message = responseBody.message;
-        } else if (Array.isArray((responseBody as { errors?: unknown }).errors)) {
-          const errorsArray = (responseBody as { errors?: unknown }).errors as unknown[];
-          const firstError = errorsArray[0] as { message?: unknown } | undefined;
+        const {
+          error: responseError,
+          errors,
+          message: responseMessage,
+        } = responseBody as {
+          error?: unknown;
+          errors?: unknown;
+          message?: unknown;
+        };
+
+        if (typeof responseMessage === 'string') {
+          message = responseMessage;
+        } else if (Array.isArray(errors)) {
+          const [firstError] = errors as { message?: unknown }[];
 
           if (firstError && typeof firstError.message === 'string') {
-            message = firstError.message;
+            const { message: firstErrorMessage } = firstError;
+            message = firstErrorMessage;
           }
-        } else if (typeof (responseBody as { error?: unknown }).error === 'string') {
-          message = (responseBody as { error?: unknown }).error as string;
+        } else if (typeof responseError === 'string') {
+          message = responseError;
         } else {
           message = JSON.stringify(responseBody);
         }
@@ -67,13 +85,13 @@ function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): A
     }
 
     if (serverError) {
-      console.log(`[Network error]: ${serverError.message}`);
+      console.warn(`[Network error]: ${serverError.message}`);
 
       return;
     }
 
     if (error) {
-      console.log(`[Network error]: ${error.message}`);
+      console.warn(`[Network error]: ${error.message}`);
     }
   });
 }

@@ -8,6 +8,7 @@ import {
   useParams,
   Outlet,
   useEntityQuery,
+  useGraphQLError,
   ProjectDisabled,
   SchemaError,
   DataTable,
@@ -26,6 +27,7 @@ export function List(): JSX.Element {
   const query = new URLSearchParams(search);
   const entityId = query.get('id');
   const { scope } = useAppContext();
+  const { schemaErrorMessage } = useGraphQLError();
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = getEntitySchema(schema, entityName ?? '');
@@ -94,16 +96,18 @@ export function List(): JSX.Element {
           {capitalize(entitySchema?.menu?.label ?? entitySchema?.plural ?? '')}
         </h2>
       </div>
-      <DataTable
-        columns={isLoading ? loadingColumns : columnsDefinition}
-        data={isLoading ? loadingData : (data ?? [])}
-        entityName={entitySchema?.name ?? ''}
-        pageSize={pageSize}
-        onScroll={(e) => {
-          fetchMoreOnBottomReached(e.target as HTMLDivElement);
-        }}
-        toolbarComponent={(table) => <DataTableToolbar entityName={entitySchema?.name ?? ''} table={table} />}
-      />
+      {!schemaErrorMessage ? (
+        <DataTable
+          columns={isLoading ? loadingColumns : columnsDefinition}
+          data={isLoading ? loadingData : (data ?? [])}
+          entityName={entitySchema?.name ?? ''}
+          pageSize={pageSize}
+          onScroll={(e) => {
+            fetchMoreOnBottomReached(e.target as HTMLDivElement);
+          }}
+          toolbarComponent={(table) => <DataTableToolbar entityName={entitySchema?.name ?? ''} table={table} />}
+        />
+      ) : null}
       <Outlet />
     </div>
   );

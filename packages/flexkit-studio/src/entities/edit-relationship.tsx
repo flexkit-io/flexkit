@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { find, propEq } from 'ramda';
 import type { ColumnDef } from '@tanstack/react-table';
-import { LoaderCircle, Search as SearchIcon } from 'lucide-react';
+import { LoaderCircle, Search as SearchIcon, Upload as UploadIcon } from 'lucide-react';
 import { useAppContext, useAppDispatch } from '../core/app-context';
 import DrawerModal from '../ui/components/drawer-modal';
 import { useConfig } from '../core/config/config-context';
@@ -24,6 +24,7 @@ import type {
 import { useDispatch } from './actions-context';
 import { type Action, type ActionEditRelationship } from './types';
 import { useSearch } from '../core/use-search';
+import { useUploadAssets } from '../core/upload';
 
 type Props = {
   action: ActionEditRelationship;
@@ -32,6 +33,11 @@ type Props = {
 };
 
 const PAGE_SIZE = 25;
+
+type SelectedRelationshipRow = {
+  id: string;
+  value: SingleRelationshipConnection['value'];
+};
 
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({
@@ -44,49 +50,83 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const { relationships, scope } = useAppContext();
-  const { connectedEntitiesCount, connectionName, entityId, entityName, mode, relationshipId } = action.payload;
+  const {
+    assetAccept,
+    connectedEntitiesCount,
+    connectionName,
+    entityId,
+    entityName,
+    initialAssetPath,
+    initialConnection,
+    mode,
+    relationshipId,
+  } = action.payload;
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
-  const entityLabel = entitySchema?.menu?.label ?? entityName.toLowerCase();
   const entityNamePlural = entitySchema?.plural ?? '';
   const relationshipContext = relationships[relationshipId];
+  const uploadAssets = useUploadAssets();
+  const isAssetPicker = entityName === '_asset';
+  const entityLabel = isAssetPicker ? 'asset' : (entitySchema?.menu?.label ?? entityName.toLowerCase());
+  const selectTitle = isAssetPicker && mode === 'single' ? 'Select asset' : `Select ${isAssetPicker ? 'assets' : entityLabel}`;
+  const uploadButtonLabel = mode === 'single' ? 'Upload asset' : 'Upload assets';
   const [searchResultIds, setSearchResultIds] = useState<{ _id: string }[]>([]);
+
+  let initialSingleSelectionState: SelectedRelationshipRow[] = [];
+
+  if (initialConnection) {
+    initialSingleSelectionState = [
+      {
+        id: initialConnection._id,
+        value: initialConnection.value,
+      },
+    ];
+  } else if (relationshipContext?.connect) {
+    const connection = relationshipContext.connect as SingleRelationshipConnection;
+
+    initialSingleSelectionState = [
+      {
+        id: connection._id,
+        value: connection.value,
+      },
+    ];
+  }
 
   const initialSelectionState =
     mode === 'single'
-      ? relationshipContext?.connect
-        ? [
-            {
-              id: (relationshipContext.connect as SingleRelationshipConnection)._id,
-              value: (relationshipContext.connect as SingleRelationshipConnection).value,
-            },
-          ]
-        : []
+      ? initialSingleSelectionState
       : (relationshipContext?.connect as MultipleRelationshipConnection | undefined)?.map((item) => ({
           id: item._id,
           value: item.value,
         })) || [];
 
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
-  const filterOutConnectedEntities = connectionName
-    ? {
-        [connectionName]: {
-          node: {
-            _id: entityId,
-          },
-        },
-      }
-    : {};
-  const conditionalWhereClause =
-    mode === 'multiple'
+  const conditionalWhereClause = useMemo(() => {
+    const filterOutConnectedEntities = connectionName
       ? {
-          ...filterOutConnectedEntities,
-          OR: searchResultIds,
+          [connectionName]: {
+            node: {
+              _id: entityId,
+            },
+          },
         }
-      : {
-          OR: searchResultIds,
-        };
+      : {};
+    const assetPathFilter = isAssetPicker ? { NOT: { path: null } } : {};
+
+    if (mode === 'multiple') {
+      return {
+        ...assetPathFilter,
+        ...filterOutConnectedEntities,
+        OR: searchResultIds,
+      };
+    }
+
+    return {
+      ...assetPathFilter,
+      OR: searchResultIds,
+    };
+  }, [connectionName, entityId, isAssetPicker, mode, searchResultIds]);
 
   const { count, data, fetchMore, isLoading } = useEntityQuery({
     entityNamePlural,
@@ -100,6 +140,8 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       where: conditionalWhereClause,
     },
   });
+  const hasData = Boolean(data?.length);
+  const isInitialLoading = isLoading && !hasData;
 
   const columns = useGridColumnsDefinition({
     attributesSchema: entitySchema?.attributes ?? [],
@@ -107,6 +149,25 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   });
   const loadingData = Array(5).fill({});
   const loadingColumns = getLoadingColumns(columns);
+
+  useEffect(() => {
+    if (mode !== 'single' || selectedRows.length > 0 || !initialAssetPath || !data?.length) {
+      return;
+    }
+
+    const matchedAsset = data.find((row) => row.path === initialAssetPath);
+
+    if (!matchedAsset?._id || typeof matchedAsset._id !== 'string') {
+      return;
+    }
+
+    setSelectedRows([
+      {
+        id: matchedAsset._id,
+        value: matchedAsset as SingleRelationshipConnection['value'],
+      },
+    ]);
+  }, [data, initialAssetPath, mode, selectedRows.length]);
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
@@ -131,29 +192,31 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
                 offset: rowsCount,
                 limit: PAGE_SIZE,
               },
+              where: conditionalWhereClause,
             },
           });
         }
       }
     },
-    [connectedEntitiesCount, count, data?.length, fetchMore, isLoading]
+    [conditionalWhereClause, connectedEntitiesCount, count, data?.length, fetchMore, isLoading]
   );
 
   function handleSelection(): void {
     let connect;
 
     if (mode === 'single') {
-      const selected = selectedRows[0];
+      const [selected] = selectedRows;
 
       connect = {
-        _id: selected.id ?? '',
-        value: selected.value,
+        _id: selected?.id ?? '',
+        value: selected?.value ?? null,
       } as SingleRelationshipConnection;
     }
 
     if (mode === 'multiple') {
-      connect = selectedRows?.map((selected) => ({
+      connect = selectedRows?.map((selected, index) => ({
         _id: selected.id ?? '',
+        ...(isAssetPicker ? { sortOrder: index } : {}),
         value: selected.value,
       })) as MultipleRelationshipConnection;
     }
@@ -239,6 +302,33 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     actionDispatch({ type: 'AddEntity', payload: { entityName } });
   }
 
+  async function handleUploadAssets(): Promise<void> {
+    const uploadedAssets = await uploadAssets({
+      projectId: currentProjectId,
+      accept: assetAccept ?? 'image/*',
+      multiple: mode === 'multiple',
+      maxBytes: 4 * 1024 * 1024,
+    });
+
+    setSelectedRows((currentRows) => {
+      if (mode === 'single') {
+        const [uploadedAsset] = uploadedAssets;
+
+        return uploadedAsset ? [{ id: uploadedAsset._id, value: uploadedAsset.asset }] : currentRows;
+      }
+
+      const selectedIds = new Set(currentRows.map((row) => row.id));
+      const nextRows = uploadedAssets
+        .filter((uploaded) => !selectedIds.has(uploaded._id))
+        .map((uploaded) => ({
+          id: uploaded._id,
+          value: uploaded.asset,
+        }));
+
+      return [...currentRows, ...nextRows];
+    });
+  }
+
   return (
     <DrawerModal
       actions={
@@ -252,15 +342,29 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
           >
             Select
           </Button>
-          <Button
-            className="fk-px-8"
-            onClick={() => {
-              handleCreateEntity();
-            }}
-            variant="outline"
-          >
-            {`Create ${entityLabel}`}
-          </Button>
+          {!isAssetPicker ? (
+            <Button
+              className="fk-px-8"
+              onClick={() => {
+                handleCreateEntity();
+              }}
+              variant="outline"
+            >
+              {`Create ${entityLabel}`}
+            </Button>
+          ) : null}
+          {isAssetPicker ? (
+            <Button
+              className="fk-px-8"
+              onClick={() => {
+                void handleUploadAssets();
+              }}
+              variant="outline"
+            >
+              <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+              {uploadButtonLabel}
+            </Button>
+          ) : null}
         </>
       }
       depth={depth}
@@ -268,32 +372,34 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       onClose={() => {
         handleClose(action._id);
       }}
-      title={`Select ${entityLabel}`}
+      title={selectTitle}
     >
-      <DataTable
-        columns={isLoading ? loadingColumns : columns}
-        data={isLoading ? loadingData : (data ?? [])}
-        entityName={entitySchema?.name ?? ''}
-        initialSelectionState={
-          selectedRows?.reduce(
-            (acc, selected) => ({ ...acc, ...(selected.id ? { [selected.id]: true } : {}) }),
-            {}
-          ) as {
-            [_id: string]: boolean;
+      <div className="fk-h-[calc(100vh-10rem)] fk-min-h-0">
+        <DataTable
+          columns={isInitialLoading ? loadingColumns : columns}
+          data={isInitialLoading ? loadingData : (data ?? [])}
+          entityName={entitySchema?.name ?? ''}
+          initialSelectionState={
+            selectedRows?.reduce(
+              (acc, selected) => ({ ...acc, ...(selected.id ? { [selected.id]: true } : {}) }),
+              {}
+            ) as {
+              [_id: string]: boolean;
+            }
           }
-        }
-        onEntitySelectionChange={handleSelectionChange}
-        onScroll={(e) => {
-          fetchMoreOnBottomReached(e.target as HTMLDivElement);
-        }}
-        toolbarComponent={() => (
-          <SearchBar
-            entityNamePlural={entityNamePlural}
-            projectId={currentProjectId ?? ''}
-            setSearchResultIds={setSearchResultIds}
-          />
-        )}
-      />
+          onEntitySelectionChange={handleSelectionChange}
+          onScroll={(e) => {
+            fetchMoreOnBottomReached(e.target as HTMLDivElement);
+          }}
+          toolbarComponent={() => (
+            <SearchBar
+              entityNamePlural={entityNamePlural}
+              projectId={currentProjectId ?? ''}
+              setSearchResultIds={setSearchResultIds}
+            />
+          )}
+        />
+      </div>
     </DrawerModal>
   );
 }
@@ -309,8 +415,8 @@ function SearchBar({
 }): JSX.Element {
   const [search, setSearch] = useState('');
 
-  function getBaseSearchRequest(): SearchRequestProps {
-    return {
+  const searchRequest = useMemo<SearchRequestProps>(
+    () => ({
       searchRequests: {
         searches: [
           {
@@ -321,21 +427,21 @@ function SearchBar({
       commonParams: {
         q: '',
       },
-    };
-  }
-
-  const searchRequest = getBaseSearchRequest();
+    }),
+    [entityNamePlural]
+  );
   const [searchQuery, setSearchQuery] = useState(searchRequest);
   const { results, isLoading } = useSearch(projectId, searchQuery);
-  const prevResultsRef = useRef<any[] | null>(null);
+  const prevResultsRef = useRef<{ _id: string }[] | null>(null);
 
-  const debouncedSetSearchQuery = useCallback(
-    debounce((query: string) => {
-      setSearchQuery({
-        ...searchRequest,
-        commonParams: { q: query },
-      });
-    }, 300),
+  const debouncedSetSearchQuery = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearchQuery({
+          ...searchRequest,
+          commonParams: { q: query },
+        });
+      }, 300),
     [searchRequest]
   );
 
@@ -354,7 +460,8 @@ function SearchBar({
   }, [results, setSearchResultIds]);
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>): void {
-    const value = e.target.value;
+    const { value } = e.target;
+
     setSearch(value);
     debouncedSetSearchQuery(value);
   }
@@ -371,10 +478,11 @@ function SearchBar({
   );
 }
 
-function debounce(fn: Function, ms = 300) {
+function debounce<T extends unknown[]>(fn: (...args: T) => void, ms = 300): (...args: T) => void {
   let timeoutId: ReturnType<typeof setTimeout>;
-  return function (this: any, ...args: any[]) {
+
+  return (...args: T) => {
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn.apply(this, args), ms);
+    timeoutId = setTimeout(() => fn(...args), ms);
   };
 }

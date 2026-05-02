@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactElement, UIEvent } from 'react';
 import {
   flexRender,
@@ -35,6 +35,7 @@ import {
 import { cn } from '../ui/lib/utils';
 import type { AttributeValue } from '../graphql-client/types';
 import type { MultipleRelationshipConnection } from '../core/types';
+import { useGraphQLError } from '../graphql-client/graphql-context';
 
 interface DataTableProps<TData extends AttributeValue, TValue> {
   classNames?: {
@@ -87,10 +88,26 @@ export function DataTable<TData extends AttributeValue, TValue>({
   toolbarComponent,
 }: DataTableProps<TData, TValue>): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { schemaErrorMessage } = useGraphQLError();
   const [rowSelection, setRowSelection] = useState(initialSelectionState ?? {});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
+
+  useEffect(() => {
+    if (!initialSelectionState) {
+      return;
+    }
+
+    const currentSelection = Object.keys(rowSelection).sort().join(',');
+    const nextSelection = Object.keys(initialSelectionState).sort().join(',');
+
+    if (currentSelection === nextSelection) {
+      return;
+    }
+
+    setRowSelection(initialSelectionState);
+  }, [initialSelectionState, rowSelection]);
 
   const table = useReactTable({
     data,
@@ -147,74 +164,83 @@ export function DataTable<TData extends AttributeValue, TValue>({
     onEntitySelectionChange?.(selectedIds);
   }
 
-  return (
-    <div className={cn('fk-w-full fk-h-full fk-space-y-4', classNames?.wrapper)}>
-      {toolbarComponent && toolbarComponent(table)}
-      <TablePrimitive className={cn('fk-grid fk-pb-[5rem]', classNames?.table)} onScroll={onScroll} ref={scrollRef}>
-        <TableHeader className="fk-grid">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow className="fk-flex fk-w-full" key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                return (
-                  <TableHead
-                    className={cn('fk-flex fk-items-center', header.column.id === 'actions' && 'fk-pl-0')}
-                    colSpan={header.colSpan}
-                    key={header.id}
-                    style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
-                  >
-                    {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody
-          className="fk-grid fk-relative"
-          style={{
-            height: `${totalSize.toString()}px`, //tells scrollbar how big the table is
-          }}
-        >
-          {virtualItems.length ? (
-            virtualItems.map((virtualRow) => {
-              const row = rows[virtualRow.index];
+  if (schemaErrorMessage) {
+    return <></>;
+  }
 
-              return (
-                <TableRow
-                  className={`${(table.options.meta as ExtendedDataTable).getRowBackground(
-                    row
-                  )} fk-flex fk-absolute fk-w-full ${classNames?.row ?? ''}`}
-                  data-index={virtualRow.index}
-                  data-state={row.getIsSelected() && 'selected'}
-                  key={virtualRow.key}
-                  ref={rowVirtualizer.measureElement}
-                  style={{
-                    transform: `translateY(${virtualRow.start.toString()}px)`,
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      className={cn('fk-flex fk-items-center fk-truncate', cell.column.id === 'actions' && '!fk-pl-0')}
-                      key={cell.id}
-                      style={{
-                        width: cell.column.getSize(),
-                      }}
+  return (
+    <div className={cn('fk-flex fk-h-full fk-min-h-0 fk-w-full fk-flex-col fk-gap-4', classNames?.wrapper)}>
+      {toolbarComponent && toolbarComponent(table)}
+      <div className="fk-min-h-0 fk-flex-1">
+        <TablePrimitive className={cn('fk-grid fk-pb-[5rem]', classNames?.table)} onScroll={onScroll} ref={scrollRef}>
+          <TableHeader className="fk-grid">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow className="fk-flex fk-w-full" key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead
+                      className={cn('fk-flex fk-items-center', header.column.id === 'actions' && 'fk-pl-0')}
+                      colSpan={header.colSpan}
+                      key={header.id}
+                      style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              );
-            })
-          ) : (
-            <TableRow>
-              <TableCell className="fk-h-24 fk-text-center" colSpan={columns.length}>
-                No results.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </TablePrimitive>
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody
+            className="fk-grid fk-relative"
+            style={{
+              height: `${totalSize.toString()}px`, //tells scrollbar how big the table is
+            }}
+          >
+            {virtualItems.length ? (
+              virtualItems.map((virtualRow) => {
+                const row = rows[virtualRow.index];
+
+                return (
+                  <TableRow
+                    className={`${(table.options.meta as ExtendedDataTable).getRowBackground(
+                      row
+                    )} fk-flex fk-absolute fk-w-full ${classNames?.row ?? ''}`}
+                    data-index={virtualRow.index}
+                    data-state={row.getIsSelected() && 'selected'}
+                    key={virtualRow.key}
+                    ref={rowVirtualizer.measureElement}
+                    style={{
+                      transform: `translateY(${virtualRow.start.toString()}px)`,
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        className={cn(
+                          'fk-flex fk-items-center fk-truncate',
+                          cell.column.id === 'actions' && '!fk-pl-0'
+                        )}
+                        key={cell.id}
+                        style={{
+                          width: cell.column.getSize(),
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell className="fk-h-24 fk-text-center" colSpan={columns.length}>
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </TablePrimitive>
+      </div>
     </div>
   );
 }

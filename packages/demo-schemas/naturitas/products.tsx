@@ -161,6 +161,24 @@ export const products = defineEntity({
       defaultValue: '',
     },
     {
+      name: 'images',
+      label: 'Images',
+      scope: 'relationship',
+      options: {
+        accept: 'image/*',
+        size: 240,
+        comment: 'Ordered product gallery images',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'originalFilename',
+        entity: '_asset',
+      },
+    },
+    {
       name: 'price',
       label: 'Price',
       scope: 'local',

@@ -15,7 +15,7 @@ export type EntityQueryAggregate = {
 export type EntityQueryResult = {
   __typename: string;
   _id: string;
-  [key: string]: string | AttributeValue;
+  [key: string]: string | AttributeValue | AttributeValue[] | unknown;
 };
 
 export type EntityQueryResults = {
@@ -39,7 +39,7 @@ export type EntityData = {
 
 export type MappedEntityItem = {
   _id: string;
-  [attributeName: string]: string;
+  [attributeName: string]: string | OrderedAssetValue[];
 };
 
 export type ImageValue = {
@@ -51,6 +51,10 @@ export type ImageValue = {
   lqip: string;
   width: number;
   height: number;
+};
+
+export type OrderedAssetValue = ImageValue & {
+  sortOrder?: number;
 };
 
 export type MappedEntityQueryResults = {
@@ -84,5 +88,16 @@ export type FormFieldValue = {
     disconnect?: string[];
   };
   scope: string;
-  value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | undefined | null;
+  value:
+    | string
+    | MappedEntityItem
+    | MappedEntityItem[]
+    | EntityItem
+    | EntityItem[]
+    | AttributeValue
+    | AttributeValue[]
+    | ImageValue
+    | OrderedAssetValue[]
+    | undefined
+    | null;
 };

@@ -8,7 +8,18 @@ export type Asset = {
   path: string;
 };
 
-export function Asset({ value }: { value: Asset }) {
+const transparentImageBackground =
+  'fk-bg-[#fafafa] [--asset-checker:#f0f0f0] [background-image:linear-gradient(45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(-45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,var(--asset-checker)_75%),linear-gradient(-45deg,transparent_75%,var(--asset-checker)_75%)] [background-position:0_0,0_4px,4px_-4px,-4px_0px] [background-size:8px_8px] dark:fk-bg-[#222] dark:[--asset-checker:#2a2a2a]';
+
+export function Asset({ value }: { value: Asset | Asset[] }) {
+  if (Array.isArray(value)) {
+    return <AssetStack value={value} />;
+  }
+
+  return <SingleAsset value={value} />;
+}
+
+function SingleAsset({ value }: { value: Asset }) {
   const path = value?.path ?? '';
   const hasPath = Boolean(path);
   const isImage = hasPath && /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(path);
@@ -50,7 +61,7 @@ export function Asset({ value }: { value: Asset }) {
             <TooltipTrigger asChild>
               <img
                 alt="asset"
-                className="fk-w-7 fk-h-7 fk-cursor-zoom-in fk-bg-muted/40 fk-rounded-sm"
+                className={`fk-w-7 fk-h-7 fk-cursor-zoom-in fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
                 decoding="async"
                 src={cachedThumbnailSrc ?? undefined}
               />
@@ -59,7 +70,7 @@ export function Asset({ value }: { value: Asset }) {
               <TooltipContent>
                 <img
                   alt="asset"
-                  className="fk-w-52 fk-h-52 fk-bg-muted/40 fk-rounded-sm"
+                  className={`fk-w-52 fk-h-52 fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
                   decoding="async"
                   src={fullUrl}
                 />
@@ -88,6 +99,33 @@ export function Asset({ value }: { value: Asset }) {
           </Tooltip>
         )}
       </TooltipProvider>
+    </div>
+  );
+}
+
+function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
+  const assets = value.filter((asset) => Boolean(asset.path)).slice(0, 3);
+
+  if (assets.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="fk-flex fk-items-center">
+      <div className="fk-flex -fk-space-x-2">
+        {assets.map((asset) => (
+          <img
+            alt="asset"
+            className={`fk-h-7 fk-w-7 fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
+            decoding="async"
+            key={asset._id}
+            src={`${IMAGES_BASE_URL}${asset.path}?w=84&h=84&f=webp`}
+          />
+        ))}
+      </div>
+      {value.length > 3 ? (
+        <span className="fk-ml-2 fk-text-xs fk-text-muted-foreground">+{value.length - 3}</span>
+      ) : null}
     </div>
   );
 }

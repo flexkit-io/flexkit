@@ -1,14 +1,43 @@
 import type { z, ZodTypeAny } from 'zod';
-import type { AttributeValue, EntityItem, MappedEntityItem, ImageValue } from '../graphql-client/types';
+import type {
+  AttributeValue,
+  EntityItem,
+  MappedEntityItem,
+  ImageValue,
+  OrderedAssetValue,
+} from '../graphql-client/types';
 
 export type SingleRelationshipConnection = {
   _id: string;
-  value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | undefined | null;
+  value:
+    | string
+    | MappedEntityItem
+    | MappedEntityItem[]
+    | EntityItem
+    | EntityItem[]
+    | AttributeValue
+    | AttributeValue[]
+    | ImageValue
+    | OrderedAssetValue[]
+    | undefined
+    | null;
 };
 
 export type MultipleRelationshipConnection = {
   _id: string;
-  value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | undefined | null;
+  sortOrder?: number;
+  value:
+    | string
+    | MappedEntityItem
+    | MappedEntityItem[]
+    | EntityItem
+    | EntityItem[]
+    | AttributeValue
+    | AttributeValue[]
+    | ImageValue
+    | OrderedAssetValue[]
+    | undefined
+    | null;
 }[];
 
 export type Relationships = {
@@ -113,6 +142,10 @@ export type AssetOptions = CommonOptions & {
   accept?: string;
 };
 
+export type RelationshipOptions = CommonOptions & {
+  accept?: string;
+};
+
 export type DateTimeOptions = CommonOptions & {
   format?: string;
 };
@@ -127,6 +160,7 @@ export type AttributeOptions = {
   asset: AssetOptions;
   datetime: DateTimeOptions;
   number: NumberOptions;
+  relationship: RelationshipOptions;
   text: CommonOptions;
   textarea: CommonOptions;
   switch: CommonOptions;

@@ -133,6 +133,10 @@ type AssetOptions = CommonOptions & {
   accept?: string;
 };
 
+type RelationshipOptions = CommonOptions & {
+  accept?: string;
+};
+
 type DateTimeOptions = CommonOptions & {
   format?: string;
 };
@@ -147,6 +151,7 @@ export type AttributeOptions = {
   asset: AssetOptions;
   datetime: DateTimeOptions;
   number: NumberOptions;
+  relationship: RelationshipOptions;
   [key: string]: CommonOptions;
 };
 

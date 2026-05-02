@@ -4,7 +4,7 @@ import { cn } from 'src/ui/lib/utils';
 const Table = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, onScroll, ...props }, ref) => (
     <div
-      className="fk-relative fk-h-full fk-w-full fk-overflow-x-auto fk-rounded-md fk-border-border fk-border"
+      className="fk-relative fk-h-full fk-w-full fk-overflow-auto fk-rounded-md fk-border-border fk-border"
       onScroll={onScroll}
       ref={ref}
     >
@@ -18,7 +18,7 @@ const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttribut
   ({ className, ...props }, ref) => (
     <thead
       className={cn(
-        'fk-sticky fk-z-[1] fk-top-0 fk-bg-background/90 fk-backdrop-blur-[1px] [&_tr]:fk-border-border [&_tr]:fk-border-border [&_tr]:fk-border-b',
+        'fk-sticky fk-z-[1] fk-top-0 fk-bg-background/90 fk-backdrop-blur-[1px] [&_tr]:fk-border-border [&_tr]:fk-border-b',
         className
       )}
       ref={ref}

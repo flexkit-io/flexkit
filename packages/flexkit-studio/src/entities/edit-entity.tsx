@@ -11,7 +11,7 @@ import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import { useConfig } from '../core/config/config-context';
 import { useEntityQuery } from '../graphql-client/use-entity-query';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
-import { getEntityUpdateMutation } from '../graphql-client/queries';
+import { getEntityQuery, getEntityUpdateMutation } from '../graphql-client/queries';
 import type { EntityData, FormEntityItem } from '../graphql-client/types';
 import { ReadOnlyMode } from '../core/error/read-only-mode';
 import FormBuilder from '../form/form-builder';
@@ -131,21 +131,34 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
 
   const saveEntity = useCallback(
     (newData: EntityData, previousData?: FormEntityItem) => {
-      if (!previousData) return;
+      if (!previousData) {
+        return;
+      }
 
       const mutation = getEntityUpdateMutation(entityNamePlural, entityId, currentScope, schema, previousData, newData);
+      const entityQuery = getEntityQuery(entityNamePlural, currentScope, schema);
+      const refreshQuery = gql`
+        ${entityQuery.query}
+      `;
+
       setMutation(gql`
         ${mutation}
       `);
       setOptions({
         variables: { where: { _id: entityId } },
+        refetchQueries: [
+          {
+            query: refreshQuery,
+            variables: { where: { _id: entityId } },
+          },
+        ],
         onCompleted: () => {
           toast.success('Your changes have been saved.');
         },
       });
       runMutation(true);
     },
-    [action._id, entityId, entityNamePlural, schema, runMutation, setMutation, setOptions, currentScope]
+    [currentScope, entityId, entityNamePlural, runMutation, schema, setMutation, setOptions]
   );
 
   const { isLoading, data: results } = useEntityQuery({
@@ -156,13 +169,15 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     isForm: true,
   });
   const data = results as FormEntityItem[];
+  const hasData = data.length > 0;
+  const isInitialLoading = isLoading && !hasData;
 
   function getEntityIdentifier(entitySchema: Entity, data: FormEntityItem[]): string {
     const primaryAttribute = entitySchema?.attributes.find((attr) => attr.isPrimary) ?? entitySchema?.attributes[0];
     const primaryAttributeName = primaryAttribute.name;
     const isRelationship = primaryAttribute?.relationship?.field !== undefined;
 
-    if (isLoading || !data.length) {
+    if (!data.length) {
       return '';
     }
 
@@ -173,7 +188,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       : (data[0][primaryAttributeName]?.value as string);
   }
 
-  const entityIdentifier = !isLoading && data.length && entitySchema ? getEntityIdentifier(entitySchema, data) : '';
+  const entityIdentifier = hasData && entitySchema ? getEntityIdentifier(entitySchema, data) : '';
 
   return (
     <DrawerModal
@@ -213,7 +228,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       onFormChange={() => {}}
       title={entityIdentifier as string}
     >
-      {isLoading || !data.length ? (
+      {isInitialLoading || !hasData ? (
         <Loading />
       ) : (
         <>

@@ -1,4 +1,4 @@
-import { filter, find, pick, propEq, toPairs, omit } from 'ramda';
+import { filter, find, omit, pick, propEq, toPairs, uniq } from 'ramda';
 import { v4 as uuidv4 } from 'uuid';
 import { assetSchema } from '../entities/assets-schema';
 import { tagSchema } from '../entities/tags-schema';
@@ -16,6 +16,7 @@ import type {
   MappedFormEntityQueryResults,
   EntityQueryResult,
   ImageValue,
+  OrderedAssetValue,
 } from './types';
 
 type EntityQuery = {
@@ -25,6 +26,82 @@ type EntityQuery = {
 
 const stringTypes: DataType[] = ['id', 'string'];
 const temporalTypes: DataType[] = ['date', 'datetime', 'duration', 'time'];
+const assetFields = `_id
+      originalFilename
+      mimeType
+      path
+      size
+      height
+      width
+      lqip`;
+
+type AssetRelationshipConnection = {
+  edges?: {
+    properties?: {
+      sortOrder?: number | null;
+    } | null;
+    node?: OrderedAssetValue | null;
+  }[];
+};
+
+function isAssetRelationshipAttribute(attribute: Attribute | undefined): boolean {
+  return (
+    attribute?.scope === 'relationship' &&
+    attribute.relationship?.mode === 'multiple' &&
+    attribute.relationship.entity === '_asset'
+  );
+}
+
+function hasOrderedAssetConnectionProperties(attribute: Attribute | undefined, entity: Entity | undefined): boolean {
+  if (!attribute || !isAssetRelationshipAttribute(attribute)) {
+    return false;
+  }
+
+  return entity?.name !== tagSchema.name || attribute.name !== 'assets';
+}
+
+function isAssetAttribute(attribute: Attribute | undefined): boolean {
+  return attribute?.dataType === 'asset' || attribute?.inputType === 'asset';
+}
+
+function getOrderedAssetsFromConnection(connection: unknown): OrderedAssetValue[] {
+  const edges = (connection as AssetRelationshipConnection | undefined)?.edges ?? [];
+
+  return edges
+    .reduce<OrderedAssetValue[]>((result, edge, index) => {
+      if (!edge.node) {
+        return result;
+      }
+
+      result.push({
+        ...edge.node,
+        sortOrder: edge.properties?.sortOrder ?? index,
+      });
+
+      return result;
+    }, [])
+    .sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER));
+}
+
+function getAssetConnectionSelection(attributeName: string, includeProperties = true): string {
+  const propertiesSelection = includeProperties
+    ? `        properties {\n` + `          sortOrder\n` + `        }\n`
+    : '';
+
+  return (
+    `    ${attributeName}Aggregate {\n` +
+    `      count\n` +
+    `    }\n` +
+    `    ${attributeName}Connection {\n` +
+    `      edges {\n` +
+    propertiesSelection +
+    `        node {\n` +
+    `          ${assetFields}\n` +
+    `        }\n` +
+    `      }\n` +
+    `    }\n`
+  );
+}
 
 export function getEntityQuery(entityNamePlural: string, scope: string, schema: Schema): EntityQuery {
   const filters = `(where: $where, options: $options)`;
@@ -59,11 +136,18 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
 
   const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
+    if (isAssetRelationshipAttribute(attribute)) {
+      return `${acc}\n${getAssetConnectionSelection(
+        attribute.name,
+        hasOrderedAssetConnectionProperties(attribute, entitySchema)
+      )}`;
+    }
+
     const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
     const attributesNameList = relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
-      if (relatedAttribute.dataType === 'asset') {
+      if (isAssetAttribute(relatedAttribute)) {
         return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n    `;
       }
 
@@ -183,6 +267,15 @@ export function mapQueryResult(
         const primaryAttributeScope = primaryAttribute?.scope ?? 'global';
         const localValue = entity[attributeName] as AttributeValue | null;
 
+        if (isAssetRelationshipAttribute(relationshipAttribute)) {
+          const assets = getOrderedAssetsFromConnection(entity[`${attributeName}Connection`]);
+
+          return {
+            ...acc,
+            [attributeName]: assets,
+          };
+        }
+
         if (!primaryAttributeName) {
           throw new Error(`There is an error in the schema for the relationship attribute "${attributeName}"`);
         }
@@ -282,16 +375,20 @@ export function mapQueryResultForFormFields(
     );
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
       (acc, attributeName) => {
+        const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
         const value = entity[attributeName] as AttributeValue | null;
         const _id = value?._id;
         const aggregateCount = (entity[`${attributeName}Aggregate`] as AttributeValue).count;
+        const mappedValue = isAssetRelationshipAttribute(relationshipAttribute)
+          ? getOrderedAssetsFromConnection(entity[`${attributeName}Connection`])
+          : value;
 
         return {
           ...acc,
           [attributeName]: {
             count: aggregateCount,
             _id,
-            value,
+            value: mappedValue,
             disabled: false,
             scope,
           },
@@ -421,7 +518,7 @@ function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attr
  * Get all attributes that are of type image.
  */
 function getImageAttributes(attributes: Attribute[]): Attribute['name'][] {
-  const filteredAttributes = filter(propEq('asset', 'dataType'))(attributes);
+  const filteredAttributes = attributes.filter(isAssetAttribute);
 
   return filteredAttributes.map((attribute) => attribute.name);
 }
@@ -430,7 +527,8 @@ function globalAttributesUpdate(schemaAttributes: Attribute[], data: FormEntityI
   const globalAttributes = pick(getAttributeListByScope('global', schemaAttributes) as [string], data);
   const attributesString = toPairs(globalAttributes).reduce((acc, [attributeName, value]) => {
     const attributeSchema = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute;
-    const typedValue = stringifyValue(attributeSchema.dataType, value?.value ?? null);
+    const valueToStringify = Array.isArray(value?.value) ? null : (value?.value ?? null);
+    const typedValue = stringifyValue(attributeSchema.dataType, valueToStringify);
 
     return `${acc}\n      ${attributeName}: ${typedValue}`;
   }, '');
@@ -546,17 +644,28 @@ function relationshipAttributesUpdate(
     const { inputType, relationship } = attributeSchema;
 
     if (inputType === 'relationship' && relationship?.mode === 'single') {
-      const disconnect = `disconnect: {\n          where: {\n            node: {\n              _id: "${
-        originalData[attributeName]._id ?? ''
-      }"\n            }\n          }\n        }\n`;
-      const connect = `connect: {\n          where: {\n            node: {\n              _id: "${
-        attributeValue._id ?? ''
-      }"\n            }\n          }\n        }\n`;
+      const originalId = originalData[attributeName]._id ?? '';
+      const nextId = attributeValue._id ?? '';
+
+      if (originalId === nextId) {
+        return acc;
+      }
+
+      const disconnect = originalId
+        ? `disconnect: {\n          where: {\n            node: {\n              _id: "${originalId}"\n            }\n          }\n        }\n`
+        : '';
+      const connect = nextId
+        ? `connect: {\n          where: {\n            node: {\n              _id: "${nextId}"\n            }\n          }\n        }\n`
+        : '';
 
       return `${acc}\n      ${attributeName}: {\n        ${connect}        ${disconnect}      }`;
     }
 
     if (inputType === 'relationship' && relationship?.mode === 'multiple') {
+      if (relationship.entity === '_asset') {
+        return `${acc}${orderedAssetRelationshipUpdate(attributeName, originalData[attributeName], attributeValue)}`;
+      }
+
       const nodesToDisconnect: string | undefined = attributeValue.relationships?.disconnect?.reduce(
         (disconnectString: string, _id: string) => {
           return `${disconnectString}              {\n                node: {\n                  _id: "${_id}"\n                }\n              }\n`;
@@ -574,6 +683,10 @@ function relationshipAttributesUpdate(
         ? `connect: {\n          where: {\n            node: {\n              OR: [\n${nodesToConnect}              ]\n            }\n          }\n        }\n`
         : '';
 
+      if (!disconnect && !connect) {
+        return acc;
+      }
+
       return `${acc}\n      ${attributeName}: {\n        ${disconnect}        ${connect}      }`;
     }
 
@@ -581,6 +694,98 @@ function relationshipAttributesUpdate(
   }, '');
 
   return attributesString;
+}
+
+function orderedAssetRelationshipUpdate(
+  attributeName: string,
+  originalValue: FormFieldValue | undefined,
+  attributeValue: FormFieldValue
+): string {
+  const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection | null) ?? [];
+  const orderedConnections = connections.map((connection, index) => ({
+    ...connection,
+    sortOrder: connection.sortOrder ?? index,
+  }));
+  const orderedConnectionIds = orderedConnections.map((connection) => connection._id);
+  const originalSortOrderById = getRelationshipSortOrderById(originalValue);
+  const disconnectedIds = uniq(attributeValue.relationships?.disconnect ?? []).filter(
+    (_id) => _id && !orderedConnectionIds.includes(_id)
+  );
+  const connectionsToPersist = orderedConnections.filter((connection) => {
+    const originalSortOrder = originalSortOrderById[connection._id];
+
+    return originalSortOrder === undefined || originalSortOrder !== connection.sortOrder;
+  });
+  const disconnect = getOrderedAssetDisconnectString(disconnectedIds);
+  const connect = getOrderedAssetConnectString(connectionsToPersist);
+
+  if (!disconnect && !connect) {
+    return '';
+  }
+
+  return `\n      ${attributeName}: [\n${disconnect}${connect}      ]`;
+}
+
+function getRelationshipSortOrderById(fieldValue: FormFieldValue | undefined): { [id: string]: number } {
+  const value = fieldValue?.value;
+
+  if (!Array.isArray(value)) {
+    return {};
+  }
+
+  return value.reduce<{ [id: string]: number }>((result, item, index) => {
+    if (typeof item !== 'object' || !item || !('_id' in item)) {
+      return result;
+    }
+
+    const { _id } = item;
+
+    if (typeof _id !== 'string' || _id.length === 0) {
+      return result;
+    }
+
+    const sortOrder = 'sortOrder' in item && typeof item.sortOrder === 'number' ? item.sortOrder : index;
+
+    return {
+      ...result,
+      [_id]: sortOrder,
+    };
+  }, {});
+}
+
+function getOrderedAssetDisconnectString(ids: string[]): string {
+  if (ids.length === 0) {
+    return '';
+  }
+
+  const nodes = ids.reduce((disconnectString, _id) => {
+    return `${disconnectString}          {\n            where: { node: { _id: "${_id}" } }\n          }\n`;
+  }, '');
+
+  return `        {\n          disconnect: [\n${nodes}          ]\n        }\n`;
+}
+
+function getOrderedAssetConnectString(connections: MultipleRelationshipConnection): string {
+  if (connections.length === 0) {
+    return '';
+  }
+
+  const nodes = getOrderedAssetConnectNodes(connections);
+
+  return `        {\n          connect: [\n${nodes}          ]\n        }\n`;
+}
+
+function getOrderedAssetConnectNodes(connections: MultipleRelationshipConnection): string {
+  return connections.reduce((connectString, connection, index) => {
+    const sortOrder = connection.sortOrder ?? index;
+
+    return (
+      `${connectString}          {\n` +
+      `            where: { node: { _id: "${connection._id}" } }\n` +
+      `            edge: { sortOrder: ${sortOrder} }\n` +
+      `          }\n`
+    );
+  }, '');
 }
 
 function stringifyValue(
@@ -614,6 +819,14 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
   fields += relationshipAttributesArray.reduce((acc, attributeName: string) => {
     const relationshipAttribute = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute | undefined;
     const relationshipMode = relationshipAttribute?.relationship?.mode ?? 'single';
+
+    if (isAssetRelationshipAttribute(relationshipAttribute)) {
+      return `${acc}${getAssetConnectionSelection(
+        attributeName,
+        hasOrderedAssetConnectionProperties(relationshipAttribute, entitySchema)
+      )}`;
+    }
+
     const relationshipEntityName = relationshipAttribute?.relationship?.entity ?? '';
     const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
     const relationshipEntityAttributes = relationshipEntitySchema?.attributes ?? [];
@@ -659,7 +872,7 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
           }
         }
 
-        if (attribute.inputType === 'asset') {
+        if (isAssetAttribute(attribute)) {
           return `${str}  ${attribute.name} {\n    _id\n    originalFilename\n    mimeType\n    path\n    size\n    height\n    width\n    lqip\n  }\n`;
         }
 
@@ -827,6 +1040,18 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
       Array.isArray(attributeValue.relationships?.connect) && attributeValue.relationships.connect.length > 0;
     if (isMultipleRelationship && hasRelationships) {
       const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection | null) ?? [];
+
+      if (relationship?.entity === '_asset') {
+        const connectNodes = getOrderedAssetConnectNodes(
+          connections.map((connection, index) => ({
+            ...connection,
+            sortOrder: connection.sortOrder ?? index,
+          }))
+        );
+
+        return `${acc}\n      ${attributeName}: {\n        connect: [\n${connectNodes}        ]\n      }`;
+      }
+
       const nodesToConnect: string | undefined = connections.reduce((connectString: string, node) => {
         return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
       }, '');
@@ -941,10 +1166,13 @@ export function getRelatedItemsQuery({
   };
 }
 
-export function getAssetCreateMutation(entityData: EntityData): string {
-  const attributes = assetSchema.attributes;
+export function createAssetId(): string {
+  return uuidv4();
+}
+
+export function getAssetCreateMutation(entityData: EntityData, _id = createAssetId()): string {
+  const { attributes } = assetSchema;
   const pluralizedEntityName = capitalize(assetSchema.plural);
-  const _id = uuidv4();
   const data = filterOutInvalidAttributes(attributes, entityData);
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const responseType = assetSchema.plural;
