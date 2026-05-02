@@ -401,7 +401,7 @@ function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
 }
 
 type DataAdapter = {
-  data: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue;
+  data: unknown;
   defaultScope: string;
   primaryAttributeName: string;
   relationshipEntitySchema: Entity | undefined;
@@ -440,7 +440,7 @@ function dataAdapter({
         }
 
         if (Array.isArray(field)) {
-          const attrField = field as AttributeValue[];
+          const attrField = field as unknown as AttributeValue[];
 
           return attrField
             .slice(0, 3)

@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
 import { apiPaths } from './api-paths';
 import { useCreateAssetMutation } from '../graphql-client/use-entity-mutation';
-import type { FormEntityItem } from '../graphql-client/types';
+import type { FormEntityItem, OrderedAssetValue } from '../graphql-client/types';
 
 export const ACCEPTED_MIME_TYPES = [
   'image/jpeg',
@@ -74,6 +74,11 @@ export type UploadedFileResult = {
   height?: number;
 };
 
+export type UploadedAssetResult = UploadedFileResult & {
+  asset: OrderedAssetValue;
+  _id: string;
+};
+
 type UploadResponse = {
   pathname: string;
   lqip?: string;
@@ -93,8 +98,8 @@ export type OpenFileDialogAndUploadOptions = {
  */
 async function openFileDialogAndUpload(
   options: OpenFileDialogAndUploadOptions,
-  createAssetNode?: (file: UploadedFileResult, projectId?: string) => Promise<void>
-): Promise<UploadedFileResult[]> {
+  createAssetNode?: (file: UploadedFileResult, projectId?: string) => Promise<OrderedAssetValue>
+): Promise<UploadedAssetResult[]> {
   const { projectId, accept, multiple = true, maxBytes = 4 * 1024 * 1024 } = options;
 
   const input = document.createElement('input');
@@ -130,7 +135,7 @@ async function openFileDialogAndUpload(
 
     const uploadUrl = apiPaths(projectId).upload;
     const uploads = await Promise.all(
-      validFiles.map(async (file): Promise<UploadedFileResult> => {
+      validFiles.map(async (file): Promise<UploadedAssetResult> => {
         const dimensions = await readImageDimensions(file);
 
         const response = await fetch(uploadUrl, {
@@ -155,11 +160,13 @@ async function openFileDialogAndUpload(
           height: dimensions?.height,
         };
 
-        if (createAssetNode) {
-          await createAssetNode(result, projectId);
-        }
+        const asset = createAssetNode ? await createAssetNode(result, projectId) : mapUploadedFileToAsset(result);
 
-        return result;
+        return {
+          ...result,
+          _id: asset._id,
+          asset,
+        };
       })
     );
 
@@ -169,7 +176,6 @@ async function openFileDialogAndUpload(
 
     return uploads;
   } catch (error) {
-    // eslint-disable-next-line no-console -- surface error for debugging
     console.error(error);
     toast.error('Upload failed. Please try again.');
 
@@ -203,10 +209,10 @@ async function readImageDimensions(file: File): Promise<{ width: number; height:
 
 // Asset creation is delegated via the createAssetNode callback so callers can use Apollo useMutation
 
-export function useUploadAssets(): (options: OpenFileDialogAndUploadOptions) => Promise<UploadedFileResult[]> {
+export function useUploadAssets(): (options: OpenFileDialogAndUploadOptions) => Promise<UploadedAssetResult[]> {
   const createAsset = useCreateAssetMutation();
 
-  return async (options: OpenFileDialogAndUploadOptions): Promise<UploadedFileResult[]> => {
+  return async (options: OpenFileDialogAndUploadOptions): Promise<UploadedAssetResult[]> => {
     return openFileDialogAndUpload(options, async (file) => {
       const entityData: FormEntityItem = {
         path: { _id: '', disabled: false, scope: 'default', value: file.pathname },
@@ -222,7 +228,20 @@ export function useUploadAssets(): (options: OpenFileDialogAndUploadOptions) => 
           : {}),
       };
 
-      await createAsset(entityData);
+      return createAsset(entityData);
     });
+  };
+}
+
+function mapUploadedFileToAsset(file: UploadedFileResult): OrderedAssetValue {
+  return {
+    _id: '',
+    path: file.pathname,
+    originalFilename: file.originalFilename,
+    size: file.size,
+    mimeType: file.mimeType,
+    lqip: file.lqip ?? '',
+    width: file.width ?? 0,
+    height: file.height ?? 0,
   };
 }

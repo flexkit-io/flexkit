@@ -9,14 +9,22 @@ export function SchemaError(): JSX.Element {
     return <></>;
   }
 
+  const [summary, deployHint, ...details] = schemaErrorMessage.split('\n');
+
   return (
     <Alert className="fk-mb-4" variant="destructive">
       <AlertCircle className="fk-h-4 fk-w-4" />
-      <AlertTitle>Schema Error</AlertTitle>
+      <AlertTitle>Schema mismatch</AlertTitle>
       <AlertDescription>
-        There is an error in your Flexkit schema. Please check the schema configuration in your flexkit.config.ts file.
-        <br />
-        {schemaErrorMessage}
+        <p>{summary}</p>
+        {deployHint ? <p className="fk-mt-1">{deployHint}</p> : null}
+        {details.length > 0 ? (
+          <ul className="fk-mt-2 fk-list-disc fk-pl-4">
+            {details.map((detail) => (
+              <li key={detail}>{detail.replace(/^- /, '')}</li>
+            ))}
+          </ul>
+        ) : null}
       </AlertDescription>
     </Alert>
   );

@@ -44,6 +44,7 @@ export type ActionEditRelationship = {
     entityName: string;
     relationshipId: string;
     mode: 'single' | 'multiple';
+    assetAccept?: string;
   };
 };
 

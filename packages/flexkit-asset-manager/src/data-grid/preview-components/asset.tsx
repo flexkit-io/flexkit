@@ -11,6 +11,9 @@ type FileTypeIconCompatProps = {
 
 const FileTypeIconCompat = FileTypeIcon as unknown as ComponentType<FileTypeIconCompatProps>;
 
+const transparentImageBackground =
+  'fk-bg-[#fafafa] [--asset-checker:#f0f0f0] [background-image:linear-gradient(45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(-45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,var(--asset-checker)_75%),linear-gradient(-45deg,transparent_75%,var(--asset-checker)_75%)] [background-position:0_0,0_4px,4px_-4px,-4px_0px] [background-size:8px_8px] dark:fk-bg-[#222] dark:[--asset-checker:#2a2a2a]';
+
 export function Asset({ value }: { value: string }): JSX.Element | null {
   if (!value) {
     return null;
@@ -43,11 +46,19 @@ export function Asset({ value }: { value: string }): JSX.Element | null {
         {isImage ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <img src={thumbnaillUrl} alt="asset" className="fk-w-12 fk-h-12 fk-cursor-zoom-in" />
+              <img
+                src={thumbnaillUrl}
+                alt="asset"
+                className={`fk-w-12 fk-h-12 fk-cursor-zoom-in fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
+              />
             </TooltipTrigger>
             <TooltipPortal>
               <TooltipContent>
-                <img src={fullUrl} alt="asset" className="fk-w-52 fk-h-52" />
+                <img
+                  src={fullUrl}
+                  alt="asset"
+                  className={`fk-w-52 fk-h-52 fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
+                />
               </TooltipContent>
             </TooltipPortal>
           </Tooltip>

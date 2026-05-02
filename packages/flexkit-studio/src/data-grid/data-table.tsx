@@ -35,6 +35,7 @@ import {
 import { cn } from '../ui/lib/utils';
 import type { AttributeValue } from '../graphql-client/types';
 import type { MultipleRelationshipConnection } from '../core/types';
+import { useGraphQLError } from '../graphql-client/graphql-context';
 
 interface DataTableProps<TData extends AttributeValue, TValue> {
   classNames?: {
@@ -87,6 +88,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
   toolbarComponent,
 }: DataTableProps<TData, TValue>): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { schemaErrorMessage } = useGraphQLError();
   const [rowSelection, setRowSelection] = useState(initialSelectionState ?? {});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -145,6 +147,10 @@ export function DataTable<TData extends AttributeValue, TValue>({
 
     setRowSelection(updaterFn);
     onEntitySelectionChange?.(selectedIds);
+  }
+
+  if (schemaErrorMessage) {
+    return <></>;
   }
 
   return (

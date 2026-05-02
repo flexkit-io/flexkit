@@ -41,7 +41,6 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
   const copyrightYear = new Date().getFullYear();
   const currentRouterLocation = useLocation();
   const referal: string =
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- generic "any" typing comes from react-router-dom
     currentRouterLocation.state?.from?.pathname ?? currentRouterLocation.pathname;
 
   const fromPath = referal.includes(selectedProject.projectId)

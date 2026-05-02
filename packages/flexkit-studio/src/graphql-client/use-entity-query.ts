@@ -1,9 +1,11 @@
 import { useEffect, useCallback, useState } from 'react';
 import { prop, uniqBy } from 'ramda';
 import { gql } from '@apollo/client';
+import type { OperationVariables } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
-import { getServerError, parseErrorBody } from './error-utils';
+import { getGraphQLSchemaMismatchMessage, getServerError, parseErrorBody } from './error-utils';
 import { getEntityQuery, mapQueryResult, mapQueryResultForFormFields } from './queries';
+import { useGraphQLError } from './graphql-context';
 import type {
   EntityQueryAggregate,
   EntityQueryResults,
@@ -15,7 +17,7 @@ import type {
   ImageValue,
 } from './types';
 
-type FetchMoreOptions = { variables: { options: { offset: number; limit: number } } };
+type FetchMoreOptions = { variables: OperationVariables & { options: { offset: number; limit: number } } };
 type Results = (MappedEntityQueryResults | MappedFormEntityQueryResults) | { count: 0; results: [] };
 
 export function useEntityQuery({ entityNamePlural, schema, scope, variables, isForm }: UseEntityQueryParams): {
@@ -25,12 +27,14 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
   isLoading: boolean;
   isProjectDisabled: boolean;
   isProjectReadOnly: boolean;
+  schemaErrorMessage: string | null;
 } {
   const [result, setResult] = useState<Results>({
     count: 0,
     results: [],
   });
   const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
+  const { schemaErrorMessage, setSchemaErrorMessage } = useGraphQLError();
   const {
     loading: isLoading,
     data,
@@ -45,6 +49,7 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
 
   // Parse 403 error response to determine the specific error code
   const serverError = getServerError(error);
+  const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(error);
 
   const { isProjectDisabled, isProjectReadOnly } = (() => {
     if (serverError?.statusCode === 403) {
@@ -96,16 +101,39 @@ export function useEntityQuery({ entityNamePlural, schema, scope, variables, isF
         });
       })
       .catch((error: unknown) => {
-        // eslint-disable-next-line no-console -- show the error to the user
         console.error('Error fetching more data:', error);
       });
   }
 
   useEffect(() => {
-    setResult(mappedResults);
-  }, [mappedResults]);
+    if (schemaMismatchMessage) {
+      setSchemaErrorMessage(schemaMismatchMessage);
 
-  return { isLoading, fetchMore, count: result.count, data: result.results, isProjectDisabled, isProjectReadOnly };
+      return;
+    }
+
+    if (data && schemaErrorMessage && !error) {
+      setSchemaErrorMessage(null);
+    }
+  }, [data, error, schemaErrorMessage, schemaMismatchMessage, setSchemaErrorMessage]);
+
+  useEffect(() => {
+    if (error || schemaMismatchMessage) {
+      return;
+    }
+
+    setResult(mappedResults);
+  }, [error, mappedResults, schemaMismatchMessage]);
+
+  return {
+    isLoading,
+    fetchMore,
+    count: result.count,
+    data: result.results,
+    isProjectDisabled,
+    isProjectReadOnly,
+    schemaErrorMessage,
+  };
 }
 
 function mapResults(

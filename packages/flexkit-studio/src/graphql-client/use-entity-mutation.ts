@@ -4,21 +4,37 @@ import { gql } from '@apollo/client';
 import type { DocumentNode, ErrorLike } from '@apollo/client';
 import { useApolloClient, useMutation } from '@apollo/client/react';
 import type { MutationHookOptions } from '@apollo/client/react';
-import { getAssetCreateMutation } from './queries';
-import type { FormEntityItem, EntityData } from './types';
+import { createAssetId, getAssetCreateMutation } from './queries';
+import type { FormEntityItem, EntityData, OrderedAssetValue } from './types';
 import { getServerError, parseErrorBody } from './error-utils';
 
-export function useCreateAssetMutation(): (entityData: FormEntityItem) => Promise<void> {
+export function useCreateAssetMutation(): (entityData: FormEntityItem) => Promise<OrderedAssetValue> {
   const apolloClient = useApolloClient();
 
-  return async (entityData: FormEntityItem): Promise<void> => {
-    const mutation = getAssetCreateMutation(entityData as unknown as EntityData);
+  return async (entityData: FormEntityItem): Promise<OrderedAssetValue> => {
+    const assetId = createAssetId();
+    const mutation = getAssetCreateMutation(entityData as unknown as EntityData, assetId);
 
     await apolloClient.mutate({
       mutation: gql`
         ${mutation}
       `,
     });
+
+    return mapAssetFormEntityItemToValue(entityData, assetId);
+  };
+}
+
+function mapAssetFormEntityItemToValue(entityData: FormEntityItem, assetId: string): OrderedAssetValue {
+  return {
+    _id: assetId,
+    path: String(entityData.path?.value ?? ''),
+    originalFilename: String(entityData.originalFilename?.value ?? ''),
+    size: Number(entityData.size?.value ?? 0),
+    mimeType: String(entityData.mimeType?.value ?? ''),
+    lqip: String(entityData.lqip?.value ?? ''),
+    width: Number(entityData.width?.value ?? 0),
+    height: Number(entityData.height?.value ?? 0),
   };
 }
 

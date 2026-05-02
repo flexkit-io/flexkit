@@ -54,6 +54,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   const cols = attributesSchema
     .map((attribute) => {
       const previewType =
+        (attribute.inputType === 'relationship' && attribute.relationship?.entity === '_asset' ? 'asset' : undefined) ??
         attribute.previewType ??
         inputTypeToPreviewFieldMap[attribute.inputType as keyof typeof inputTypeToPreviewFieldMap];
       const previewComponent =

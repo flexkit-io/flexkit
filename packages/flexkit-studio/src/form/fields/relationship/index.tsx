@@ -1,6 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../../../ui/primitives/alert';
 import type { FormFieldParams } from '../../types';
+import AssetMultipleRelationship from './asset-multiple';
 import MultipleRelationship from './multiple';
 import SingleRelationship from './single';
 
@@ -13,6 +14,10 @@ export default function Relationship(formFieldParams: FormFieldParams<'relations
   }
 
   if (relationship?.mode === 'multiple') {
+    if (relationship.entity === '_asset') {
+      return <AssetMultipleRelationship {...formFieldParams} />;
+    }
+
     const props = { relationshipEntityName: fieldSchema.relationship?.entity, ...formFieldParams };
 
     return <MultipleRelationship {...props} />;
