@@ -73,16 +73,12 @@ export function Uploader({
     }
 
     const currentValue = getValues(name);
-    const currentAsset = currentValue?.value as ImageValue | undefined;
 
     selectedAssetIdRef.current = connection._id;
     setBase64PreviewImage(null);
     setValue(name, {
       ...currentValue,
-      value: {
-        ...selectedAsset,
-        _id: currentAsset?._id ?? '',
-      },
+      value: selectedAsset,
     });
   }, [getValues, name, relationshipId, relationships, setValue]);
 
