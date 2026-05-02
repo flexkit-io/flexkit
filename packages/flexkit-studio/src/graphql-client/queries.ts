@@ -819,6 +819,14 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
   fields += relationshipAttributesArray.reduce((acc, attributeName: string) => {
     const relationshipAttribute = find(propEq(attributeName, 'name'))(schemaAttributes) as Attribute | undefined;
     const relationshipMode = relationshipAttribute?.relationship?.mode ?? 'single';
+
+    if (isAssetRelationshipAttribute(relationshipAttribute)) {
+      return `${acc}${getAssetConnectionSelection(
+        attributeName,
+        hasOrderedAssetConnectionProperties(relationshipAttribute, entitySchema)
+      )}`;
+    }
+
     const relationshipEntityName = relationshipAttribute?.relationship?.entity ?? '';
     const relationshipEntitySchema = find(propEq(relationshipEntityName, 'name'))(schema) as Entity | undefined;
     const relationshipEntityAttributes = relationshipEntitySchema?.attributes ?? [];
@@ -827,13 +835,6 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
     const primaryAttribute = find(propEq(primaryAttributeName, 'name'))(relationshipEntityAttributes) as Attribute;
     const primaryAttributeScope = primaryAttribute.scope;
     let list = '';
-
-    if (isAssetRelationshipAttribute(relationshipAttribute)) {
-      return `${acc}${getAssetConnectionSelection(
-        attributeName,
-        hasOrderedAssetConnectionProperties(relationshipAttribute, entitySchema)
-      )}`;
-    }
 
     if (relationshipMode === 'single') {
       if (primaryAttributeScope === 'global') {
