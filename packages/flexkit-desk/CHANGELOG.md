@@ -1,5 +1,14 @@
 # @flexkit/desk
 
+## 0.0.19
+
+### Patch Changes
+
+- 28516ff: Adds support for ordered multi-asset relationship fields backed by `_asset` relationships. Studio now includes an asset-specific picker, multi-file upload, thumbnail previews, manual ordering via relationship edge `sortOrder`, optimized save mutations, and clearer GraphQL schema mismatch errors.
+- Updated dependencies [26cf0e3]
+- Updated dependencies [28516ff]
+  - @flexkit/studio@0.0.19
+
 ## 0.0.18
 
 ### Patch Changes
