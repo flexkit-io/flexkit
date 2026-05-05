@@ -1,31 +1,34 @@
 'use client';
 
+import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon } from 'lucide-react';
 import { useTheme } from '../theme-context';
-import { Toaster as Sonner } from 'sonner';
+import { Toaster as Sonner, type ToasterProps } from 'sonner';
 
-type ToasterProps = React.ComponentProps<typeof Sonner>;
-
-function Toaster({ ...props }: ToasterProps): JSX.Element {
+const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = 'system' } = useTheme();
 
   return (
     <Sonner
-      className="toaster fk-group"
       theme={theme as ToasterProps['theme']}
-      toastOptions={{
-        classNames: {
-          toast:
-            'group toast group-[.toaster]:fk-bg-background group-[.toaster]:fk-text-foreground group-[.toaster]:fk-border-border group-[.toaster]:fk-shadow-lg',
-          description: 'group-[.toast]:fk-text-muted-foreground',
-          actionButton: 'group-[.toast]:fk-bg-primary group-[.toast]:fk-text-primary-foreground',
-          cancelButton: 'group-[.toast]:fk-bg-muted group-[.toast]:fk-text-muted-foreground',
-          success:
-            'group-[.toaster]:!fk-bg-emerald-500 group-[.toaster]:!fk-border-emerald-500 group-[.toaster]:!fk-text-white',
-        },
+      className="toaster group"
+      icons={{
+        success: <CircleCheckIcon className="fk:size-4" />,
+        info: <InfoIcon className="fk:size-4" />,
+        warning: <TriangleAlertIcon className="fk:size-4" />,
+        error: <OctagonXIcon className="fk:size-4" />,
+        loading: <Loader2Icon className="fk:size-4 fk:animate-spin" />,
       }}
+      style={
+        {
+          '--normal-bg': 'var(--popover)',
+          '--normal-text': 'var(--popover-foreground)',
+          '--normal-border': 'var(--border)',
+          '--border-radius': 'var(--radius)',
+        } as React.CSSProperties
+      }
       {...props}
     />
   );
-}
+};
 
 export { Toaster };

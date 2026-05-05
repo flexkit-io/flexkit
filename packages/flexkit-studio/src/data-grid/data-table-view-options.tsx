@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { Settings2 } from 'lucide-react';
 import type { Table } from '@tanstack/react-table';
 import { Button } from '../ui/primitives/button';
@@ -20,12 +21,12 @@ export function DataTableViewOptions<TData>({ table }: DataTableViewOptionsProps
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="fk-hidden fk-h-8 lg:fk-flex" size="sm" variant="outline">
-          <Settings2 className="fk-mr-2 fk-h-4 fk-w-4" />
+        <Button className="fk:hidden fk:h-8 fk:lg:flex" size="sm" variant="outline">
+          <Settings2 className="fk:mr-2 fk:h-4 fk:w-4" />
           View
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="fk-w-[150px]">
+      <DropdownMenuContent align="end" className="fk:w-[150px]">
         <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {table

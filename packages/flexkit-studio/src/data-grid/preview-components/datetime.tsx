@@ -6,5 +6,5 @@ export function DateTime({ value }: { value: string | object | unknown[] }) {
       ? ''
       : format(new Date(value as string), 'PPP') + ' at ' + format(new Date(value as string), 'HH:mm');
 
-  return <div className="fk-truncate">{displayValue}</div>;
+  return <div className="fk:truncate">{displayValue}</div>;
 }

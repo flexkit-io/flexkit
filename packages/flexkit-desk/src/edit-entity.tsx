@@ -1,3 +1,4 @@
+import { JSX } from 'react';
 import { useParams } from '@flexkit/studio';
 
 export function EditEntity(): JSX.Element {

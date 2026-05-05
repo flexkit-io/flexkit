@@ -86,7 +86,7 @@ async function readBody(event: H3Event): Promise<string | undefined> {
  * Applies the result to an H3 response
  */
 function applyResultToResponse(result: FlexkitHandlerResult, event: H3Event): string | object {
-  const res = event.node.res;
+  const { res } = event.node;
   res.statusCode = result.status;
 
   if (result.setCookie) {
@@ -171,7 +171,7 @@ function applyResultToResponse(result: FlexkitHandlerResult, event: H3Event): st
  */
 export function createFlexkitTanStackHandler(): EventHandler {
   return async (event: H3Event): Promise<unknown> => {
-    const req = event.node.req;
+    const { req } = event.node;
     const method = event.method || req.method || 'GET';
     const host = (req.headers.host as string) || 'localhost';
     const protocol = 'https';

@@ -1,98 +1,88 @@
 import * as React from 'react';
 import { cn } from 'src/ui/lib/utils';
 
-const Table = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, onScroll, ...props }, ref) => (
+type TableProps = Omit<React.ComponentProps<'table'>, 'ref'> & {
+  ref?: React.Ref<HTMLDivElement>;
+};
+
+function Table({ className, onScroll, ref, ...props }: TableProps) {
+  return (
     <div
-      className="fk-relative fk-h-full fk-w-full fk-overflow-auto fk-rounded-md fk-border-border fk-border"
+      ref={ref}
+      data-slot="table-container"
+      className="fk:relative fk:h-full fk:w-full fk:overflow-x-auto fk:rounded-t-md fk:border-border fk:border"
       onScroll={onScroll}
-      ref={ref}
     >
-      <table className={cn('fk-w-full fk-caption-bottom fk-text-sm', className)} {...props} />
+      <table data-slot="table" className={cn('fk:w-full fk:caption-bottom fk:text-sm', className)} {...props} />
     </div>
-  )
-);
-Table.displayName = 'Table';
+  );
+}
 
-const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-  ({ className, ...props }, ref) => (
-    <thead
-      className={cn(
-        'fk-sticky fk-z-[1] fk-top-0 fk-bg-background/90 fk-backdrop-blur-[1px] [&_tr]:fk-border-border [&_tr]:fk-border-b',
-        className
-      )}
-      ref={ref}
-      {...props}
-    />
-  )
-);
-TableHeader.displayName = 'TableHeader';
+function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
+  return <thead data-slot="table-header" className={cn('fk:[&_tr]:border-b', className)} {...props} />;
+}
 
-const TableBody = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-  ({ className, ...props }, ref) => (
-    <tbody className={cn('[&_tr:last-child]:fk-border-0', className)} ref={ref} {...props} />
-  )
-);
-TableBody.displayName = 'TableBody';
+function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
+  return <tbody data-slot="table-body" className={cn('fk:[&_tr:last-child]:border-0', className)} {...props} />;
+}
 
-const TableFooter = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(
-  ({ className, ...props }, ref) => (
+function TableFooter({ className, ...props }: React.ComponentProps<'tfoot'>) {
+  return (
     <tfoot
-      className={cn('fk-border-border fk-border-t fk-bg-muted/50 fk-font-medium [&>tr]:last:fk-border-b-0', className)}
-      ref={ref}
+      data-slot="table-footer"
+      className={cn('fk:border-t fk:bg-muted/50 fk:font-medium fk:[&>tr]:last:border-b-0', className)}
       {...props}
     />
-  )
-);
-TableFooter.displayName = 'TableFooter';
+  );
+}
 
-const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(
-  ({ className, ...props }, ref) => (
+function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
+  return (
     <tr
+      data-slot="table-row"
       className={cn(
-        'fk-border-border fk-border-b fk-transition-colors hover:fk-bg-muted/50 data-[state=selected]:fk-bg-muted',
+        'fk:border-b fk:transition-colors fk:hover:bg-muted/50 fk:has-aria-expanded:bg-muted/50 fk:data-[state=selected]:bg-muted',
         className
       )}
-      ref={ref}
       {...props}
     />
-  )
-);
-TableRow.displayName = 'TableRow';
+  );
+}
 
-const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(
-  ({ className, style, ...props }, ref) => {
-    return (
-      <th
-        className={cn(
-          'fk-h-10 fk-px-4 fk-text-left fk-align-middle fk-font-medium fk-text-muted-foreground [&:has([role=checkbox])]:fk-pr-0',
-          className
-        )}
-        ref={ref}
-        {...props}
-        style={style}
-      />
-    );
-  }
-);
-TableHead.displayName = 'TableHead';
+function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
+  return (
+    <th
+      data-slot="table-head"
+      className={cn(
+        'fk:h-10 fk:px-4 fk:text-left fk:align-middle fk:font-medium fk:whitespace-nowrap fk:text-foreground fk:[&:has([role=checkbox])]:pr-0 fk:*:[[role=checkbox]]:translate-y-[2px]',
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(
-  ({ className, ...props }, ref) => (
+function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
+  return (
     <td
-      className={cn('fk-px-4 fk-py-1 fk-align-middle [&:has([role=checkbox])]:fk-pr-0', className)}
-      ref={ref}
+      data-slot="table-cell"
+      className={cn(
+        'fk:px-4 fk:py-1 fk:align-middle fk:whitespace-nowrap fk:[&:has([role=checkbox])]:pr-0 fk:*:[[role=checkbox]]:translate-y-[2px]',
+        className
+      )}
       {...props}
     />
-  )
-);
-TableCell.displayName = 'TableCell';
+  );
+}
 
-const TableCaption = React.forwardRef<HTMLTableCaptionElement, React.HTMLAttributes<HTMLTableCaptionElement>>(
-  ({ className, ...props }, ref) => (
-    <caption className={cn('fk-mt-4 fk-text-sm fk-text-muted-foreground', className)} ref={ref} {...props} />
-  )
-);
-TableCaption.displayName = 'TableCaption';
+function TableCaption({ className, ...props }: React.ComponentProps<'caption'>) {
+  return (
+    <caption
+      data-slot="table-caption"
+      className={cn('fk:mt-4 fk:text-sm fk:text-muted-foreground', className)}
+      {...props}
+    />
+  );
+}
 
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };

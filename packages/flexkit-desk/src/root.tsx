@@ -1,3 +1,4 @@
+import { JSX } from 'react';
 import { find, propEq } from 'ramda';
 import { Outlet, useAuth, useConfig } from '@flexkit/studio';
 import { Sidebar, SidebarInset, SidebarProvider } from '@flexkit/studio/ui';

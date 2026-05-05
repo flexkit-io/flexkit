@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { JSX } from 'react';
 import { find, propEq } from 'ramda';
 import type { ColumnDef } from '@tanstack/react-table';
 import { LoaderCircle, Search as SearchIcon, Upload as UploadIcon } from 'lucide-react';
@@ -42,7 +43,7 @@ type SelectedRelationshipRow = {
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({
     ...column,
-    cell: () => <Skeleton className="fk-h-4 fk-w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
+    cell: () => <Skeleton className="fk:h-4 fk:w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
   })) as unknown as ColumnDef<AttributeValue>[];
 }
 
@@ -69,7 +70,8 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const uploadAssets = useUploadAssets();
   const isAssetPicker = entityName === '_asset';
   const entityLabel = isAssetPicker ? 'asset' : (entitySchema?.menu?.label ?? entityName.toLowerCase());
-  const selectTitle = isAssetPicker && mode === 'single' ? 'Select asset' : `Select ${isAssetPicker ? 'assets' : entityLabel}`;
+  const selectTitle =
+    isAssetPicker && mode === 'single' ? 'Select asset' : `Select ${isAssetPicker ? 'assets' : entityLabel}`;
   const uploadButtonLabel = mode === 'single' ? 'Upload asset' : 'Upload assets';
   const [searchResultIds, setSearchResultIds] = useState<{ _id: string }[]>([]);
 
@@ -334,7 +336,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       actions={
         <>
           <Button
-            className="fk-px-8"
+            className="fk:px-8"
             onClick={() => {
               handleSelection();
             }}
@@ -344,7 +346,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
           </Button>
           {!isAssetPicker ? (
             <Button
-              className="fk-px-8"
+              className="fk:px-8"
               onClick={() => {
                 handleCreateEntity();
               }}
@@ -355,13 +357,13 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
           ) : null}
           {isAssetPicker ? (
             <Button
-              className="fk-px-8"
+              className="fk:px-8"
               onClick={() => {
                 void handleUploadAssets();
               }}
               variant="outline"
             >
-              <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+              <UploadIcon className="fk:mr-2 fk:h-4 fk:w-4" />
               {uploadButtonLabel}
             </Button>
           ) : null}
@@ -374,7 +376,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       }}
       title={selectTitle}
     >
-      <div className="fk-h-[calc(100vh-10rem)] fk-min-h-0">
+      <div className="fk:h-[calc(100vh-10rem)] fk:min-h-0">
         <DataTable
           columns={isInitialLoading ? loadingColumns : columns}
           data={isInitialLoading ? loadingData : (data ?? [])}
@@ -467,13 +469,13 @@ function SearchBar({
   }
 
   return (
-    <div className="fk-relative fk-w-full">
+    <div className="fk:relative fk:w-full">
       {isLoading ? (
-        <LoaderCircle className="fk-absolute fk-left-4 fk-top-3 fk-h-4 fk-w-4 fk-shrink-0 fk-opacity-50 fk-animate-spin" />
+        <LoaderCircle className="fk:absolute fk:left-4 fk:top-3 fk:h-4 fk:w-4 fk:shrink-0 fk:opacity-50 fk:animate-spin" />
       ) : (
-        <SearchIcon className="fk-absolute fk-left-4 fk-top-3 fk-h-4 fk-w-4 fk-shrink-0 fk-opacity-50" />
+        <SearchIcon className="fk:absolute fk:left-4 fk:top-3 fk:h-4 fk:w-4 fk:shrink-0 fk:opacity-50" />
       )}
-      <Input className="fk-w-full !fk-pl-11" onChange={handleSearchChange} placeholder="Search" value={search} />
+      <Input className="fk:w-full fk:pl-11!" onChange={handleSearchChange} placeholder="Search" value={search} />
     </div>
   );
 }

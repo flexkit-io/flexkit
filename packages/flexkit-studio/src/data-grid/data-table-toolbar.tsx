@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { JSX } from 'react';
 import { find, propEq } from 'ramda';
 import type { Table } from '@tanstack/react-table';
 import { Loader2, Trash2 } from 'lucide-react';
@@ -84,7 +85,6 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
             setIsDeleting(true);
             try {
               for (const id of selectedIds) {
-                // eslint-disable-next-line no-await-in-loop
                 await deleteOne(id);
               }
 
@@ -106,8 +106,8 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
   }
 
   return (
-    <div className="fk-flex fk-items-center fk-justify-between">
-      <div className="fk-flex fk-flex-1 fk-items-center fk-space-x-2">
+    <div className="fk:flex fk:items-center fk:justify-between">
+      <div className="fk:flex fk:flex-1 fk:items-center fk:space-x-2">
         {scopes && scopes.length > 0 ? (
           <Select
             defaultValue={appContext.scope}
@@ -116,8 +116,8 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
             }}
             value={appContext.scope}
           >
-            <SelectTrigger className="fk-w-[12rem] fk-h-8" id="project">
-              <span className="fk-text-muted-foreground">Scope:</span>
+            <SelectTrigger className="fk:w-48!" id="project" size="sm">
+              <span className="fk:text-muted-foreground">Scope:</span>
               <SelectValue>
                 {
                   ((find(propEq(appContext.scope ?? '', 'name'))(scopes) as { name: string; label: string }) || null)
@@ -138,22 +138,22 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
       </div>
       {selectedIds.length > 0 ? (
         <Button
-          className="fk-h-8 fk-mr-2 lg:fk-flex"
+          className="fk:h-8 fk:mr-2 fk:lg:flex"
           disabled={isDeleting}
           onClick={handleBatchDelete}
           size="sm"
           variant="destructive"
         >
           {isDeleting ? (
-            <Loader2 className="fk-mr-2 fk-h-4 fk-w-4 fk-animate-spin" />
+            <Loader2 className="fk:mr-2 fk:h-4 fk:w-4 fk:animate-spin" />
           ) : (
-            <Trash2 className="fk-mr-2 fk-h-4 fk-w-4" />
+            <Trash2 className="fk:mr-2 fk:h-4 fk:w-4" />
           )}
           Delete ({selectedIds.length})
         </Button>
       ) : null}
       <Button
-        className="fk-ml-auto fk-h-8 lg:fk-flex"
+        className="fk:ml-auto fk:h-8 fk:lg:flex"
         disabled={isDeleting}
         onClick={handleCreate}
         size="sm"

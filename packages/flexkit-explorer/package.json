@@ -48,17 +48,16 @@
   },
   "devDependencies": {
     "@flexkit/studio": "workspace:*",
+    "@tailwindcss/cli": "4.2.4",
     "@types/node": "^20.5.2",
     "@types/ramda": "^0.29.7",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "autoprefixer": "^10.4.16",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
     "eslint-config-custom": "workspace:*",
-    "postcss": "^8.4.31",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
     "tailwind-config": "workspace:*",
-    "tailwindcss": "3.4.10",
+    "tailwindcss": "4.2.4",
     "tsconfig": "workspace:*",
     "tsup": "8.5.1",
     "typescript": "^5.3.3"
@@ -70,12 +69,12 @@
     "graphql-ws": "5.14.2",
     "lucide-react": "0.577.0",
     "ramda": "^0.29.1",
-    "swr": "2.2.5"
+    "swr": "2.4.1"
   },
   "peerDependencies": {
     "@flexkit/studio": "workspace:*",
-    "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "publishConfig": {
     "access": "public"

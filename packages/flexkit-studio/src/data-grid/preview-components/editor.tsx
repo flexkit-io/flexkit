@@ -16,5 +16,5 @@ export function Editor({ value }: { value: string }) {
     textValue = value?.substring(0, MAX_LENGTH) ?? '';
   }
 
-  return <div className="fk-truncate">{textValue}</div>;
+  return <div className="fk:truncate">{textValue}</div>;
 }

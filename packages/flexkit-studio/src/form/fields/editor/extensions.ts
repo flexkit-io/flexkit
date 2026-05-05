@@ -31,7 +31,7 @@ const placeholder = Placeholder;
 const tiptapLink = TiptapLink.configure({
   HTMLAttributes: {
     'class': cx(
-      'fk-text-muted-foreground fk-underline fk-underline-offset-[3px] hover:fk-text-primary fk-transition-colors fk-cursor-pointer'
+      'fk:text-muted-foreground fk:underline fk:underline-offset-[3px] fk:hover:text-primary fk:transition-colors fk:cursor-pointer'
     ),
   },
 });
@@ -51,25 +51,25 @@ const tiptapImage = TiptapImage.extend({
   addProseMirrorPlugins() {
     return [
       UploadImagesPlugin({
-        imageClass: cx('fk-opacity-40 fk-rounded-lg fk-border fk-border-stone-200'),
+        imageClass: cx('fk:opacity-40 fk:rounded-lg fk:border fk:border-stone-200'),
       }),
     ];
   },
 }).configure({
   allowBase64: true,
   HTMLAttributes: {
-    class: cx('fk-rounded-lg fk-border fk-border-muted'),
+    class: cx('fk:rounded-lg fk:border fk:border-muted'),
   },
 });
 
 const taskList = TaskList.configure({
   HTMLAttributes: {
-    class: cx('fk-not-prose fk-pl-2 '),
+    class: cx('fk:not-prose fk:pl-2 '),
   },
 });
 const taskItem = TaskItem.configure({
   HTMLAttributes: {
-    'class': cx('fk-flex gap-2 fk-items-start fk-my-2'),
+    'class': cx('fk:flex gap-2 fk:items-start fk:my-2'),
   },
   nested: true,
 });
@@ -83,28 +83,28 @@ const horizontalRule = HorizontalRule.configure({
 const starterKit = StarterKit.configure({
   bulletList: {
     HTMLAttributes: {
-      'class': cx('fk-list-disc fk-list-outside fk-leading-3 -fk-mt-2'),
+      'class': cx('fk:list-disc fk:list-outside fk:leading-3 fk:-mt-2'),
     },
   },
   orderedList: {
     HTMLAttributes: {
-      'class': cx('fk-list-decimal fk-list-outside fk-leading-3 -fk-mt-2'),
+      'class': cx('fk:list-decimal fk:list-outside fk:leading-3 fk:-mt-2'),
     },
   },
   listItem: {
     HTMLAttributes: {
-      'class': cx('fk-leading-normal -fk-mb-2'),
+      'class': cx('fk:leading-normal fk:-mb-2'),
     },
   },
   blockquote: {
     HTMLAttributes: {
-      'class': cx('fk-border-l-4 fk-border-primary'),
+      'class': cx('fk:border-l-4 fk:border-primary'),
     },
   },
   codeBlock: false,
   code: {
     HTMLAttributes: {
-      'class': cx('fk-rounded-md fk-bg-muted fk-px-1.5 fk-py-1 fk-font-mono fk-font-medium'),
+      'class': cx('fk:rounded-md fk:bg-muted fk:px-1.5 fk:py-1 fk:font-mono fk:font-medium'),
       spellcheck: 'false',
     },
   },
@@ -124,21 +124,21 @@ const codeBlockLowlight = CodeBlockLowlight.configure({
 
 const youtube = Youtube.configure({
   HTMLAttributes: {
-    'class': cx('fk-rounded-lg fk-border fk-border-muted'),
+    'class': cx('fk:rounded-lg fk:border fk:border-muted'),
   },
   inline: false,
 });
 
 const twitter = Twitter.configure({
   HTMLAttributes: {
-    'class': cx('fk-not-prose'),
+    'class': cx('fk:not-prose'),
   },
   inline: false,
 });
 
 const mathematics = Mathematics.configure({
   HTMLAttributes: {
-    'class': cx('fk-text-foreground fk-rounded fk-p-1 hover:fk-bg-muted fk-cursor-pointer'),
+    'class': cx('fk:text-foreground fk:rounded-sm fk:p-1 fk:hover:bg-muted fk:cursor-pointer'),
   },
   katexOptions: {
     throwOnError: false,

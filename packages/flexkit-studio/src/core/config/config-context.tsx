@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useMemo } from 'react';
+import type { JSX } from 'react';
 import { has, path } from 'ramda';
 import { useParams } from 'react-router-dom';
 import { assetSchema } from '../../entities/assets-schema';

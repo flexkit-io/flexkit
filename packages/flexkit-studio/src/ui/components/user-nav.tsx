@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useTheme } from '../theme-context';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../primitives/avatar';
@@ -24,24 +25,24 @@ export function UserNav({ projectId }: Props): JSX.Element {
   const [isLoading, auth] = useAuth();
 
   if (isLoading) {
-    return <Skeleton className="fk-h-8 fk-w-8 fk-rounded-full" />;
+    return <Skeleton className="fk:h-8 fk:w-8 fk:rounded-full" />;
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="fk-relative fk-h-8 fk-w-8 fk-rounded-full" variant="ghost">
-          <Avatar className="fk-h-8 fk-w-8">
+        <Button className="fk:relative fk:h-8 fk:w-8 fk:rounded-full" variant="ghost">
+          <Avatar className="fk:h-8 fk:w-8">
             <AvatarImage alt="@shadcn" src={auth.user?.avatar_url} />
             <AvatarFallback>{auth.user?.display_name.charAt(0).toUpperCase() ?? ''}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="fk-w-56" forceMount>
+      <DropdownMenuContent align="end" className="fk:w-56" forceMount>
         <DropdownMenuLabel className="font-normal">
-          <div className="fk-flex fk-flex-col fk-space-y-1">
-            <p className="fk-text-sm fk-font-medium fk-leading-none">{auth.user?.display_name}</p>
-            <p className="fk-text-xs fk-leading-none fk-text-muted-foreground">{auth.user?.email}</p>
+          <div className="fk:flex fk:flex-col fk:space-y-1">
+            <p className="fk:text-sm fk:font-medium fk:leading-none">{auth.user?.display_name}</p>
+            <p className="fk:text-xs fk:leading-none fk:text-muted-foreground">{auth.user?.email}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -52,7 +53,7 @@ export function UserNav({ projectId }: Props): JSX.Element {
             setTheme('system');
           }}
         >
-          <Monitor className="fk-mr-2 fk-h-4 fk-w-4" />
+          <Monitor className="fk:mr-2 fk:h-4 fk:w-4" />
           <span>System</span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
@@ -61,7 +62,7 @@ export function UserNav({ projectId }: Props): JSX.Element {
             setTheme('dark');
           }}
         >
-          <Moon className="fk-mr-2 fk-h-4 fk-w-4" />
+          <Moon className="fk:mr-2 fk:h-4 fk:w-4" />
           <span>Dark</span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuCheckboxItem
@@ -70,7 +71,7 @@ export function UserNav({ projectId }: Props): JSX.Element {
             setTheme('light');
           }}
         >
-          <Sun className="fk-mr-2 fk-h-4 fk-w-4" />
+          <Sun className="fk:mr-2 fk:h-4 fk:w-4" />
           <span>Light</span>
         </DropdownMenuCheckboxItem>
         <DropdownMenuSeparator />

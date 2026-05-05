@@ -1,5 +1,5 @@
-import type { ComponentType, ReactNode } from 'react';
-import type { Attribute, AttributeOptions, Scopes } from '../types';
+import type { ComponentType, JSX, ReactNode } from 'react';
+import type { AttributeOptions, Scopes } from '../types';
 import type { FormFieldParams } from '../../form/types';
 import type { Entity } from '../types';
 export interface LogoProps {

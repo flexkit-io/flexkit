@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { SyntheticEvent } from 'react';
+import type { JSX, SyntheticEvent } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, X as ClearIcon } from 'lucide-react';
 import type { FormFieldValue } from '../../graphql-client/types';
@@ -55,26 +55,26 @@ export function DateTime({ control, fieldSchema, getValues, setValue }: FormFiel
               <PopoverTrigger asChild>
                 <Button
                   className={cn(
-                    'fk-w-full fk-justify-start fk-h-10 fk-text-left fk-font-normal hover:fk-bg-transparent fk-relative',
-                    !field.value?.value && 'fk-text-muted-foreground',
-                    !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
+                    'fk:w-full fk:justify-start fk:h-10 fk:text-left fk:font-normal fk:hover:bg-transparent fk:relative',
+                    !field.value?.value && 'fk:text-muted-foreground',
+                    !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
                   )}
                   disabled={isEditable === false || field.value?.disabled}
                   id={id}
                   variant="outline"
                 >
-                  <div className="fk-flex fk-items-center fk-w-full">
-                    <span className="fk-flex-grow">
+                  <div className="fk:flex fk:items-center fk:w-full">
+                    <span className="fk:grow">
                       {field.value?.value
                         ? format(new Date(field.value.value as string), 'PPP') +
                           ' at ' +
                           format(new Date(field.value.value as string), 'HH:mm')
                         : 'Pick a date and time'}
                     </span>
-                    <div className="fk-flex fk-items-center fk-gap-1">
+                    <div className="fk:flex fk:items-center fk:gap-1">
                       {field.value?.value && (
                         <span
-                          className="fk-p-2 fk-text-muted-foreground hover:fk-text-accent-foreground fk-cursor-pointer"
+                          className="fk:p-2 fk:text-muted-foreground fk:hover:text-accent-foreground fk:cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleClearing(e);
@@ -82,27 +82,27 @@ export function DateTime({ control, fieldSchema, getValues, setValue }: FormFiel
                           role="button"
                           aria-label="Clear date"
                         >
-                          <ClearIcon className="fk-h-4 fk-w-4" />
+                          <ClearIcon className="fk:h-4 fk:w-4" />
                         </span>
                       )}
-                      <CalendarIcon className="fk-h-4 fk-w-4 fk-text-muted-foreground hover:fk-text-accent-foreground" />
+                      <CalendarIcon className="fk:h-4 fk:w-4 fk:text-muted-foreground fk:hover:text-accent-foreground" />
                     </div>
                   </div>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="fk-w-auto fk-p-0" align="start">
+              <PopoverContent className="fk:w-auto fk:p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={field.value?.value ? new Date(field.value.value as string) : undefined}
                   onSelect={(date) => handleSelect(date, field.value)}
                   initialFocus
                 />
-                <div className="fk-p-3 fk-border-t fk-border-border">
-                  <label htmlFor="time" className="fk-text-sm fk-font-medium">
+                <div className="fk:p-3 fk:border-t fk:border-border">
+                  <label htmlFor="time" className="fk:text-sm fk:font-medium">
                     Time
                   </label>
                   <Input
-                    className="fk-mt-1 fk-w-[90px]"
+                    className="fk:mt-1 fk:w-[90px]"
                     id="time"
                     onChange={(e) => {
                       const timeValue = e.target.value;

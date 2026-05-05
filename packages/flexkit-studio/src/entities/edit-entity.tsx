@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { JSX } from 'react';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
@@ -201,8 +202,8 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
               }}
               value={currentScope}
             >
-              <SelectTrigger className="fk-w-[12rem] fk-h-9" id="project">
-                <span className="fk-text-muted-foreground">Scope:&nbsp;</span>
+              <SelectTrigger className="fk:w-[12rem] fk:h-9" id="project">
+                <span className="fk:text-muted-foreground">Scope:&nbsp;</span>
                 <SelectValue>
                   {(find(propEq(currentScope, 'name'))(scopes) as { name: string; label: string }).label}
                 </SelectValue>

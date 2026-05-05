@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { JSX } from 'react';
 import { useCompletion } from '@ai-sdk/react';
 import { ArrowUp } from 'lucide-react';
 import { addAIHighlight, useEditor } from 'novel';
@@ -55,11 +56,11 @@ export function AISelector({ onOpenChange }: AISelectorProps): JSX.Element | nul
   }
 
   return (
-    <Command className="fk-w-[350px]">
+    <Command className="fk:w-[350px]">
       {hasCompletion && (
-        <div className="fk-flex fk-max-h-[400px]">
+        <div className="fk:flex fk:max-h-[400px]">
           <ScrollArea>
-            <div className="fk-prose fk-p-2 fk-px-4 fk-prose-sm">
+            <div className="fk:prose fk:p-2 fk:px-4 fk:prose-sm">
               <Markdown>{completion}</Markdown>
             </div>
           </ScrollArea>
@@ -67,17 +68,17 @@ export function AISelector({ onOpenChange }: AISelectorProps): JSX.Element | nul
       )}
 
       {isLoading && (
-        <div className="fk-flex fk-h-12 fk-w-full fk-items-center fk-px-4 fk-text-sm fk-font-medium fk-text-muted-foreground fk-text-pink-600">
-          <Magic className="fk-mr-2 fk-h-4 fk-w-4 fk-shrink-0  " />
+        <div className="fk:flex fk:h-12 fk:w-full fk:items-center fk:px-4 fk:text-sm fk:font-medium fk:text-muted-foreground fk:text-pink-600">
+          <Magic className="fk:mr-2 fk:h-4 fk:w-4 fk:shrink-0  " />
           AI is thinking
-          <div className="fk-ml-2 fk-mt-1">
+          <div className="fk:ml-2 fk:mt-1">
             <CrazySpinner />
           </div>
         </div>
       )}
       {!isLoading && (
         <>
-          <div className="fk-relative">
+          <div className="fk:relative">
             <CommandInput
               value={inputValue}
               onValueChange={setInputValue}
@@ -87,7 +88,7 @@ export function AISelector({ onOpenChange }: AISelectorProps): JSX.Element | nul
             />
             <Button
               size="icon"
-              className="fk-absolute fk-right-2 fk-top-1/2 fk-h-6 w-6 -fk-translate-y-1/2 fk-rounded-full fk-bg-pink-600 hover:fk-bg-pink-800"
+              className="fk:absolute fk:right-2 fk:top-1/2 fk:h-6 w-6 fk:-translate-y-1/2 fk:rounded-full fk:bg-pink-600 fk:hover:bg-pink-800"
               onClick={() => {
                 if (completion) {
                   return complete(completion, {
@@ -103,7 +104,7 @@ export function AISelector({ onOpenChange }: AISelectorProps): JSX.Element | nul
                 }).then(() => setInputValue(''));
               }}
             >
-              <ArrowUp className="fk-h-4 fk-w-4" />
+              <ArrowUp className="fk:h-4 fk:w-4" />
             </Button>
           </div>
           <CommandList>

@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { X as CloseIcon } from 'lucide-react';
@@ -68,6 +69,7 @@ export default function DrawerModal({
 
   return (
     <Drawer
+      direction="right"
       dismissible={false}
       onClose={() => {
         handleClose();
@@ -75,19 +77,19 @@ export default function DrawerModal({
       open={isOpen}
     >
       <DrawerContent style={isFocused ? {} : { maxWidth: `calc(100% - ${gutter.toString()}px)` }}>
-        <DrawerHeader>
-          <DrawerTitle className="fk-w-full">
-            {title ? title : <Skeleton className="fk-h-5 fk-w-[120px]" />}
+        <DrawerHeader className="fk:px-10">
+          <DrawerTitle className="fk:w-full">
+            {title ? title : <Skeleton className="fk:h-5 fk:w-[120px]" />}
           </DrawerTitle>
-          <DrawerDescription className="fk-sr-only">{title ? title : 'Loading form'}</DrawerDescription>
+          <DrawerDescription className="fk:sr-only">{title ? title : 'Loading form'}</DrawerDescription>
           {actions}
           <Button className="" onClick={handleClose} size="icon" variant="ghost">
-            <CloseIcon className="fk-h-4 fk-w-4" />
-            <span className="fk-sr-only">Close</span>
+            <CloseIcon className="fk:h-4 fk:w-4" />
+            <span className="fk:sr-only">Close</span>
           </Button>
         </DrawerHeader>
         <Separator />
-        <div className="fk-min-h-0 fk-px-4 fk-pt-6 fk-h-full fk-overflow-y-auto fk-pb-16" data-vaul-no-drag>
+        <div className="fk:min-h-0 fk:px-10 fk:pt-6 fk:h-full fk:overflow-y-auto fk:pb-16" data-vaul-no-drag>
           {children}
         </div>
       </DrawerContent>

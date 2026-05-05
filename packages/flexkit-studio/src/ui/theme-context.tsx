@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { JSX } from 'react';
 
 type SystemTheme = 'dark' | 'light';
 
@@ -46,7 +47,9 @@ export function ThemeProvider({
   themes = DEFAULT_THEMES,
   value,
 }: ThemeProviderProps): JSX.Element {
-  const [theme, setThemeState] = useState<string | undefined>(() => getInitialTheme(storageKey, defaultTheme, enableSystem));
+  const [theme, setThemeState] = useState<string | undefined>(() =>
+    getInitialTheme(storageKey, defaultTheme, enableSystem)
+  );
   const [systemTheme, setSystemTheme] = useState<SystemTheme | undefined>(() => getSystemTheme());
   const resolvedTheme = resolveTheme(forcedTheme ?? theme, enableSystem, systemTheme);
 

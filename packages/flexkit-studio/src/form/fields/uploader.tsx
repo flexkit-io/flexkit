@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { SyntheticEvent } from 'react';
+import type { JSX, RefObject, SyntheticEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import bytes from 'bytes';
 import {
@@ -57,7 +57,7 @@ export function Uploader({
   const [saving, setSaving] = useState(false);
   const id = useId();
   const relationshipId = useId();
-  useOuterClick(wrapperRef, setIsOpen, '[data-radix-popper-content-wrapper]');
+  useOuterClick(wrapperRef as RefObject<HTMLDivElement>, setIsOpen, '[data-radix-popper-content-wrapper]');
 
   useEffect(() => {
     const connection = relationships[relationshipId]?.connect as SingleRelationshipConnection | undefined;
@@ -312,13 +312,13 @@ export function Uploader({
         <FormItem>
           <FormLabel htmlFor={id}>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-[2.5rem] fk-text-sm">
+          <FormControl className="fk:flex fk:flex-col fk:w-full fk:min-h-[2.5rem] fk:text-sm">
             <div
               aria-controls={`image-dropdown-${name}`}
               aria-expanded={isOpen}
-              className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-overflow-hidden focus-visible:fk-outline-none fk-ring-offset-background focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
-                isOpen ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
-              } ${dragActive ? 'fk-border-dashed fk-border-2 fk-border-emerald-500 fk-bg-green-50' : 'fk-border-input fk-bg-background'}`}
+              className={`fk:relative fk:flex fk:w-full fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:overflow-hidden fk:focus-visible:outline-hidden fk:ring-offset-background fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:focus-visible:ring-offset-2 ${
+                isOpen ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
+              } ${dragActive ? 'fk:border-dashed fk:border-2 fk:border-emerald-500 fk:bg-green-50' : 'fk:border-input fk:bg-background'}`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -366,35 +366,35 @@ export function Uploader({
               role="combobox"
               tabIndex={0}
             >
-              <div className="fk-flex fk-w-full fk-space-x-2">
+              <div className="fk:flex fk:w-full fk:space-x-2">
                 {/* Initial empty state when there is no image */}
                 {!(field.value?.value as ImageValue)?.path && !base64PreviewImage ? (
-                  <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
-                    <div className="fk-flex fk-h-full fk-items-center fk-text-muted-foreground fk-text-sm fk-font-light">
-                      <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" /> Drag or paste file here
+                  <div className="fk:flex fk:h-9 fk:w-full fk:px-3 fk:pt-0.5 fk:items-center">
+                    <div className="fk:flex fk:h-full fk:items-center fk:text-muted-foreground fk:text-sm fk:font-light">
+                      <ImageIcon className="fk:mr-2 fk:h-4 fk:w-4" /> Drag or paste file here
                     </div>
                     <Button
-                      className="fk-ml-auto fk-h-7 fk-rounded fk-text-muted-foreground"
+                      className="fk:ml-auto fk:h-7 fk:rounded-sm fk:text-muted-foreground"
                       id={id}
                       onClick={handleUpload}
                       variant="ghost"
                     >
-                      <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                      <UploadIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                       Upload
                     </Button>
                     <Button
-                      className="fk-ml-2 fk-h-7 fk-rounded fk-text-muted-foreground"
+                      className="fk:ml-2 fk:h-7 fk:rounded-sm fk:text-muted-foreground"
                       onClick={handleSelectAsset}
                       variant="ghost"
                     >
-                      <SearchIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                      <SearchIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                       Select
                     </Button>
                   </div>
                 ) : null}
                 {/* When there is an image, show the image and its metadata */}
                 {(field.value?.value as ImageValue | undefined)?.path && !isOpen ? (
-                  <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
+                  <div className="fk:flex fk:h-9 fk:w-full fk:px-3 fk:pt-0.5 fk:items-center">
                     {(() => {
                       const value = field.value?.value as ImageValue;
                       const mime = value?.mimeType;
@@ -406,7 +406,7 @@ export function Uploader({
                       if (isImage) {
                         return (
                           <img
-                            className="fk-w-8 fk-h-8 fk-mr-2 fk-rounded fk-object-scale-down"
+                            className="fk:w-8 fk:h-8 fk:mr-2 fk:rounded-sm fk:object-scale-down"
                             src={`${IMAGES_BASE_URL}${value.path}?w=128&h=128&f=webp`}
                             alt="Uploaded"
                           />
@@ -419,50 +419,50 @@ export function Uploader({
                       )[ext];
 
                       return (
-                        <div className="fk-w-8 fk-h-8 fk-mr-2 fk-rounded fk-bg-transparent fk-flex fk-items-center fk-justify-center [&>svg]:fk-h-full [&>svg]:fk-w-auto">
+                        <div className="fk:w-8 fk:h-8 fk:mr-2 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
                           <FileTypeIcon extension={ext} {...(style || {})} />
                         </div>
                       );
                     })()}
                     {bytes((field.value?.value as ImageValue).size)}
-                    <span className="fk-block fk-w-px fk-h-5 fk-mx-2 fk-bg-border" />
+                    <span className="fk:block fk:w-px fk:h-5 fk:mx-2 fk:bg-border" />
                     {(field.value?.value as ImageValue).mimeType}
                     {(field.value?.value as ImageValue).width && (field.value?.value as ImageValue).height ? (
                       <>
-                        <span className="fk-block fk-w-px fk-h-5 fk-mx-2 fk-bg-border" />
+                        <span className="fk:block fk:w-px fk:h-5 fk:mx-2 fk:bg-border" />
                         {(field.value?.value as ImageValue).width}x{(field.value?.value as ImageValue).height}px
                       </>
                     ) : null}
                   </div>
                 ) : null}
                 {!(field.value?.value as ImageValue)?.path && base64PreviewImage && (
-                  <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
+                  <div className="fk:flex fk:h-9 fk:w-full fk:px-3 fk:pt-0.5 fk:items-center">
                     <img
                       src={base64PreviewImage}
                       alt="Preview"
-                      className="fk-mr-2 fk-mt-0.5 fk-rounded fk-h-7 fk-w-7 rounded-md object-cover"
+                      className="fk:mr-2 fk:mt-0.5 fk:rounded-sm fk:h-7 fk:w-7 rounded-md object-cover"
                     />
                     Loading image...
                   </div>
                 )}
                 {!(field.value?.value as ImageValue)?.path && !base64PreviewImage && saving ? (
-                  <div className="fk-flex fk-h-9 fk-w-full fk-px-3 fk-pt-0.5 fk-items-center">
-                    <div className="fk-w-7 fk-h-7 fk-mr-2 fk-rounded fk-bg-muted fk-flex fk-items-center fk-justify-center">
-                      <FileOutlineIcon className="fk-h-4 fk-w-4 fk-text-muted-foreground" />
+                  <div className="fk:flex fk:h-9 fk:w-full fk:px-3 fk:pt-0.5 fk:items-center">
+                    <div className="fk:w-7 fk:h-7 fk:mr-2 fk:rounded-sm fk:bg-muted fk:flex fk:items-center fk:justify-center">
+                      <FileOutlineIcon className="fk:h-4 fk:w-4 fk:text-muted-foreground" />
                     </div>
                     Uploading file...
                   </div>
                 ) : null}
                 {/* When there is an image, show the dropdown menu */}
                 {(field.value?.value as ImageValue)?.path ? (
-                  <div className="fk-absolute fk-top-0 fk-right-10">
+                  <div className="fk:absolute fk:top-0 fk:right-10">
                     <DropdownMenu modal={false}>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                className="fk-h-8 fk-w-8 fk-ml-auto fk-mt-[0.1875rem] fk-rounded"
+                                className="fk:h-8 fk:w-8 fk:ml-auto fk:mt-[0.1875rem] fk:rounded-sm"
                                 onClick={(event) => {
                                   event.stopPropagation();
                                 }}
@@ -472,7 +472,7 @@ export function Uploader({
                                 size="icon"
                                 variant="ghost"
                               >
-                                <EllipsisIcon className="fk-h-4 fk-w-4" />
+                                <EllipsisIcon className="fk:h-4 fk:w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                           </TooltipTrigger>
@@ -481,31 +481,31 @@ export function Uploader({
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      <DropdownMenuContent className="fk-w-48">
+                      <DropdownMenuContent className="fk:w-48">
                         <DropdownMenuGroup>
                           <DropdownMenuItem onClick={handleUpload}>
-                            <UploadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                            <UploadIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                             <span>Upload</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={handleSelectAsset}>
-                            <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                            <ImageIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                             <span>Select asset</span>
                           </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
                           <DropdownMenuItem onClick={(e) => handleDownload(e, field.value)}>
-                            <DownloadIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                            <DownloadIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                             <span>Download</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => handleCopyUrl(e, field.value)}>
-                            <CopyIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                            <CopyIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                             <span>Copy URL</span>
                           </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleClearing}>
-                          <ClearFieldIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                          <ClearFieldIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                           <span>Clear field</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -518,7 +518,7 @@ export function Uploader({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                            className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 wrapperRef.current?.focus();
@@ -528,7 +528,7 @@ export function Uploader({
                             size="icon"
                             variant="ghost"
                           >
-                            <Maximize2 className="fk-h-4 fk-w-4" />
+                            <Maximize2 className="fk:h-4 fk:w-4" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -543,7 +543,7 @@ export function Uploader({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -561,7 +561,7 @@ export function Uploader({
                           size="icon"
                           variant="ghost"
                         >
-                          <ClearIcon className="fk-h-4 fk-w-4" />
+                          <ClearIcon className="fk:h-4 fk:w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -572,12 +572,12 @@ export function Uploader({
                 ) : null}
               </div>
               <Collapsible
-                className="fk-w-full fk-space-y-2 !fk-ml-0"
+                className="fk:w-full fk:space-y-2 fk:ml-0!"
                 onOpenChange={setIsOpen}
                 open={isOpen && (Boolean((field.value?.value as ImageValue)?.path) || Boolean(base64PreviewImage))}
               >
-                <CollapsibleContent className="fk-w-full">
-                  <div className="fk-flex fk-w-full fk-h-[30vh]" id={`image-dropdown-${name}`}>
+                <CollapsibleContent className="fk:w-full">
+                  <div className="fk:flex fk:w-full fk:h-[30vh]" id={`image-dropdown-${name}`}>
                     {(field.value?.value as ImageValue | undefined)?.path
                       ? (() => {
                           const value = field.value?.value as ImageValue;
@@ -590,7 +590,7 @@ export function Uploader({
                           if (isImage) {
                             return (
                               <img
-                                className="fk-w-full fk-rounded-md fk-object-scale-down"
+                                className="fk:w-full fk:rounded-md fk:object-scale-down"
                                 src={`${IMAGES_BASE_URL}${value.path}?w=624&h=624&f=webp`}
                                 alt="Uploaded"
                               />
@@ -603,14 +603,14 @@ export function Uploader({
                           )[ext];
 
                           return (
-                            <div className="fk-w-full fk-h-full fk-rounded-md fk-bg-muted/40 fk-flex fk-flex-col fk-items-center fk-justify-center fk-text-muted-foreground">
-                              <div className="fk-w-16 fk-h-16 fk-rounded fk-bg-transparent fk-flex fk-items-center fk-justify-center [&>svg]:fk-h-full [&>svg]:fk-w-auto">
+                            <div className="fk:w-full fk:h-full fk:rounded-md fk:bg-muted/40 fk:flex fk:flex-col fk:items-center fk:justify-center fk:text-muted-foreground">
+                              <div className="fk:w-16 fk:h-16 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
                                 <FileTypeIcon extension={ext} {...(style || {})} />
                               </div>
-                              <div className="fk-mt-3 fk-text-sm">
+                              <div className="fk:mt-3 fk:text-sm">
                                 {value.originalFilename || 'File'} · {bytes(value.size)} · {value.mimeType}
                               </div>
-                              <div className="fk-mt-1 fk-text-xs">Preview not available</div>
+                              <div className="fk:mt-1 fk:text-xs">Preview not available</div>
                             </div>
                           );
                         })()
@@ -619,15 +619,15 @@ export function Uploader({
                 </CollapsibleContent>
               </Collapsible>
               {saving ? (
-                <div className="fk-absolute !fk-m-0 fk-top-0 fk-left-0 fk-right-0 fk-bottom-0 fk-w-full fk-bg-muted-foreground/5 fk-overflow-hidden">
-                  <div className="fk-animate-progress fk-w-full fk-h-full fk-bg-muted-foreground/10" />
+                <div className="fk:absolute fk:m-0! fk:top-0 fk:left-0 fk:right-0 fk:bottom-0 fk:w-full fk:bg-muted-foreground/5 fk:overflow-hidden">
+                  <div className="fk:animate-progress fk:w-full fk:h-full fk:bg-muted-foreground/10" />
                 </div>
               ) : null}
             </div>
           </FormControl>
           <input
             accept={options?.accept ? options.accept : 'image/*'}
-            className="fk-hidden"
+            className="fk:hidden"
             id={`file-upload-${name}`}
             onChange={(e) => {
               const file = e.currentTarget.files && e.currentTarget.files[0];

@@ -1,22 +1,23 @@
 'use client';
 
 import * as React from 'react';
-import * as TogglePrimitive from '@radix-ui/react-toggle';
+import { Toggle as TogglePrimitive } from 'radix-ui';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/utils';
 
 const toggleVariants = cva(
-  'fk-inline-flex fk-items-center fk-justify-center fk-rounded-md fk-text-sm fk-font-medium fk-ring-offset-background fk-transition-colors hover:fk-bg-muted hover:fk-text-muted-foreground focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 disabled:fk-pointer-events-none disabled:fk-opacity-50 data-[state=on]:fk-bg-accent data-[state=on]:fk-text-accent-foreground',
+  "fk:inline-flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:text-sm fk:font-medium fk:whitespace-nowrap fk:transition-[color,box-shadow] fk:outline-none fk:hover:bg-muted fk:hover:text-muted-foreground fk:focus-visible:border-ring fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:aria-invalid:border-destructive fk:aria-invalid:ring-destructive/20 fk:data-[state=on]:bg-accent fk:data-[state=on]:text-accent-foreground fk:dark:aria-invalid:ring-destructive/40 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        'default': 'fk-bg-transparent',
-        outline: 'fk-border fk-border-input fk-bg-transparent hover:fk-bg-accent hover:fk-text-accent-foreground',
+        default: 'fk:bg-transparent',
+        outline:
+          'fk:border fk:border-input fk:bg-transparent fk:shadow-xs fk:hover:bg-accent fk:hover:text-accent-foreground',
       },
       size: {
-        'default': 'fk-h-10 fk-px-3',
-        sm: 'fk-h-9 fk-px-2.5',
-        lg: 'fk-h-11 fk-px-5',
+        default: 'fk:h-9 fk:min-w-9 fk:px-2',
+        sm: 'fk:h-8 fk:min-w-8 fk:px-1.5',
+        lg: 'fk:h-10 fk:min-w-10 fk:px-2.5',
       },
     },
     defaultVariants: {
@@ -26,13 +27,15 @@ const toggleVariants = cva(
   }
 );
 
-const Toggle = React.forwardRef<
-  React.ElementRef<typeof TogglePrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof TogglePrimitive.Root> & VariantProps<typeof toggleVariants>
->(({ className, variant, size, ...props }, ref) => (
-  <TogglePrimitive.Root className={cn(toggleVariants({ variant, size, className }))} ref={ref} {...props} />
-));
-
-Toggle.displayName = TogglePrimitive.Root.displayName;
+function Toggle({
+  className,
+  variant,
+  size,
+  ...props
+}: React.ComponentProps<typeof TogglePrimitive.Root> & VariantProps<typeof toggleVariants>) {
+  return (
+    <TogglePrimitive.Root data-slot="toggle" className={cn(toggleVariants({ variant, size, className }))} {...props} />
+  );
+}
 
 export { Toggle, toggleVariants };

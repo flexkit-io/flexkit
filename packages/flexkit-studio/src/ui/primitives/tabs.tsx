@@ -1,54 +1,72 @@
 'use client';
 
 import * as React from 'react';
-import * as TabsPrimitive from '@radix-ui/react-tabs';
+import { Tabs as TabsPrimitive } from 'radix-ui';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'src/ui/lib/utils';
 
-const Tabs = TabsPrimitive.Root;
+function Tabs({ className, orientation = 'horizontal', ...props }: React.ComponentProps<typeof TabsPrimitive.Root>) {
+  return (
+    <TabsPrimitive.Root
+      data-slot="tabs"
+      data-orientation={orientation}
+      orientation={orientation}
+      className={cn('fk:group/tabs fk:flex fk:data-[orientation=horizontal]:flex-col', className)}
+      {...props}
+    />
+  );
+}
 
-const TabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    className={cn(
-      'fk-inline-flex fk-h-10 fk-items-center fk-justify-center fk-rounded-md fk-bg-muted fk-p-1 fk-text-muted-foreground',
-      className
-    )}
-    ref={ref}
-    {...props}
-  />
-));
-TabsList.displayName = TabsPrimitive.List.displayName;
+const tabsListVariants = cva(
+  'fk:group/tabs-list fk:inline-flex fk:w-fit fk:items-center fk:justify-center fk:rounded-lg fk:p-[3px] fk:text-muted-foreground fk:group-data-[orientation=horizontal]/tabs:h-9 fk:group-data-[orientation=vertical]/tabs:h-fit fk:group-data-[orientation=vertical]/tabs:flex-col fk:data-[variant=line]:rounded-none',
+  {
+    variants: {
+      variant: {
+        default: 'fk:bg-muted',
+        line: 'fk:gap-1 fk:bg-transparent',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  }
+);
 
-const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    className={cn(
-      'fk-inline-flex fk-items-center fk-justify-center fk-whitespace-nowrap fk-rounded-sm fk-px-3 fk-py-1.5 fk-text-sm fk-font-medium fk-ring-offset-background fk-transition-all focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 disabled:fk-pointer-events-none disabled:fk-opacity-50 data-[state=active]:fk-bg-background data-[state=active]:fk-text-foreground data-[state=active]:fk-shadow-sm',
-      className
-    )}
-    ref={ref}
-    {...props}
-  />
-));
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
+function TabsList({
+  className,
+  variant = 'default',
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.List> & VariantProps<typeof tabsListVariants>) {
+  return (
+    <TabsPrimitive.List
+      data-slot="tabs-list"
+      data-variant={variant}
+      className={cn(tabsListVariants({ variant }), className)}
+      {...props}
+    />
+  );
+}
 
-const TabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    className={cn(
-      'fk-mt-2 fk-ring-offset-background focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2',
-      className
-    )}
-    ref={ref}
-    {...props}
-  />
-));
-TabsContent.displayName = TabsPrimitive.Content.displayName;
+function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+  return (
+    <TabsPrimitive.Trigger
+      data-slot="tabs-trigger"
+      className={cn(
+        "fk:relative fk:inline-flex fk:h-[calc(100%-1px)] fk:flex-1 fk:items-center fk:justify-center fk:gap-1.5 fk:rounded-md fk:border fk:border-transparent! fk:px-2 fk:py-1 fk:text-sm fk:font-medium fk:whitespace-nowrap fk:text-foreground/60 fk:transition-all fk:group-data-[orientation=vertical]/tabs:w-full fk:group-data-[orientation=vertical]/tabs:justify-start fk:hover:text-foreground fk:focus-visible:border-ring! fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:focus-visible:outline-1 fk:focus-visible:outline-ring fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:group-data-[variant=default]/tabs-list:data-[state=active]:shadow-sm fk:group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none fk:dark:text-muted-foreground fk:dark:hover:text-foreground fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4",
+        'fk:group-data-[variant=line]/tabs-list:bg-transparent fk:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent fk:dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent! fk:dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent',
+        'fk:data-[state=active]:bg-background fk:data-[state=active]:text-foreground fk:dark:data-[state=active]:border-muted-foreground/75! fk:dark:data-[state=active]:bg-input/30 fk:dark:data-[state=active]:text-foreground',
+        'fk:after:absolute fk:after:bg-foreground fk:after:opacity-0 fk:after:transition-opacity fk:group-data-[orientation=horizontal]/tabs:after:inset-x-0 fk:group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] fk:group-data-[orientation=horizontal]/tabs:after:h-0.5 fk:group-data-[orientation=vertical]/tabs:after:inset-y-0 fk:group-data-[orientation=vertical]/tabs:after:-right-1 fk:group-data-[orientation=vertical]/tabs:after:w-0.5 fk:group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100',
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
-export { Tabs, TabsList, TabsTrigger, TabsContent };
+function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Content>) {
+  return (
+    <TabsPrimitive.Content data-slot="tabs-content" className={cn('fk:flex-1 fk:outline-none', className)} {...props} />
+  );
+}
+
+export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants };

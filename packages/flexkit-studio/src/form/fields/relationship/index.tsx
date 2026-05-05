@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../../../ui/primitives/alert';
 import type { FormFieldParams } from '../../types';

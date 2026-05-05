@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { CommandGroup, CommandItem, CommandSeparator } from '../../../../ui/primitives/command';
 import { useEditor } from 'novel';
 import { Check, TextQuote, TrashIcon } from 'lucide-react';
@@ -17,10 +18,10 @@ export default function AICompletionCommands({
     <>
       <CommandGroup>
         <CommandItem
-          className="fk-gap-2 fk-px-4"
+          className="fk:gap-2 fk:px-4"
           value="replace"
           onSelect={() => {
-            const selection = editor.view.state.selection;
+            const { selection } = editor.view.state;
 
             editor
               .chain()
@@ -35,14 +36,14 @@ export default function AICompletionCommands({
               .run();
           }}
         >
-          <Check className="fk-h-4 fk-w-4 fk-text-muted-foreground" />
+          <Check className="fk:h-4 fk:w-4 fk:text-muted-foreground" />
           Replace selection
         </CommandItem>
         <CommandItem
-          className="fk-gap-2 fk-px-4"
+          className="fk:gap-2 fk:px-4"
           value="insert"
           onSelect={() => {
-            const selection = editor.view.state.selection;
+            const { selection } = editor.view.state;
             editor
               .chain()
               .focus()
@@ -50,15 +51,15 @@ export default function AICompletionCommands({
               .run();
           }}
         >
-          <TextQuote className="fk-h-4 fk-w-4 fk-text-muted-foreground" />
+          <TextQuote className="fk:h-4 fk:w-4 fk:text-muted-foreground" />
           Insert below
         </CommandItem>
       </CommandGroup>
       <CommandSeparator />
 
       <CommandGroup>
-        <CommandItem onSelect={onDiscard} value="thrash" className="fk-gap-2 fk-px-4">
-          <TrashIcon className="fk-h-4 fk-w-4 fk-text-muted-foreground" />
+        <CommandItem onSelect={onDiscard} value="thrash" className="fk:gap-2 fk:px-4">
+          <TrashIcon className="fk:h-4 fk:w-4 fk:text-muted-foreground" />
           Discard
         </CommandItem>
       </CommandGroup>

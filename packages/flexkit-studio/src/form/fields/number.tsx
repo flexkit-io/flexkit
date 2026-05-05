@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import type { JSX } from 'react';
 import type { FormFieldValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import { Input } from '../../ui/primitives/input';
@@ -52,8 +53,8 @@ export function Number({ control, fieldSchema, setValue }: FormFieldParams<'numb
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <Input
-              className={`fk-w-full fk-mt-[0.1875rem] ${
-                !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
+              className={`fk:w-full fk:mt-[0.1875rem] ${
+                !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
               }`}
               disabled={isEditable === false || field.value?.disabled}
               id={id}

@@ -1,14 +1,15 @@
+import type { JSX } from 'react';
 import { useTheme } from '../theme-context';
 
 export function Loading(): JSX.Element {
   const { resolvedTheme } = useTheme();
 
   return (
-    <div className="fk-flex fk-w-full fk-h-full fk-justify-center fk-items-center fk-bg-background">
-      <div className="fk-flex fk-flex-col fk-items-center">
+    <div className="fk:flex fk:w-full fk:h-full fk:justify-center fk:items-center fk:bg-background">
+      <div className="fk:flex fk:flex-col fk:items-center">
         {resolvedTheme === 'dark' ? (
           <svg
-            className="fk-h-8 fk-w-8 fk-animate-bounce"
+            className="fk:h-8 fk:w-8 fk:animate-bounce"
             fill="none"
             viewBox="0 0 48 48"
             xmlns="http://www.w3.org/2000/svg"
@@ -21,7 +22,7 @@ export function Loading(): JSX.Element {
           </svg>
         ) : (
           <svg
-            className="fk-h-8 fk-w-8 fk-animate-bounce"
+            className="fk:h-8 fk:w-8 fk:animate-bounce"
             fill="none"
             viewBox="0 0 48 48"
             xmlns="http://www.w3.org/2000/svg"
@@ -33,7 +34,7 @@ export function Loading(): JSX.Element {
             />
           </svg>
         )}
-        <div className="fk-text-foreground fk-text-center fk-mt-4 fk-animate-pulse">Loading...</div>
+        <div className="fk:text-foreground fk:text-center fk:mt-4 fk:animate-pulse">Loading...</div>
       </div>
     </div>
   );

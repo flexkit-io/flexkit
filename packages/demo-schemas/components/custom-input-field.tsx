@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, JSX } from 'react';
 import type { FormFieldParams, FormFieldValue } from '@flexkit/studio';
 import {
   Badge,
@@ -43,8 +43,8 @@ export function CustomTextField({ control, fieldSchema, setValue }: FormFieldPar
           {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <Input
-              className={`fk-w-full fk-mt-[0.1875rem] ${
-                !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
+              className={`fk:w-full fk:mt-[0.1875rem] ${
+                !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
               }`}
               disabled={isEditable === false || field.value?.disabled}
               id={fieldId}
@@ -55,7 +55,7 @@ export function CustomTextField({ control, fieldSchema, setValue }: FormFieldPar
             />
           </FormControl>
           <Badge
-            className="fk-flex fk-w-fit fk-self-end fk-text-[0.6875rem] fk-ml-auto fk-mt-2 fk-font-light"
+            className="fk:flex fk:w-fit fk:self-end fk:text-[0.6875rem] fk:ml-auto fk:mt-2 fk:font-light"
             variant="secondary"
           >
             Characters: {((field.value?.value as string | undefined) ?? '').length}

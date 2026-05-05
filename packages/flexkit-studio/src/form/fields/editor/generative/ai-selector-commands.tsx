@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { ArrowDownWideNarrow, CheckCheck, RefreshCcwDot, StepForward, WrapText } from 'lucide-react';
 import { getPrevText, useEditor } from 'novel';
 import { CommandGroup, CommandItem, CommandSeparator } from '../../../../ui/primitives/command';
@@ -45,11 +46,11 @@ export default function AISelectorCommands({ onSelect }: AISelectorCommandsProps
               const text = editor.storage.markdown.serializer.serialize(slice.content);
               onSelect(text, value);
             }}
-            className="fk-flex fk-gap-2 fk-px-4"
+            className="fk:flex fk:gap-2 fk:px-4"
             key={option.value}
             value={option.value}
           >
-            <option.icon className="fk-h-4 fk-w-4 fk-text-foreground" />
+            <option.icon className="fk:h-4 fk:w-4 fk:text-foreground" />
             {option.label}
           </CommandItem>
         ))}
@@ -64,9 +65,9 @@ export default function AISelectorCommands({ onSelect }: AISelectorCommandsProps
             onSelect(text, 'continue');
           }}
           value="continue"
-          className="fk-gap-2 fk-px-4"
+          className="fk:gap-2 fk:px-4"
         >
-          <StepForward className="fk-h-4 fk-w-4 fk-text-foreground" />
+          <StepForward className="fk:h-4 fk:w-4 fk:text-foreground" />
           Continue writing
         </CommandItem>
       </CommandGroup>

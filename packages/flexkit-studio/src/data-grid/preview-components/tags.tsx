@@ -6,10 +6,10 @@ export function Tags({ value }: { value: string }) {
   }
 
   return (
-    <div className="fk-flex fk-flex-wrap fk-gap-1 fk-max-w-full truncate">
+    <div className="fk:flex fk:flex-wrap fk:gap-1 fk:max-w-full truncate">
       {value.split(',').map((tag) => (
         <Badge
-          className="fk-px-2.5 fk-py-0 fk-font-normal fk-text-[0.6875rem] fk-leading-4"
+          className="fk:px-2.5 fk:py-0 fk:font-normal fk:text-[0.6875rem] fk:leading-4"
           key={tag}
           variant="secondary"
         >

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { JSX, useCallback, useMemo, useState } from 'react';
 import { Loader2, PlusIcon, TagIcon, Ellipsis } from 'lucide-react';
 import {
   Button,
@@ -168,26 +168,26 @@ export function Sidebar(): JSX.Element {
   }, [editTagName, entityNamePlural, runMutation, schema, scope, setMutation, setOptions, tagToEdit]);
 
   return (
-    <div className="fk-flex fk-h-full fk-max-h-screen fk-flex-col fk-gap-2">
-      <div className="fk-flex fk-h-12 fk-items-center fk-border-b fk-border-b-border fk-px-4 fk-lg:fk-h-[60px] fk-lg:fk-px-6">
-        <TagIcon className="fk-h-4 fk-w-4" />
-        <span className="fk-px-4 fk-text-sm fk-font-semibold fk-tracking-tight">Tags</span>
+    <div className="fk:flex fk:h-full fk:max-h-screen fk:flex-col fk:gap-2">
+      <div className="fk:flex fk:h-12 fk:items-center fk:border-b fk:border-b-border fk:px-4 fk:lg:px-6">
+        <TagIcon className="fk:h-4 fk:w-4" />
+        <span className="fk:px-4 fk:text-sm fk:font-semibold fk:tracking-tight">Tags</span>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="secondary" size="icon" className="fk-ml-auto fk-h-8 fk-w-8">
-                    <PlusIcon className="fk-h-4 fk-w-4" />
-                    <span className="fk-sr-only">Add tag</span>
+                  <Button variant="secondary" size="icon" className="fk:ml-auto fk:h-8 fk:w-8">
+                    <PlusIcon className="fk:h-4 fk:w-4" />
+                    <span className="fk:sr-only">Add tag</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>New tag</DialogTitle>
-                    <DialogDescription className="fk-sr-only">Create a new tag</DialogDescription>
+                    <DialogDescription className="fk:sr-only">Create a new tag</DialogDescription>
                   </DialogHeader>
-                  <div className="fk-flex fk-gap-2">
+                  <div className="fk:flex fk:gap-2">
                     <Input
                       autoFocus
                       value={newTagName}
@@ -202,7 +202,7 @@ export function Sidebar(): JSX.Element {
                   </div>
                   <DialogFooter>
                     <Button disabled={isSubmitting} onClick={handleCreate} variant="default">
-                      {isSubmitting ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+                      {isSubmitting ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
                       Add
                     </Button>
                   </DialogFooter>
@@ -216,19 +216,19 @@ export function Sidebar(): JSX.Element {
         </TooltipProvider>
       </div>
 
-      <ScrollArea className="fk-h-full">
-        <div className="fk-flex fk-flex-col fk-gap-2 fk-px-4 fk-py-2">
+      <ScrollArea className="fk:h-full">
+        <div className="fk:flex fk:flex-col fk:gap-2 fk:px-4 fk:py-2">
           {isLoading ? (
-            <div className="fk-text-sm fk-text-muted-foreground">Loading...</div>
+            <div className="fk:text-sm fk:text-muted-foreground">Loading...</div>
           ) : tags.length === 0 ? (
-            <div className="fk-text-sm fk-text-muted-foreground">No tags yet</div>
+            <div className="fk:text-sm fk:text-muted-foreground">No tags yet</div>
           ) : (
             tags.map((tag) => (
               <div
                 key={tag._id}
-                className="fk-group fk-flex fk-items-center fk-justify-between fk-rounded fk-border fk-border-border fk-bg-card fk-px-3 fk-py-1"
+                className="fk:group fk:flex fk:items-center fk:justify-between fk:rounded-sm fk:border fk:border-border fk:bg-card fk:px-3 fk:py-1"
               >
-                <span className="fk-text-sm">{tag.name}</span>
+                <span className="fk:text-sm">{tag.name}</span>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -236,9 +236,9 @@ export function Sidebar(): JSX.Element {
                       title={`Actions for ${tag.name}`}
                       variant="ghost"
                       size="icon"
-                      className="fk-h-7 fk-w-7 fk-text-muted-foreground hover:fk-text-foreground"
+                      className="fk:h-7 fk:w-7 fk:text-muted-foreground fk:hover:text-foreground"
                     >
-                      <Ellipsis className="fk-h-4 fk-w-4" />
+                      <Ellipsis className="fk:h-4 fk:w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-[160px]">
@@ -253,7 +253,7 @@ export function Sidebar(): JSX.Element {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      className="fk-text-destructive"
+                      className="fk:text-destructive"
                       onClick={() => {
                         setTagToDelete(tag);
                         setIsDeleteOpen(true);
@@ -272,9 +272,9 @@ export function Sidebar(): JSX.Element {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit tag</DialogTitle>
-            <DialogDescription className="fk-sr-only">Rename an existing tag</DialogDescription>
+            <DialogDescription className="fk:sr-only">Rename an existing tag</DialogDescription>
           </DialogHeader>
-          <div className="fk-flex fk-gap-2">
+          <div className="fk:flex fk:gap-2">
             <Input
               autoFocus
               value={editTagName}
@@ -299,7 +299,7 @@ export function Sidebar(): JSX.Element {
               Cancel
             </Button>
             <Button disabled={isSubmitting} onClick={handleRename} variant="default">
-              {isSubmitting ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+              {isSubmitting ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
               Save
             </Button>
           </DialogFooter>
@@ -309,11 +309,11 @@ export function Sidebar(): JSX.Element {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete tag</DialogTitle>
-            <DialogDescription className="fk-sr-only">Confirm deletion of a tag</DialogDescription>
+            <DialogDescription className="fk:sr-only">Confirm deletion of a tag</DialogDescription>
           </DialogHeader>
-          <div className="fk-text-sm fk-text-muted-foreground">
+          <div className="fk:text-sm fk:text-muted-foreground">
             Are you sure you want to delete the tag{' '}
-            <span className="fk-font-semibold fk-text-foreground">{tagToDelete?.name}</span>?
+            <span className="fk:font-semibold fk:text-foreground">{tagToDelete?.name}</span>?
           </div>
           <DialogFooter>
             <Button
@@ -341,7 +341,7 @@ export function Sidebar(): JSX.Element {
                 })();
               }}
             >
-              {isDeleting ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+              {isDeleting ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
               Delete
             </Button>
           </DialogFooter>

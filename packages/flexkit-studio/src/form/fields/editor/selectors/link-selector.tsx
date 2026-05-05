@@ -1,7 +1,7 @@
 import { Button } from '../../../../ui/primitives/button';
 import { PopoverContent } from '../../../../ui/primitives/popover';
 import { cn } from '../../../../ui/lib/utils';
-import { Popover, PopoverTrigger } from '@radix-ui/react-popover';
+import { Popover } from 'radix-ui';
 import { Check, Trash } from 'lucide-react';
 import { useEditor } from 'novel';
 import { useEffect, useRef } from 'react';
@@ -43,20 +43,20 @@ export const LinkSelector = ({ open, onOpenChange }: LinkSelectorProps) => {
   if (!editor) return null;
 
   return (
-    <Popover modal={true} open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <Button size="sm" variant="ghost" className="fk-gap-2 fk-rounded-none fk-border-none">
-          <p className="fk-text-base">↗</p>
+    <Popover.Root modal={true} open={open} onOpenChange={onOpenChange}>
+      <Popover.Trigger asChild>
+        <Button size="sm" variant="ghost" className="fk:gap-2 fk:rounded-none fk:border-none">
+          <p className="fk:text-base">↗</p>
           <p
-            className={cn('fk-underline fk-decoration-stone-400 fk-underline-offset-4', {
-              'fk-text-blue-500': editor.isActive('link'),
+            className={cn('fk:underline fk:decoration-stone-400 fk:underline-offset-4', {
+              'fk:text-blue-500': editor.isActive('link'),
             })}
           >
             Link
           </p>
         </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="fk-w-60 fk-p-0" sideOffset={10}>
+      </Popover.Trigger>
+      <PopoverContent align="start" className="fk:w-60 fk:p-0" sideOffset={10}>
         <form
           onSubmit={(e) => {
             const target = e.currentTarget as HTMLFormElement;
@@ -68,13 +68,13 @@ export const LinkSelector = ({ open, onOpenChange }: LinkSelectorProps) => {
               onOpenChange(false);
             }
           }}
-          className="fk-flex fk-p-1"
+          className="fk:flex fk:p-1"
         >
           <input
             ref={inputRef}
             type="text"
             placeholder="Paste a link"
-            className="fk-flex-1 fk-bg-background fk-p-1 fk-text-sm fk-outline-none"
+            className="fk:flex-1 fk:bg-background fk:p-1 fk:text-sm fk:outline-hidden"
             defaultValue={editor.getAttributes('link').href || ''}
           />
           {editor.getAttributes('link').href ? (
@@ -82,22 +82,22 @@ export const LinkSelector = ({ open, onOpenChange }: LinkSelectorProps) => {
               size="icon"
               variant="outline"
               type="button"
-              className="fk-flex fk-h-8 fk-items-center fk-rounded-sm fk-p-1 fk-text-red-600 fk-transition-all hover:fk-bg-red-100 dark:hover:fk-bg-red-800"
+              className="fk:flex fk:h-8 fk:items-center fk:rounded-xs fk:p-1 fk:text-red-600 fk:transition-all fk:hover:bg-red-100 fk:dark:hover:bg-red-800"
               onClick={() => {
                 editor.chain().focus().unsetLink().run();
                 if (inputRef.current) inputRef.current.value = '';
                 onOpenChange(false);
               }}
             >
-              <Trash className="fk-h-4 fk-w-4" />
+              <Trash className="fk:h-4 fk:w-4" />
             </Button>
           ) : (
-            <Button size="icon" className="fk-h-8">
-              <Check className="fk-h-4 fk-w-4" />
+            <Button size="icon" className="fk:h-8">
+              <Check className="fk:h-4 fk:w-4" />
             </Button>
           )}
         </form>
       </PopoverContent>
-    </Popover>
+    </Popover.Root>
   );
 };

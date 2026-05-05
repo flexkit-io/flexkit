@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss' prefix(ex);
+@config '../tailwind.config.ts';
 
 :root {
   --tab-background: 0 0% 100%;
@@ -69,7 +68,8 @@ body {
     --font-weight-regular: 400;
     --font-weight-medium: 500;
     --line-height: 1.5;
-    --popover-box-shadow: 0px 6px 20px rgba(59, 76, 106, 0.13), 0px 1.34018px 4.46726px rgba(59, 76, 106, 0.0774939),
+    --popover-box-shadow:
+      0px 6px 20px rgba(59, 76, 106, 0.13), 0px 1.34018px 4.46726px rgba(59, 76, 106, 0.0774939),
       0px 0.399006px 1.33002px rgba(59, 76, 106, 0.0525061);
   }
 
@@ -289,7 +289,7 @@ body {
   /* The Docs explorer */
   .graphiql-doc-explorer-header {
     position: sticky;
-    top: 0;
+    top: -1px;
     display: flex;
     flex-direction: column-reverse;
     padding-bottom: 0.25rem;
@@ -297,6 +297,8 @@ body {
 
     .graphiql-doc-explorer-search {
       position: relative;
+      background-color: hsl(var(--muted));
+      border-radius: 8px;
 
       & [role='listbox'] {
         background-color: hsl(var(--muted));

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, JSX, useContext } from 'react';
 import useAuthService from './use-auth-service';
 import type { Auth, AuthService, User } from './types';
 

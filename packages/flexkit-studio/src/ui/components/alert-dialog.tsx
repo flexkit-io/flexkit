@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import {
   AlertDialog as AlertModalDialog,
   AlertDialogAction,
@@ -81,7 +81,7 @@ export default function AlertDialog({ options }: Props): JSX.Element {
               disabled={isSubmitting}
               onClick={handleAction}
             >
-              {isSubmitting ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+              {isSubmitting ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
               {options.dialogActionLabel}
             </AlertDialogAction>
           </AlertDialogFooter>

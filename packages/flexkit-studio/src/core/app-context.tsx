@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useReducer } from 'react';
-import type { Dispatch, ReactNode } from 'react';
+import type { Dispatch, JSX, ReactNode } from 'react';
 import type { ActionSetRelationship, ActionSetScope, AppContextType } from './types';
 
 export const SCOPE_STORAGE_KEY = 'core.context.scope:';

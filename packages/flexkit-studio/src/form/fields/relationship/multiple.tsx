@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { Dispatch, SyntheticEvent } from 'react';
+import type { Dispatch, JSX, RefObject, SyntheticEvent } from 'react';
 import { gql } from '@apollo/client';
 import { useLazyQuery } from '@apollo/client/react';
 import type { Row } from '@tanstack/react-table';
@@ -50,7 +50,7 @@ export default function MultipleRelationship({
 }: FormFieldParams<'relationship'>): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  useOuterClick(wrapperRef, setIsOpen);
+  useOuterClick(wrapperRef as RefObject<HTMLDivElement>, setIsOpen);
   const [rows, setRows] = useState<AttributeValue[] | []>([]);
   const { name, label, options, relationship } = fieldSchema;
   const relationshipEntityName: string = relationship?.entity ?? name;
@@ -182,7 +182,6 @@ export default function MultipleRelationship({
             setRows(uniqBy(prop('_id'), [...initialRows, ...(mappedData.results as [])]));
           })
           .catch((error: unknown) => {
-            // eslint-disable-next-line no-console -- show the error to the user
             console.error('Error fetching more data:', error);
           });
       }
@@ -224,12 +223,12 @@ export default function MultipleRelationship({
         <FormItem>
           <FormLabel htmlFor={fieldId}>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-[2.375rem] fk-pl-3 fk-pr-10 fk-py-0.5 fk-text-sm">
+          <FormControl className="fk:flex fk:flex-col fk:w-full fk:min-h-[2.375rem] fk:pl-3 fk:pr-10 fk:py-0.5 fk:text-sm">
             <div
               aria-controls={`relationship-dropdown-${name}`}
               aria-expanded={isOpen}
-              className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background focus-visible:fk-outline-none fk-ring-offset-background focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
-                isOpen ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
+              className={`fk:relative fk:flex fk:w-full fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:border-input fk:bg-background fk:focus-visible:outline-hidden fk:ring-offset-background fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:focus-visible:ring-offset-2 ${
+                isOpen ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
               }`}
               onClick={(e) => {
                 e.preventDefault();
@@ -254,18 +253,18 @@ export default function MultipleRelationship({
               role="combobox"
               tabIndex={0}
             >
-              <div className="fk-flex fk-w-full fk-space-x-2">
+              <div className="fk:flex fk:w-full fk:space-x-2">
                 {!isOpen ? (
-                  <span className="fk-flex fk-flex-wrap fk-grow fk-pb-1.5">
+                  <span className="fk:flex fk:flex-wrap fk:grow fk:pb-1.5">
                     {previewItems.map((item) => (
-                      <Badge className="fk-mr-2 fk-mt-1.5 fk-rounded-sm" key={item} variant="secondary">
+                      <Badge className="fk:mr-2 fk:mt-1.5 fk:rounded-xs" key={item} variant="secondary">
                         {item}
                       </Badge>
                     ))}
                   </span>
                 ) : (
-                  <Button className="fk-h-8 fk-mr-auto fk-mt-2" onClick={handleSelection} variant="outline">
-                    <Link className="fk-h-4 fk-w-4 fk-mr-2" /> Link to a record from{' '}
+                  <Button className="fk:h-8 fk:mr-auto fk:mt-2" onClick={handleSelection} variant="outline">
+                    <Link className="fk:h-4 fk:w-4 fk:mr-2" /> Link to a record from{' '}
                     {relationshipEntitySchema?.menu?.label ?? relationshipEntitySchema?.plural}
                   </Button>
                 )}
@@ -274,7 +273,7 @@ export default function MultipleRelationship({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                           id={fieldId}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -285,7 +284,7 @@ export default function MultipleRelationship({
                           size="icon"
                           variant="ghost"
                         >
-                          <Maximize2 className="fk-h-4 fk-w-4" />
+                          <Maximize2 className="fk:h-4 fk:w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -298,7 +297,7 @@ export default function MultipleRelationship({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -316,7 +315,7 @@ export default function MultipleRelationship({
                           size="icon"
                           variant="ghost"
                         >
-                          <ClearIcon className="fk-h-4 fk-w-4" />
+                          <ClearIcon className="fk:h-4 fk:w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -326,11 +325,11 @@ export default function MultipleRelationship({
                   </TooltipProvider>
                 )}
               </div>
-              <Collapsible className="fk-w-full fk-space-y-2 !fk-ml-0" onOpenChange={setIsOpen} open={isOpen}>
-                <CollapsibleContent className="fk-w-full">
-                  <div className="fk-flex fk-w-full fk-mt-3 fk-mb-2" id={`relationship-dropdown-${name}`}>
+              <Collapsible className="fk:w-full fk:space-y-2 fk:ml-0!" onOpenChange={setIsOpen} open={isOpen}>
+                <CollapsibleContent className="fk:w-full">
+                  <div className="fk:flex fk:w-full fk:mt-3 fk:mb-2" id={`relationship-dropdown-${name}`}>
                     <DataTable
-                      classNames={{ table: 'fk-max-h-[17.5rem]' }}
+                      classNames={{ table: 'fk:max-h-[17.5rem]' }}
                       columns={columns}
                       data={rows}
                       entityName={entityName}
