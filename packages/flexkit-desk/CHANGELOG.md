@@ -1,5 +1,13 @@
 # @flexkit/desk
 
+## 0.0.20
+
+### Patch Changes
+
+- cc75129: Upgrade to React 19
+- Updated dependencies [cc75129]
+  - @flexkit/studio@0.0.20
+
 ## 0.0.19
 
 ### Patch Changes

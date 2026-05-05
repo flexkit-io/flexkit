@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.20
+
+### Patch Changes
+
+- cc75129: Upgrade to React 19
+
 ## 0.0.19
 
 ### Patch Changes
