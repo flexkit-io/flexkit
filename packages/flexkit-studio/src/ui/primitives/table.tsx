@@ -1,11 +1,17 @@
 import * as React from 'react';
 import { cn } from 'src/ui/lib/utils';
 
-function Table({ className, ...props }: React.ComponentProps<'table'>) {
+type TableProps = Omit<React.ComponentProps<'table'>, 'ref'> & {
+  ref?: React.Ref<HTMLDivElement>;
+};
+
+function Table({ className, onScroll, ref, ...props }: TableProps) {
   return (
     <div
+      ref={ref}
       data-slot="table-container"
       className="fk:relative fk:h-full fk:w-full fk:overflow-x-auto fk:rounded-t-md fk:border-border fk:border"
+      onScroll={onScroll}
     >
       <table data-slot="table" className={cn('fk:w-full fk:caption-bottom fk:text-sm', className)} {...props} />
     </div>
@@ -48,7 +54,7 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
     <th
       data-slot="table-head"
       className={cn(
-        'fk:h-10 fk:px-4 fk:text-left fk:align-middle fk:font-medium fk:whitespace-nowrap fk:text-foreground fk:[&:has([role=checkbox])]:pr-0 fk:[&>[role=checkbox]]:translate-y-[2px]',
+        'fk:h-10 fk:px-4 fk:text-left fk:align-middle fk:font-medium fk:whitespace-nowrap fk:text-foreground fk:[&:has([role=checkbox])]:pr-0 fk:*:[[role=checkbox]]:translate-y-[2px]',
         className
       )}
       {...props}
@@ -61,7 +67,7 @@ function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
     <td
       data-slot="table-cell"
       className={cn(
-        'fk:px-4 fk:py-1 fk:align-middle fk:whitespace-nowrap fk:[&:has([role=checkbox])]:pr-0 fk:[&>[role=checkbox]]:translate-y-[2px]',
+        'fk:px-4 fk:py-1 fk:align-middle fk:whitespace-nowrap fk:[&:has([role=checkbox])]:pr-0 fk:*:[[role=checkbox]]:translate-y-[2px]',
         className
       )}
       {...props}

@@ -48,7 +48,7 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
   entityName: string;
   initialSelectionState?: RowSelectionState;
   onEntitySelectionChange?: (rowSelection: string[]) => void;
-  onScroll?: (event: UIEvent<HTMLTableElement>) => void;
+  onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   pageSize?: number;
   rowHeightEstimate?: number;
   rowAdditionState?: MultipleRelationshipConnection;
@@ -87,7 +87,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
   rowDeletionState,
   toolbarComponent,
 }: DataTableProps<TData, TValue>): JSX.Element {
-  const scrollRef = useRef<HTMLTableElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { schemaErrorMessage } = useGraphQLError();
   const [rowSelection, setRowSelection] = useState(initialSelectionState ?? {});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});

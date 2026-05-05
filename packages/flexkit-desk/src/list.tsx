@@ -72,6 +72,7 @@ export function List(): JSX.Element {
 
   const loadingData = Array(pageSize).fill({});
   const loadingColumns = getLoadingColumns(columnsDefinition);
+  const isInitialLoading = isLoading && (data == null || data.length === 0);
 
   if (isProjectDisabled) {
     return (
@@ -98,12 +99,12 @@ export function List(): JSX.Element {
       </div>
       {!schemaErrorMessage ? (
         <DataTable
-          columns={isLoading ? loadingColumns : columnsDefinition}
-          data={isLoading ? loadingData : (data ?? [])}
+          columns={isInitialLoading ? loadingColumns : columnsDefinition}
+          data={isInitialLoading ? loadingData : (data ?? [])}
           entityName={entitySchema?.name ?? ''}
           pageSize={pageSize}
           onScroll={(e) => {
-            fetchMoreOnBottomReached(e.target as HTMLDivElement);
+            fetchMoreOnBottomReached(e.currentTarget);
           }}
           toolbarComponent={(table) => <DataTableToolbar entityName={entitySchema?.name ?? ''} table={table} />}
         />

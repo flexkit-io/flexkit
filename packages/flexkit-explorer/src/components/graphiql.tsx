@@ -256,6 +256,31 @@ const THEMES = ['light', 'dark', 'system'] as const;
 const TAB_CLASS_PREFIX = 'graphiql-session-tab-';
 const EXPLORER_LAYOUT_STORAGE_KEY = 'flexkit-explorer:layout';
 
+/** Matches `collapsedSize` on the explorer sidebar panel (see `PanelSize.asPercentage` in react-resizable-panels v4). */
+const EXPLORER_SIDEBAR_COLLAPSED_SIZE_PCT = 3;
+
+function panelResizeArgAsPercentage(panelSize: unknown): number | undefined {
+  if (typeof panelSize === 'number') {
+    return panelSize;
+  }
+
+  if (typeof panelSize !== 'object' || panelSize === null) {
+    return undefined;
+  }
+
+  if (!('asPercentage' in panelSize)) {
+    return undefined;
+  }
+
+  const pct = (panelSize as { asPercentage: unknown }).asPercentage;
+
+  if (typeof pct !== 'number') {
+    return undefined;
+  }
+
+  return pct;
+}
+
 type ResizableLayout = {
   [panelId: string]: number;
 };
@@ -488,12 +513,24 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
         >
           <ResizablePanel
             collapsible
-            collapsedSize="3%"
+            collapsedSize={`${EXPLORER_SIDEBAR_COLLAPSED_SIZE_PCT}%`}
             defaultSize="22%"
             id="explorer-sidebar"
             minSize="10%"
             onResize={(panelSize) => {
-              setIsSidebarCollapsed(sidebarPanel.current?.isCollapsed() ?? panelSize.asPercentage <= 3);
+              const panel = sidebarPanel.current;
+
+              if (panel) {
+                setIsSidebarCollapsed(panel.isCollapsed());
+
+                return;
+              }
+
+              const percentage = panelResizeArgAsPercentage(panelSize);
+
+              if (percentage !== undefined) {
+                setIsSidebarCollapsed(percentage <= EXPLORER_SIDEBAR_COLLAPSED_SIZE_PCT);
+              }
             }}
             panelRef={sidebarPanel}
           >
