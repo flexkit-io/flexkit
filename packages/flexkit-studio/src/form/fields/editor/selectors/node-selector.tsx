@@ -13,8 +13,7 @@ import {
 } from 'lucide-react';
 import { EditorBubbleItem, useEditor } from 'novel';
 import { Button } from '../../../../ui/primitives/button';
-import { PopoverContent, PopoverTrigger } from '../../../../ui/primitives/popover';
-import { Popover } from '@radix-ui/react-popover';
+import { Popover } from 'radix-ui';
 import { asNovelEditorWithRichCommands, type NovelEditorInput } from '../novel-editor';
 
 export type SelectorItem = {
@@ -146,14 +145,14 @@ export const NodeSelector = ({ open, onOpenChange }: NodeSelectorProps) => {
   };
 
   return (
-    <Popover modal={true} open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild className="fk-gap-2 fk-rounded-none fk-border-none hover:fk-bg-muted focus:fk-ring-0">
-        <Button size="sm" variant="ghost" className="fk-gap-2">
-          <span className="fk-whitespace-nowrap fk-text-sm">{activeItem.name}</span>
-          <ChevronDown className="fk-h-4 fk-w-4" />
+    <Popover.Root modal={true} open={open} onOpenChange={onOpenChange}>
+      <Popover.Trigger asChild className="fk:gap-2 fk:rounded-none fk:border-none fk:hover:bg-muted fk:focus:ring-0">
+        <Button size="sm" variant="ghost" className="fk:gap-2">
+          <span className="fk:whitespace-nowrap fk:text-sm">{activeItem.name}</span>
+          <ChevronDown className="fk:h-4 fk:w-4" />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent sideOffset={5} align="start" className="fk-w-48 fk-p-1">
+      </Popover.Trigger>
+      <Popover.Content sideOffset={5} align="start" className="fk:w-48 fk:p-1">
         {items.map((item) => (
           <EditorBubbleItem
             key={item.name}
@@ -161,18 +160,18 @@ export const NodeSelector = ({ open, onOpenChange }: NodeSelectorProps) => {
               item.command(editor);
               onOpenChange(false);
             }}
-            className="fk-flex fk-cursor-pointer fk-items-center fk-justify-between fk-rounded-sm fk-px-2 fk-py-1 fk-text-sm hover:fk-bg-muted"
+            className="fk:flex fk:cursor-pointer fk:items-center fk:justify-between fk:rounded-xs fk:px-2 fk:py-1 fk:text-sm fk:hover:bg-muted"
           >
-            <div className="fk-flex fk-items-center fk-space-x-2">
-              <div className="fk-rounded-sm fk-border fk-p-1">
-                <item.icon className="fk-h-3 fk-w-3" />
+            <div className="fk:flex fk:items-center fk:space-x-2">
+              <div className="fk:rounded-xs fk:border fk:p-1">
+                <item.icon className="fk:h-3 fk:w-3" />
               </div>
               <span>{item.name}</span>
             </div>
-            {activeItem.name === item.name && <Check className="fk-h-4 fk-w-4" />}
+            {activeItem.name === item.name && <Check className="fk:h-4 fk:w-4" />}
           </EditorBubbleItem>
         ))}
-      </PopoverContent>
-    </Popover>
+      </Popover.Content>
+    </Popover.Root>
   );
 };

@@ -1,27 +1,28 @@
 'use client';
 
 import * as React from 'react';
-import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
-import { Check } from 'lucide-react';
+import { Checkbox as CheckboxPrimitive } from 'radix-ui';
+import { CheckIcon } from 'lucide-react';
 import { cn } from 'src/ui/lib/utils';
 
-const Checkbox = React.forwardRef<
-  React.ElementRef<typeof CheckboxPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
->(({ className, ...props }, ref) => (
-  <CheckboxPrimitive.Root
-    className={cn(
-      'fk-peer fk-h-4 fk-w-4 fk-shrink-0 fk-rounded-sm fk-border fk-border-primary fk-ring-offset-background focus-visible:fk-outline-none focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50 data-[state=checked]:fk-bg-primary data-[state=checked]:fk-text-primary-foreground',
-      className
-    )}
-    ref={ref}
-    {...props}
-  >
-    <CheckboxPrimitive.Indicator className={cn('fk-flex fk-items-center fk-justify-center fk-text-current')}>
-      <Check className="fk-h-4 fk-w-4" />
-    </CheckboxPrimitive.Indicator>
-  </CheckboxPrimitive.Root>
-));
-Checkbox.displayName = CheckboxPrimitive.Root.displayName;
+function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+  return (
+    <CheckboxPrimitive.Root
+      data-slot="checkbox"
+      className={cn(
+        'fk:peer fk:size-4 fk:shrink-0 fk:rounded-[4px] fk:border fk:border-input fk:shadow-xs fk:transition-shadow fk:outline-none fk:focus-visible:border-ring fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:disabled:cursor-not-allowed fk:disabled:opacity-50 fk:aria-invalid:border-destructive fk:aria-invalid:ring-destructive/20 fk:data-[state=checked]:border-primary fk:data-[state=checked]:bg-primary fk:data-[state=checked]:text-primary-foreground fk:dark:bg-input/30 fk:dark:aria-invalid:ring-destructive/40 fk:dark:data-[state=checked]:bg-primary',
+        className
+      )}
+      {...props}
+    >
+      <CheckboxPrimitive.Indicator
+        data-slot="checkbox-indicator"
+        className="fk:grid fk:place-content-center fk:text-current fk:transition-none"
+      >
+        <CheckIcon className="fk:size-3.5" />
+      </CheckboxPrimitive.Indicator>
+    </CheckboxPrimitive.Root>
+  );
+}
 
 export { Checkbox };

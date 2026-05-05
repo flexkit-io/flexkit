@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react';
-import type { SyntheticEvent } from 'react';
+import type { JSX, SyntheticEvent } from 'react';
 import { find, propEq } from 'ramda';
 import { ChevronsUpDown, X as ClearIcon } from 'lucide-react';
 import { Button } from '../../../ui/primitives/button';
@@ -118,14 +118,14 @@ export default function SingleRelationship({
           <FormItem>
             <FormLabel htmlFor={fieldId}>{label}</FormLabel>
             {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-            <FormControl className="fk-flex fk-w-full fk-items-center fk-space-x-2">
+            <FormControl className="fk:flex fk:w-full fk:items-center fk:space-x-2">
               <div
-                className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background fk-ring-offset-background ${
-                  hasFocus ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
+                className={`fk:relative fk:flex fk:w-full fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:border-input fk:bg-background fk:ring-offset-background ${
+                  hasFocus ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
                 }`}
               >
                 <Input
-                  className="fk-h-[2.375rem] fk-py-[0.4375rem] fk-caret-transparent fk-border-0 focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0"
+                  className="fk:h-[2.375rem] fk:py-[0.4375rem] fk:caret-transparent fk:border-0 fk:focus-visible:ring-0 fk:focus-visible:ring-offset-0"
                   id={fieldId}
                   onBlur={() => {
                     setHasFocus(false);
@@ -148,12 +148,12 @@ export default function SingleRelationship({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk-absolute fk-right-10 fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          className="fk:absolute fk:right-10 fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                           onClick={handleClearing}
                           size="icon"
                           variant="ghost"
                         >
-                          <ClearIcon className="fk-h-4 fk-w-4" />
+                          <ClearIcon className="fk:h-4 fk:w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -166,12 +166,12 @@ export default function SingleRelationship({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                        className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                         onClick={handleSelection}
                         size="icon"
                         variant="ghost"
                       >
-                        <ChevronsUpDown className="fk-h-4 fk-w-4" />
+                        <ChevronsUpDown className="fk:h-4 fk:w-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>

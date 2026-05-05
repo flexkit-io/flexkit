@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { JSX, useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useForm } from 'react-hook-form';
@@ -113,14 +113,14 @@ export default function EmailLogin({
   }
 
   return (
-    <div className="fk-w-full">
+    <div className="fk:w-full">
       {hasOtpBeenSent ? (
         <Alert variant="success">
           <AlertDescription>
             Keep this window open and in a new tab open the link we just sent to:{' '}
             <strong>{form.getValues('email')}</strong> (
             <Button
-              className="fk-p-0 hover:fk-underline dark:fk-text-background"
+              className="fk:p-0 fk:hover:underline fk:dark:text-background"
               onClick={() => {
                 window.location.reload();
               }}
@@ -135,14 +135,14 @@ export default function EmailLogin({
         <Form {...form}>
           <form
             onSubmit={(event) => void form.handleSubmit(handleEmailLogin)(event)}
-            className="fk-w-full fk-space-y-3 fk-mb-10"
+            className="fk:w-full fk:space-y-3 fk:mb-10"
           >
             {errorCode === 'not_exists' && (
               <Alert variant="destructive">
                 <AlertDescription>
                   There is no Flexkit account associated with this email address.{' '}
                   <a
-                    className="fk-text-black/90 dark:fk-text-white/90 fk-underline"
+                    className="fk:text-black/90 fk:dark:text-white/90 fk:underline"
                     href={`https://flexkit.io/signup/email?email=${form.getValues('email')}`}
                   >
                     Sign up?
@@ -155,7 +155,7 @@ export default function EmailLogin({
                 <AlertDescription>
                   There was an unknown error, please{' '}
                   <Button
-                    className="fk-p-0 hover:fk-underline"
+                    className="fk:p-0 fk:hover:underline"
                     onClick={() => {
                       window.location.reload();
                     }}
@@ -172,7 +172,7 @@ export default function EmailLogin({
                 <AlertDescription>
                   The email verification link may have expired. Please{' '}
                   <Button
-                    className="fk-p-0 hover:fk-underline"
+                    className="fk:p-0 fk:hover:underline"
                     onClick={() => {
                       window.location.reload();
                     }}
@@ -207,16 +207,16 @@ export default function EmailLogin({
                 </FormItem>
               )}
             />
-            <Button aria-disabled={isLoading} className="fk-w-full" type="submit" disabled={Boolean(isLoading)}>
+            <Button aria-disabled={isLoading} className="fk:w-full" type="submit" disabled={Boolean(isLoading)}>
               {isLoading ? (
-                <Loader2 className="fk-h-5 fk-w-5 fk-mr-2 fk-animate-spin" />
+                <Loader2 className="fk:h-5 fk:w-5 fk:mr-2 fk:animate-spin" />
               ) : (
-                <Mail className="fk-w-5 fk-h-5 fk-mr-2" />
+                <Mail className="fk:w-5 fk:h-5 fk:mr-2" />
               )}
               Continue with Email
             </Button>
             <Button
-              className="fk-w-full fk-text-link"
+              className="fk:w-full fk:text-link"
               onClick={() => {
                 setIsEmailLogin(false);
               }}

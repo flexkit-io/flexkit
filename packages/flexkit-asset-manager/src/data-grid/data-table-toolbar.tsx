@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { JSX, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FilePlayIcon,
   ImageIcon,
@@ -418,13 +418,13 @@ export function DataTableToolbar<TData>({
   }, [columnFiltersKey, onSearchWhereChange, table]);
 
   return (
-    <div className="fk-flex fk-items-center fk-justify-between">
-      <div className="fk-flex fk-flex-1 fk-items-center fk-space-x-2">
-        <div className="fk-relative">
+    <div className="fk:flex fk:items-center fk:justify-between">
+      <div className="fk:flex fk:flex-1 fk:items-center fk:space-x-2">
+        <div className="fk:relative">
           {isLoading ? (
-            <LoaderCircle className="fk-absolute fk-left-2 fk-top-2 fk-h-4 fk-w-4 fk-shrink-0 fk-opacity-50 fk-animate-spin" />
+            <LoaderCircle className="fk:absolute fk:left-2 fk:top-2 fk:h-4 fk:w-4 fk:shrink-0 fk:opacity-50 fk:animate-spin" />
           ) : (
-            <SearchIcon className="fk-absolute fk-left-2 fk-top-2 fk-h-4 fk-w-4 fk-shrink-0 fk-opacity-50" />
+            <SearchIcon className="fk:absolute fk:left-2 fk:top-2 fk:h-4 fk:w-4 fk:shrink-0 fk:opacity-50" />
           )}
           <Input
             placeholder="Search assets..."
@@ -446,12 +446,12 @@ export function DataTableToolbar<TData>({
 
               debouncedSetSearchQuery(value);
             }}
-            className="fk-h-8 fk-w-[150px] lg:fk-w-[250px] fk-pl-8"
+            className="fk:h-8 fk:w-[150px] fk:lg:w-[250px] fk:pl-8"
           />
           {search ? (
             <button
               aria-label="Clear search"
-              className="fk-absolute fk-right-2 fk-top-2 fk-text-muted-foreground hover:fk-text-foreground"
+              className="fk:absolute fk:right-2 fk:top-2 fk:text-muted-foreground fk:hover:text-foreground"
               onClick={() => {
                 setSearch('');
                 setSearchQuery({ ...baseSearchRequest, commonParams: { q: '' } });
@@ -461,7 +461,7 @@ export function DataTableToolbar<TData>({
               }}
               type="button"
             >
-              <ResetIcon className="fk-h-4 fk-w-4" />
+              <ResetIcon className="fk:h-4 fk:w-4" />
             </button>
           ) : null}
         </div>
@@ -481,44 +481,44 @@ export function DataTableToolbar<TData>({
                 onSearchWhereChange({});
               }
             }}
-            className="fk-h-8 fk-px-2 lg:fk-px-3"
+            className="fk:h-8 fk:px-2 fk:lg:px-3"
           >
             Reset
-            <ResetIcon className="fk-ml-2 fk-h-4 fk-w-4" />
+            <ResetIcon className="fk:ml-2 fk:h-4 fk:w-4" />
           </Button>
         )}
       </div>
       {selectedIds.length > 0 ? (
-        <div className="fk-flex fk-items-center fk-gap-2">
+        <div className="fk:flex fk:items-center fk:gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="fk-h-8 fk-mr-2 lg:fk-flex" size="sm" variant="secondary">
-                Actions <ListChecks className="fk-ml-2 fk-h-4 fk-w-4" />
+              <Button className="fk:h-8 fk:mr-2 fk:lg:flex" size="sm" variant="secondary">
+                Actions <ListChecks className="fk:ml-2 fk:h-4 fk:w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="fk-w-[240px]">
+            <DropdownMenuContent align="end" className="fk:w-[240px]">
               <DropdownMenuItem onClick={() => setIsTagDialogOpen(true)}>
-                <TagIcon className="fk-mr-2 fk-h-4 fk-w-4" /> Add tag
+                <TagIcon className="fk:mr-2 fk:h-4 fk:w-4" /> Add tag
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsRemoveTagDialogOpen(true)}>
-                <MinusIcon className="fk-mr-2 fk-h-4 fk-w-4" /> Remove tag
+                <MinusIcon className="fk:mr-2 fk:h-4 fk:w-4" /> Remove tag
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleBatchDelete} className="fk-text-destructive">
-                <Trash2Icon className="fk-mr-2 fk-h-4 fk-w-4" /> Delete asset{selectedIds.length > 1 ? 's' : ''} (
+              <DropdownMenuItem onClick={handleBatchDelete} className="fk:text-destructive">
+                <Trash2Icon className="fk:mr-2 fk:h-4 fk:w-4" /> Delete asset{selectedIds.length > 1 ? 's' : ''} (
                 {selectedIds.length})
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       ) : null}
-      <Button className="fk-ml-auto fk-h-8 lg:fk-flex" onClick={handleUpload} size="sm" variant="default">
+      <Button className="fk:ml-auto fk:h-8 fk:lg:flex" onClick={handleUpload} size="sm" variant="default">
         Upload assets
       </Button>
 
       <CommandDialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
         <CommandInput placeholder="Search tags..." />
-        <CommandList className="fk-h-[300px]">
+        <CommandList className="fk:h-[300px]">
           <CommandEmpty>No tags found.</CommandEmpty>
           <CommandGroup heading="Tags">
             {allTags.map((tag) => {
@@ -532,7 +532,7 @@ export function DataTableToolbar<TData>({
                     );
                   }}
                 >
-                  <input className="fk-mr-2" checked={isSelected} onChange={() => {}} type="checkbox" />
+                  <input className="fk:mr-2" checked={isSelected} onChange={() => {}} type="checkbox" />
                   {tag.name}
                 </CommandItem>
               );
@@ -540,8 +540,8 @@ export function DataTableToolbar<TData>({
           </CommandGroup>
         </CommandList>
         <CommandSeparator />
-        <div className="fk-p-2">
-          <Button className="fk-w-full" onClick={handleAddTagsToSelected} disabled={selectedTagIds.length === 0}>
+        <div className="fk:p-2">
+          <Button className="fk:w-full" onClick={handleAddTagsToSelected} disabled={selectedTagIds.length === 0}>
             Add tag(s) to selected assets
           </Button>
         </div>
@@ -549,7 +549,7 @@ export function DataTableToolbar<TData>({
 
       <CommandDialog open={isRemoveTagDialogOpen} onOpenChange={setIsRemoveTagDialogOpen}>
         <CommandInput placeholder="Search tags..." />
-        <CommandList className="fk-h-[300px]">
+        <CommandList className="fk:h-[300px]">
           <CommandEmpty>No tags found.</CommandEmpty>
           <CommandGroup heading="Tags">
             {allTags.map((tag) => {
@@ -563,7 +563,7 @@ export function DataTableToolbar<TData>({
                     );
                   }}
                 >
-                  <input className="fk-mr-2" checked={isSelected} onChange={() => {}} type="checkbox" />
+                  <input className="fk:mr-2" checked={isSelected} onChange={() => {}} type="checkbox" />
                   {tag.name}
                 </CommandItem>
               );
@@ -571,9 +571,9 @@ export function DataTableToolbar<TData>({
           </CommandGroup>
         </CommandList>
         <CommandSeparator />
-        <div className="fk-p-2">
+        <div className="fk:p-2">
           <Button
-            className="fk-w-full"
+            className="fk:w-full"
             onClick={handleRemoveTagsFromSelected}
             disabled={selectedRemoveTagIds.length === 0}
           >

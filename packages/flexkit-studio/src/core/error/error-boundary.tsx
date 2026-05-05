@@ -9,7 +9,7 @@ export function ErrorBoundary() {
 
   return (
     <Alert variant="destructive">
-      <AlertCircle className="fk-h-4 fk-w-4" />
+      <AlertCircle className="fk:h-4 fk:w-4" />
       <AlertTitle>Error</AlertTitle>
       <AlertDescription>{errorText}</AlertDescription>
     </Alert>

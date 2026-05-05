@@ -3,13 +3,13 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'src/ui/lib/utils';
 
 const alertVariants = cva(
-  'fk-relative fk-w-full fk-rounded-lg fk-border fk-p-4 [&>svg~*]:fk-pl-7 [&>svg+div]:fk-translate-y-[-3px] [&>svg]:fk-absolute [&>svg]:fk-left-4 [&>svg]:fk-top-4 [&>svg]:fk-text-foreground',
+  'fk:relative fk:grid fk:w-full fk:grid-cols-[0_1fr] fk:items-start fk:gap-y-0.5 fk:rounded-lg fk:border fk:px-4 fk:py-3 fk:text-sm fk:has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] fk:has-[>svg]:gap-x-3 fk:[&>svg]:size-4 fk:[&>svg]:translate-y-0.5 fk:[&>svg]:text-current',
   {
     variants: {
       variant: {
-        'default': 'fk-bg-background fk-text-foreground',
-        destructive: 'fk-border-none fk-text-destructive fk-bg-destructive-foreground [&>svg]:fk-text-destructive',
-        success: 'fk-border-none fk-text-success fk-bg-success-foreground [&>svg]:fk-text-success',
+        default: 'fk:bg-card fk:text-card-foreground',
+        destructive:
+          'fk:bg-card fk:text-destructive fk:*:data-[slot=alert-description]:text-destructive/90 fk:[&>svg]:text-current',
       },
     },
     defaultVariants: {
@@ -18,27 +18,31 @@ const alertVariants = cva(
   }
 );
 
-const Alert = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants>
->(({ className, variant, ...props }, ref) => (
-  <div className={cn(alertVariants({ variant }), className)} ref={ref} role="alert" {...props} />
-));
-Alert.displayName = 'Alert';
+function Alert({ className, variant, ...props }: React.ComponentProps<'div'> & VariantProps<typeof alertVariants>) {
+  return <div data-slot="alert" role="alert" className={cn(alertVariants({ variant }), className)} {...props} />;
+}
 
-const AlertTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    // eslint-disable-next-line jsx-a11y/heading-has-content -- intentional, content is set later
-    <h5 className={cn('fk-mb-1 fk-font-medium fk-leading-none fk-tracking-tight', className)} ref={ref} {...props} />
-  )
-);
-AlertTitle.displayName = 'AlertTitle';
+function AlertTitle({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="alert-title"
+      className={cn('fk:col-start-2 fk:line-clamp-1 fk:min-h-4 fk:font-medium fk:tracking-tight', className)}
+      {...props}
+    />
+  );
+}
 
-const AlertDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <div className={cn('fk-text-sm [&_p]:fk-leading-relaxed', className)} ref={ref} {...props} />
-  )
-);
-AlertDescription.displayName = 'AlertDescription';
+function AlertDescription({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="alert-description"
+      className={cn(
+        'fk:col-start-2 fk:grid fk:justify-items-start fk:gap-1 fk:text-sm fk:text-muted-foreground fk:[&_p]:leading-relaxed',
+        className
+      )}
+      {...props}
+    />
+  );
+}
 
 export { Alert, AlertTitle, AlertDescription };

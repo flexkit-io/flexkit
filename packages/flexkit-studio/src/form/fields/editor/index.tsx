@@ -127,7 +127,7 @@ export default function Editor({
             <EditorRoot>
               <EditorContent
                 key={`${name}:${field.value?.scope ?? defaultValue.scope}:${String(field.value?.disabled ?? defaultValue.disabled)}`}
-                className="fk-relative fk-w-full fk-max-w-screen-lg fk-rounded-md fk-border fk-border-input fk-ring-offset-background focus-within:fk-outline-none focus-within:fk-ring-2 focus-within:fk-ring-ring focus-within:fk-ring-offset-2"
+                className="fk:relative fk:w-full fk:max-w-screen-lg fk:rounded-md fk:border fk:border-input fk:ring-offset-background fk:focus-within:outline-hidden fk:focus-within:ring-2 fk:focus-within:ring-ring fk:focus-within:ring-offset-2"
                 editable={isEditable !== false && !field.value?.disabled}
                 editorProps={{
                   handleDOMEvents: {
@@ -137,8 +137,8 @@ export default function Editor({
                   handleDrop: (view, event, _slice, moved) => handleImageDrop(view, event, moved, uploadFn),
                   attributes: {
                     class:
-                      'fk-prose prose-lg dark:fk-prose-invert prose-headings:fk-font-title fk-min-h-[150px] fk-font-default fk-rounded-md ' +
-                      'focus:fk-outline-none fk-max-w-full fk-bg-background ',
+                      'fk:prose prose-lg fk:dark:prose-invert fk:prose-headings:font-title fk:min-h-[150px] fk:font-default fk:rounded-md ' +
+                      'fk:focus:outline-hidden fk:max-w-full fk:bg-background ',
                   },
                 }}
                 extensions={extensions}
@@ -149,22 +149,22 @@ export default function Editor({
                 }}
                 slotAfter={<ImageResizer />}
               >
-                <EditorCommand className="fk-z-50 fk-h-auto fk-max-h-[330px] fk-overflow-y-auto fk-rounded-md fk-border fk-border-muted fk-bg-background fk-px-1 fk-py-2 fk-shadow-md fk-transition-all fk-pointer-events-auto">
-                  <EditorCommandEmpty className="fk-px-2 fk-text-muted-foreground">No results</EditorCommandEmpty>
+                <EditorCommand className="fk:z-50 fk:h-auto fk:max-h-[330px] fk:overflow-y-auto fk:rounded-md fk:border fk:border-muted fk:bg-background fk:px-1 fk:py-2 fk:shadow-md fk:transition-all fk:pointer-events-auto">
+                  <EditorCommandEmpty className="fk:px-2 fk:text-muted-foreground">No results</EditorCommandEmpty>
                   <EditorCommandList>
                     {suggestionItems.map((item: SuggestionItem) => (
                       <EditorCommandItem
                         value={item.title}
                         onCommand={(val) => item.command?.(val)}
-                        className="fk-flex fk-w-full fk-items-center fk-space-x-2 fk-rounded-md fk-px-2 fk-py-1 fk-text-left fk-text-sm hover:fk-bg-muted aria-selected:fk-bg-muted"
+                        className="fk:flex fk:w-full fk:items-center fk:space-x-2 fk:rounded-md fk:px-2 fk:py-1 fk:text-left fk:text-sm fk:hover:bg-muted fk:aria-selected:bg-muted"
                         key={item.title}
                       >
-                        <div className="fk-flex fk-h-10 fk-w-10 fk-items-center fk-justify-center fk-rounded-md fk-border fk-border-muted fk-bg-background">
+                        <div className="fk:flex fk:h-10 fk:w-10 fk:items-center fk:justify-center fk:rounded-md fk:border fk:border-muted fk:bg-background">
                           {item.icon}
                         </div>
                         <div>
-                          <p className="fk-font-medium">{item.title}</p>
-                          <p className="fk-text-xs fk-text-muted-foreground">{item.description}</p>
+                          <p className="fk:font-medium">{item.title}</p>
+                          <p className="fk:text-xs fk:text-muted-foreground">{item.description}</p>
                         </div>
                       </EditorCommandItem>
                     ))}

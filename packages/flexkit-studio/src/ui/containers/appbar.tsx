@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { JSX } from 'react';
 import { MoreHorizontal, PackageCheck, PackageX, Settings, Wrench } from 'lucide-react';
 import { Link, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../primitives/button';
@@ -70,18 +71,18 @@ export function AppBar({ apps, version }: Props): JSX.Element {
 
   return (
     <TooltipProvider>
-      <div className="fk-flex fk-flex-col fk-h-full fk-w-12 fk-bg-muted" ref={appBar}>
-        <div className="fk-grow">
-          <div className="fk-grid fk-grid-cols-1 fk-w-12 fk-h-auto">
+      <div className="fk:flex fk:flex-col fk:h-full fk:w-12 fk:bg-muted" ref={appBar}>
+        <div className="fk:grow">
+          <div className="fk:grid fk:grid-cols-1 fk:w-12 fk:h-auto">
             {visibleApps.map((app) => (
-              <Button asChild className="fk-h-12 fk-w-12" key={app.name} variant="ghost">
+              <Button asChild className="fk:h-12 fk:w-12" key={app.name} variant="ghost">
                 <Tooltip>
                   <TooltipTrigger
                     asChild
-                    className="fk-h-12 fk-p-2 fk-rounded-none fk-border-2 fk-border-transparent data-[state=active]:fk-border-l-current focus-visible:fk-outline-none focus-visible:fk-ring-0 focus-visible:fk-ring-offset-0 focus-visible:fk-border-2 focus-visible:fk-border-ring focus-visible:fk-rounded-sm"
+                    className="fk:h-12 fk:p-2 fk:rounded-none fk:border-2 fk:border-transparent! fk:data-[state=active]:border-l-foreground! fk:focus-visible:outline-hidden fk:focus-visible:ring-0 fk:focus-visible:ring-offset-0 fk:focus-visible:border-2! fk:focus-visible:border-ring! fk:focus-visible:rounded-xs"
                   >
                     <NavLink
-                      className="fk-text-muted-foreground aria-[current]:fk-text-foreground aria-[current]:fk-bg-background aria-[current]:fk-border-l-white"
+                      className="fk:text-muted-foreground fk:aria-[current]:text-foreground fk:aria-[current]:bg-background fk:aria-[current]:border-l-white!"
                       to={app.name}
                     >
                       {app.icon}
@@ -99,16 +100,16 @@ export function AppBar({ apps, version }: Props): JSX.Element {
             <DropdownMenu>
               <Tooltip>
                 <DropdownMenuTrigger asChild>
-                  <TooltipTrigger className="fk-flex justify-center fk-items-center fk-h-12 fk-w-12 p-0 fk-data-[state=open]:bg-muted fk-text-muted-foreground fk-transition-colors fk-focus-visible:outline-none fk-focus-visible:border-2 fk-focus-visible:border-ring fk-focus-visible:rounded-sm">
-                    <MoreHorizontal className="fk-w-5 fk-h-5" strokeWidth={1.5} />
-                    <span className="fk-sr-only">View additional apps</span>
+                  <TooltipTrigger className="fk:flex fk:justify-center fk:items-center fk:h-12 fk:w-12 p-0 fk:data-[state=open]:bg-muted fk:text-muted-foreground fk:transition-colors fk:focus-visible:outline-hidden fk:focus-visible:border-2 fk:focus-visible:border-ring fk:focus-visible:rounded-xs">
+                    <MoreHorizontal className="fk:w-5 fk:h-5" strokeWidth={1.5} />
+                    <span className="fk:sr-only">View additional apps</span>
                     <TooltipContent side="right">
                       <p>Additional apps</p>
                     </TooltipContent>
                   </TooltipTrigger>
                 </DropdownMenuTrigger>
               </Tooltip>
-              <DropdownMenuContent align="start" className="fk-w-56" side="right">
+              <DropdownMenuContent align="start" className="fk:w-56" side="right">
                 {additionalApps.map((app) => (
                   <DropdownMenuItem asChild key={app.name}>
                     <NavLink to={app.name}>{app.title}</NavLink>
@@ -122,23 +123,23 @@ export function AppBar({ apps, version }: Props): JSX.Element {
         <DropdownMenu>
           <Tooltip>
             <DropdownMenuTrigger asChild>
-              <TooltipTrigger className="fk-flex fk-justify-center fk-items-center fk-h-12 fk-w-12 fk-p-0 fk-data-[state=open]:bg-muted fk-text-muted-foreground fk-transition-colors fk-focus-visible:outline-none fk-focus-visible:border-2 fk-focus-visible:border-ring fk-focus-visible:rounded-sm">
-                <Settings className="fk-w-5 fk-h-5" strokeWidth={1.5} />
-                <span className="fk-sr-only">Settings menu</span>
+              <TooltipTrigger className="fk:flex fk:justify-center fk:items-center fk:h-12 fk:w-12 fk:p-0 fk:data-[state=open]:bg-muted fk:text-muted-foreground fk:transition-colors fk:focus-visible:outline-hidden fk:focus-visible:border-2 fk:focus-visible:border-ring fk:focus-visible:rounded-xs">
+                <Settings className="fk:w-5 fk:h-5" strokeWidth={1.5} />
+                <span className="fk:sr-only">Settings menu</span>
                 <TooltipContent side="right">
                   <p>Settings menu</p>
                 </TooltipContent>
               </TooltipTrigger>
             </DropdownMenuTrigger>
           </Tooltip>
-          <DropdownMenuContent align="start" className="fk-w-60" side="right">
+          <DropdownMenuContent align="start" className="fk:w-60" side="right">
             {/* TODO: add command menu functionality */}
             {/* <DropdownMenuItem
               onSelect={() => {
                 //
               }}
             >
-              <Keyboard className="fk-mr-2 fk-h-4 fk-w-4" />
+              <Keyboard className="fk:mr-2 fk:h-4 fk:w-4" />
               <span>Command Menu</span>
               <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
             </DropdownMenuItem>
@@ -149,12 +150,12 @@ export function AppBar({ apps, version }: Props): JSX.Element {
                 //
               }}
             >
-              <Palette className="fk-mr-2 fk-h-4 fk-w-4" />
+              <Palette className="fk:mr-2 fk:h-4 fk:w-4" />
               <span>Theme</span>
             </DropdownMenuItem> */}
             <DropdownMenuItem asChild>
               <Link to={`https://flexkit.io/dashboard/*/${projectId}`} target="_blank" rel="noopener noreferrer">
-                <Wrench className="fk-mr-2 fk-h-4 fk-w-4" />
+                <Wrench className="fk:mr-2 fk:h-4 fk:w-4" />
                 <span>Manage project</span>
               </Link>
             </DropdownMenuItem>
@@ -169,12 +170,12 @@ export function AppBar({ apps, version }: Props): JSX.Element {
             >
               {version.isCurrent ? (
                 <>
-                  <PackageCheck className="fk-mr-2 fk-h-4 fk-w-4" />
+                  <PackageCheck className="fk:mr-2 fk:h-4 fk:w-4" />
                   <span>Version {version.current}</span>
                 </>
               ) : (
                 <>
-                  <PackageX className="fk-mr-2 fk-h-4 fk-w-4" />
+                  <PackageX className="fk:mr-2 fk:h-4 fk:w-4" />
                   <span>
                     Version {version.current}.<br />
                     Upgrade to {version.latest}

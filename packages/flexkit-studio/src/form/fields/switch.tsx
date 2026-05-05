@@ -27,8 +27,8 @@ export function Switch({ control, fieldSchema, setValue }: FormFieldParams<'swit
       name={name}
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
-          <div className="fk-flex fk-flex-row fk-items-center fk-justify-between fk-rounded-lg fk-border fk-border-input fk-p-3 fk-ring-offset-background focus-within:fk-outline-none focus-within:fk-ring-2 focus-within:fk-ring-ring focus-within:fk-ring-offset-2 disabled:fk-cursor-not-allowed disabled:fk-opacity-50">
-            <div className="fk-space-y-0.5">
+          <div className="fk:flex fk:flex-row fk:items-center fk:justify-between fk:rounded-lg fk:border fk:border-input fk:p-3 fk:ring-offset-background fk:focus-within:outline-hidden fk:focus-within:ring-2 fk:focus-within:ring-ring fk:focus-within:ring-offset-2 fk:disabled:cursor-not-allowed fk:disabled:opacity-50">
+            <div className="fk:space-y-0.5">
               <FormLabel>{label}</FormLabel>
               {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
             </div>

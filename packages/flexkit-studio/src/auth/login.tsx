@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { JSX, useState } from 'react';
 import useSWR from 'swr';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Button } from '../ui/primitives/button';
@@ -40,8 +40,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
   const [isAuthLoading, auth] = useAuth();
   const copyrightYear = new Date().getFullYear();
   const currentRouterLocation = useLocation();
-  const referal: string =
-    currentRouterLocation.state?.from?.pathname ?? currentRouterLocation.pathname;
+  const referal: string = currentRouterLocation.state?.from?.pathname ?? currentRouterLocation.pathname;
 
   const fromPath = referal.includes(selectedProject.projectId)
     ? `${location.origin}${referal}`
@@ -61,15 +60,15 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
 
   return (
     <>
-      <div className="fk-container fk-relative fk-h-[calc(100vh-3rem)] fk-flex fk-items-center fk-justify-center lg:fk-px-0">
-        <div className="fk-w-full lg:fk-p-8">
-          <div className="fk-mx-auto fk-flex fk-flex-col fk-justify-center sm:fk-w-[350px]">
-            <h1 className="fk-mb-4 fk-text-2xl fk-text-center fk-font-medium fk-tracking-tight">
+      <div className="fk:container fk:relative fk:h-[calc(100vh-3rem)] fk:flex fk:items-center fk:justify-center fk:lg:px-0">
+        <div className="fk:w-full fk:lg:p-8">
+          <div className="fk:mx-auto fk:flex fk:flex-col fk:justify-center fk:sm:w-[350px]">
+            <h1 className="fk:mb-4 fk:text-2xl fk:text-center fk:font-medium fk:tracking-tight">
               Login to Flexkit Studio
             </h1>
             {projects.length > 1 ? (
-              <div className="fk-flex-col fk-space-y-2 fk-mb-3">
-                <Label className="fk-text-sm fk-font-normal fk-text-left fk-text-muted-foreground" htmlFor="project">
+              <div className="fk:flex-col fk:space-y-2 fk:mb-3">
+                <Label className="fk:text-sm fk:font-normal fk:text-left fk:text-muted-foreground" htmlFor="project">
                   Select project
                 </Label>
                 <Select
@@ -78,7 +77,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                     setSelectedProject(projects.find((project) => project.projectId === id) ?? projects[0]);
                   }}
                 >
-                  <SelectTrigger className="fk-mb-4 fk-w-full fk-h-9 fk-py-1" id="project">
+                  <SelectTrigger className="fk:mb-4 fk:w-full fk:h-9 fk:py-1" id="project">
                     <SelectValue aria-label={selectedProject.title}>{selectedProject.title}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -95,10 +94,10 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
               <EmailLogin projectId={projectId} setIsEmailLogin={setIsEmailLogin} />
             ) : (
               <>
-                <p className="fk-mt-2 fk-mb-2 fk-text-sm fk-text-left fk-text-muted-foreground">
+                <p className="fk:mt-2 fk:mb-2 fk:text-sm fk:text-left fk:text-muted-foreground">
                   Choose login provider
                 </p>
-                <div className="fk-flex fk-flex-col fk-space-y-6">
+                <div className="fk:flex fk:flex-col fk:space-y-6">
                   {data.providers.map((provider: Provider) => (
                     <Button
                       asChild
@@ -118,7 +117,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                         {provider.button.iconUrl ? (
                           <img
                             alt={provider.title}
-                            className="fk-w-[20px] fk-h-[20px] fk-mr-2"
+                            className="fk:w-[20px] fk:h-[20px] fk:mr-2"
                             src={provider.button.iconUrl}
                           />
                         ) : null}
@@ -127,7 +126,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                     </Button>
                   ))}
                   <Button
-                    className="!fk-mt-4 fk-text-sm fk-text-center fk-text-link"
+                    className="fk:mt-4! fk:text-sm fk:text-center fk:text-link"
                     onClick={() => {
                       setIsEmailLogin(true);
                     }}
@@ -138,8 +137,8 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                 </div>
               </>
             )}
-            <div className="fk-flex fk-flex-col fk-items-center fk-pt-8">
-              <svg className="fk-w-[7rem]" fill="none" viewBox="0 0 191 42" xmlns="http://www.w3.org/2000/svg">
+            <div className="fk:flex fk:flex-col fk:items-center fk:pt-8">
+              <svg className="fk:w-[7rem]" fill="none" viewBox="0 0 191 42" xmlns="http://www.w3.org/2000/svg">
                 <path
                   d="M59.2923 38.5263H52.7518V19.433H49.5653V12.9332H52.7518V11.7145C52.7518 10.1373 53.0471 8.65569 53.638 7.26967C54.245 5.88368 55.0677 4.68089 56.1058 3.66131C57.16 2.62579 58.3817 1.81331 59.7713 1.22386C61.1609 0.618477 62.6464 0.315788 64.2276 0.315788H69.1388V6.81564H64.2276C63.5247 6.81564 62.8698 6.9431 62.2628 7.19798C61.6719 7.43696 61.1528 7.77948 60.7057 8.22554C60.2746 8.65569 59.9311 9.17344 59.6756 9.77882C59.4201 10.3683 59.2923 11.0135 59.2923 11.7145V12.9332H67.3182V19.433H59.2923V38.5263Z"
                   fill="currentColor"
@@ -170,20 +169,20 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                   fill="currentColor"
                 />
               </svg>
-              <ul className="fk-flex fk-w-full fk-mt-4 fk-justify-center fk-text-xs fk-text-muted-foreground">
-                <li className="fk-pr-6 after:fk-content-['|'] after:fk-pl-6">
-                  <a className="fk-underline-offset-4 hover:fk-text-primary" href="https://www.flexkit.io">
+              <ul className="fk:flex fk:w-full fk:mt-4 fk:justify-center fk:text-xs fk:text-muted-foreground">
+                <li className="fk:pr-6 fk:after:content-['|'] fk:after:pl-6">
+                  <a className="fk:underline-offset-4 fk:hover:text-primary" href="https://www.flexkit.io">
                     flexkit.io
                   </a>
                 </li>
-                <li className="fk-pr-6 after:fk-content-['|'] after:fk-pl-6">
-                  <a className="fk-underline-offset-4 hover:fk-text-primary" href="https://www.flexkit.io/docs">
+                <li className="fk:pr-6 fk:after:content-['|'] fk:after:pl-6">
+                  <a className="fk:underline-offset-4 fk:hover:text-primary" href="https://www.flexkit.io/docs">
                     Docs
                   </a>
                 </li>
                 <li className="">
                   <a
-                    className="fk-underline-offset-4 hover:fk-text-primary"
+                    className="fk:underline-offset-4 fk:hover:text-primary"
                     href="https://www.flexkit.io/privacy-policy"
                   >
                     Privacy Policy
@@ -194,15 +193,15 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
           </div>
         </div>
         {/* workaround to allow Tailwind generate the classes for the login buttons, whose classes are added dynamically */}
-        <div className="fk-hidden !fk-text-white !fk-bg-bitbucket hover:!fk-bg-bitbucket-hover" />
-        <div className="fk-hidden !fk-bg-github hover:!fk-bg-github-hover" />
-        <div className="fk-hidden !fk-text-muted-foreground !fk-bg-white hover:!fk-bg-accent" />
+        <div className="fk:hidden fk:text-white! fk:bg-bitbucket! fk:hover:bg-bitbucket-hover!" />
+        <div className="fk:hidden fk:bg-github! fk:hover:bg-github-hover!" />
+        <div className="fk:hidden fk:text-muted-foreground! fk:bg-white! fk:hover:bg-accent!" />
       </div>
-      <div className="fk-flex fk-justify-center fk-items-center fk-h-12 fk-text-xs fk-text-muted-foreground fk-border-t fk-border-accent">
-        <div className="fk-container fk-flex">
-          <div className="fk-flex fk-items-center fk-mr-auto">
+      <div className="fk:flex fk:justify-center fk:items-center fk:h-12 fk:text-xs fk:text-muted-foreground fk:border-t fk:border-accent">
+        <div className="fk:container fk:flex">
+          <div className="fk:flex fk:items-center fk:mr-auto">
             <svg
-              className="fk-h-5 fk-w-5 fk-mr-3 fk-text-black dark:fk-text-white"
+              className="fk:h-5 fk:w-5 fk:mr-3 fk:text-black fk:dark:text-white"
               fill="none"
               height="48"
               viewBox="0 0 48 48"
@@ -215,7 +214,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                 fill="currentColor"
               />
             </svg>
-            <p className="fk-flex fk-items-center">© {copyrightYear}</p>
+            <p className="fk:flex fk:items-center">© {copyrightYear}</p>
           </div>
           <DarkModeSwitch />
         </div>

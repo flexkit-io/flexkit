@@ -66,7 +66,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@flexkit/studio/ui';
-import type { ImperativePanelHandle } from '@flexkit/studio/ui';
+import type { PanelImperativeHandle } from '@flexkit/studio/ui';
 import type { TabState } from './types';
 
 export type GraphiQLToolbarConfig = {
@@ -254,6 +254,55 @@ export type GraphiQLInterfaceProps = WriteableEditorProps &
 const THEMES = ['light', 'dark', 'system'] as const;
 
 const TAB_CLASS_PREFIX = 'graphiql-session-tab-';
+const EXPLORER_LAYOUT_STORAGE_KEY = 'flexkit-explorer:layout';
+
+type ResizableLayout = {
+  [panelId: string]: number;
+};
+
+function isResizableLayout(value: unknown): value is ResizableLayout {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every((item) => typeof item === 'number');
+}
+
+function getStoredResizableLayout(storageKey: string): ResizableLayout | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  const value = window.localStorage.getItem(storageKey);
+
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+
+    if (isResizableLayout(parsed)) {
+      return parsed;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function storeResizableLayout(storageKey: string, layout: ResizableLayout): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(layout));
+  } catch {
+    // Ignore storage failures so resizing still works in restricted browsing modes.
+  }
+}
 
 export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
   const editorContext = useEditorContext({ nonNull: true });
@@ -262,7 +311,8 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
   const storageContext = useStorageContext();
   const pluginContext = usePluginContext();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const sidebarPanel = useRef<ImperativePanelHandle>(null);
+  const sidebarPanel = useRef<PanelImperativeHandle | null>(null);
+  const explorerDefaultLayout = useMemo(() => getStoredResizableLayout(EXPLORER_LAYOUT_STORAGE_KEY), []);
   const forcedTheme = useMemo(
     () => (props.forcedTheme && THEMES.includes(props.forcedTheme) ? props.forcedTheme : undefined),
     [props.forcedTheme]
@@ -294,13 +344,13 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
   const toolbar = children.find((child) => isChildComponentType(child, GraphiQL.Toolbar)) ?? (
     <>
       <ToolbarButton onClick={prettify} label="Prettify query (Shift-Ctrl-P)">
-        <PrettifyIcon className="ex-w-6 ex-h-6 ex-block" aria-hidden="true" />
+        <PrettifyIcon className="ex:w-6 ex:h-6 ex:block" aria-hidden="true" />
       </ToolbarButton>
       <ToolbarButton onClick={merge} label="Merge fragments into query (Shift-Ctrl-M)">
-        <MergeIcon className="ex-w-6 ex-h-6 ex-block" aria-hidden="true" />
+        <MergeIcon className="ex:w-6 ex:h-6 ex:block" aria-hidden="true" />
       </ToolbarButton>
       <ToolbarButton onClick={copy} label="Copy query (Shift-Ctrl-C)">
-        <CopyIcon className="ex-w-6 ex-h-6 ex-block" aria-hidden="true" />
+        <CopyIcon className="ex:w-6 ex:h-6 ex:block" aria-hidden="true" />
       </ToolbarButton>
       {props.toolbar?.additionalContent}
       {props.toolbar?.additionalComponent && <props.toolbar.additionalComponent />}
@@ -422,33 +472,42 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
     [editorContext, executionContext]
   );
 
+  const handleExplorerLayoutChanged = useCallback((layout: ResizableLayout) => {
+    storeResizableLayout(EXPLORER_LAYOUT_STORAGE_KEY, layout);
+  }, []);
+
   return (
     <GraphiQLTooltip.Provider>
       <div className={`graphiql-container${className}`}>
-        <ResizablePanelGroup autoSaveId="explorer" direction="horizontal" className="ex-h-full ex-max-h-full">
+        <ResizablePanelGroup
+          className="ex:h-full ex:max-h-full"
+          defaultLayout={explorerDefaultLayout}
+          id="explorer"
+          onLayoutChanged={handleExplorerLayoutChanged}
+          orientation="horizontal"
+        >
           <ResizablePanel
             collapsible
-            collapsedSize={3}
-            minSize={10}
-            onCollapse={() => {
-              setIsSidebarCollapsed(true);
+            collapsedSize="3%"
+            defaultSize="22%"
+            id="explorer-sidebar"
+            minSize="10%"
+            onResize={(panelSize) => {
+              setIsSidebarCollapsed(sidebarPanel.current?.isCollapsed() ?? panelSize.asPercentage <= 3);
             }}
-            onExpand={() => {
-              setIsSidebarCollapsed(false);
-            }}
-            ref={sidebarPanel}
+            panelRef={sidebarPanel}
           >
-            <div className="ex-flex ex-w-full ex-h-full ex-pb-6">
-              <Tabs className="ex-w-full" defaultValue={pluginContext?.plugins[0].title}>
-                <div className={`ex-flex ex-items-center ex-py-1 ${isSidebarCollapsed ? '' : 'ex-px-3'}`}>
-                  <TabsList className={isSidebarCollapsed ? 'ex-hidden' : ''}>
+            <div className="ex:flex ex:w-full ex:h-full ex:pb-6">
+              <Tabs className="ex:w-full" defaultValue={pluginContext?.plugins[0].title}>
+                <div className={`ex:flex ex:items-center ex:py-1 ${isSidebarCollapsed ? '' : 'ex:px-3'}`}>
+                  <TabsList className={isSidebarCollapsed ? 'ex:hidden' : ''}>
                     {pluginContext?.plugins.map((plugin, index) => {
                       const isVisible = plugin === pluginContext.visiblePlugin;
                       const label = `${isVisible ? 'Hide' : 'Show'} ${plugin.title}`;
                       return (
                         <TabsTrigger
                           aria-label={label}
-                          className="ex-text-muted-foreground"
+                          className="ex:text-muted-foreground"
                           data-index={index}
                           key={plugin.title}
                           onClick={handlePluginClick}
@@ -462,7 +521,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        className={isSidebarCollapsed ? 'ex-ml-1.5' : 'ex-ml-auto'}
+                        className={isSidebarCollapsed ? 'ex:ml-1.5' : 'ex:ml-auto'}
                         onClick={() => {
                           const panel = sidebarPanel.current;
 
@@ -473,13 +532,13 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                       >
                         {isSidebarCollapsed ? (
                           <>
-                            <ChevronsRight className="ex-w-4 ex-h-4" />
-                            <span className="ex-sr-only">Expand</span>
+                            <ChevronsRight className="ex:w-4 ex:h-4" />
+                            <span className="ex:sr-only">Expand</span>
                           </>
                         ) : (
                           <>
-                            <ChevronsLeft className="ex-w-4 ex-h-4" />
-                            <span className="ex-sr-only">Collapse</span>
+                            <ChevronsLeft className="ex:w-4 ex:h-4" />
+                            <span className="ex:sr-only">Collapse</span>
                           </>
                         )}
                       </Button>
@@ -490,11 +549,11 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                 {isSidebarCollapsed ? null : <Separator />}
                 {pluginContext?.plugins.map((plugin) => (
                   <TabsContent
-                    className={`ex-flex ex-w-full ex-max-h-full ex-mt-0 ${isSidebarCollapsed ? 'ex-hidden' : ''}`}
+                    className={`ex:flex ex:w-full ex:max-h-full ex:mt-0 ${isSidebarCollapsed ? 'ex:hidden' : ''}`}
                     key={plugin.title}
                     value={plugin.title}
                   >
-                    <ScrollArea className="ex-flex ex-w-full ex-max-h-full ex-overflow-auto ex-px-6 ex-pt-3 ex-pb-6 ex-mb-3 [&>div>div]:!ex-block">
+                    <ScrollArea className="ex:flex ex:w-full ex:max-h-full ex:overflow-auto ex:px-6 ex:pt-3 ex:pb-6 ex:mb-3 ex:[&>div>div]:block!">
                       <plugin.content />
                       <ScrollBar orientation="horizontal" />
                     </ScrollArea>
@@ -534,15 +593,15 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
             </GraphiQLTooltip>
           </ResizablePanel>
 
-          <ResizableHandle className="hover:ex-bg-blue-500 ex-transition-colors" withHandle />
+          <ResizableHandle className="ex:hover:bg-blue-500 ex:transition-colors" withHandle />
           {/* Center column */}
-          <ResizablePanel className="ex-bg-muted" defaultSize={48}>
-            <div className="ex-flex ex-flex-col ex-h-full">
-              <div className="ex-flex ex-items-center ex-py-1 ex-px-4 ex-gap-6 ex-bg-muted">
+          <ResizablePanel className="ex:bg-muted" defaultSize="40%" id="explorer-editor">
+            <div className="ex:flex ex:flex-col ex:h-full">
+              <div className="ex:flex ex:items-center ex:py-1 ex:px-4 ex:gap-6 ex:bg-muted">
                 {!props.disableTabs && (
                   <GraphiQlTabs
                     aria-label="Select active operation"
-                    className="!ex-p-1 ex-bg-muted ex-rounded-md"
+                    className="ex:p-1! ex:bg-muted ex:rounded-md"
                     onReorder={handleReorder}
                     values={editorContext.tabs}
                   >
@@ -575,8 +634,8 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                 aria-labelledby={`${TAB_CLASS_PREFIX}${editorContext.activeTabIndex}`}
               >
                 <div className={`graphiql-editors${editorContext.tabs.length === 1 ? ' full-height' : ''}`}>
-                  <ResizablePanelGroup direction="vertical">
-                    <ResizablePanel className="ex-flex ex-w-full ex-gap-x-4 ex-px-4 ex-py-2" defaultSize={80}>
+                  <ResizablePanelGroup orientation="vertical">
+                    <ResizablePanel className="ex:flex ex:w-full ex:gap-x-4 ex:px-4 ex:py-2" defaultSize="80%">
                       <QueryEditor
                         editorTheme={props.editorTheme}
                         keyMap={props.keyMap}
@@ -589,9 +648,9 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                         {toolbar}
                       </div>
                     </ResizablePanel>
-                    <ResizableHandle className="hover:ex-bg-blue-500 ex-transition-colors" withHandle />
-                    <ResizablePanel className="ex-bg-muted ex-px-4 ex-pt-2" defaultSize={20}>
-                      <div className="ex-text-sm ex-font-medium ex-text-muted-foreground">Variables</div>
+                    <ResizableHandle className="ex:hover:bg-blue-500 ex:transition-colors" withHandle />
+                    <ResizablePanel className="ex:bg-muted ex:px-4 ex:pt-2" defaultSize="20%">
+                      <div className="ex:text-sm ex:font-medium ex:text-muted-foreground">Variables</div>
                       <VariableEditor
                         editorTheme={props.editorTheme}
                         isHidden={false}
@@ -605,9 +664,9 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
               </div>
             </div>
           </ResizablePanel>
-          <ResizableHandle className="hover:ex-bg-blue-500 ex-transition-colors" withHandle />
-          <ResizablePanel className="ex-px-5 ex-pt-10 ex-relative" defaultSize={30}>
-            <div className="graphiql-response ex-h-full">
+          <ResizableHandle className="ex:hover:bg-blue-500 ex:transition-colors" withHandle />
+          <ResizablePanel className="ex:px-5 ex:pt-10 ex:relative" defaultSize="38%" id="explorer-response">
+            <div className="graphiql-response ex:h-full">
               {executionContext.isFetching ? <Spinner /> : null}
               <ResponseEditor
                 editorTheme={props.editorTheme}

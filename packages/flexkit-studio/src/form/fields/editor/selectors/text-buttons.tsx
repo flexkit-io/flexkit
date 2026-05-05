@@ -76,7 +76,7 @@ export const TextButtons = () => {
   ];
 
   return (
-    <div className="fk-flex">
+    <div className="fk:flex">
       {items.map((item) => (
         <EditorBubbleItem
           key={item.name}
@@ -84,10 +84,10 @@ export const TextButtons = () => {
             item.command(editor);
           }}
         >
-          <Button size="sm" className="fk-rounded-none" onClick={(e) => e.preventDefault()} variant="ghost">
+          <Button size="sm" className="fk:rounded-none" onClick={(e) => e.preventDefault()} variant="ghost">
             <item.icon
-              className={cn('fk-h-4 fk-w-4', {
-                'fk-text-blue-500': item.isActive(editor),
+              className={cn('fk:h-4 fk:w-4', {
+                'fk:text-blue-500': item.isActive(editor),
               })}
             />
           </Button>

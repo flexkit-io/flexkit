@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ComponentType } from 'react';
+import type { ComponentType, JSX } from 'react';
 import { debug } from 'debug';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import type { RouterProviderProps } from 'react-router-dom';
@@ -17,6 +17,7 @@ import { ErrorBoundary } from './error/error-boundary';
 import type { Config, ProjectOptions, SingleProject } from './config/types';
 
 const RouterProviderCompat = RouterProvider as unknown as ComponentType<RouterProviderProps>;
+type BrowserRoutes = Parameters<typeof createBrowserRouter>[0];
 
 /**
  * AppContext:
@@ -55,7 +56,7 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
     return null;
   }
 
-  const router = createBrowserRouter([
+  const routes = [
     {
       path: basePath,
       element: <Root config={configArray} />,
@@ -78,7 +79,8 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
         },
       ],
     },
-  ]);
+  ] as unknown as BrowserRoutes;
+  const router = createBrowserRouter(routes);
 
   log('Init Studio');
 

@@ -1,5 +1,5 @@
 import { createElement, forwardRef, memo, useEffect, useImperativeHandle, useMemo } from 'react';
-import type { ComponentType, ForwardedRef } from 'react';
+import type { ComponentType, ForwardedRef, JSX } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -45,7 +45,7 @@ function FormBuilder(
   ref: ForwardedRef<SubmitHandle>
 ): JSX.Element {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
-  const formSchema = entitySchema?.attributes ?? [];
+  const formSchema = useMemo(() => entitySchema?.attributes ?? [], [entitySchema]);
   const validationSchema = useMemo(() => {
     return z.object(
       formSchema.reduce((acc, fieldSchema) => {
@@ -75,8 +75,7 @@ function FormBuilder(
     criteriaMode: 'all',
   });
 
-  const { control, getValues, handleSubmit, setValue, watch, trigger, formState } = form;
-  const { errors } = formState;
+  const { control, getValues, handleSubmit, setValue, watch, trigger } = form;
   const { getContributionPointConfig } = useConfig();
 
   const formFieldComponentsMap = {
@@ -122,7 +121,7 @@ function FormBuilder(
   if (!entitySchema || entitySchema.attributes.length === 0) {
     return (
       <Alert variant="destructive">
-        <AlertTriangle className="fk-h-4 fk-w-4" />
+        <AlertTriangle className="fk:h-4 fk:w-4" />
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
           No attributes found in the schema for entity <strong>{entityName}</strong>
@@ -133,7 +132,7 @@ function FormBuilder(
 
   return (
     <Form {...form}>
-      <form className="fk-flex fk-flex-col fk-gap-y-5">
+      <form className="fk:flex fk:flex-col fk:gap-y-5">
         {formSchema.map((field) => {
           if (field.name === '_id') {
             return null;

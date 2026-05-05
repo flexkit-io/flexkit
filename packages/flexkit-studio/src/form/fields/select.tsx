@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import type { FormFieldValue } from '../../graphql-client/types';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../ui/primitives/form';
 import {

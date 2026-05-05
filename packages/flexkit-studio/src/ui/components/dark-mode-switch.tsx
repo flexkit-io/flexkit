@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { JSX } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../theme-context';
 import { ToggleGroup, ToggleGroupItem } from '../primitives/toggle-group';
@@ -24,7 +25,7 @@ export function DarkModeSwitch(): JSX.Element | null {
         }}
         value="dark"
       >
-        <Moon className="fk-h-4 fk-w-4" />
+        <Moon className="fk:h-4 fk:w-4" />
       </ToggleGroupItem>
       <ToggleGroupItem
         aria-label="Set light mode"
@@ -33,7 +34,7 @@ export function DarkModeSwitch(): JSX.Element | null {
         }}
         value="light"
       >
-        <Sun className="fk-h-4 fk-w-4" />
+        <Sun className="fk:h-4 fk:w-4" />
       </ToggleGroupItem>
       <ToggleGroupItem
         aria-label="Set system mode"
@@ -42,7 +43,7 @@ export function DarkModeSwitch(): JSX.Element | null {
         }}
         value="system"
       >
-        <Monitor className="fk-h-4 fk-w-4" />
+        <Monitor className="fk:h-4 fk:w-4" />
       </ToggleGroupItem>
     </ToggleGroup>
   );

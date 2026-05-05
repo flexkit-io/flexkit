@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { SyntheticEvent } from 'react';
+import type { JSX, RefObject, SyntheticEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   ArrowDown as ArrowDownIcon,
@@ -47,7 +47,7 @@ export default function AssetMultipleRelationship({
   const [isOpen, setIsOpen] = useState(false);
   const initialRows = useMemo(() => normalizeAssets(defaultValue.value), [defaultValue.value]);
   const [rows, setRows] = useState<OrderedAssetValue[]>(initialRows);
-  useOuterClick(wrapperRef, setIsOpen);
+  useOuterClick(wrapperRef as RefObject<HTMLDivElement>, setIsOpen);
 
   useEffect(() => {
     const initialRowsSignature = getRowsSignature(initialRows);
@@ -234,12 +234,12 @@ export default function AssetMultipleRelationship({
         <FormItem>
           <FormLabel htmlFor={fieldId}>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-          <FormControl className="fk-flex fk-flex-col fk-w-full fk-min-h-[2.375rem] fk-text-sm">
+          <FormControl className="fk:flex fk:flex-col fk:w-full fk:min-h-9.5 fk:text-sm">
             <div
               aria-controls={`asset-relationship-dropdown-${name}`}
               aria-expanded={isOpen}
-              className={`fk-relative fk-flex fk-w-full fk-items-start fk-space-x-2 fk-rounded-md fk-border fk-border-input fk-bg-background fk-px-2.5 fk-py-0.5 focus-visible:fk-outline-none fk-ring-offset-background focus-visible:fk-ring-2 focus-visible:fk-ring-ring focus-visible:fk-ring-offset-2 ${
-                isOpen ? 'fk-outline-none fk-ring-2 fk-ring-ring fk-ring-offset-2' : ''
+              className={`fk:relative fk:flex fk:w-full fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:border-input fk:bg-background fk:px-2.5 fk:py-0.5 fk:focus-visible:outline-hidden fk:ring-offset-background fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:focus-visible:ring-offset-2 ${
+                isOpen ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
               }`}
               onClick={(event) => {
                 event.preventDefault();
@@ -251,26 +251,26 @@ export default function AssetMultipleRelationship({
               role="combobox"
               tabIndex={0}
             >
-              <div className="fk-flex fk-w-full fk-flex-col">
-                <div className="fk-flex fk-w-full fk-items-center fk-gap-2 fk-pr-9">
+              <div className="fk:flex fk:w-full fk:flex-col">
+                <div className="fk:flex fk:w-full fk:items-center fk:gap-2 fk:pr-9">
                   {isOpen && rows.length > 0 ? (
-                    <div className="fk-flex fk-h-9 fk-items-center fk-text-muted-foreground">
+                    <div className="fk:flex fk:h-9 fk:items-center fk:text-muted-foreground">
                       {rows.length} {rows.length === 1 ? 'asset' : 'assets'} selected
                     </div>
                   ) : rows.length > 0 ? (
-                    <div className="fk-flex fk-min-h-9 fk-flex-wrap fk-gap-2">
+                    <div className="fk:flex fk:min-h-9 fk:flex-wrap fk:gap-2">
                       {rows.slice(0, 8).map((asset) => (
                         <AssetThumbnail asset={asset} key={asset._id} />
                       ))}
                       {!isOpen && rows.length > 8 ? (
-                        <div className="fk-flex fk-h-9 fk-w-9 fk-items-center fk-justify-center fk-rounded fk-bg-muted fk-text-xs fk-text-muted-foreground">
+                        <div className="fk:flex fk:h-9 fk:w-9 fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted fk:text-xs fk:text-muted-foreground">
                           +{rows.length - 8}
                         </div>
                       ) : null}
                     </div>
                   ) : (
-                    <div className="fk-flex fk-h-9 fk-items-center fk-text-muted-foreground">
-                      <ImageIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+                    <div className="fk:flex fk:h-9 fk:items-center fk:text-muted-foreground">
+                      <ImageIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                       Select or upload assets
                     </div>
                   )}
@@ -278,7 +278,7 @@ export default function AssetMultipleRelationship({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk-absolute fk-right-[0.1875rem] fk-top-[0.1875rem] fk-h-8 fk-w-8 fk-rounded fk-text-muted-foreground"
+                          className="fk:absolute fk:right-0.75 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                           id={fieldId}
                           onClick={(event) => {
                             event.preventDefault();
@@ -288,7 +288,7 @@ export default function AssetMultipleRelationship({
                           size="icon"
                           variant="ghost"
                         >
-                          {isOpen ? <ClearIcon className="fk-h-4 fk-w-4" /> : <Maximize2 className="fk-h-4 fk-w-4" />}
+                          {isOpen ? <ClearIcon className="fk:h-4 fk:w-4" /> : <Maximize2 className="fk:h-4 fk:w-4" />}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -297,22 +297,25 @@ export default function AssetMultipleRelationship({
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <Collapsible className="fk-w-full fk-space-y-2 !fk-ml-0" onOpenChange={setIsOpen} open={isOpen}>
-                  <CollapsibleContent className="fk-w-full">
-                    <div className="fk-flex fk-flex-col fk-gap-3" id={`asset-relationship-dropdown-${name}`}>
-                      <div className="fk-flex fk-gap-2">
-                        <Button className="fk-h-8" onClick={handleSelection} variant="outline">
-                          <Link className="fk-h-4 fk-w-4 fk-mr-2" />
+                <Collapsible className="fk:w-full fk:space-y-2 fk:ml-0!" onOpenChange={setIsOpen} open={isOpen}>
+                  <CollapsibleContent className="fk:w-full">
+                    <div
+                      className="fk:flex fk:h-[350px] fk:flex-col fk:gap-3"
+                      id={`asset-relationship-dropdown-${name}`}
+                    >
+                      <div className="fk:flex fk:gap-2">
+                        <Button className="fk:h-8" onClick={handleSelection} variant="outline">
+                          <Link className="fk:h-4 fk:w-4 fk:mr-2" />
                           Select assets
                         </Button>
-                        <Button className="fk-h-8" onClick={(event) => void handleUpload(event)} variant="outline">
-                          <UploadIcon className="fk-h-4 fk-w-4 fk-mr-2" />
+                        <Button className="fk:h-8" onClick={(event) => void handleUpload(event)} variant="outline">
+                          <UploadIcon className="fk:h-4 fk:w-4 fk:mr-2" />
                           Upload assets
                         </Button>
                       </div>
                       {rows.length > 0 ? (
-                        <ScrollArea className="fk-h-[28rem]">
-                          <div className="fk-grid fk-grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] fk-gap-3 fk-pr-3">
+                        <ScrollArea className="fk:min-h-0 fk:flex-1">
+                          <div className="fk:grid fk:grid-cols-[repeat(auto-fill,minmax(8rem,1fr))] fk:gap-3 fk:pr-3">
                             {rows.map((asset, index) => (
                               <SelectedAssetCard
                                 asset={asset}
@@ -345,8 +348,8 @@ function AssetThumbnail({ asset }: { asset: OrderedAssetValue }): JSX.Element {
 
   if (!isImage) {
     return (
-      <div className="fk-flex fk-h-9 fk-w-9 fk-items-center fk-justify-center fk-rounded fk-bg-muted">
-        <ImageIcon className="fk-h-4 fk-w-4 fk-text-muted-foreground" />
+      <div className="fk:flex fk:h-9 fk:w-9 fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted">
+        <ImageIcon className="fk:h-4 fk:w-4 fk:text-muted-foreground" />
       </div>
     );
   }
@@ -354,7 +357,7 @@ function AssetThumbnail({ asset }: { asset: OrderedAssetValue }): JSX.Element {
   return (
     <img
       alt={asset.originalFilename || 'Asset'}
-      className="fk-h-9 fk-w-9 fk-rounded fk-bg-muted fk-object-cover"
+      className="fk:h-9 fk:w-9 fk:rounded-sm fk:bg-muted fk:object-cover"
       src={`${IMAGES_BASE_URL}${asset.path}?w=128&h=128&f=webp`}
     />
   );
@@ -376,52 +379,52 @@ function SelectedAssetCard({
   removeAsset: (assetId: string) => void;
 }): JSX.Element {
   return (
-    <div className="fk-relative fk-rounded-md fk-border fk-border-input fk-bg-background fk-p-2">
-      <div className="fk-aspect-square fk-overflow-hidden fk-rounded fk-bg-muted">
+    <div className="fk:relative fk:rounded-md fk:border fk:border-input fk:bg-background fk:p-2">
+      <div className="fk:aspect-square fk:overflow-hidden fk:rounded-sm fk:bg-muted">
         {isImageAsset(asset) ? (
           <img
             alt={asset.originalFilename || 'Asset'}
-            className="fk-h-full fk-w-full fk-object-cover"
+            className="fk:h-full fk:w-full fk:object-cover"
             src={`${IMAGES_BASE_URL}${asset.path}?w=320&h=320&f=webp`}
           />
         ) : (
-          <div className="fk-flex fk-h-full fk-w-full fk-items-center fk-justify-center">
-            <ImageIcon className="fk-h-8 fk-w-8 fk-text-muted-foreground" />
+          <div className="fk:flex fk:h-full fk:w-full fk:items-center fk:justify-center">
+            <ImageIcon className="fk:h-8 fk:w-8 fk:text-muted-foreground" />
           </div>
         )}
       </div>
-      <div className="fk-mt-2 fk-truncate fk-text-xs" title={asset.originalFilename}>
+      <div className="fk:mt-2 fk:truncate fk:text-xs" title={asset.originalFilename}>
         {index + 1}. {asset.originalFilename || asset.path}
       </div>
-      <div className="fk-mt-2 fk-flex fk-gap-1">
+      <div className="fk:mt-2 fk:flex fk:gap-1">
         <Button
-          className="fk-h-7 fk-w-7"
+          className="fk:h-7 fk:w-7"
           disabled={isFirst}
           onClick={() => moveAsset(asset._id, -1)}
           size="icon"
           type="button"
           variant="ghost"
         >
-          <ArrowUpIcon className="fk-h-3.5 fk-w-3.5" />
+          <ArrowUpIcon className="fk:h-3.5 fk:w-3.5" />
         </Button>
         <Button
-          className="fk-h-7 fk-w-7"
+          className="fk:h-7 fk:w-7"
           disabled={isLast}
           onClick={() => moveAsset(asset._id, 1)}
           size="icon"
           type="button"
           variant="ghost"
         >
-          <ArrowDownIcon className="fk-h-3.5 fk-w-3.5" />
+          <ArrowDownIcon className="fk:h-3.5 fk:w-3.5" />
         </Button>
         <Button
-          className="fk-ml-auto fk-h-7 fk-w-7"
+          className="fk:ml-auto fk:h-7 fk:w-7"
           onClick={() => removeAsset(asset._id)}
           size="icon"
           type="button"
           variant="ghost"
         >
-          <ClearIcon className="fk-h-3.5 fk-w-3.5" />
+          <ClearIcon className="fk:h-3.5 fk:w-3.5" />
         </Button>
       </div>
     </div>

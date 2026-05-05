@@ -1,6 +1,6 @@
+import { Fragment, type ReactNode, useEffect, JSX } from 'react';
 import { EditorBubble, useEditor } from 'novel';
 import { removeAIHighlight } from 'novel';
-import { Fragment, type ReactNode, useEffect } from 'react';
 import { Button } from '../../../../ui/primitives/button';
 import Magic from '../icons/magic';
 import { AISelector } from './ai-selector';
@@ -34,13 +34,13 @@ export default function GenerativeMenuSwitch({
           editor.chain().unsetHighlight().run();
         },
       }}
-      className="fk-flex fk-w-fit fk-max-w-[90vw] fk-overflow-hidden fk-rounded-md fk-border fk-border-muted fk-bg-background fk-shadow-xl"
+      className="fk:flex fk:w-fit fk:max-w-[90vw] fk:overflow-hidden fk:rounded-md fk:border fk:border-muted fk:bg-background fk:shadow-xl"
     >
       {open && <AISelector open={open} onOpenChange={onOpenChange} />}
       {!open && (
         <Fragment>
           <Button
-            className="fk-gap-1 fk-rounded-none fk-text-pink-600"
+            className="fk:gap-1 fk:rounded-none fk:text-pink-600"
             variant="ghost"
             onClick={(e) => {
               e.preventDefault();
@@ -48,7 +48,7 @@ export default function GenerativeMenuSwitch({
             }}
             size="sm"
           >
-            <Magic className="fk-h-5 fk-w-5" />
+            <Magic className="fk:h-5 fk:w-5" />
             Ask AI
           </Button>
           {children}

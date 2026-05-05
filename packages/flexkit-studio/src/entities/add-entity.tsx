@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import type { JSX } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
@@ -113,13 +114,13 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
     <DrawerModal
       actions={
         <Button
-          className="fk-px-8"
+          className="fk:px-8"
           onClick={() => {
             handleSave();
           }}
           variant="default"
         >
-          {mutationData.loading ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+          {mutationData.loading ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
           Save
         </Button>
       }

@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { ApolloClient, InMemoryCache, defaultDataIdFromObject, from, HttpLink } from '@apollo/client';
 import type { ApolloLink } from '@apollo/client';
 import { ApolloProvider } from '@apollo/client/react';
@@ -8,6 +9,11 @@ import { CombinedGraphQLErrors, CombinedProtocolErrors } from '@apollo/client/er
 import { getGraphQLSchemaMismatchMessage, getServerError, parseErrorBody } from './error-utils';
 import { useConfig } from '../core/config/config-context';
 import React, { createContext, useContext, useMemo, useState } from 'react';
+
+const ApolloProviderCompat = ApolloProvider as unknown as React.ComponentType<{
+  children?: React.ReactNode;
+  client: ApolloClient;
+}>;
 
 type GraphQLErrorContextValue = {
   schemaErrorMessage: string | null;
@@ -124,7 +130,7 @@ export function GraphQLProvider({ children }: { children: React.ReactNode }): JS
 
   return (
     <GraphQLErrorContext.Provider value={ctx}>
-      <ApolloProvider client={client(currentProjectId, setSchemaErrorMessage)}>{children}</ApolloProvider>
+      <ApolloProviderCompat client={client(currentProjectId, setSchemaErrorMessage)}>{children}</ApolloProviderCompat>
     </GraphQLErrorContext.Provider>
   );
 }

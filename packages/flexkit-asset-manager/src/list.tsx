@@ -103,19 +103,19 @@ export function List(): JSX.Element {
 
   if (isProjectDisabled) {
     return (
-      <div className="fk-flex fk-flex-col fk-h-full fk-pl-3">
+      <div className="fk:flex fk:flex-col fk:h-full fk:pl-3">
         <ProjectDisabled />
       </div>
     );
   }
 
   return (
-    <div className="fk-flex fk-flex-col fk-h-full fk-pl-3">
+    <div className="fk:flex fk:flex-col fk:h-full fk:pl-3">
       <SchemaError />
-      <h2 className="fk-mb-4 fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">Asset Manager</h2>
+      <h2 className="fk:mb-4 fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">Asset Manager</h2>
       {!schemaErrorMessage ? (
         <DataTable
-          classNames={{ row: 'fk-h-20' }}
+          classNames={{ row: 'fk:h-20' }}
           columns={isInitialLoading ? loadingColumns : columnsDefinition}
           data={isInitialLoading ? loadingData : (data ?? [])}
           entityName={assetSchema.name}
@@ -146,6 +146,6 @@ type AttributeValue = {
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({
     ...column,
-    cell: () => <Skeleton className="fk-h-4 fk-w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
+    cell: () => <Skeleton className="fk:h-4 fk:w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
   })) as unknown as ColumnDef<AttributeValue>[];
 }

@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, type JSX } from 'react';
 import * as Icons from 'lucide-react';
 import Fuse from 'fuse.js';
 import { NavLink } from 'react-router-dom';
@@ -14,6 +14,11 @@ import {
 } from '../primitives/sidebar';
 import type { SingleProject } from '../../core/config/types';
 import { groupBy } from 'ramda';
+
+const NavLinkCompat = NavLink as unknown as React.ComponentType<{
+  children?: React.ReactNode;
+  to: string;
+}>;
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
@@ -60,14 +65,17 @@ export function Sidebar({ className, menuGroups, schema }: SidebarProps): JSX.El
                     isActive={location.pathname.includes(`/list/${entity.plural}`)}
                     tooltip={capitalize(entity.menu?.label ?? entity.plural)}
                   >
-                    <NavLink to={`list/${entity.plural}`}>
+                    <NavLinkCompat to={`list/${entity.plural}`}>
                       {entity.menu?.icon ??
-                        createElement(Icons[getBestMatchingIcon(entity.name)] as React.ComponentType<any>, {
-                          className: 'fk-h-4 fk-w-4 fk-mr-2',
-                          strokeWidth: 2,
-                        })}
+                        createElement(
+                          Icons[getBestMatchingIcon(entity.name)] as React.ComponentType<React.SVGProps<SVGSVGElement>>,
+                          {
+                            className: 'fk:h-4 fk:w-4 fk:mr-2',
+                            strokeWidth: 2,
+                          }
+                        )}
                       <span>{capitalize(entity.menu?.label ?? entity.plural)}</span>
-                    </NavLink>
+                    </NavLinkCompat>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -83,13 +91,16 @@ export function Sidebar({ className, menuGroups, schema }: SidebarProps): JSX.El
                   isActive={location.pathname.includes(`/list/${entity.plural}`)}
                   tooltip={capitalize(entity.menu?.label ?? entity.plural)}
                 >
-                  <NavLink to={`list/${entity.plural}`}>
-                    {createElement(Icons[getBestMatchingIcon(entity.name)] as React.ComponentType<any>, {
-                      className: 'fk-h-4 fk-w-4 fk-mr-2',
-                      strokeWidth: 2,
-                    })}
+                  <NavLinkCompat to={`list/${entity.plural}`}>
+                    {createElement(
+                      Icons[getBestMatchingIcon(entity.name)] as React.ComponentType<React.SVGProps<SVGSVGElement>>,
+                      {
+                        className: 'fk:h-4 fk:w-4 fk:mr-2',
+                        strokeWidth: 2,
+                      }
+                    )}
                     <span>{capitalize(entity.menu?.label ?? entity.plural)}</span>
-                  </NavLink>
+                  </NavLinkCompat>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}

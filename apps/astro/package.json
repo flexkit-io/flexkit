@@ -18,12 +18,12 @@
     "@flexkit/studio": "workspace:*",
     "astro": "^5.16.4",
     "demo-schemas": "workspace:*",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
   },
   "devDependencies": {
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
     "typescript": "^5.3.3"
   }
 }

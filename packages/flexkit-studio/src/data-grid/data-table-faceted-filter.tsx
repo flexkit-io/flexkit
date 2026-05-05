@@ -37,25 +37,25 @@ export function DataTableFacetedFilter<TData, TValue>({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="fk-h-8 fk-border-dashed">
-          <CirclePlusIcon className="fk-mr-2 fk-h-4 fk-w-4" />
+        <Button variant="outline" size="sm" className="fk:h-8 fk:border-dashed">
+          <CirclePlusIcon className="fk:mr-2 fk:h-4 fk:w-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
-              <Separator orientation="vertical" className="fk-mx-2 fk-h-4" />
-              <Badge variant="secondary" className="fk-rounded-sm fk-px-1 fk-font-normal lg:fk-hidden">
+              <Separator orientation="vertical" className="fk:mx-2 fk:h-4" />
+              <Badge variant="secondary" className="fk:rounded-xs fk:px-1 fk:font-normal fk:lg:hidden">
                 {selectedValues.size}
               </Badge>
-              <div className="fk-space-x-1 lg:fk-flex">
+              <div className="fk:space-x-1 fk:lg:flex">
                 {selectedValues.size > 2 ? (
-                  <Badge variant="secondary" className="fk-rounded-sm fk-px-1 fk-font-normal">
+                  <Badge variant="secondary" className="fk:rounded-xs fk:px-1 fk:font-normal">
                     {selectedValues.size} selected
                   </Badge>
                 ) : (
                   options
                     .filter((option) => selectedValues.has(option.value))
                     .map((option) => (
-                      <Badge variant="secondary" key={option.value} className="fk-rounded-sm fk-px-1 fk-font-normal">
+                      <Badge variant="secondary" key={option.value} className="fk:rounded-xs fk:px-1 fk:font-normal">
                         {option.label}
                       </Badge>
                     ))
@@ -65,7 +65,7 @@ export function DataTableFacetedFilter<TData, TValue>({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="fk-w-[200px] fk-p-0" align="start">
+      <PopoverContent className="fk:w-[200px] fk:p-0" align="start">
         <Command>
           <CommandInput placeholder={title} />
           <CommandList>
@@ -88,16 +88,16 @@ export function DataTableFacetedFilter<TData, TValue>({
                   >
                     <div
                       className={cn(
-                        'fk-mr-2 fk-flex fk-h-4 fk-w-4 fk-items-center fk-justify-center fk-rounded-sm fk-border fk-border-primary',
-                        isSelected ? 'fk-bg-primary fk-text-primary-foreground' : 'fk-opacity-50 [&_svg]:fk-invisible'
+                        'fk:mr-2 fk:flex fk:h-4 fk:w-4 fk:items-center fk:justify-center fk:rounded-xs fk:border fk:border-primary',
+                        isSelected ? 'fk:bg-primary fk:text-primary-foreground' : 'fk:opacity-50 fk:[&_svg]:invisible'
                       )}
                     >
                       <CheckIcon className={cn('h-4 w-4')} />
                     </div>
-                    {option.icon && <option.icon className="fk-mr-2 fk-h-4 fk-w-4 fk-text-muted-foreground" />}
+                    {option.icon && <option.icon className="fk:mr-2 fk:h-4 fk:w-4 fk:text-muted-foreground" />}
                     <span>{option.label}</span>
                     {facets?.get(option.value) && (
-                      <span className="fk-ml-auto fk-flex fk-h-4 fk-w-4 fk-items-center fk-justify-center fk-font-mono fk-text-xs">
+                      <span className="fk:ml-auto fk:flex fk:h-4 fk:w-4 fk:items-center fk:justify-center fk:font-mono fk:text-xs">
                         {facets.get(option.value)}
                       </span>
                     )}
@@ -111,7 +111,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                 <CommandGroup>
                   <CommandItem
                     onSelect={() => column?.setFilterValue(undefined)}
-                    className="fk-justify-center fk-text-center"
+                    className="fk:justify-center fk:text-center"
                   >
                     Clear filters
                   </CommandItem>

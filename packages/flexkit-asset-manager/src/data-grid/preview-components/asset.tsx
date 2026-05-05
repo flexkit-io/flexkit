@@ -1,3 +1,4 @@
+import { JSX } from 'react';
 import { IMAGES_BASE_URL } from '@flexkit/studio';
 import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '@flexkit/studio/ui';
 import type { ComponentType } from 'react';
@@ -12,7 +13,7 @@ type FileTypeIconCompatProps = {
 const FileTypeIconCompat = FileTypeIcon as unknown as ComponentType<FileTypeIconCompatProps>;
 
 const transparentImageBackground =
-  'fk-bg-[#fafafa] [--asset-checker:#f0f0f0] [background-image:linear-gradient(45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(-45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,var(--asset-checker)_75%),linear-gradient(-45deg,transparent_75%,var(--asset-checker)_75%)] [background-position:0_0,0_4px,4px_-4px,-4px_0px] [background-size:8px_8px] dark:fk-bg-[#222] dark:[--asset-checker:#2a2a2a]';
+  'fk:bg-[#fafafa] [--asset-checker:#f0f0f0] [background-image:linear-gradient(45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(-45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,var(--asset-checker)_75%),linear-gradient(-45deg,transparent_75%,var(--asset-checker)_75%)] [background-position:0_0,0_4px,4px_-4px,-4px_0px] [background-size:8px_8px] fk:dark:bg-[#222] dark:[--asset-checker:#2a2a2a]';
 
 export function Asset({ value }: { value: string }): JSX.Element | null {
   if (!value) {
@@ -41,7 +42,7 @@ export function Asset({ value }: { value: string }): JSX.Element | null {
   const fullUrl = path.endsWith('.svg') ? `${IMAGES_BASE_URL}${path}` : `${IMAGES_BASE_URL}${path}?w=624&h=624&f=webp`;
 
   return (
-    <div className="fk-z-10">
+    <div className="fk:z-10">
       <TooltipProvider>
         {isImage ? (
           <Tooltip>
@@ -49,7 +50,7 @@ export function Asset({ value }: { value: string }): JSX.Element | null {
               <img
                 src={thumbnaillUrl}
                 alt="asset"
-                className={`fk-w-12 fk-h-12 fk-cursor-zoom-in fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
+                className={`fk:w-12 fk:h-12 fk:cursor-zoom-in fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
               />
             </TooltipTrigger>
             <TooltipPortal>
@@ -57,7 +58,7 @@ export function Asset({ value }: { value: string }): JSX.Element | null {
                 <img
                   src={fullUrl}
                   alt="asset"
-                  className={`fk-w-52 fk-h-52 fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
+                  className={`fk:w-52 fk:h-52 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
                 />
               </TooltipContent>
             </TooltipPortal>
@@ -65,7 +66,7 @@ export function Asset({ value }: { value: string }): JSX.Element | null {
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="fk-w-7 fk-h-7 fk-rounded fk-bg-transparent fk-flex fk-items-center fk-justify-center [&>svg]:fk-h-full [&>svg]:fk-w-auto">
+              <div className="fk:w-7 fk:h-7 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
                 {(() => {
                   const ext = getExtensionFromPath(path);
                   const style = (
@@ -80,7 +81,7 @@ export function Asset({ value }: { value: string }): JSX.Element | null {
             </TooltipTrigger>
             <TooltipPortal>
               <TooltipContent>
-                <div className="fk-text-sm fk-text-muted-foreground">Preview not available</div>
+                <div className="fk:text-sm fk:text-muted-foreground">Preview not available</div>
               </TooltipContent>
             </TooltipPortal>
           </Tooltip>

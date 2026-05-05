@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import AlertDialog from '../ui/components/alert-dialog';
 import { useActions } from './actions-context';
 import Delete from './delete';

@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { joinBasePath } from '../../core/base-path';
@@ -26,7 +27,7 @@ export function ProjectSelector({ projectId, projects }: Props): JSX.Element {
         navigate(joinBasePath(basePath, currentProject.projectId));
       }}
     >
-      <SelectTrigger className="fk-w-[12rem] fk-h-9 fk-py-1" id="project">
+      <SelectTrigger className="fk:w-48! fk:h-9 fk:py-1" id="project">
         <SelectValue aria-label={selectedProject.title}>{selectedProject.title}</SelectValue>
       </SelectTrigger>
       <SelectContent>

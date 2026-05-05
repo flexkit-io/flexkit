@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useReducer } from 'react';
-import type { Dispatch, ReactNode } from 'react';
+import type { Dispatch, JSX, ReactNode } from 'react';
 import { props, uniqBy } from 'ramda';
 import type {
   Action,

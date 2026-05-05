@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Suspense, startTransition } from 'react';
+import type { JSX } from 'react';
 import { useTheme } from '../theme-context';
 import type { ProjectOptions } from '../../core/config/types';
 import { joinBasePath } from '../../core/base-path';
@@ -27,11 +28,11 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
   }
 
   return (
-    <div className="fk-flex fk-basis-14 fk-min-h-[3.5rem] fk-px-3 fk-gap-x-4 fk-border-b fk-border-border fk-z-20">
+    <div className="fk:flex fk:basis-14 fk:min-h-[3.5rem] fk:px-3 fk:gap-x-4 fk:border-b fk:border-border fk:z-20">
       <Suspense fallback={null}>
         <Logo theme={resolvedTheme} title="Flexkit Studio" />
       </Suspense>
-      <div className="fk-flex fk-grow fk-shrink fk-items-center fk-gap-x-4 px-4">
+      <div className="fk:flex fk:grow fk:shrink fk:items-center fk:gap-x-4 px-4">
         <Suspense fallback={null}>
           <ProjectSelector projectId={projectId} projects={projects} />
         </Suspense>
@@ -39,7 +40,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
           <Search onSelect={handleSearchSelection} projectId={projectId} schema={schema} />
         </Suspense>
       </div>
-      <div className="fk-flex fk-items-center">
+      <div className="fk:flex fk:items-center">
         <Suspense fallback={null}>
           <UserNav projectId={projectId} />
         </Suspense>

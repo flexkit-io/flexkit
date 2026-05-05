@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AuthProvider } from '../../auth/auth-context';
 import { ConfigProvider } from '../../core/config/config-context';

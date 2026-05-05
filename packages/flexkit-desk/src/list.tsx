@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { JSX, useCallback } from 'react';
 import { find, propEq } from 'ramda';
 import {
   getEntitySchema,
@@ -75,24 +75,24 @@ export function List(): JSX.Element {
 
   if (isProjectDisabled) {
     return (
-      <div className="fk-flex fk-flex-col fk-h-full fk-px-4 fk-py-3">
+      <div className="fk:flex fk:flex-col fk:h-full fk:px-4 fk:pt-3">
         <ProjectDisabled />
       </div>
     );
   }
 
   return (
-    <div className="fk-flex fk-flex-col fk-h-full fk-px-4 fk-py-3">
+    <div className="fk:flex fk:flex-col fk:h-full fk:px-4 fk:pt-3">
       <SchemaError />
-      <div className="fk-flex fk-items-center fk-mb-4 fk-gap-2">
+      <div className="fk:flex fk:items-center fk:mb-4 fk:gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <SidebarTrigger className="-fk-ml-1 fk-w-4 fk-h-4" />
+            <SidebarTrigger className="fk:-ml-1 fk:w-4 fk:h-4" />
           </TooltipTrigger>
           <TooltipContent>Toggle Sidebar</TooltipContent>
         </Tooltip>
-        <Separator orientation="vertical" className="fk-h-4" />
-        <h2 className="fk-text-lg fk-font-semibold fk-leading-none fk-tracking-tight">
+        <Separator orientation="vertical" className="fk:h-4" />
+        <h2 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">
           {capitalize(entitySchema?.menu?.label ?? entitySchema?.plural ?? '')}
         </h2>
       </div>
@@ -136,6 +136,6 @@ function dataRowActions({ entityName, entityNamePlural, row }: DataRowActions): 
 function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   return columns.map((column) => ({
     ...column,
-    cell: () => <Skeleton className="fk-h-4 fk-w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
+    cell: () => <Skeleton className="fk:h-4 fk:w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
   })) as unknown as ColumnDef<AttributeValue>[];
 }

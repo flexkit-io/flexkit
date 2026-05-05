@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
 import { IMAGES_BASE_URL } from '../../core/api-paths';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
@@ -9,7 +10,7 @@ export type Asset = {
 };
 
 const transparentImageBackground =
-  'fk-bg-[#fafafa] [--asset-checker:#f0f0f0] [background-image:linear-gradient(45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(-45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,var(--asset-checker)_75%),linear-gradient(-45deg,transparent_75%,var(--asset-checker)_75%)] [background-position:0_0,0_4px,4px_-4px,-4px_0px] [background-size:8px_8px] dark:fk-bg-[#222] dark:[--asset-checker:#2a2a2a]';
+  'fk:bg-[#fafafa] [--asset-checker:#f0f0f0] [background-image:linear-gradient(45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(-45deg,var(--asset-checker)_25%,transparent_25%),linear-gradient(45deg,transparent_75%,var(--asset-checker)_75%),linear-gradient(-45deg,transparent_75%,var(--asset-checker)_75%)] [background-position:0_0,0_4px,4px_-4px,-4px_0px] [background-size:8px_8px] fk:dark:bg-[#222] dark:[--asset-checker:#2a2a2a]';
 
 export function Asset({ value }: { value: Asset | Asset[] }) {
   if (Array.isArray(value)) {
@@ -54,14 +55,14 @@ function SingleAsset({ value }: { value: Asset }) {
   }
 
   return (
-    <div className="fk-z-10">
+    <div className="fk:z-10">
       <TooltipProvider>
         {isImage ? (
           <Tooltip>
             <TooltipTrigger asChild>
               <img
                 alt="asset"
-                className={`fk-w-7 fk-h-7 fk-cursor-zoom-in fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
+                className={`fk:w-7 fk:h-7 fk:cursor-zoom-in fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
                 decoding="async"
                 src={cachedThumbnailSrc ?? undefined}
               />
@@ -70,7 +71,7 @@ function SingleAsset({ value }: { value: Asset }) {
               <TooltipContent>
                 <img
                   alt="asset"
-                  className={`fk-w-52 fk-h-52 fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
+                  className={`fk:w-52 fk:h-52 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
                   decoding="async"
                   src={fullUrl}
                 />
@@ -80,7 +81,7 @@ function SingleAsset({ value }: { value: Asset }) {
         ) : (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="fk-w-7 fk-h-7 fk-rounded fk-bg-transparent fk-flex fk-items-center fk-justify-center [&>svg]:fk-h-full [&>svg]:fk-w-auto">
+              <div className="fk:w-7 fk:h-7 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
                 {(() => {
                   const ext = getExtensionFromPath(path);
                   const style = (
@@ -93,7 +94,7 @@ function SingleAsset({ value }: { value: Asset }) {
             </TooltipTrigger>
             <TooltipPortal>
               <TooltipContent>
-                <div className="fk-text-sm fk-text-muted-foreground">Preview not available</div>
+                <div className="fk:text-sm fk:text-muted-foreground">Preview not available</div>
               </TooltipContent>
             </TooltipPortal>
           </Tooltip>
@@ -111,12 +112,12 @@ function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
   }
 
   return (
-    <div className="fk-flex fk-items-center">
-      <div className="fk-flex -fk-space-x-2">
+    <div className="fk:flex fk:items-center">
+      <div className="fk:flex fk:-space-x-2">
         {assets.map((asset) => (
           <img
             alt="asset"
-            className={`fk-h-7 fk-w-7 fk-overflow-hidden fk-rounded-md fk-object-contain ${transparentImageBackground}`}
+            className={`fk:h-7 fk:w-7 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
             decoding="async"
             key={asset._id}
             src={`${IMAGES_BASE_URL}${asset.path}?w=84&h=84&f=webp`}
@@ -124,7 +125,7 @@ function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
         ))}
       </div>
       {value.length > 3 ? (
-        <span className="fk-ml-2 fk-text-xs fk-text-muted-foreground">+{value.length - 3}</span>
+        <span className="fk:ml-2 fk:text-xs fk:text-muted-foreground">+{value.length - 3}</span>
       ) : null}
     </div>
   );

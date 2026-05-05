@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { ReactElement, UIEvent } from 'react';
+import type { JSX, ReactElement, UIEvent } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -48,7 +48,7 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
   entityName: string;
   initialSelectionState?: RowSelectionState;
   onEntitySelectionChange?: (rowSelection: string[]) => void;
-  onScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  onScroll?: (event: UIEvent<HTMLTableElement>) => void;
   pageSize?: number;
   rowHeightEstimate?: number;
   rowAdditionState?: MultipleRelationshipConnection;
@@ -67,7 +67,7 @@ function inferRowHeightEstimate(rowClassName?: string): number | undefined {
 
   const tokens = rowClassName.split(/\s+/);
 
-  if (tokens.includes('fk-h-20')) {
+  if (tokens.includes('fk:h-20')) {
     return 80;
   }
 
@@ -87,7 +87,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
   rowDeletionState,
   toolbarComponent,
 }: DataTableProps<TData, TValue>): JSX.Element {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLTableElement>(null);
   const { schemaErrorMessage } = useGraphQLError();
   const [rowSelection, setRowSelection] = useState(initialSelectionState ?? {});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -169,17 +169,17 @@ export function DataTable<TData extends AttributeValue, TValue>({
   }
 
   return (
-    <div className={cn('fk-flex fk-h-full fk-min-h-0 fk-w-full fk-flex-col fk-gap-4', classNames?.wrapper)}>
+    <div className={cn('fk:flex fk:h-full fk:min-h-0 fk:w-full fk:flex-col fk:gap-4', classNames?.wrapper)}>
       {toolbarComponent && toolbarComponent(table)}
-      <div className="fk-min-h-0 fk-flex-1">
-        <TablePrimitive className={cn('fk-grid fk-pb-[5rem]', classNames?.table)} onScroll={onScroll} ref={scrollRef}>
-          <TableHeader className="fk-grid">
+      <div className="fk:min-h-0 fk:flex-1 fk:-mb-px">
+        <TablePrimitive className={cn('fk:grid fk:pb-20', classNames?.table)} onScroll={onScroll} ref={scrollRef}>
+          <TableHeader className="fk:grid">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow className="fk-flex fk-w-full" key={headerGroup.id}>
+              <TableRow className="fk:flex fk:w-full" key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead
-                      className={cn('fk-flex fk-items-center', header.column.id === 'actions' && 'fk-pl-0')}
+                      className={cn('fk:flex fk:items-center', header.column.id === 'actions' && 'fk:pl-0')}
                       colSpan={header.colSpan}
                       key={header.id}
                       style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
@@ -192,7 +192,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
             ))}
           </TableHeader>
           <TableBody
-            className="fk-grid fk-relative"
+            className="fk:grid fk:relative"
             style={{
               height: `${totalSize.toString()}px`, //tells scrollbar how big the table is
             }}
@@ -205,7 +205,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
                   <TableRow
                     className={`${(table.options.meta as ExtendedDataTable).getRowBackground(
                       row
-                    )} fk-flex fk-absolute fk-w-full ${classNames?.row ?? ''}`}
+                    )} fk:flex fk:absolute fk:w-full ${classNames?.row ?? ''}`}
                     data-index={virtualRow.index}
                     data-state={row.getIsSelected() && 'selected'}
                     key={virtualRow.key}
@@ -217,8 +217,8 @@ export function DataTable<TData extends AttributeValue, TValue>({
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
                         className={cn(
-                          'fk-flex fk-items-center fk-truncate',
-                          cell.column.id === 'actions' && '!fk-pl-0'
+                          'fk:flex fk:items-center fk:truncate',
+                          cell.column.id === 'actions' && 'fk:pl-0!'
                         )}
                         key={cell.id}
                         style={{
@@ -233,7 +233,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
               })
             ) : (
               <TableRow>
-                <TableCell className="fk-h-24 fk-text-center" colSpan={columns.length}>
+                <TableCell className="fk:h-24 fk:text-center" colSpan={columns.length}>
                   No results.
                 </TableCell>
               </TableRow>
@@ -251,11 +251,11 @@ function getRowClassnames(
   rowAdditionState?: MultipleRelationshipConnection
 ): string {
   if (rowDeletionState?.includes(row.original._id)) {
-    return 'fk-bg-row-removed hover:fk-bg-row-removed-hover';
+    return 'fk:bg-row-removed fk:hover:bg-row-removed-hover';
   }
 
   if (rowAdditionState?.some((line) => line._id === row.original._id)) {
-    return 'fk-bg-row-added hover:fk-bg-row-added-hover';
+    return 'fk:bg-row-added fk:hover:bg-row-added-hover';
   }
 
   return '';

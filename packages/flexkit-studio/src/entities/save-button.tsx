@@ -6,14 +6,14 @@ export default function SaveButton({ handleSave, isLoading }: { handleSave: () =
   const { isDirty } = useDrawerModalContext();
   return (
     <Button
-      className="fk-px-8"
+      className="fk:px-8"
       disabled={!isDirty}
       onClick={() => {
         handleSave();
       }}
       variant="default"
     >
-      {isLoading ? <Loader2 className="fk-h-4 fk-w-4 fk-mr-2 fk-animate-spin" /> : null}
+      {isLoading ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
       Save
     </Button>
   );

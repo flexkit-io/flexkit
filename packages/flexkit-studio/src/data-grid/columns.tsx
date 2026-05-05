@@ -1,4 +1,5 @@
 import { ComponentType } from 'react';
+import type { JSX } from 'react';
 import type { CellContext, ColumnDef, Row, Table } from '@tanstack/react-table';
 import type { Attribute } from '../core/types';
 import type { AttributeValue } from '../graphql-client/types';
@@ -81,7 +82,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
 
           return selectedValues.includes(row.getValue(id));
         },
-        header: () => <div className="fk-flex fk-items-center">{attribute.label}</div>,
+        header: () => <div className="fk:flex fk:items-center">{attribute.label}</div>,
         cell: ({ row }: CellContext<TData, TValue>) => {
           const PreviewComponent = previewComponent as ComponentType<{ value: TData }>;
 

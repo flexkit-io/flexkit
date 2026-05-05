@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import type { z, ZodTypeAny } from 'zod';
 import type {
   AttributeValue,

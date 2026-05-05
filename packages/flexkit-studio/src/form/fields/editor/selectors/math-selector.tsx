@@ -12,7 +12,7 @@ export const MathSelector = () => {
     <Button
       variant="ghost"
       size="sm"
-      className="fk-rounded-none fk-w-12"
+      className="fk:rounded-none fk:w-12"
       onClick={(evt) => {
         if (editor.isActive('math')) {
           editor.chain().focus().unsetLatex().run();
@@ -26,7 +26,7 @@ export const MathSelector = () => {
         }
       }}
     >
-      <SigmaIcon className={cn('fk-size-4', { 'fk-text-blue-500': editor.isActive('math') })} strokeWidth={2.3} />
+      <SigmaIcon className={cn('fk:size-4', { 'fk:text-blue-500': editor.isActive('math') })} strokeWidth={2.3} />
     </Button>
   );
 };
