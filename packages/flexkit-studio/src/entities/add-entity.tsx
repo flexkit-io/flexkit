@@ -114,7 +114,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
     <DrawerModal
       actions={
         <Button
-          className="fk:px-8"
+          className="fk:px-8 fk:min-w-32"
           onClick={() => {
             handleSave();
           }}
