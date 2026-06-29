@@ -101,7 +101,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                   {data.providers.map((provider: Provider) => (
                     <Button
                       asChild
-                      className={`${provider.button.color} ${provider.button.backgroundColor} hover:${provider.button.colorHover} hover:${provider.button.backgroundColorHover}`}
+                      className={`fk:${provider.button.color} fk:${provider.button.backgroundColor} fk:hover:${provider.button.colorHover} fk:hover:${provider.button.backgroundColorHover}`}
                       key={provider.name}
                       type="button"
                       variant={provider.button.variant}

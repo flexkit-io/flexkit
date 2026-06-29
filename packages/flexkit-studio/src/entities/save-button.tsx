@@ -6,7 +6,7 @@ export default function SaveButton({ handleSave, isLoading }: { handleSave: () =
   const { isDirty } = useDrawerModalContext();
   return (
     <Button
-      className="fk:px-8"
+      className="fk:px-8 fk:min-w-32"
       disabled={!isDirty}
       onClick={() => {
         handleSave();

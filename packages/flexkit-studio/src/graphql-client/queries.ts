@@ -109,6 +109,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   const entityName = entitySchema?.name ?? entityNamePlural;
   const attributes = entitySchema?.attributes ?? [];
   const heading = `$where: ${entityName}Where, $options: ${entityName}Options`;
+  const operationName = `Get${getOperationEntityName(entityNamePlural)}`;
 
   if (!entitySchema) {
     throw new Error(`Entity '${entityName}' not found in the schema`);
@@ -191,7 +192,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
   return {
     queryEntityName: entityNamePlural,
     query:
-      `query getEntity(${heading}) {\n` +
+      `query ${operationName}(${heading}) {\n` +
       `  ${entityNamePlural}Aggregate {\n` +
       `     count\n` +
       `  }\n` +
@@ -460,9 +461,10 @@ export function getEntityUpdateMutation(
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
   const responseType = entityNamePlural;
   const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
+  const operationName = `Update${getOperationEntityName(entityNamePlural)}`;
 
   return (
-    `mutation updateEntity($where: ${entityName}Where) {\n` +
+    `mutation ${operationName}($where: ${entityName}Where) {\n` +
     `  update${pluralizedEntityName}(\n` +
     `    where: $where\n` +
     `    update: {${globalAttributes}${localAttributes}${imageAttributes}${relationshipAttributes}\n    }\n` +
@@ -541,13 +543,13 @@ function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], 
   const attributesArray: [string, FormFieldValue][] = toPairs(imageAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
     const imageValue = attributeValue.value as ImageValue | null;
-    const imagePath = imageValue?.path ? `"${imageValue.path}"` : 'null';
+    const imagePath = stringifyNullableString(imageValue?.path);
     const imageSize = imageValue?.size ? imageValue.size : 'null';
-    const imageMimeType = imageValue?.mimeType ? `"${imageValue.mimeType}"` : 'null';
-    const originalFilename = imageValue?.originalFilename ? `"${imageValue.originalFilename}"` : 'null';
+    const imageMimeType = stringifyNullableString(imageValue?.mimeType);
+    const originalFilename = stringifyNullableString(imageValue?.originalFilename);
     const height = imageValue?.height ? imageValue.height : 'null';
     const width = imageValue?.width ? imageValue.width : 'null';
-    const lqip = imageValue?.lqip ? `"${imageValue.lqip}"` : 'null';
+    const lqip = stringifyNullableString(imageValue?.lqip);
 
     if (!imagePath) {
       return acc;
@@ -575,7 +577,7 @@ function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], 
       `${acc}\n      ${attributeName}: {\n` +
       `        create: {\n` +
       `          node: {\n` +
-      `            _id: "${entityId}:${attributeName}"\n` +
+        `            _id: ${stringifyStringLiteral(`${entityId}:${attributeName}`)}\n` +
       `            mimeType: ${imageMimeType}\n` +
       `            originalFilename: ${originalFilename}\n` +
       `            path: ${imagePath}\n` +
@@ -620,7 +622,7 @@ function localAttributesUpdate(
       `${acc}\n      ${attributeName}: {\n` +
       `        create: {\n` +
       `          node: {\n` +
-      `            _id: "${entityId}:${attributeName}"\n` +
+      `            _id: ${stringifyStringLiteral(`${entityId}:${attributeName}`)}\n` +
       `            _type: "${dataType}"\n` +
       `            ${scope}: ${typedValue}\n` +
       `          }\n` +
@@ -652,10 +654,10 @@ function relationshipAttributesUpdate(
       }
 
       const disconnect = originalId
-        ? `disconnect: {\n          where: {\n            node: {\n              _id: "${originalId}"\n            }\n          }\n        }\n`
+        ? `disconnect: {\n          where: {\n            node: {\n              _id: ${stringifyStringLiteral(originalId)}\n            }\n          }\n        }\n`
         : '';
       const connect = nextId
-        ? `connect: {\n          where: {\n            node: {\n              _id: "${nextId}"\n            }\n          }\n        }\n`
+        ? `connect: {\n          where: {\n            node: {\n              _id: ${stringifyStringLiteral(nextId)}\n            }\n          }\n        }\n`
         : '';
 
       return `${acc}\n      ${attributeName}: {\n        ${connect}        ${disconnect}      }`;
@@ -668,13 +670,13 @@ function relationshipAttributesUpdate(
 
       const nodesToDisconnect: string | undefined = attributeValue.relationships?.disconnect?.reduce(
         (disconnectString: string, _id: string) => {
-          return `${disconnectString}              {\n                node: {\n                  _id: "${_id}"\n                }\n              }\n`;
+          return `${disconnectString}              {\n                node: {\n                  _id: ${stringifyStringLiteral(_id)}\n                }\n              }\n`;
         },
         ''
       );
       const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection | null) ?? [];
       const nodesToConnect: string | undefined = connections.reduce((connectString: string, node) => {
-        return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
+        return `${connectString}                {\n                  _id: ${stringifyStringLiteral(node._id)}\n                }\n`;
       }, '');
       const disconnect = nodesToDisconnect
         ? `disconnect: {\n          where: {\n            OR: [\n${nodesToDisconnect}            ]\n          }\n        }\n`
@@ -759,7 +761,7 @@ function getOrderedAssetDisconnectString(ids: string[]): string {
   }
 
   const nodes = ids.reduce((disconnectString, _id) => {
-    return `${disconnectString}          {\n            where: { node: { _id: "${_id}" } }\n          }\n`;
+    return `${disconnectString}          {\n            where: { node: { _id: ${stringifyStringLiteral(_id)} } }\n          }\n`;
   }, '');
 
   return `        {\n          disconnect: [\n${nodes}          ]\n        }\n`;
@@ -781,7 +783,7 @@ function getOrderedAssetConnectNodes(connections: MultipleRelationshipConnection
 
     return (
       `${connectString}          {\n` +
-      `            where: { node: { _id: "${connection._id}" } }\n` +
+      `            where: { node: { _id: ${stringifyStringLiteral(connection._id)} } }\n` +
       `            edge: { sortOrder: ${sortOrder} }\n` +
       `          }\n`
     );
@@ -793,12 +795,22 @@ function stringifyValue(
   value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | null | undefined
 ): string | null {
   if (temporalTypes.includes(type)) {
-    return value?.toString().replace(/"/g, '\\"') ? `"${value?.toString().replace(/"/g, '\\"')}"` : null;
+    return value?.toString() ? stringifyStringLiteral(value.toString()) : null;
   }
 
-  return stringTypes.includes(type)
-    ? `"${value?.toString().replace(/"/g, '\\"') ?? 'null'}"`
-    : (value?.toString() ?? null);
+  if (stringTypes.includes(type)) {
+    return stringifyStringLiteral(value?.toString() ?? 'null');
+  }
+
+  return value?.toString() ?? null;
+}
+
+function stringifyNullableString(value: string | null | undefined): string {
+  return value ? stringifyStringLiteral(value) : 'null';
+}
+
+function stringifyStringLiteral(value: string): string {
+  return JSON.stringify(value);
 }
 
 function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: string, scope: string): string {
@@ -901,10 +913,11 @@ export function getEntityDeleteMutation(entityName: string, schema: Schema, _id:
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
   const localAttributes = localAttributesDelete(attributes, _id);
+  const operationName = `Delete${getOperationEntityName(entitySchema?.plural ?? entityName)}`;
 
   if (entityName === '_asset') {
     return (
-      `mutation deleteEntity($where: ${entityName}Where) {\n` +
+      `mutation ${operationName}($where: ${entityName}Where) {\n` +
       `  delete_assets(\n` +
       `    where: $where\n` +
       `  ) {\n` +
@@ -916,7 +929,7 @@ export function getEntityDeleteMutation(entityName: string, schema: Schema, _id:
   }
 
   return (
-    `mutation deleteEntity($where: ${entityName}Where) {\n` +
+    `mutation ${operationName}($where: ${entityName}Where) {\n` +
     `  delete${pluralizedEntityName}(\n` +
     `    where: $where\n` +
     `${localAttributes ? `    delete: {\n     ${localAttributes}\n    }\n` : ''}` +
@@ -936,7 +949,7 @@ function localAttributesDelete(schemaAttributes: Attribute[], _id: string): stri
       `      ${attributeName}: {\n` +
       `        where: {\n` +
       `          node: {\n` +
-      `            _id: "${_id}:${attributeName}"\n` +
+      `            _id: ${stringifyStringLiteral(`${_id}:${attributeName}`)}\n` +
       `          }\n` +
       `        }\n` +
       `      }`
@@ -966,18 +979,20 @@ export function getEntityCreateMutation(
   const relationshipAttributes = relationshipAttributesCreate(attributes, data);
   const responseType = entityNamePlural;
   const attributeNamesList = formatResponseFieldsForMutation(schema, responseType, 'default');
+  const operationName = `Create${getOperationEntityName(entityNamePlural)}`;
 
   return (
-    `mutation {\n` +
+    `mutation ${operationName} {\n` +
     `  create${pluralizedEntityName}(\n` +
     `    input: [{\n` +
-    `      _id: "${_id}"` +
+    `      _id: ${stringifyStringLiteral(_id)}` +
     `      ${globalAttributes}` +
     `      ${localAttributes}\n` +
     `      ${relationshipAttributes}\n` +
     `    }]\n` +
     `  ) {\n` +
     `    ${responseType} {\n` +
+    `      _id\n` +
     `      ${attributeNamesList}` +
     `    }\n` +
     `  }\n` +
@@ -1008,7 +1023,7 @@ function localAttributesCreate(
       `      ${attributeName}: {\n` +
       `        create: {\n` +
       `          node: {\n` +
-      `            _id: "${_id}:${attributeName}"\n` +
+      `            _id: ${stringifyStringLiteral(`${_id}:${attributeName}`)}\n` +
       `            _type: "${attributeSchema.dataType}"\n` +
       `            ${defaultScope}: ${typedValue}\n` +
       `          }\n` +
@@ -1028,9 +1043,7 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
     const { inputType, relationship } = attributeSchema;
 
     if (inputType === 'relationship' && relationship?.mode === 'single') {
-      const connect = `connect: {\n          where: {\n            node: {\n              _id: "${
-        attributeValue._id ?? ''
-      }"\n            }\n          }\n        }\n`;
+      const connect = `connect: {\n          where: {\n            node: {\n              _id: ${stringifyStringLiteral(attributeValue._id ?? '')}\n            }\n          }\n        }\n`;
 
       return `${acc}\n      ${attributeName}: {\n        ${connect}      }`;
     }
@@ -1053,7 +1066,7 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
       }
 
       const nodesToConnect: string | undefined = connections.reduce((connectString: string, node) => {
-        return `${connectString}                {\n                  _id: "${node._id}"\n                }\n`;
+        return `${connectString}                {\n                  _id: ${stringifyStringLiteral(node._id)}\n                }\n`;
       }, '');
       const connect = nodesToConnect
         ? `connect: {\n          where: {\n            node: {\n              OR: [\n${nodesToConnect}              ]\n            }\n          }\n        }\n`
@@ -1092,6 +1105,7 @@ export function getRelatedItemsQuery({
   const attributes = entitySchema?.attributes ?? [];
   const heading = `$where: ${relatedEntityName}Where, $options: ${relatedEntityName}Options`;
   const queryEntityName = entitySchema?.plural ?? '';
+  const operationName = `GetRelated${getOperationEntityName(queryEntityName || relatedEntityName)}`;
 
   if (attributes.length === 0) {
     return {
@@ -1152,7 +1166,7 @@ export function getRelatedItemsQuery({
   return {
     queryEntityName,
     query:
-      `query getEntity(${heading}) {\n` +
+      `query ${operationName}(${heading}) {\n` +
       `  ${attributeName}Aggregate(where: $where) {\n` +
       `    count\n` +
       `  }\n` +
@@ -1177,16 +1191,18 @@ export function getAssetCreateMutation(entityData: EntityData, _id = createAsset
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const responseType = assetSchema.plural;
   const attributeNamesList = formatResponseFieldsForMutation([assetSchema, tagSchema], responseType, 'default');
+  const operationName = `Create${getOperationEntityName(assetSchema.plural)}`;
 
   return (
-    `mutation {\n` +
+    `mutation ${operationName} {\n` +
     `  create${pluralizedEntityName}(\n` +
     `    input: [{\n` +
-    `      _id: "${_id}"` +
+    `      _id: ${stringifyStringLiteral(_id)}` +
     `      ${globalAttributes}` +
     `    }]\n` +
     `  ) {\n` +
     `    ${responseType} {\n` +
+    `      _id\n` +
     `      ${attributeNamesList}` +
     `    }\n` +
     `  }\n` +
@@ -1197,6 +1213,24 @@ export function getAssetCreateMutation(entityData: EntityData, _id = createAsset
 const capitalize = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
+
+function getOperationEntityName(entityName: string): string {
+  const normalizedEntityName = entityName
+    .split(/[^0-9A-Za-z]+/)
+    .filter(Boolean)
+    .map(capitalize)
+    .join('');
+
+  if (!normalizedEntityName) {
+    return 'Entity';
+  }
+
+  if (/^[A-Za-z_]/.test(normalizedEntityName)) {
+    return normalizedEntityName;
+  }
+
+  return `Entity${normalizedEntityName}`;
+}
 
 export function getEntitySchema(schema: Schema, entityNamePlural: string): Entity | undefined {
   if (entityNamePlural === '_assets') {
