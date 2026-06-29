@@ -1,5 +1,13 @@
 # @flexkit/studio
 
+## 0.0.21
+
+### Patch Changes
+
+- 9563bc9: Improve generated GraphQL operation safety and naming.
+
+  Names generated queries/mutations, includes \_id in create responses for cacheability, and consistently escapes dynamic string literals in generated mutation inputs.
+
 ## 0.0.20
 
 ### Patch Changes
