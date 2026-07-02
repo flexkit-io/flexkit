@@ -1,5 +1,6 @@
 import { defineConfig } from '@flexkit/studio';
 import { AssetManager } from '@flexkit/asset-manager';
+import { Automations } from '@flexkit/automations';
 import { Desk } from '@flexkit/desk';
 import { Explorer } from '@flexkit/explorer';
 import { CustomTextField } from 'demo-schemas/components/custom-input-field';
@@ -47,6 +48,7 @@ export default defineConfig([
       Desk(),
       AssetManager(),
       Explorer(),
+      Automations(),
       {
         // <-- this is a plugin. It's a function that returns a plugin object. Required fields are `name` and `contributes`.
         name: 'flexkit.desk',
@@ -275,6 +277,7 @@ export default defineConfig([
       Desk(),
       AssetManager(),
       Explorer(),
+      Automations(),
       {
         name: 'demo.2.plugin',
         title: 'Demo 2 plugin',

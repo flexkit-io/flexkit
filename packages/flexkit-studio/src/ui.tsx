@@ -31,6 +31,7 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
 } from './ui/primitives/dropdown-menu';
+export { ExternalLink } from './ui/primitives/external-link';
 export {
   useFormField,
   Form,
@@ -83,8 +84,21 @@ export {
   SheetDescription,
 } from './ui/primitives/sheet';
 export { Sidebar } from './ui/components/sidebar';
-export { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from './ui/primitives/sidebar';
+export {
+  Sidebar as SidebarPanel,
+  SidebarContent,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from './ui/primitives/sidebar';
 export { Skeleton } from './ui/primitives/skeleton';
+export { Switch } from './ui/primitives/switch';
 export {
   Table,
   TableHeader,
@@ -96,6 +110,7 @@ export {
   TableCaption,
 } from './ui/primitives/table';
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/primitives/tabs';
+export { Textarea } from './ui/primitives/textarea';
 export { ToggleGroup, ToggleGroupItem } from './ui/primitives/toggle-group';
 export { Toggle, toggleVariants } from './ui/primitives/toggle';
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipPortal, TooltipProvider } from './ui/primitives/tooltip';

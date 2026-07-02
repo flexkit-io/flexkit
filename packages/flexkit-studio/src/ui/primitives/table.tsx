@@ -19,7 +19,7 @@ function Table({ className, onScroll, ref, ...props }: TableProps) {
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
-  return <thead data-slot="table-header" className={cn('fk:[&_tr]:border-b', className)} {...props} />;
+  return <thead data-slot="table-header" className={cn('fk:[&_tr]:border-b fk:bg-muted fk:dark:bg-muted', className)} {...props} />;
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {

@@ -124,6 +124,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     id: 'select',
     header: ({ table }: { table: Table<unknown> }) => (
       <Checkbox
+        className="fk:dark:bg-white/15"
         aria-label="Select all"
         checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && 'indeterminate')}
         onCheckedChange={(value) => {

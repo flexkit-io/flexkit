@@ -13,6 +13,7 @@
     "@astrojs/vercel": "^8.1.4",
     "@astrojs/react": "^4.2.1",
     "@flexkit/asset-manager": "workspace:*",
+    "@flexkit/automations": "workspace:*",
     "@flexkit/desk": "workspace:*",
     "@flexkit/explorer": "workspace:*",
     "@flexkit/studio": "workspace:*",
