@@ -1,6 +1,31 @@
 export type AutomationRunStatus = 'running' | 'success' | 'skipped' | 'failed' | 'cancelled';
-export type AutomationTriggerType = 'entity' | 'manual' | 'schedule';
+export type AutomationTriggerType = 'entity' | 'manual' | 'schedule' | 'webhook';
+export type AutomationTriggerEvent = 'create' | 'update' | 'delete';
 export type AutomationToolProvider = 'slack' | 'teams';
+
+export interface AutomationScheduleTrigger {
+  cron: string;
+  id?: string;
+  timezone: string;
+  type: 'schedule';
+}
+
+export interface AutomationWebhookTrigger {
+  id?: string;
+  secret: string | null;
+  token: string;
+  type: 'webhook';
+  url?: string;
+}
+
+export interface AutomationEntityTrigger {
+  entities: string[];
+  events: AutomationTriggerEvent[];
+  id?: string;
+  type: 'entity';
+}
+
+export type AutomationTrigger = AutomationScheduleTrigger | AutomationWebhookTrigger | AutomationEntityTrigger;
 
 export interface AutomationToolChannel {
   id: string;
@@ -19,19 +44,14 @@ export interface AutomationModel {
 export interface Automation {
   createdAt: string | null;
   enabled: boolean;
-  entities: string[];
   id: string;
   instructions: string;
   lastRunAt: string | null;
   modelId: string;
   name: string;
   projectId: string;
-  scheduleTimezone: string;
   totalRuns: number;
-  triggerCreate: boolean;
-  triggerDelete: boolean;
-  triggerSchedule: string | null;
-  triggerUpdate: boolean;
+  triggers: AutomationTrigger[];
   updatedAt: string | null;
 }
 
@@ -109,16 +129,11 @@ export interface AutomationToolConfigInput {
 
 export interface AutomationInput {
   enabled: boolean;
-  entities: string[];
   instructions: string;
   modelId: string;
   name: string;
-  scheduleTimezone: string;
   toolConfigs: AutomationToolConfigInput[];
-  triggerCreate: boolean;
-  triggerDelete: boolean;
-  triggerSchedule: string | null;
-  triggerUpdate: boolean;
+  triggers: AutomationTrigger[];
 }
 
 export interface MutationResult {

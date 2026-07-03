@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "ai": "^6.0.116",
+    "cron-parser": "5.5.0",
     "date-fns": "4.1.0",
     "lucide-react": "0.577.0",
     "react-router-dom": "^6.21.0",

@@ -1,11 +1,12 @@
 import type { JSX } from 'react';
 import type { TextUIPart, UIMessage, UIMessageChunk } from 'ai';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { parseJsonEventStream, readUIMessageStream, uiMessageChunkSchema } from 'ai';
 import { format, formatDistance } from 'date-fns';
 import {
   ArrowLeft,
   BotIcon,
+  BrainIcon,
   CheckCircle2Icon,
   CheckIcon,
   CircleSlashIcon,
@@ -48,11 +49,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@flexkit/studio/ui';
 import useSWR from 'swr';
+import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
 import { AutomationForm } from './form';
 import type { Automation, AutomationCreditBalance, AutomationRun, RunHistory } from './types';
@@ -66,6 +71,7 @@ interface AutomationResponse {
 }
 
 interface RunsResponse {
+  hasMore?: boolean;
   runs: AutomationRun[];
 }
 
@@ -98,28 +104,65 @@ function PageMessage({ children }: { children: string }): JSX.Element {
 
 function StatusBadge({ status }: { status: string }): JSX.Element {
   return (
-    <Badge className="fk:capitalize" variant={status === 'success' ? 'default' : 'secondary'}>
+    <Badge
+      className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${status === 'success' ? 'fk:bg-success/20 fk:text-success' : 'fk:bg-secondary fk:text-secondary-foreground'}`}
+      variant={status === 'success' ? 'default' : 'secondary'}
+    >
       {status}
     </Badge>
   );
 }
 
+function getScheduleSummary(cron: string): string {
+  if (cron === '0 * * * *') {
+    return 'Every hour';
+  }
+
+  const daily = /^0 (\d{1,2}) \* \* \*$/.exec(cron);
+
+  if (daily) {
+    return `Every day at ${daily[1].padStart(2, '0')}:00`;
+  }
+
+  const weekly = /^0 (\d{1,2}) \* \* ([0-6])$/.exec(cron);
+
+  if (weekly) {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    return `Every ${days[Number(weekly[2])] ?? 'week'} at ${weekly[1].padStart(2, '0')}:00`;
+  }
+
+  return cron;
+}
+
 function getTriggerSummary(automation: Automation): string {
-  const events = [
-    automation.triggerCreate ? 'create' : '',
-    automation.triggerUpdate ? 'update' : '',
-    automation.triggerDelete ? 'delete' : '',
-  ].filter(Boolean);
+  const summaries = automation.triggers.map((trigger) => {
+    if (trigger.type === 'schedule') {
+      return getScheduleSummary(trigger.cron);
+    }
 
-  if (automation.triggerSchedule) {
-    return automation.triggerSchedule;
+    if (trigger.type === 'webhook') {
+      return 'Webhook';
+    }
+
+    const entities = trigger.entities.length > 0 ? trigger.entities.join(', ') : 'all entities';
+
+    return `On ${trigger.events.join('/')} of ${entities}`;
+  });
+
+  if (summaries.length === 0) {
+    return 'Manual only';
   }
 
-  if (events.length > 0) {
-    return `On ${events.join('/')} of ${automation.entities.length > 0 ? automation.entities.join(', ') : 'all entities'}`;
+  return summaries.join(' · ');
+}
+
+function isAutomationRunnable(automation?: Automation): boolean {
+  if (!automation) {
+    return false;
   }
 
-  return 'Manual only';
+  return Boolean(automation.name.trim() && automation.instructions.trim() && automation.modelId.trim());
 }
 
 function CreditButton({ projectId }: { projectId: string }): JSX.Element | null {
@@ -212,7 +255,7 @@ export function AutomationsPage(): JSX.Element {
           <TableHeader>
             <TableRow>
               <TableHead>Automation</TableHead>
-              <TableHead>Schedule</TableHead>
+              <TableHead>Triggers</TableHead>
               <TableHead>Last run</TableHead>
               <TableHead className="fk:text-center">Runs</TableHead>
               <TableHead className="fk:text-center">Status</TableHead>
@@ -234,8 +277,8 @@ export function AutomationsPage(): JSX.Element {
                 <TableCell className="fk:text-center">{automation.totalRuns}</TableCell>
                 <TableCell className="fk:text-center">
                   <Badge
-                    className={`fk:border-none ${automation.enabled ? 'fk:bg-success/70 fk:dark:bg-success/50 fk:text-foreground fk:dark:text-white fk:font-medium' : 'fk:bg-destructive fk:dark:bg-destructive/60 fk:text-white fk:dark:text-white fk:font-medium'}`}
-                    variant={automation.enabled ? 'default' : 'outline'}
+                    className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${automation.enabled ? 'fk:bg-success/20 fk:text-success' : 'fk:bg-secondary fk:text-secondary-foreground'}`}
+                    variant={automation.enabled ? 'default' : 'secondary'}
                   >
                     {automation.enabled ? 'Enabled' : 'Disabled'}
                   </Badge>
@@ -329,7 +372,8 @@ export function AutomationDetailPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const { automationId } = useParams<{ automationId: string }>();
   const navigate = useNavigate();
-  const { data } = useSWR<AutomationResponse>(
+  const [isRunning, startTransition] = useTransition();
+  const { data, mutate } = useSWR<AutomationResponse>(
     projectId && automationId ? paths(projectId).automation(automationId) : null,
     fetcher
   );
@@ -342,8 +386,42 @@ export function AutomationDetailPage(): JSX.Element {
     return <PageMessage>Loading automation...</PageMessage>;
   }
 
+  const automationApi = api;
+  const canRunAutomation = isAutomationRunnable(data.automation);
+  const selectedAutomationId = automationId;
+
+  function handleRunNow(): void {
+    if (!canRunAutomation) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await automationApi.runAutomation(selectedAutomationId);
+
+      if (result.success && result.runId) {
+        navigate(`runs/${result.runId}`);
+
+        return;
+      }
+
+      await mutate();
+    });
+  }
+
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-6">
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
+      <div className="fk:mb-4 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
+        <div className="fk:flex-1">
+          <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">{data.automation.name}</h1>
+        </div>
+      </div>
       <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3">
         <Button asChild size="sm" variant="ghost">
           <Link to="..">
@@ -351,8 +429,23 @@ export function AutomationDetailPage(): JSX.Element {
             Automations
           </Link>
         </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link to="runs">Runs</Link>
+        <Tabs value="settings">
+          <TabsList>
+            <TabsTrigger className="text-xs" value="settings">
+              Settings
+            </TabsTrigger>
+            <TabsTrigger className="text-xs" value="runs">
+              <Link to="runs">Runs</Link>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Button disabled={isRunning || !canRunAutomation} size="sm" onClick={handleRunNow}>
+          {isRunning ? (
+            <LoaderCircle className="fk:mr-2 fk:size-4 fk:animate-spin" />
+          ) : (
+            <Play className="fk:mr-2 fk:size-4" />
+          )}
+          Run now
         </Button>
       </div>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
@@ -362,13 +455,21 @@ export function AutomationDetailPage(): JSX.Element {
             automation={data.automation}
             mode="edit"
             projectId={projectId}
-            onSaved={() => navigate('..')}
+            onSaved={(automation) => {
+              if (automation) {
+                void mutate({ automation }, { revalidate: false });
+              } else {
+                void mutate();
+              }
+            }}
           />
         </div>
       </ScrollArea>
     </div>
   );
 }
+
+const RUNS_PAGE_SIZE = 25;
 
 export function RunsPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
@@ -379,19 +480,32 @@ export function RunsPage(): JSX.Element {
     projectId && automationId ? paths(projectId).automation(automationId) : null,
     fetcher
   );
-  const { data: runsData, mutate } = useSWR<RunsResponse>(
-    projectId && automationId ? paths(projectId).automationRuns(automationId) : null,
-    fetcher
-  );
+  const getRunsKey = (pageIndex: number, previousPage: RunsResponse | null): string | null => {
+    if (!projectId || !automationId) {
+      return null;
+    }
+
+    if (previousPage && previousPage.hasMore === false) {
+      return null;
+    }
+
+    return paths(projectId).automationRuns(automationId, pageIndex * RUNS_PAGE_SIZE, RUNS_PAGE_SIZE);
+  };
+  const { data: runPages, mutate, setSize, size } = useSWRInfinite<RunsResponse>(getRunsKey, fetcher);
 
   if (!projectId || !api || !automationId) {
     return <PageMessage>Select an automation to view runs.</PageMessage>;
   }
 
   const automationApi = api;
+  const canRunAutomation = isAutomationRunnable(data?.automation);
   const selectedAutomationId = automationId;
 
   function handleRunNow(): void {
+    if (!canRunAutomation) {
+      return;
+    }
+
     startTransition(async () => {
       const result = await automationApi.runAutomation(selectedAutomationId);
 
@@ -405,18 +519,51 @@ export function RunsPage(): JSX.Element {
     });
   }
 
-  const runs = runsData?.runs ?? [];
+  const runs = runPages?.flatMap((page) => page.runs) ?? [];
+  const lastPage = runPages?.[runPages.length - 1];
+  const hasMore = lastPage?.hasMore ?? false;
+  const isLoadingMore = runPages !== undefined && size > runPages.length;
+
+  function handleLoadMore(): void {
+    void setSize((currentSize) => currentSize + 1);
+  }
 
   return (
-    <div className="fk:space-y-6">
-      <div className="fk:flex fk:flex-wrap fk:items-center fk:justify-between fk:gap-3">
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
+      <div className="fk:mb-4 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
+        <div className="fk:flex-1">
+          <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">
+            {data?.automation.name ?? 'Automation'}
+          </h1>
+        </div>
+      </div>
+      <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3">
         <Button asChild size="sm" variant="ghost">
           <Link to="..">
             <ArrowLeft className="fk:mr-2 fk:size-4" />
-            {data?.automation.name ?? 'Automation'}
+            Automations
           </Link>
         </Button>
-        <Button disabled={isRunning} size="sm" onClick={handleRunNow}>
+        <Tabs value="runs">
+          <TabsList>
+            <TabsTrigger className="text-xs" value="settings">
+              <Link relative="path" to="..">
+                Settings
+              </Link>
+            </TabsTrigger>
+            <TabsTrigger className="text-xs" value="runs">
+              Runs
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Button disabled={isRunning || !canRunAutomation} size="sm" onClick={handleRunNow}>
           {isRunning ? (
             <LoaderCircle className="fk:mr-2 fk:size-4 fk:animate-spin" />
           ) : (
@@ -425,9 +572,49 @@ export function RunsPage(): JSX.Element {
           Run now
         </Button>
       </div>
-      <RunsTable basePath="." runs={runs} />
+      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
+        <div className="fk:pb-6 fk:pr-4">
+          <RunsTable basePath="." runs={runs} />
+          {hasMore && !isLoadingMore ? <InfiniteScrollSentinel onVisible={handleLoadMore} /> : null}
+          {isLoadingMore ? (
+            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
+              <LoaderCircle className="fk:size-4 fk:animate-spin" />
+              <span>Loading more runs...</span>
+            </div>
+          ) : null}
+        </div>
+      </ScrollArea>
     </div>
   );
+}
+
+function InfiniteScrollSentinel({ onVisible }: { onVisible: () => void }): JSX.Element {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const onVisibleRef = useRef(onVisible);
+
+  onVisibleRef.current = onVisible;
+
+  useEffect(() => {
+    const node = sentinelRef.current;
+
+    if (!node) {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        onVisibleRef.current();
+      }
+    });
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  return <div className="fk:h-px" ref={sentinelRef} />;
 }
 
 function RunsTable({ basePath, runs }: { basePath: string; runs: AutomationRun[] }): JSX.Element {
@@ -440,7 +627,7 @@ function RunsTable({ basePath, runs }: { basePath: string; runs: AutomationRun[]
       <TableBody>
         {runs.map((run) => (
           <TableRow key={run.id}>
-            <TableCell>
+            <TableCell className="fk:py-2">
               <Link className="fk:font-medium hover:fk:underline" to={`${basePath}/${run.id}`}>
                 {formatDistance(new Date(run.startedAt), new Date(), { addSuffix: true })}
               </Link>
@@ -460,16 +647,35 @@ function RunsTable({ basePath, runs }: { basePath: string; runs: AutomationRun[]
 export function RunHistoryPage(): JSX.Element {
   const { projectId } = useProjectApi();
   const [scope, setScope] = useState<'mine' | 'team'>('team');
-  const { data } = useSWR<HistoryResponse>(projectId ? paths(projectId).runHistory(scope) : null, fetcher);
-  const history = data?.history;
+  const getHistoryKey = (pageIndex: number, previousPage: HistoryResponse | null): string | null => {
+    if (!projectId) {
+      return null;
+    }
+
+    if (previousPage && !previousPage.history.hasMore) {
+      return null;
+    }
+
+    return paths(projectId).runHistory(scope, pageIndex * RUNS_PAGE_SIZE, RUNS_PAGE_SIZE);
+  };
+  const { data: historyPages, setSize, size } = useSWRInfinite<HistoryResponse>(getHistoryKey, fetcher);
+  const metrics = historyPages?.[0]?.history.metrics;
+  const runs = historyPages?.flatMap((page) => page.history.runs) ?? [];
+  const lastPage = historyPages?.[historyPages.length - 1];
+  const hasMore = lastPage?.history.hasMore ?? false;
+  const isLoadingMore = historyPages !== undefined && size > historyPages.length;
 
   if (!projectId) {
     return <PageMessage>Select a project to view run history.</PageMessage>;
   }
 
+  function handleLoadMore(): void {
+    void setSize((currentSize) => currentSize + 1);
+  }
+
   return (
-    <div className="fk:space-y-6">
-      <div className="fk:flex fk:gap-2">
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-6">
+      <div className="fk:flex fk:shrink-0 fk:gap-2">
         <Button size="sm" variant={scope === 'team' ? 'default' : 'outline'} onClick={() => setScope('team')}>
           Team
         </Button>
@@ -477,21 +683,32 @@ export function RunHistoryPage(): JSX.Element {
           Mine
         </Button>
       </div>
-      {history ? (
-        <div className="fk:grid fk:gap-3 fk:md:grid-cols-4">
-          <MetricCard title="Successful 24h" value={history.metrics.successful24h} />
-          <MetricCard title="Failed 24h" value={history.metrics.failed24h} />
-          <MetricCard title="Successful 7d" value={history.metrics.successful7d} />
-          <MetricCard title="Failed 7d" value={history.metrics.failed7d} />
+      {metrics ? (
+        <div className="fk:grid fk:shrink-0 fk:gap-3 fk:md:grid-cols-4">
+          <MetricCard title="Successful 24h" value={metrics.successful24h} />
+          <MetricCard title="Failed 24h" value={metrics.failed24h} />
+          <MetricCard title="Successful 7d" value={metrics.successful7d} />
+          <MetricCard title="Failed 7d" value={metrics.failed7d} />
         </div>
       ) : null}
-      <RunsTable
-        basePath=".."
-        runs={(history?.runs ?? []).map((run) => ({
-          ...run,
-          id: `${run.automationId}/runs/${run.id}`,
-        }))}
-      />
+      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
+        <div className="fk:pb-6 fk:pr-4">
+          <RunsTable
+            basePath=".."
+            runs={runs.map((run) => ({
+              ...run,
+              id: `${run.automationId}/runs/${run.id}`,
+            }))}
+          />
+          {hasMore && !isLoadingMore ? <InfiniteScrollSentinel onVisible={handleLoadMore} /> : null}
+          {isLoadingMore ? (
+            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
+              <LoaderCircle className="fk:size-4 fk:animate-spin" />
+              <span>Loading more runs...</span>
+            </div>
+          ) : null}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -827,6 +1044,10 @@ export function RunDetailPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const { automationId, runId } = useParams<{ automationId: string; runId: string }>();
   const { data, mutate } = useSWR<RunResponse>(projectId && runId ? paths(projectId).run(runId) : null, fetcher);
+  const { data: automationData } = useSWR<AutomationResponse>(
+    projectId && automationId ? paths(projectId).automation(automationId) : null,
+    fetcher
+  );
   const [isCancelling, startCancelTransition] = useTransition();
 
   if (!projectId || !api || !automationId || !runId) {
@@ -845,11 +1066,25 @@ export function RunDetailPage(): JSX.Element {
   }
 
   return (
-    <div className="fk:space-y-6">
-      <div className="fk:flex fk:flex-wrap fk:items-start fk:justify-between fk:gap-3">
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
+      <div className="fk:mb-4 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
+        <div className="fk:flex-1">
+          <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">
+            {automationData?.automation.name ?? 'Automation'}
+          </h1>
+        </div>
+      </div>
+      <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-start fk:justify-between fk:gap-3">
         <div>
           <Button asChild size="sm" variant="ghost">
-            <Link to="..">
+            <Link relative="path" to="..">
               <ArrowLeft className="fk:mr-2 fk:size-4" />
               Runs
             </Link>
@@ -864,7 +1099,11 @@ export function RunDetailPage(): JSX.Element {
           </Button>
         ) : null}
       </div>
-      {run ? <RunReplay api={api} run={run} /> : <PageMessage>Loading run...</PageMessage>}
+      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
+        <div className="fk:pb-6 fk:pr-4 fk:max-w-5xl fk:mx-auto">
+          {run ? <RunReplay api={api} run={run} /> : <PageMessage>Loading run...</PageMessage>}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -1161,7 +1400,7 @@ function ReasoningPart({ text }: { text: string }): JSX.Element {
   return (
     <ToolMessage className="fk:bg-muted/30">
       <ToolHeader>
-        <LoaderCircle className="fk:size-3.5" />
+        <BrainIcon className="fk:size-3.5" />
         Reasoning
       </ToolHeader>
       <p className="fk:mt-2 fk:whitespace-pre-wrap fk:text-xs fk:text-muted-foreground">{text}</p>
@@ -1180,9 +1419,7 @@ function ToolMessage({ children, className = '' }: { children: React.ReactNode; 
 }
 
 function ToolHeader({ children }: { children: React.ReactNode }): JSX.Element {
-  return (
-    <div className="fk:mb-2 fk:flex fk:items-center fk:gap-2 fk:font-medium fk:text-muted-foreground">{children}</div>
-  );
+  return <div className="fk:flex fk:items-center fk:gap-2 fk:font-medium fk:text-muted-foreground">{children}</div>;
 }
 
 function StatusIcon({ isError, loading }: { isError?: boolean; loading?: boolean }): JSX.Element {

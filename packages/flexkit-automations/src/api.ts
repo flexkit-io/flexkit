@@ -21,7 +21,10 @@ export interface ApiClient {
     success: boolean;
   }>;
   runAutomation: (_automationId: string) => Promise<MutationResult & { runId?: string }>;
-  updateAutomation: (_automationId: string, _input: AutomationInput) => Promise<MutationResult & { automation?: Automation }>;
+  updateAutomation: (
+    _automationId: string,
+    _input: AutomationInput
+  ) => Promise<MutationResult & { automation?: Automation }>;
 }
 
 function getDashboardOrigin(): string {
@@ -40,6 +43,26 @@ function getDashboardOrigin(): string {
   }
 
   return 'https://flexkit.io';
+}
+
+function getApiRootDomain(): string {
+  if (typeof window === 'undefined') {
+    return 'flexkit.io';
+  }
+
+  const { hostname } = window.location;
+  const isDevHost =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === 'flexkit.test' ||
+    hostname.endsWith('.flexkit.test');
+
+  return isDevHost ? 'flexkit.test' : 'flexkit.io';
+}
+
+/** Public URL an external system calls to fire a webhook trigger. */
+export function getWebhookTriggerUrl(projectId: string, token: string): string {
+  return `https://${projectId}.api.${getApiRootDomain()}/automations/webhook/${encodeURIComponent(token)}`;
 }
 
 export function createApiClient(projectId: string): ApiClient {
@@ -126,10 +149,13 @@ export function createApiClient(projectId: string): ApiClient {
         method: 'POST',
       }),
     updateAutomation: async (automationId, input) =>
-      request<MutationResult & { automation?: Automation }>(`${automationsBasePath}/${encodeURIComponent(automationId)}`, {
-        body: JSON.stringify(input),
-        method: 'PATCH',
-      }),
+      request<MutationResult & { automation?: Automation }>(
+        `${automationsBasePath}/${encodeURIComponent(automationId)}`,
+        {
+          body: JSON.stringify(input),
+          method: 'PATCH',
+        }
+      ),
   };
 }
 
@@ -145,24 +171,26 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 
 export function paths(projectId: string): {
   automation: (_automationId: string) => string;
-  automationRuns: (_automationId: string) => string;
+  automationRuns: (_automationId: string, _offset?: number, _limit?: number) => string;
   automations: string;
   creditBalance: string;
   entities: string;
   run: (_runId: string) => string;
-  runHistory: (_scope: 'mine' | 'team', _offset?: number) => string;
+  runHistory: (_scope: 'mine' | 'team', _offset?: number, _limit?: number) => string;
   tools: (_automationId?: string) => string;
 } {
   const basePath = `/api/flexkit/${projectId}/automations`;
 
   return {
     automation: (automationId) => `${basePath}/${encodeURIComponent(automationId)}`,
-    automationRuns: (automationId) => `${basePath}/${encodeURIComponent(automationId)}/runs`,
+    automationRuns: (automationId, offset = 0, limit = 25) =>
+      `${basePath}/${encodeURIComponent(automationId)}/runs?offset=${offset.toString()}&limit=${limit.toString()}`,
     automations: basePath,
     creditBalance: `${basePath}/credits`,
     entities: `${basePath}/entities`,
     run: (runId) => `${basePath}/runs/${encodeURIComponent(runId)}`,
-    runHistory: (scope, offset = 0) => `${basePath}/runs?scope=${scope}&offset=${offset.toString()}`,
+    runHistory: (scope, offset = 0, limit = 25) =>
+      `${basePath}/runs?scope=${scope}&offset=${offset.toString()}&limit=${limit.toString()}`,
     tools: (automationId) =>
       automationId ? `${basePath}/${encodeURIComponent(automationId)}/tools` : `${basePath}/tools`,
   };

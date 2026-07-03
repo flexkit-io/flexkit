@@ -2,7 +2,7 @@
 
 import { CircleCheckIcon, InfoIcon, Loader2Icon, OctagonXIcon, TriangleAlertIcon } from 'lucide-react';
 import { useTheme } from '../theme-context';
-import { Toaster as Sonner, type ToasterProps } from 'sonner';
+import { toast, Toaster as Sonner, type ToasterProps } from 'sonner';
 
 const Toaster = ({ richColors = true, style, ...props }: ToasterProps) => {
   const { theme = 'system' } = useTheme();
@@ -33,4 +33,4 @@ const Toaster = ({ richColors = true, style, ...props }: ToasterProps) => {
   );
 };
 
-export { Toaster };
+export { toast, Toaster };

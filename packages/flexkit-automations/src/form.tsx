@@ -1,9 +1,18 @@
 import type { FormEvent, JSX } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
+import { CronExpressionParser } from 'cron-parser';
 import {
   Badge,
   Button,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
   Input,
   Label,
   Select,
@@ -11,19 +20,45 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Separator,
   Switch,
   Textarea,
+  toast,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from '@flexkit/studio/ui';
-import { BrainIcon, CheckIcon, ChevronsUpDownIcon, LoaderCircleIcon, Trash2Icon, XIcon } from 'lucide-react';
-import { fetcher, paths, type ApiClient } from './api';
+import {
+  BrainIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronsUpDownIcon,
+  ClockIcon,
+  CopyIcon,
+  DatabaseZapIcon,
+  KeyRoundIcon,
+  LoaderCircleIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+  WebhookIcon,
+  XIcon,
+} from 'lucide-react';
+import { fetcher, getWebhookTriggerUrl, paths, type ApiClient } from './api';
 import type {
   Automation,
+  AutomationEntityTrigger,
   AutomationInput,
+  AutomationScheduleTrigger,
   AutomationTools,
   AutomationToolChannel,
   AutomationToolConfigInput,
   AutomationToolProvider,
+  AutomationTrigger,
+  AutomationTriggerEvent,
   AutomationProviderTools,
+  AutomationWebhookTrigger,
 } from './types';
 
 interface AutomationFormProps {
@@ -60,29 +95,151 @@ interface ChannelPickerProps {
   value: AutomationToolChannel[];
 }
 
-const SCHEDULE_PRESETS = [
-  { label: 'No schedule', value: 'none' },
-  { label: 'Every hour', value: '0 * * * *' },
-  { label: 'Every day at 9:00', value: '0 9 * * *' },
-  { label: 'Every Monday at 9:00', value: '0 9 * * 1' },
-  { label: 'First day of the month at 9:00', value: '0 9 1 * *' },
-  { label: 'Custom cron expression', value: 'custom' },
-];
-
 const TOOL_PROVIDERS: AutomationToolProvider[] = ['slack', 'teams'];
 
-function getInitialSchedule(automation?: Automation): { customCron: string; preset: string } {
-  if (!automation?.triggerSchedule) {
-    return { customCron: '', preset: 'none' };
+const TRIGGER_EVENTS: AutomationTriggerEvent[] = ['create', 'update', 'delete'];
+
+const HOURLY_CRON = '0 * * * *';
+const DEFAULT_DAILY_CRON = '0 9 * * *';
+const DEFAULT_WEEKLY_CRON = '0 9 * * 1';
+const DEFAULT_CUSTOM_CRON = '0 9 1 * *';
+
+const DAY_OPTIONS = [
+  { label: 'Monday', value: 1 },
+  { label: 'Tuesday', value: 2 },
+  { label: 'Wednesday', value: 3 },
+  { label: 'Thursday', value: 4 },
+  { label: 'Friday', value: 5 },
+  { label: 'Saturday', value: 6 },
+  { label: 'Sunday', value: 0 },
+];
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
+  label: `${hour.toString().padStart(2, '0')}:00`,
+  value: hour,
+}));
+
+type FormTrigger = AutomationTrigger & { key: string };
+type ScheduleFormTrigger = AutomationScheduleTrigger & { key: string };
+type WebhookFormTrigger = AutomationWebhookTrigger & { key: string };
+type EntityFormTrigger = AutomationEntityTrigger & { key: string };
+
+type ScheduleKind =
+  | { kind: 'hourly' }
+  | { hour: number; kind: 'daily' }
+  | { day: number; hour: number; kind: 'weekly' }
+  | { kind: 'custom' };
+
+interface FormValidation {
+  instructions: string;
+  model: string;
+  name: string;
+  toolErrors: { [provider: string]: string };
+  triggerErrors: { [triggerKey: string]: string };
+}
+
+function isFormValidationClean(validation: FormValidation): boolean {
+  return (
+    !validation.instructions &&
+    !validation.model &&
+    !validation.name &&
+    Object.keys(validation.toolErrors).length === 0 &&
+    Object.keys(validation.triggerErrors).length === 0
+  );
+}
+
+function FieldError({ id, message }: { id?: string; message: string }): JSX.Element | null {
+  if (!message) {
+    return null;
   }
 
-  const preset = SCHEDULE_PRESETS.find((item) => item.value === automation.triggerSchedule);
+  return (
+    <p className="fk:flex fk:items-start fk:text-sm fk:text-warning fk:gap-1" id={id} role="alert">
+      <TriangleAlertIcon className="fk:size-4 fk:shrink-0 fk:mt-0.5" />
+      {message}
+    </p>
+  );
+}
 
-  if (preset) {
-    return { customCron: '', preset: preset.value };
+function createTriggerKey(): string {
+  return crypto.randomUUID();
+}
+
+function getInitialTriggers(automation?: Automation): FormTrigger[] {
+  return (automation?.triggers ?? []).map((trigger) => ({ ...trigger, key: trigger.id ?? createTriggerKey() }));
+}
+
+function getLocalTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+}
+
+function generateWebhookSecret(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function parseScheduleKind(cron: string): ScheduleKind {
+  if (cron === HOURLY_CRON) {
+    return { kind: 'hourly' };
   }
 
-  return { customCron: automation.triggerSchedule, preset: 'custom' };
+  const daily = /^0 (\d{1,2}) \* \* \*$/.exec(cron);
+
+  if (daily) {
+    return { hour: Number(daily[1]), kind: 'daily' };
+  }
+
+  const weekly = /^0 (\d{1,2}) \* \* ([0-6])$/.exec(cron);
+
+  if (weekly) {
+    return { day: Number(weekly[2]), hour: Number(weekly[1]), kind: 'weekly' };
+  }
+
+  return { kind: 'custom' };
+}
+
+function getNextRuns(cron: string, timezone: string, count: number): Date[] {
+  try {
+    const expression = CronExpressionParser.parse(cron, { tz: timezone });
+
+    return Array.from({ length: count }, () => expression.next().toDate());
+  } catch {
+    return [];
+  }
+}
+
+function formatRunDate(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    month: 'short',
+    timeZone: timezone,
+    weekday: 'short',
+  }).format(date);
+}
+
+function getCronError(cron: string, timezone: string): string | null {
+  const trimmed = cron.trim();
+
+  if (!trimmed) {
+    return 'Cron expression is required';
+  }
+
+  const fieldCount = trimmed.split(/\s+/).length;
+
+  if (fieldCount < 5 || fieldCount > 6) {
+    return `Expected 5 fields (min hour day month weekday), got ${fieldCount.toString()}`;
+  }
+
+  try {
+    CronExpressionParser.parse(trimmed, { tz: timezone });
+
+    return null;
+  } catch {
+    return 'Invalid cron expression';
+  }
 }
 
 function getModelOptions(
@@ -142,7 +299,7 @@ function getInitialProviderToolFormData(
     ...providerTools,
     availableChannels: providerTools.channels,
     channelsLoaded: !providerTools.connected,
-    enabled: providerTools.connected && (mode === 'create' || providerTools.enabled),
+    enabled: providerTools.connected && mode === 'edit' && providerTools.enabled,
     loadingChannels: false,
   };
 }
@@ -252,7 +409,7 @@ function ChannelPicker({
         <ChevronsUpDownIcon className="fk:size-4 fk:shrink-0 fk:opacity-50" />
       </Button>
       {open ? (
-        <div className="fk:absolute fk:z-50 fk:mt-1 fk:w-full fk:min-w-[320px] fk:rounded-md fk:border fk:bg-popover fk:p-0 fk:text-popover-foreground fk:shadow-md">
+        <div className="fk:absolute fk:z-50 fk:mt-1 fk:w-full fk:max-w-100 fk:rounded-md fk:border fk:bg-popover fk:p-0 fk:text-popover-foreground fk:shadow-md">
           <div className="fk:border-b fk:p-2">
             <Input
               className="fk:h-8"
@@ -270,7 +427,9 @@ function ChannelPicker({
                   type="button"
                   onClick={() => handleSelect(channel)}
                 >
-                  <CheckIcon className={`fk:mr-2 fk:size-4 ${selectedIds.has(channel.id) ? 'fk:opacity-100' : 'fk:opacity-0'}`} />
+                  <CheckIcon
+                    className={`fk:mr-2 fk:size-4 ${selectedIds.has(channel.id) ? 'fk:opacity-100' : 'fk:opacity-0'}`}
+                  />
                   {channel.name}
                 </button>
               ))
@@ -282,7 +441,7 @@ function ChannelPicker({
           </div>
           <div className="fk:border-t fk:border-border fk:p-2">
             <Button
-              className="fk:h-8 fk:w-full fk:justify-center fk:text-xs"
+              className="fk:h-8 fk:w-full fk:justify-start fk:text-xs"
               disabled={loading}
               type="button"
               variant="ghost"
@@ -294,12 +453,470 @@ function ChannelPicker({
                   Refreshing channels...
                 </>
               ) : (
-                'Refresh channels'
+                <>
+                  <RefreshCwIcon className="fk:mr-2 fk:size-3" />
+                  Refresh channels
+                </>
               )}
             </Button>
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function NextRunLabel({ cron, timezone }: { cron: string; timezone: string }): JSX.Element | null {
+  const [nextRun] = getNextRuns(cron, timezone, 1);
+
+  if (!nextRun) {
+    return null;
+  }
+
+  return <span className="fk:text-sm fk:text-muted-foreground">Next run {formatRunDate(nextRun, timezone)}</span>;
+}
+
+function HourSelect({ onChange, value }: { onChange: (_hour: number) => void; value: number }): JSX.Element {
+  return (
+    <Select value={value.toString()} onValueChange={(hour) => onChange(Number(hour))}>
+      <SelectTrigger
+        aria-label="Hour"
+        className="fk:h-7 fk:w-fit fk:gap-1 fk:border-transparent fk:bg-background/90 fk:px-2 fk:py-0 fk:text-sm fk:shadow-sm hover:fk:border-border"
+        size="sm"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {HOUR_OPTIONS.map((option) => (
+          <SelectItem key={option.value} value={option.value.toString()}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function DaySelect({ onChange, value }: { onChange: (_day: number) => void; value: number }): JSX.Element {
+  return (
+    <Select value={value.toString()} onValueChange={(day) => onChange(Number(day))}>
+      <SelectTrigger
+        aria-label="Day of week"
+        className="fk:h-7 fk:w-fit fk:gap-1 fk:border-transparent fk:bg-background/90 fk:px-2 fk:py-0 fk:text-sm fk:shadow-sm hover:fk:border-border"
+        size="sm"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {DAY_OPTIONS.map((option) => (
+          <SelectItem key={option.value} value={option.value.toString()}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+function CronEditor({
+  onChange,
+  timezone,
+  value,
+}: {
+  onChange: (_cron: string) => void;
+  timezone: string;
+  value: string;
+}): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const error = getCronError(value, timezone);
+  const nextRuns = error ? [] : getNextRuns(value, timezone, 3);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent): void {
+      const { target } = event;
+
+      if (!(target instanceof Node) || containerRef.current?.contains(target)) {
+        return;
+      }
+
+      setOpen(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      setOpen(false);
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="fk:relative" ref={containerRef}>
+      <button
+        className="fk:flex fk:items-center fk:gap-1.5 fk:rounded-md fk:bg-background/90 fk:px-2 fk:py-1 fk:font-mono fk:text-sm fk:shadow-sm hover:fk:bg-accent"
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+      >
+        {value || 'Set cron'}
+        <ChevronDownIcon className="fk:size-3.5 fk:opacity-50" />
+      </button>
+      {open ? (
+        <div className="fk:absolute fk:z-50 fk:mt-1 fk:w-72 fk:rounded-md fk:border fk:bg-popover fk:p-3 fk:text-popover-foreground fk:shadow-md">
+          <div className="fk:mb-2 fk:text-xs fk:text-muted-foreground">Cron expression ({timezone})</div>
+          <Input
+            className={`fk:h-8 fk:font-mono ${error ? 'fk:border-destructive focus-visible:fk:ring-destructive' : ''}`}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+          />
+          {error ? (
+            <p className="fk:mt-2 fk:text-xs fk:text-destructive">{error}</p>
+          ) : (
+            <div className="fk:mt-2 fk:space-y-0.5 fk:text-xs fk:text-muted-foreground">
+              <p className="fk:mb-1">5 fields: min hour day month weekday</p>
+              {nextRuns.map((run) => (
+                <p key={run.toISOString()}>{formatRunDate(run, timezone)}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ScheduleTriggerRow({
+  onChange,
+  trigger,
+}: {
+  onChange: (_trigger: ScheduleFormTrigger) => void;
+  trigger: ScheduleFormTrigger;
+}): JSX.Element {
+  const kind = parseScheduleKind(trigger.cron);
+
+  if (kind.kind === 'hourly') {
+    return (
+      <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
+        <span>Every hour</span>
+        <NextRunLabel cron={trigger.cron} timezone={trigger.timezone} />
+      </div>
+    );
+  }
+
+  if (kind.kind === 'daily') {
+    return (
+      <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
+        <span>Every day at</span>
+        <HourSelect
+          value={kind.hour}
+          onChange={(hour) => onChange({ ...trigger, cron: `0 ${hour.toString()} * * *` })}
+        />
+        <span className="fk:text-muted-foreground">{trigger.timezone}</span>
+        <NextRunLabel cron={trigger.cron} timezone={trigger.timezone} />
+      </div>
+    );
+  }
+
+  if (kind.kind === 'weekly') {
+    return (
+      <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
+        <span>Every week on</span>
+        <DaySelect
+          value={kind.day}
+          onChange={(day) => onChange({ ...trigger, cron: `0 ${kind.hour.toString()} * * ${day.toString()}` })}
+        />
+        <span>at</span>
+        <HourSelect
+          value={kind.hour}
+          onChange={(hour) => onChange({ ...trigger, cron: `0 ${hour.toString()} * * ${kind.day.toString()}` })}
+        />
+        <span className="fk:text-muted-foreground">{trigger.timezone}</span>
+        <NextRunLabel cron={trigger.cron} timezone={trigger.timezone} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
+      <span>Custom schedule</span>
+      <CronEditor
+        timezone={trigger.timezone}
+        value={trigger.cron}
+        onChange={(cron) => onChange({ ...trigger, cron })}
+      />
+      <span className="fk:text-muted-foreground">{trigger.timezone}</span>
+      <NextRunLabel cron={trigger.cron} timezone={trigger.timezone} />
+    </div>
+  );
+}
+
+function WebhookTriggerRow({
+  onChange,
+  projectId,
+  trigger,
+}: {
+  onChange: (_trigger: WebhookFormTrigger) => void;
+  projectId: string;
+  trigger: WebhookFormTrigger;
+}): JSX.Element {
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [copiedSecret, setCopiedSecret] = useState(false);
+  const url = trigger.url ?? getWebhookTriggerUrl(projectId, trigger.token);
+
+  function copyToClipboard(text: string, markCopied: (_copied: boolean) => void): void {
+    void navigator.clipboard.writeText(text).then(() => {
+      markCopied(true);
+      window.setTimeout(() => markCopied(false), 1500);
+    });
+  }
+
+  return (
+    <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
+      <span>Webhook triggered</span>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            className="fk:flex fk:min-w-0 fk:max-w-60 fk:items-center fk:gap-1.5 fk:rounded-md fk:bg-background/90 fk:px-2 fk:py-1 fk:text-xs fk:shadow-sm hover:fk:bg-accent"
+            type="button"
+            onClick={() => copyToClipboard(url, setCopiedUrl)}
+          >
+            <span className="fk:truncate">{url}</span>
+            {copiedUrl ? (
+              <CheckIcon className="fk:size-3.5 fk:shrink-0" />
+            ) : (
+              <CopyIcon className="fk:size-3.5 fk:shrink-0 fk:opacity-60" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="fk:max-w-96 fk:break-all">{url}</TooltipContent>
+      </Tooltip>
+      {trigger.secret ? (
+        <Button
+          className="fk:h-7 fk:px-2.5 fk:text-xs"
+          size="sm"
+          type="button"
+          variant="outline"
+          onClick={() => copyToClipboard(`Bearer ${trigger.secret ?? ''}`, setCopiedSecret)}
+        >
+          {copiedSecret ? <CheckIcon className="fk:size-3.5" /> : <KeyRoundIcon className="fk:size-3.5" />}
+          Copy auth header
+        </Button>
+      ) : (
+        <Button
+          className="fk:h-7 fk:px-2.5 fk:text-xs"
+          size="sm"
+          type="button"
+          variant="outline"
+          onClick={() => onChange({ ...trigger, secret: generateWebhookSecret() })}
+        >
+          <KeyRoundIcon className="fk:size-3.5" />
+          Generate auth header
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function EntityTriggerRow({
+  entities,
+  onChange,
+  trigger,
+}: {
+  entities: string[];
+  onChange: (_trigger: EntityFormTrigger) => void;
+  trigger: EntityFormTrigger;
+}): JSX.Element {
+  function toggleEvent(event: AutomationTriggerEvent): void {
+    const events = trigger.events.includes(event)
+      ? trigger.events.filter((current) => current !== event)
+      : [...trigger.events, event];
+
+    onChange({ ...trigger, events: TRIGGER_EVENTS.filter((current) => events.includes(current)) });
+  }
+
+  function toggleEntity(entity: string): void {
+    const selected = trigger.entities.includes(entity)
+      ? trigger.entities.filter((current) => current !== entity)
+      : [...trigger.entities, entity];
+
+    onChange({ ...trigger, entities: selected });
+  }
+
+  const entityLabel = trigger.entities.length > 0 ? trigger.entities.join(', ') : 'All entities';
+
+  return (
+    <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
+      <span>On</span>
+      <div className="fk:flex fk:items-center fk:gap-1">
+        {TRIGGER_EVENTS.map((event) => (
+          <Button
+            className="fk:h-7 fk:px-2.5 fk:text-xs fk:capitalize"
+            key={event}
+            size="sm"
+            type="button"
+            variant={trigger.events.includes(event) ? 'secondary' : 'ghost'}
+            onClick={() => toggleEvent(event)}
+          >
+            {trigger.events.includes(event) ? <CheckIcon className="fk:size-3" /> : null}
+            {event}
+          </Button>
+        ))}
+      </div>
+      <span>of</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button className="fk:h-7 fk:max-w-60 fk:px-2.5 fk:text-xs" size="sm" type="button" variant="outline">
+            <span className="fk:truncate">{entityLabel}</span>
+            <ChevronDownIcon className="fk:size-3.5 fk:opacity-50" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="fk:max-h-64 fk:w-56 fk:overflow-auto">
+          {entities.length === 0 ? (
+            <DropdownMenuItem disabled>No entities found in the project schema</DropdownMenuItem>
+          ) : (
+            entities.map((entity) => (
+              <DropdownMenuCheckboxItem
+                checked={trigger.entities.includes(entity)}
+                key={entity}
+                onCheckedChange={() => toggleEntity(entity)}
+                onSelect={(event) => event.preventDefault()}
+              >
+                {entity}
+              </DropdownMenuCheckboxItem>
+            ))
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function TriggersField({
+  entities,
+  errors,
+  onChange,
+  projectId,
+  triggers,
+}: {
+  entities: string[];
+  errors: { [triggerKey: string]: string };
+  onChange: (_triggers: FormTrigger[]) => void;
+  projectId: string;
+  triggers: FormTrigger[];
+}): JSX.Element {
+  const hasWebhookTrigger = triggers.some((trigger) => trigger.type === 'webhook');
+
+  function addTrigger(trigger: FormTrigger): void {
+    onChange([...triggers, trigger]);
+  }
+
+  function addScheduleTrigger(cron: string): void {
+    addTrigger({ cron, key: createTriggerKey(), timezone: getLocalTimezone(), type: 'schedule' });
+  }
+
+  function updateTrigger(updated: FormTrigger): void {
+    onChange(triggers.map((trigger) => (trigger.key === updated.key ? updated : trigger)));
+  }
+
+  function removeTrigger(key: string): void {
+    onChange(triggers.filter((trigger) => trigger.key !== key));
+  }
+
+  return (
+    <div className="fk:rounded-lg fk:border fk:bg-muted/60 fk:dark:bg-muted/30">
+      {triggers.map((trigger) => (
+        <Fragment key={trigger.key}>
+          <div className="fk:group fk:rounded-md fk:m-1.5 fk:p-1.5 fk:hover:bg-muted" key={trigger.key}>
+            <div className="fk:flex fk:items-center fk:gap-3">
+              {trigger.type === 'schedule' ? (
+                <ClockIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
+              ) : null}
+              {trigger.type === 'webhook' ? (
+                <WebhookIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
+              ) : null}
+              {trigger.type === 'entity' ? (
+                <DatabaseZapIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
+              ) : null}
+              {trigger.type === 'schedule' ? <ScheduleTriggerRow trigger={trigger} onChange={updateTrigger} /> : null}
+              {trigger.type === 'webhook' ? (
+                <WebhookTriggerRow projectId={projectId} trigger={trigger} onChange={updateTrigger} />
+              ) : null}
+              {trigger.type === 'entity' ? (
+                <EntityTriggerRow entities={entities} trigger={trigger} onChange={updateTrigger} />
+              ) : null}
+              <Button
+                aria-label="Remove trigger"
+                className="fk:opacity-0 fk:group-hover:opacity-100"
+                size="icon"
+                type="button"
+                variant="ghost"
+                onClick={() => removeTrigger(trigger.key)}
+              >
+                <Trash2Icon className="fk:size-4 fk:text-muted-foreground" />
+              </Button>
+            </div>
+            {errors[trigger.key] ? (
+              <div className="fk:mt-1 fk:pl-7">
+                <FieldError message={errors[trigger.key]} />
+              </div>
+            ) : null}
+          </div>
+          <Separator className="fk:h-4" />
+        </Fragment>
+      ))}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="fk:flex fk:w-full fk:items-center fk:gap-3 fk:rounded-b-lg fk:px-3 fk:py-3 fk:text-sm fk:text-muted-foreground hover:fk:bg-muted hover:fk:text-foreground"
+            type="button"
+          >
+            <PlusIcon className="fk:size-4" />
+            Add Trigger
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="fk:w-56">
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <ClockIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
+              Scheduled
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onClick={() => addScheduleTrigger(HOURLY_CRON)}>Hourly</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => addScheduleTrigger(DEFAULT_DAILY_CRON)}>Daily</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => addScheduleTrigger(DEFAULT_WEEKLY_CRON)}>Weekly</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => addScheduleTrigger(DEFAULT_CUSTOM_CRON)}>Custom (cron)</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuItem
+            disabled={hasWebhookTrigger}
+            onClick={() =>
+              addTrigger({ key: createTriggerKey(), secret: null, token: crypto.randomUUID(), type: 'webhook' })
+            }
+          >
+            <WebhookIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
+            Webhook Triggered
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => addTrigger({ entities: [], events: ['create'], key: createTriggerKey(), type: 'entity' })}
+          >
+            <DatabaseZapIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
+            Entity Events
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
@@ -347,39 +964,62 @@ function TeamsIcon(): JSX.Element {
 }
 
 export function AutomationForm({ api, automation, mode, onSaved, projectId }: AutomationFormProps): JSX.Element {
-  const initialSchedule = getInitialSchedule(automation);
   const [name, setName] = useState(automation?.name ?? '');
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
   const [enabled, setEnabled] = useState(automation?.enabled ?? false);
   const [modelId, setModelId] = useState(automation?.modelId ?? '');
-  const [schedulePreset, setSchedulePreset] = useState(initialSchedule.preset);
-  const [customCron, setCustomCron] = useState(initialSchedule.customCron);
-  const [scheduleTimezone, setScheduleTimezone] = useState(automation?.scheduleTimezone ?? 'UTC');
-  const [triggerCreate, setTriggerCreate] = useState(automation?.triggerCreate ?? false);
-  const [triggerUpdate, setTriggerUpdate] = useState(automation?.triggerUpdate ?? false);
-  const [triggerDelete, setTriggerDelete] = useState(automation?.triggerDelete ?? false);
-  const [entitiesText, setEntitiesText] = useState((automation?.entities ?? []).join(', '));
+  const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [touched, setTouched] = useState({ instructions: false, name: false });
   const [toolsFormData, setToolsFormData] = useState<AutomationToolsFormData | null>(null);
   const toolsUrl = paths(projectId).tools(automation?.id);
   const { data: toolsData } = useSWR<ToolsResponse>(toolsUrl, fetcher);
+  const { data: entitiesData } = useSWR<{ entities: string[] }>(paths(projectId).entities, fetcher);
   const modelOptions = useMemo(
     () => getModelOptions(toolsData?.tools.models ?? [], mode, modelId || automation?.modelId || ''),
     [automation?.modelId, mode, modelId, toolsData?.tools.models]
   );
   const effectiveModelId = modelId || modelOptions[0]?.id || '';
-  const triggerSchedule = useMemo(() => {
-    if (schedulePreset === 'none') {
-      return null;
+  const validation = useMemo<FormValidation>(() => {
+    const triggerErrors: { [triggerKey: string]: string } = {};
+
+    for (const trigger of triggers) {
+      if (trigger.type === 'schedule') {
+        const cronError = getCronError(trigger.cron, trigger.timezone);
+
+        if (cronError) {
+          triggerErrors[trigger.key] = cronError;
+        }
+      }
+
+      if (trigger.type === 'entity' && trigger.events.length === 0) {
+        triggerErrors[trigger.key] = 'Select at least one event (create, update or delete)';
+      }
     }
 
-    if (schedulePreset === 'custom') {
-      return customCron.trim() || null;
+    const toolErrors: { [provider: string]: string } = {};
+
+    for (const provider of TOOL_PROVIDERS) {
+      const tool = toolsFormData?.[provider];
+
+      if (tool?.enabled && tool.channels.length === 0) {
+        toolErrors[provider] =
+          `Select at least one ${provider === 'slack' ? 'Slack' : 'Teams'} channel or remove the tool`;
+      }
     }
 
-    return schedulePreset;
-  }, [customCron, schedulePreset]);
+    return {
+      instructions: instructions.trim() ? '' : 'Instructions are required',
+      model: effectiveModelId ? '' : 'Select a model',
+      name: name.trim() ? '' : 'Name is required',
+      toolErrors,
+      triggerErrors,
+    };
+  }, [effectiveModelId, instructions, name, toolsFormData, triggers]);
+  const isValid = isFormValidationClean(validation);
+  const showNameError = touched.name && Boolean(validation.name);
+  const showInstructionsError = touched.instructions && Boolean(validation.instructions);
 
   useEffect(() => {
     if (!toolsData?.tools) {
@@ -410,7 +1050,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         const result = await api.listChannels(provider);
         const loadErrorMessage = result.success
           ? undefined
-          : result.errorMessage ?? `Failed to load ${provider === 'slack' ? 'Slack' : 'Teams'} channels.`;
+          : (result.errorMessage ?? `Failed to load ${provider === 'slack' ? 'Slack' : 'Teams'} channels.`);
 
         setToolsFormData((current) => {
           if (!current) {
@@ -428,7 +1068,6 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             },
           };
         });
-
       } catch (error) {
         const loadErrorMessage = error instanceof Error ? error.message : 'Failed to load integration channels.';
 
@@ -491,6 +1130,13 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+
+    if (!isValid) {
+      setTouched({ instructions: true, name: true });
+
+      return;
+    }
+
     setIsSaving(true);
     setMessage('');
 
@@ -505,19 +1151,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     });
     const input: AutomationInput = {
       enabled,
-      entities: entitiesText
-        .split(',')
-        .map((entity) => entity.trim())
-        .filter(Boolean),
       instructions,
       modelId: effectiveModelId,
       name,
-      scheduleTimezone,
       toolConfigs,
-      triggerCreate,
-      triggerDelete,
-      triggerSchedule,
-      triggerUpdate,
+      triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
     };
 
     try {
@@ -532,6 +1170,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         return;
       }
 
+      toast.success(mode === 'create' || !automation ? 'Automation created.' : 'Automation saved.');
       onSaved(result.automation);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to save automation.');
@@ -551,7 +1190,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       <div className="fk:space-y-3">
         <Label className="fk:mb-1">Status</Label>
         <p className="fk:text-xs fk:text-muted-foreground fk:mb-1">
-          Disabling an automation stops its schedule and ignores entity events
+          Disabling an automation stops its schedules and ignores webhook calls and entity events
         </p>
         <div className="fk:flex fk:h-10 fk:items-center fk:gap-2">
           <Switch checked={enabled} id="automation-enabled" onCheckedChange={setEnabled} />
@@ -566,7 +1205,30 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           Name
         </Label>
         <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">Identifying label for this automation</p>
-        <Input id="automation-name" value={name} onChange={(event) => setName(event.target.value)} />
+        <Input
+          aria-describedby={showNameError ? 'automation-name-error' : undefined}
+          aria-invalid={showNameError}
+          className={showNameError ? 'fk:border-destructive focus-visible:fk:ring-destructive' : ''}
+          id="automation-name"
+          value={name}
+          onBlur={() => setTouched((current) => ({ ...current, name: true }))}
+          onChange={(event) => setName(event.target.value)}
+        />
+        {showNameError ? <FieldError id="automation-name-error" message={validation.name} /> : null}
+      </div>
+
+      <div className="fk:space-y-3">
+        <Label className="fk:mb-1">Triggers</Label>
+        <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
+          When this automation should run. Schedules run in your timezone; webhooks run when their URL is called.
+        </p>
+        <TriggersField
+          entities={entitiesData?.entities ?? []}
+          errors={validation.triggerErrors}
+          projectId={projectId}
+          triggers={triggers}
+          onChange={setTriggers}
+        />
       </div>
 
       <div className="fk:space-y-3">
@@ -578,17 +1240,24 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           expected outcome.
         </p>
         <div>
-          <div className="fk:rounded-t-md fk:border-x fk:border-t fk:border-input fk:bg-muted/60 fk:ring-offset-background focus-within:fk:ring-2 focus-within:fk:ring-ring focus-within:fk:ring-offset-2 fk:dark:bg-muted/30">
+          <div
+            className={`fk:rounded-t-md fk:border-x fk:border-t fk:bg-muted/60 fk:ring-offset-background focus-within:fk:ring-2 focus-within:fk:ring-ring focus-within:fk:ring-offset-2 fk:dark:bg-muted/30 ${showInstructionsError ? 'fk:border-destructive' : 'fk:border-input'}`}
+          >
             <Textarea
-              className="fk:flex fk:min-h-[160px] fk:max-h-[320px] fk:w-full fk:rounded-none fk:border-0 fk:bg-transparent fk:pb-11 fk:shadow-none focus-visible:fk:ring-0 focus-visible:fk:ring-offset-0 fk:mask-[linear-gradient(to_bottom,black_calc(100%-2.75rem),#0009_calc(100%-1.25rem),#0003_calc(100%-0.5rem),transparent)] fk:[-webkit-mask-image:linear-gradient(to_bottom,black_calc(100%-2.75rem),#0009_calc(100%-1.25rem),#0003_calc(100%-0.5rem),transparent)]"
+              aria-describedby={showInstructionsError ? 'automation-instructions-error' : undefined}
+              aria-invalid={showInstructionsError}
+              className="fk:flex fk:min-h-[160px] fk:max-h-[320px] fk:w-full fk:rounded-none fk:border-0 fk:bg-transparent fk:dark:bg-transparent fk:pb-11 fk:shadow-none focus-visible:fk:ring-0 focus-visible:fk:ring-offset-0 fk:mask-[linear-gradient(to_bottom,black_calc(100%-2.75rem),#0009_calc(100%-1.25rem),#0003_calc(100%-0.5rem),transparent)]"
               id="automation-instructions"
               placeholder="Describe what the agent should do on each run, e.g. 'When a new Review is created, translate the text to English, run a sentiment analysis and store the result in the sentiment attribute...'"
               rows={8}
               value={instructions}
+              onBlur={() => setTouched((current) => ({ ...current, instructions: true }))}
               onChange={(event) => setInstructions(event.target.value)}
             />
           </div>
-          <div className="fk:rounded-b-md fk:border-x fk:border-b fk:border-input fk:bg-muted/60 fk:px-2 fk:py-2 fk:dark:bg-muted/30">
+          <div
+            className={`fk:rounded-b-md fk:border-x fk:border-b fk:bg-muted/60 fk:dark:bg-muted/30 fk:px-2 fk:py-2 ${showInstructionsError ? 'fk:border-destructive' : 'fk:border-input'}`}
+          >
             <Select value={effectiveModelId} onValueChange={setModelId}>
               <SelectTrigger
                 aria-label="Model"
@@ -608,6 +1277,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             </Select>
           </div>
         </div>
+        {showInstructionsError ? (
+          <FieldError id="automation-instructions-error" message={validation.instructions} />
+        ) : null}
+        {toolsData && validation.model ? <FieldError message={validation.model} /> : null}
       </div>
 
       <div className="fk:space-y-4">
@@ -665,7 +1338,12 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                           <Trash2Icon className="fk:size-4 fk:text-muted-foreground" />
                         </Button>
                       ) : (
-                        <Button size="sm" type="button" variant="outline" onClick={() => updateTool(provider, { enabled: true })}>
+                        <Button
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                          onClick={() => updateTool(provider, { enabled: true })}
+                        >
                           Add
                         </Button>
                       )
@@ -691,8 +1369,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                   </div>
                   {!tool.connected ? (
                     <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
-                      Connect {provider === 'slack' ? 'Slack' : 'Microsoft Teams'} in Project Integrations before using it in an
-                      automation.
+                      Connect {provider === 'slack' ? 'Slack' : 'Microsoft Teams'} in Project Integrations before using
+                      it in an automation.
                     </p>
                   ) : null}
                   {tool.connected && tool.enabled ? (
@@ -710,7 +1388,13 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                         }}
                       />
                       {tool.channelsLoadError ? (
-                        <p className="fk:text-xs fk:text-destructive">{tool.channelsLoadError}</p>
+                        <p className="fk:flex fk:items-start fk:text-sm fk:text-warning fk:gap-1">
+                          <TriangleAlertIcon className="fk:size-4 fk:shrink-0 fk:mt-0.5" />
+                          {tool.channelsLoadError}
+                        </p>
+                      ) : null}
+                      {!tool.channelsLoadError && validation.toolErrors[provider] ? (
+                        <FieldError message={validation.toolErrors[provider]} />
                       ) : null}
                     </div>
                   ) : null}
@@ -726,91 +1410,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         </div>
       </div>
 
-      <div className="fk:grid fk:gap-4 md:fk:grid-cols-2">
-        <div className="fk:space-y-3">
-          <Label className="fk:mb-0.5">Schedule</Label>
-          <Select value={schedulePreset} onValueChange={setSchedulePreset}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SCHEDULE_PRESETS.map((preset) => (
-                <SelectItem key={preset.value} value={preset.value}>
-                  {preset.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="fk:space-y-3">
-          <Label className="fk:mb-0.5" htmlFor="automation-timezone">
-            Timezone
-          </Label>
-          <Input
-            id="automation-timezone"
-            value={scheduleTimezone}
-            onChange={(event) => setScheduleTimezone(event.target.value)}
-          />
-        </div>
-      </div>
-
-      {schedulePreset === 'custom' ? (
-        <div className="fk:space-y-3">
-          <Label className="fk:mb-0.5" htmlFor="automation-cron">
-            Cron expression
-          </Label>
-          <Input id="automation-cron" value={customCron} onChange={(event) => setCustomCron(event.target.value)} />
-        </div>
-      ) : null}
-
-      <div className="fk:space-y-3">
-        <Label className="fk:mb-0.5">Entity events</Label>
-        <div className="fk:flex fk:flex-wrap fk:gap-3 fk:text-sm">
-          <label className="fk:flex fk:items-center fk:gap-2">
-            <input
-              checked={triggerCreate}
-              type="checkbox"
-              onChange={(event) => setTriggerCreate(event.target.checked)}
-            />
-            Create
-          </label>
-          <label className="fk:flex fk:items-center fk:gap-2">
-            <input
-              checked={triggerUpdate}
-              type="checkbox"
-              onChange={(event) => setTriggerUpdate(event.target.checked)}
-            />
-            Update
-          </label>
-          <label className="fk:flex fk:items-center fk:gap-2">
-            <input
-              checked={triggerDelete}
-              type="checkbox"
-              onChange={(event) => setTriggerDelete(event.target.checked)}
-            />
-            Delete
-          </label>
-        </div>
-      </div>
-
-      <div className="fk:space-y-3">
-        <Label className="fk:mb-0.5" htmlFor="automation-entities">
-          Entities
-        </Label>
-        <Input
-          id="automation-entities"
-          placeholder="Product, Review"
-          value={entitiesText}
-          onChange={(event) => setEntitiesText(event.target.value)}
-        />
-        <p className="fk:text-xs fk:text-muted-foreground">
-          Comma-separated entity names. Leave empty for all entities.
-        </p>
-      </div>
-
-      <div className="fk:flex fk:justify-end">
-        <Button disabled={isSaving} type="submit">
+      <div className="fk:flex fk:items-center fk:justify-end fk:gap-3">
+        {!isValid ? (
+          <span className="fk:text-xs fk:text-muted-foreground">Complete the required fields to save</span>
+        ) : null}
+        <Button disabled={isSaving || !isValid} type="submit">
           {isSaving ? 'Saving...' : mode === 'create' ? 'Create automation' : 'Update automation'}
         </Button>
       </div>

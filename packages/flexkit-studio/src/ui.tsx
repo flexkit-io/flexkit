@@ -114,3 +114,4 @@ export { Textarea } from './ui/primitives/textarea';
 export { ToggleGroup, ToggleGroupItem } from './ui/primitives/toggle-group';
 export { Toggle, toggleVariants } from './ui/primitives/toggle';
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipPortal, TooltipProvider } from './ui/primitives/tooltip';
+export { toast, Toaster } from './ui/primitives/sonner';
