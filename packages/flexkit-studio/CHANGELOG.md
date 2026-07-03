@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.22
+
+### Patch Changes
+
+- 6f104b5: Automations plugin
+
 ## 0.0.21
 
 ### Patch Changes

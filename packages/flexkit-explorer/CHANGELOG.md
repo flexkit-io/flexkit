@@ -1,5 +1,12 @@
 # @flexkit/explorer
 
+## 0.0.22
+
+### Patch Changes
+
+- Updated dependencies [6f104b5]
+  - @flexkit/studio@0.0.22
+
 ## 0.0.21
 
 ### Patch Changes
