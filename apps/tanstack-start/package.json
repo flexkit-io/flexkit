@@ -13,6 +13,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.0.6",
     "@flexkit/asset-manager": "workspace:*",
+    "@flexkit/automations": "workspace:*",
     "@flexkit/desk": "workspace:*",
     "@flexkit/explorer": "workspace:*",
     "@flexkit/studio": "workspace:*",

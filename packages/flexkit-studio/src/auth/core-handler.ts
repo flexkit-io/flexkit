@@ -1,6 +1,6 @@
 import { getToken } from './get-token';
 
-const domain = 'api.flexkit.io';
+const domain = 'api.flexkit.test';
 
 export interface FlexkitHandlerContext {
   request: Request;
@@ -97,6 +97,10 @@ function sanitizeForwardHeaders(headers: Headers): Headers {
     }
 
     if (normalizedKey === 'accept-encoding') {
+      return;
+    }
+
+    if (normalizedKey.startsWith('x-middleware-')) {
       return;
     }
 

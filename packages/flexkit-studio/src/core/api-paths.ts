@@ -1,6 +1,6 @@
 import { joinBasePath } from './base-path';
 
-const domain = 'flexkit.io';
+const domain = 'flexkit.test';
 export const baseApiUrl = `https://${domain}`;
 const baseProjectApiUrl = (projectId?: string): string =>
   projectId ? `https://${projectId}.api.${domain}` : baseApiUrl;
@@ -17,7 +17,7 @@ interface ApiPaths {
   upload: string;
 }
 
-export const IMAGES_BASE_URL = 'https://flexkit.io/images/';
+export const IMAGES_BASE_URL = `${baseApiUrl}/images/`;
 
 export function apiPaths(projectId = ''): ApiPaths {
   return {

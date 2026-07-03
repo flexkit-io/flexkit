@@ -1,0 +1,71 @@
+{
+  "name": "@flexkit/automations",
+  "version": "0.0.21",
+  "description": "Flexkit Studio plugin for configuring and monitoring AI Automations.",
+  "keywords": [
+    "flexkit",
+    "studio",
+    "automations",
+    "flexkit-plugin"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "style": "dist/index.css",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flexkit-io/flexkit",
+    "directory": "packages/flexkit-automations"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./tailwind.config": "./tailwind.config.ts",
+    "./styles.css": "./dist/index.css"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup src/index.tsx --format esm --dts --external react",
+    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch=always & tsup src/index.tsx --format esm --watch --dts --external react",
+    "lint": "eslint \"src/**/*.ts*\"",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
+  },
+  "devDependencies": {
+    "@flexkit/studio": "workspace:*",
+    "@tailwindcss/cli": "4.2.4",
+    "@types/node": "^20.5.2",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "^9.0.0",
+    "eslint-config-custom": "workspace:*",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "tailwind-config": "workspace:*",
+    "tailwindcss": "4.2.4",
+    "tsconfig": "workspace:*",
+    "tsup": "8.5.1",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "ai": "^6.0.116",
+    "cron-parser": "5.5.0",
+    "date-fns": "4.1.0",
+    "lucide-react": "0.577.0",
+    "react-router-dom": "^6.21.0",
+    "swr": "2.4.1"
+  },
+  "peerDependencies": {
+    "@flexkit/studio": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

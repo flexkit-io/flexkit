@@ -53,7 +53,10 @@ body {
     --destructive: 348 100% 38%;
     --destructive-foreground: 357 100% 96%;
 
-    --success: 212 100% 48%;
+    --warning: 36 100% 50%;
+    --warning-foreground: 357 100% 96%;
+
+    --success: 149 89% 43%;
     --success-foreground: 215 100% 91%;
 
     --border: 240 5.9% 90%;
@@ -117,7 +120,10 @@ body {
     --destructive: 357 100% 69%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 212 100% 48%;
+    --warning: 36 100% 50%;
+    --warning-foreground: 357 100% 96%;
+
+    --success: 149 89% 43%;
     --success-foreground: 215 100% 91%;
 
     --border: 0 0% 18%;

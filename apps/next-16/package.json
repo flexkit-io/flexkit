@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@flexkit/asset-manager": "workspace:*",
+    "@flexkit/automations": "workspace:*",
     "@flexkit/desk": "workspace:*",
     "@flexkit/explorer": "workspace:*",
     "@flexkit/studio": "workspace:*",

@@ -2,7 +2,9 @@
   "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [["@flexkit/studio", "@flexkit/desk", "@flexkit/explorer", "@flexkit/asset-manager"]],
+  "fixed": [
+    ["@flexkit/studio", "@flexkit/desk", "@flexkit/explorer", "@flexkit/asset-manager", "@flexkit/automations"]
+  ],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
