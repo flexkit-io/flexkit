@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.24
+
+### Patch Changes
+
+- 797d389: Fix API base URL
+
 ## 0.0.23
 
 ### Patch Changes

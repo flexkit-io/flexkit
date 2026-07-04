@@ -1,5 +1,12 @@
 # @flexkit/automations
 
+## 0.0.24
+
+### Patch Changes
+
+- Updated dependencies [797d389]
+  - @flexkit/studio@0.0.24
+
 ## 0.0.23
 
 ### Patch Changes
