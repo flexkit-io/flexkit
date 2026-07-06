@@ -1,5 +1,7 @@
 # @flexkit/studio
 
+## 1.0.0
+
 ## 0.0.24
 
 ### Patch Changes

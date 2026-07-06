@@ -1,5 +1,11 @@
 # @flexkit/desk
 
+## 1.0.0
+
+### Patch Changes
+
+- @flexkit/studio@1.0.0
+
 ## 0.0.24
 
 ### Patch Changes
