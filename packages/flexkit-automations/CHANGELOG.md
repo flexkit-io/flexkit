@@ -1,5 +1,12 @@
 # @flexkit/automations
 
+## 0.0.25
+
+### Patch Changes
+
+- 8026708: Render json-render specs on the automation run page. Run replays now display the agent's structured output — cards, metrics, tables, charts (bar, line, pie), Mermaid diagrams, callouts, timelines, and tabs — instead of a "Generated visual spec" placeholder.
+  - @flexkit/studio@0.0.25
+
 ## 0.0.24
 
 ### Patch Changes
