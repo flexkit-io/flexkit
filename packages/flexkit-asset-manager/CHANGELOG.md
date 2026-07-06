@@ -1,5 +1,11 @@
 # @flexkit/asset-manager
 
+## 0.0.25
+
+### Patch Changes
+
+- @flexkit/studio@0.0.25
+
 ## 0.0.24
 
 ### Patch Changes
