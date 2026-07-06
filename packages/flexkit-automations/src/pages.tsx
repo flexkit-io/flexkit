@@ -60,6 +60,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
 import { AutomationForm } from './form';
+import { RunSpecPart } from './spec-renderer';
 import type { Automation, AutomationCreditBalance, AutomationRun, RunHistory } from './types';
 
 interface AutomationsResponse {
@@ -1368,17 +1369,7 @@ function MessagePart({
       return null;
     }
 
-    return (
-      <ToolMessage>
-        <ToolHeader>
-          <CheckCircle2Icon className="fk:size-3.5" />
-          Generated visual spec
-        </ToolHeader>
-        <p className="fk:text-xs fk:text-muted-foreground">
-          A structured json-render response was generated for this run.
-        </p>
-      </ToolMessage>
-    );
+    return <RunSpecPart parts={parts} />;
   }
 
   if (part.type.startsWith('data-')) {

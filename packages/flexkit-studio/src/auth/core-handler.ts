@@ -1,6 +1,7 @@
+import { flexkitApiDomain } from '../core/domains';
 import { getToken } from './get-token';
 
-const domain = 'api.flexkit.io';
+const domain = flexkitApiDomain;
 
 export interface FlexkitHandlerContext {
   request: Request;

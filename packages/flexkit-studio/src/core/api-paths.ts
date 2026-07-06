@@ -1,6 +1,7 @@
 import { joinBasePath } from './base-path';
+import { flexkitDomain } from './domains';
 
-const domain = 'flexkit.io';
+const domain = flexkitDomain;
 export const baseApiUrl = `https://${domain}`;
 const baseProjectApiUrl = (projectId?: string): string =>
   projectId ? `https://${projectId}.api.${domain}` : baseApiUrl;
