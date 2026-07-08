@@ -168,8 +168,7 @@ export type AttributeOptions = {
   [key: string]: CommonOptions;
 };
 
-export type Attribute = {
-  dataType: DataType;
+type AttributeBase = {
   defaultValue?: string;
   inputType: InputType;
   previewType?: PreviewType;
@@ -186,9 +185,12 @@ export type Attribute = {
     mode: 'single' | 'multiple';
     field: string;
   };
-  scope: ScopeType;
   validation?: (z: ZodType) => ZodTypeAny;
 };
+
+export type Attribute =
+  | (AttributeBase & { dataType: 'asset'; scope?: 'global' })
+  | (AttributeBase & { dataType: Exclude<DataType, 'asset'>; scope: ScopeType });
 
 export type Entity = {
   name: string;

@@ -172,7 +172,10 @@ export type Attribute = {
     mode: 'single' | 'multiple';
     field: string;
   };
-} & ({ dataType: 'asset' } | { dataType: Exclude<DataType, 'asset'>; scope: ScopeType });
+} & (
+  | { dataType: 'asset'; scope?: 'global' }
+  | { dataType: Exclude<DataType, 'asset'>; scope: ScopeType }
+);
 
 export interface ProjectOptions {
   title?: string;

@@ -1,5 +1,6 @@
 import { filter, find, omit, pick, propEq, toPairs, uniq } from 'ramda';
 import { v4 as uuidv4 } from 'uuid';
+import { getAttributeScope } from '../core/attribute-scope';
 import { assetSchema } from '../entities/assets-schema';
 import { tagSchema } from '../entities/tags-schema';
 import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
@@ -45,8 +46,12 @@ type AssetRelationshipConnection = {
 };
 
 function isAssetRelationshipAttribute(attribute: Attribute | undefined): boolean {
+  if (!attribute) {
+    return false;
+  }
+
   return (
-    attribute?.scope === 'relationship' &&
+    getAttributeScope(attribute) === 'relationship' &&
     attribute.relationship?.mode === 'multiple' &&
     attribute.relationship.entity === '_asset'
   );
@@ -135,7 +140,9 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
     return `${acc}\n    ${attribute} {\n      _id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n  `;
   }, '');
 
-  const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
+  const relationshipAttributes = attributes.filter(
+    (attribute) => getAttributeScope(attribute) === 'relationship'
+  );
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
     if (isAssetRelationshipAttribute(attribute)) {
       return `${acc}\n${getAssetConnectionSelection(
@@ -152,11 +159,11 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
         return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n    `;
       }
 
-      if (relatedAttribute.scope === 'local') {
+      if (getAttributeScope(relatedAttribute) === 'local') {
         return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        default\n      ${additionalScope}\n}\n    `;
       }
 
-      if (relatedAttribute.scope === 'relationship') {
+      if (getAttributeScope(relatedAttribute) === 'relationship') {
         const relationshipEntity = find(propEq(relatedAttribute.relationship?.entity, 'name'))(schema) as
           | Entity
           | undefined;
@@ -164,7 +171,7 @@ export function getEntityQuery(entityNamePlural: string, scope: string, schema: 
           relationshipEntity?.attributes ?? []
         ) as Attribute;
         const localAttributeQuery =
-          relationshipAttribute.scope === 'local'
+          getAttributeScope(relationshipAttribute) === 'local'
             ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
             : '';
 
@@ -234,7 +241,7 @@ export function mapQueryResult(
     return values
       .slice(0, 3)
       .map((item) =>
-        primaryAttribute.scope === 'local'
+        getAttributeScope(primaryAttribute) === 'local'
           ? (item[primaryAttributeName]?.[scope] ?? item[primaryAttributeName].default)
           : item[primaryAttributeName]
       )
@@ -265,7 +272,7 @@ export function mapQueryResult(
         const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
         const primaryAttribute = getPrimaryAttribute(relatedEntity?.attributes ?? []);
         const primaryAttributeName = primaryAttribute?.name ?? '';
-        const primaryAttributeScope = primaryAttribute?.scope ?? 'global';
+        const primaryAttributeScope = primaryAttribute ? getAttributeScope(primaryAttribute) : 'global';
         const localValue = entity[attributeName] as AttributeValue | null;
 
         if (isAssetRelationshipAttribute(relationshipAttribute)) {
@@ -355,7 +362,7 @@ export function mapQueryResultForFormFields(
         [attributeName]: {
           value: localAttribute ? getValueByScope(localAttribute, scope) : null,
           disabled: Boolean(
-            localAttribute && localAttribute[scope] === null && attributeSchema.scope === 'local' && scope !== 'default'
+            localAttribute && localAttribute[scope] === null && getAttributeScope(attributeSchema) === 'local' && scope !== 'default'
           ),
           scope,
           _id: localAttribute ? localAttribute._id : null,
@@ -510,7 +517,7 @@ function getAttributeListByScope(type: ScopeType | ScopeType[], attributes: Attr
   }
 
   const filteredAttributes = attributes.filter(
-    (attribute) => attribute.scope === type && attribute.inputType !== 'asset'
+    (attribute) => getAttributeScope(attribute) === type && attribute.inputType !== 'asset'
   );
 
   return filteredAttributes.map((attribute) => attribute.name);
@@ -845,7 +852,7 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
     const primaryAttributeName =
       relationshipAttribute?.relationship?.field ?? '[invalid_relationship_field_name_in_schema]';
     const primaryAttribute = find(propEq(primaryAttributeName, 'name'))(relationshipEntityAttributes) as Attribute;
-    const primaryAttributeScope = primaryAttribute.scope;
+    const primaryAttributeScope = getAttributeScope(primaryAttribute);
     let list = '';
 
     if (relationshipMode === 'single') {
@@ -860,18 +867,18 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
 
     if (relationshipMode === 'multiple' && relationshipEntityAttributes.length) {
       const multipleRelationshipAttributes = relationshipEntityAttributes.reduce((str, attribute) => {
-        if (attribute.scope === 'local') {
+        if (getAttributeScope(attribute) === 'local') {
           return `${str}        ${attribute.name} {\n          _id\n          default\n          ${scope}\n        }\n`;
         }
 
-        if (attribute.scope === 'relationship') {
+        if (getAttributeScope(attribute) === 'relationship') {
           const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
           const relationshipEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
           const relationshipAttribute = find(propEq(attribute.relationship?.field, 'name'))(
             relationshipEntity?.attributes ?? []
           ) as Attribute;
           const localAttributeQuery =
-            relationshipAttribute.scope === 'local'
+            getAttributeScope(relationshipAttribute) === 'local'
               ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
               : '';
 
@@ -1126,17 +1133,19 @@ export function getRelatedItemsQuery({
   );
   const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
 
-  const relationshipAttributes = filter(propEq('relationship', 'scope'))(attributes);
+  const relationshipAttributes = attributes.filter(
+    (attribute) => getAttributeScope(attribute) === 'relationship'
+  );
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
     const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
     const attributesNameList = relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
-      if (relatedAttribute.scope === 'local') {
+      if (getAttributeScope(relatedAttribute) === 'local') {
         return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        default\n      ${additionalScope}}\n    `;
       }
 
-      if (relatedAttribute.scope === 'relationship') {
+      if (getAttributeScope(relatedAttribute) === 'relationship') {
         const relationshipEntity = find(propEq(relatedAttribute.relationship?.entity, 'name'))(schema) as
           | Entity
           | undefined;
@@ -1144,7 +1153,7 @@ export function getRelatedItemsQuery({
           relationshipEntity?.attributes ?? []
         ) as Attribute;
         const localAttributeQuery =
-          relationshipAttribute.scope === 'local'
+          getAttributeScope(relationshipAttribute) === 'local'
             ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
             : '';
 
