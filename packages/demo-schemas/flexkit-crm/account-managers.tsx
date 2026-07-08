@@ -107,7 +107,6 @@ export const accountManagers = defineEntity({
       },
       dataType: 'asset',
       inputType: 'asset',
-      scope: 'global',
       defaultValue: '',
     },
     {

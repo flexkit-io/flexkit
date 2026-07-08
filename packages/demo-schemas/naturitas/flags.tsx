@@ -65,7 +65,6 @@ export const flags = defineEntity({
       },
       dataType: 'asset',
       inputType: 'asset',
-      scope: 'global',
       defaultValue: '',
     },
   ],

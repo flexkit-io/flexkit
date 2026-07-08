@@ -176,7 +176,6 @@ export const companies = defineEntity({
       },
       dataType: 'asset',
       inputType: 'asset',
-      scope: 'global',
       defaultValue: '',
     },
     {

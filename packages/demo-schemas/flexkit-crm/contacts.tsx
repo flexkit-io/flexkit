@@ -211,7 +211,6 @@ export const contacts = defineEntity({
       },
       dataType: 'asset',
       inputType: 'asset',
-      scope: 'global',
       defaultValue: '',
     },
     {
