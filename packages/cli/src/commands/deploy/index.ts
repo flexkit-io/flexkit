@@ -219,7 +219,8 @@ async function startDeployJob(
   client: Client,
   projectId: string,
   schema: unknown,
-  scopes: unknown
+  scopes: unknown,
+  forceDeploy: boolean
 ): Promise<DeployProjectResult> {
   try {
     const response = await client.fetch('/deploy', {
@@ -230,6 +231,7 @@ async function startDeployJob(
       body: JSON.stringify({
         schema,
         scopes,
+        ...(forceDeploy ? { forceDeploy: true } : {}),
       }),
       projectId,
       retry: {
@@ -503,6 +505,7 @@ export default async function main(client: Client): Promise<number> {
     argv = parseArguments(client.argv.slice(2), {
       '--help': Boolean,
       '-h': '--help',
+      '--force': Boolean,
     });
   } catch (err: unknown) {
     handleError(err);
@@ -550,7 +553,13 @@ export default async function main(client: Client): Promise<number> {
       const scopes = project.scopes ?? [];
 
       try {
-        const job = await startDeployJob(client, project.projectId, schema, scopes);
+        const job = await startDeployJob(
+          client,
+          project.projectId,
+          schema,
+          scopes,
+          argv.flags['--force'] ?? false
+        );
 
         if (!job.hasChanges) {
           noChangesProjectIds.push(project.projectId);
