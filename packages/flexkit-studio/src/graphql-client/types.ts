@@ -3,7 +3,7 @@ import type { SingleRelationshipConnection, MultipleRelationshipConnection, Sche
 
 export type AttributeValue = {
   _id: string;
-  [key: string]: string | AttributeValue | null;
+  [key: string]: string | AttributeValue | AttributeValue[] | null;
   __typename: string;
 };
 

@@ -182,11 +182,24 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       return '';
     }
 
-    return isRelationship && primaryAttribute?.relationship?.field
-      ? ((data[0][primaryAttributeName]?.value as Record<string, unknown>)?.[
-          primaryAttribute.relationship.field
-        ] as string)
-      : (data[0][primaryAttributeName]?.value as string);
+    if (!isRelationship || !primaryAttribute?.relationship?.field) {
+      return data[0][primaryAttributeName]?.value as string;
+    }
+
+    const relatedValue = (data[0][primaryAttributeName]?.value as Record<string, unknown> | undefined)?.[
+      primaryAttribute.relationship.field
+    ];
+    // The related entity's display field may be a local attribute, which is a
+    // list relationship field holding 0..1 scoped nodes
+    const relatedNode = Array.isArray(relatedValue) ? (relatedValue[0] as unknown) : relatedValue;
+
+    if (relatedNode && typeof relatedNode === 'object') {
+      const scopedNode = relatedNode as Record<string, unknown>;
+
+      return (scopedNode[currentScope] ?? scopedNode.default ?? '') as string;
+    }
+
+    return (relatedNode ?? '') as string;
   }
 
   const entityIdentifier = hasData && entitySchema ? getEntityIdentifier(entitySchema, data) : '';

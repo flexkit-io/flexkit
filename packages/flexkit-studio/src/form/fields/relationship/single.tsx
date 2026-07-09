@@ -108,10 +108,18 @@ export default function SingleRelationship({
         let displayValue = '';
 
         if (value && typeof value === 'object' && !Array.isArray(value) && value[primaryAttributeName]) {
-          displayValue =
-            ((value[primaryAttributeName] as AttributeValue)?.[scope] as string) ??
-            (value[primaryAttributeName] as AttributeValue)?.[defaultScope] ??
-            value[primaryAttributeName];
+          const rawPrimary = value[primaryAttributeName];
+          // Local primary attributes are list relationship fields with 0..1 scoped nodes
+          const primaryValue = (Array.isArray(rawPrimary) ? rawPrimary[0] : rawPrimary) as
+            | AttributeValue
+            | string
+            | undefined;
+
+          if (typeof primaryValue === 'string') {
+            displayValue = primaryValue;
+          } else {
+            displayValue = ((primaryValue?.[scope] ?? primaryValue?.[defaultScope]) as string | undefined) ?? '';
+          }
         }
 
         return (

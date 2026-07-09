@@ -88,6 +88,20 @@ function getOrderedAssetsFromConnection(connection: unknown): OrderedAssetValue[
     .sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER));
 }
 
+/**
+ * Relationship fields are list-typed in the generated schema ([Type!]!), so
+ * single-valued fields (local attributes, global assets, single-mode
+ * relationships) come back as arrays of 0..1 nodes. Unwraps to the first node,
+ * tolerating the legacy single-object shape.
+ */
+function unwrapNode(value: unknown): AttributeValue | null {
+  if (Array.isArray(value)) {
+    return (value[0] as AttributeValue | undefined) ?? null;
+  }
+
+  return (value as AttributeValue | null) ?? null;
+}
+
 function getAssetConnectionSelection(attributeName: string, includeProperties = true): string {
   const propertiesSelection = includeProperties
     ? `        properties {\n` + `          sortOrder\n` + `        }\n`
@@ -240,11 +254,15 @@ export function mapQueryResult(
 
     return values
       .slice(0, 3)
-      .map((item) =>
-        getAttributeScope(primaryAttribute) === 'local'
-          ? (item[primaryAttributeName]?.[scope] ?? item[primaryAttributeName].default)
-          : item[primaryAttributeName]
-      )
+      .map((item) => {
+        if (getAttributeScope(primaryAttribute) !== 'local') {
+          return item[primaryAttributeName];
+        }
+
+        const scopedNode = unwrapNode(item[primaryAttributeName]);
+
+        return scopedNode?.[scope] ?? scopedNode?.default;
+      })
       .join(', ');
   };
   const mappedQueryResult = items.map((entity) => {
@@ -254,7 +272,7 @@ export function mapQueryResult(
       {}
     );
     const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
-      const scopedAttribute = entity[attributeName] as AttributeValue | null;
+      const scopedAttribute = unwrapNode(entity[attributeName]);
 
       return {
         ...acc,
@@ -262,7 +280,7 @@ export function mapQueryResult(
       };
     }, {});
     const imageAttributes = getImageAttributes(attributes).reduce(
-      (acc, attributeName) => ({ ...acc, [attributeName]: entity[attributeName] }),
+      (acc, attributeName) => ({ ...acc, [attributeName]: unwrapNode(entity[attributeName]) }),
       {}
     );
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
@@ -273,7 +291,7 @@ export function mapQueryResult(
         const primaryAttribute = getPrimaryAttribute(relatedEntity?.attributes ?? []);
         const primaryAttributeName = primaryAttribute?.name ?? '';
         const primaryAttributeScope = primaryAttribute ? getAttributeScope(primaryAttribute) : 'global';
-        const localValue = entity[attributeName] as AttributeValue | null;
+        const localValue = entity[attributeName];
 
         if (isAssetRelationshipAttribute(relationshipAttribute)) {
           const assets = getOrderedAssetsFromConnection(entity[`${attributeName}Connection`]);
@@ -288,22 +306,31 @@ export function mapQueryResult(
           throw new Error(`There is an error in the schema for the relationship attribute "${attributeName}"`);
         }
 
-        if (Array.isArray(localValue)) {
+        // All relationship fields are lists in the schema, so the mode from the
+        // JSON schema (not the value shape) decides single vs multiple mapping.
+        if (relationshipAttribute.relationship?.mode === 'multiple') {
+          const relatedItems = (Array.isArray(localValue) ? localValue : []) as EntityItem[];
+
           return {
             ...acc,
-            [attributeName]: sliceFirstThreeItems(localValue, primaryAttribute),
+            [attributeName]: sliceFirstThreeItems(relatedItems, primaryAttribute),
           };
         }
 
-        const value =
-          primaryAttributeScope === 'global'
-            ? localValue?.[primaryAttributeName]
-            : ((localValue?.[primaryAttributeName] as AttributeValue | undefined)?.[scope] ??
-              (localValue?.[primaryAttributeName] as AttributeValue | undefined)?.default);
+        const relatedNode = unwrapNode(localValue);
+
+        if (primaryAttributeScope === 'global') {
+          return {
+            ...acc,
+            [attributeName]: relatedNode?.[primaryAttributeName],
+          };
+        }
+
+        const primaryScopedNode = unwrapNode(relatedNode?.[primaryAttributeName]);
 
         return {
           ...acc,
-          [attributeName]: value,
+          [attributeName]: primaryScopedNode?.[scope] ?? primaryScopedNode?.default,
         };
       },
       {}
@@ -355,7 +382,7 @@ export function mapQueryResultForFormFields(
     );
     const localAttributes = getAttributeListByScope('local', attributes).reduce((acc, attributeName) => {
       const attributeSchema = find(propEq(attributeName, 'name'))(attributes) as Attribute;
-      const localAttribute = entity[attributeName] as AttributeValue | null;
+      const localAttribute = unwrapNode(entity[attributeName]);
 
       return {
         ...acc,
@@ -373,7 +400,7 @@ export function mapQueryResultForFormFields(
       (acc, attribute) => ({
         ...acc,
         [attribute]: {
-          value: entity[attribute],
+          value: unwrapNode(entity[attribute]),
           disabled: false,
           scope: 'default',
           _id: '',
@@ -384,7 +411,12 @@ export function mapQueryResultForFormFields(
     const relationshipAttributes = getAttributeListByScope(['relationship'], attributes).reduce(
       (acc, attributeName) => {
         const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
-        const value = entity[attributeName] as AttributeValue | null;
+        const rawValue = entity[attributeName];
+        // Single-mode relationships come back as lists of 0..1 nodes; multiple
+        // mode keeps the array so downstream grids receive it unchanged.
+        const value = (
+          relationshipAttribute.relationship?.mode === 'single' ? unwrapNode(rawValue) : rawValue
+        ) as AttributeValue | null;
         const _id = value?._id;
         const aggregateCount = (entity[`${attributeName}Aggregate`] as AttributeValue).count;
         const mappedValue = isAssetRelationshipAttribute(relationshipAttribute)
@@ -420,7 +452,7 @@ export function mapQueryResultForFormFields(
 function getValueByScope(
   attribute: AttributeValue | AttributeValue[],
   scope: string
-): FormFieldValue[] | AttributeValue | string | null {
+): FormFieldValue[] | AttributeValue | AttributeValue[] | string | null {
   if (Array.isArray(attribute)) {
     return attribute.reduce((result: FormFieldValue[], attr: AttributeValue) => {
       if (attr[scope] ?? attr.default) {
@@ -564,7 +596,7 @@ function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], 
 
     if ((attributeValue.value as ImageValue)?._id) {
       return (
-        `${acc}\n      ${attributeName}: {\n` +
+        `${acc}\n      ${attributeName}: [{\n` +
         `        update: {\n` +
         `          node: {\n` +
         `            mimeType: ${imageMimeType}\n` +
@@ -576,12 +608,12 @@ function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], 
         `            lqip: ${lqip}\n` +
         `          }\n` +
         `        }\n` +
-        `      }`
+        `      }]`
       );
     }
 
     return (
-      `${acc}\n      ${attributeName}: {\n` +
+      `${acc}\n      ${attributeName}: [{\n` +
       `        create: {\n` +
       `          node: {\n` +
         `            _id: ${stringifyStringLiteral(`${entityId}:${attributeName}`)}\n` +
@@ -594,7 +626,7 @@ function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], 
       `            lqip: ${lqip}\n` +
       `          }\n` +
       `        }\n` +
-      `      }`
+      `      }]`
     );
   }, '');
 
@@ -618,7 +650,7 @@ function localAttributesUpdate(
         : stringifyValue(dataType, attributeValue.value);
 
     if (attributeValue._id) {
-      return `${acc}\n      ${attributeName}: {\n        update: {\n          node: {\n            ${scope}: ${typedValue}\n          }\n        }\n      }`;
+      return `${acc}\n      ${attributeName}: [{\n        update: {\n          node: {\n            ${scope}: ${typedValue}\n          }\n        }\n      }]`;
     }
 
     if (!typedValue) {
@@ -626,7 +658,7 @@ function localAttributesUpdate(
     }
 
     return (
-      `${acc}\n      ${attributeName}: {\n` +
+      `${acc}\n      ${attributeName}: [{\n` +
       `        create: {\n` +
       `          node: {\n` +
       `            _id: ${stringifyStringLiteral(`${entityId}:${attributeName}`)}\n` +
@@ -634,7 +666,7 @@ function localAttributesUpdate(
       `            ${scope}: ${typedValue}\n` +
       `          }\n` +
       `        }\n` +
-      `      }`
+      `      }]`
     );
   }, '');
 
@@ -660,14 +692,16 @@ function relationshipAttributesUpdate(
         return acc;
       }
 
+      // Relationship fields are lists in the schema; disconnect runs before
+      // connect so the field keeps at most one related node.
       const disconnect = originalId
-        ? `disconnect: {\n          where: {\n            node: {\n              _id: ${stringifyStringLiteral(originalId)}\n            }\n          }\n        }\n`
+        ? `        {\n          disconnect: [{\n            where: {\n              node: {\n                _id: ${stringifyStringLiteral(originalId)}\n              }\n            }\n          }]\n        }\n`
         : '';
       const connect = nextId
-        ? `connect: {\n          where: {\n            node: {\n              _id: ${stringifyStringLiteral(nextId)}\n            }\n          }\n        }\n`
+        ? `        {\n          connect: [{\n            where: {\n              node: {\n                _id: ${stringifyStringLiteral(nextId)}\n              }\n            }\n          }]\n        }\n`
         : '';
 
-      return `${acc}\n      ${attributeName}: {\n        ${connect}        ${disconnect}      }`;
+      return `${acc}\n      ${attributeName}: [\n${disconnect}${connect}      ]`;
     }
 
     if (inputType === 'relationship' && relationship?.mode === 'multiple') {
@@ -953,13 +987,13 @@ function localAttributesDelete(schemaAttributes: Attribute[], _id: string): stri
   const attributesString: string = localAttributes.reduce((acc, attributeName) => {
     return (
       `${acc}\n` +
-      `      ${attributeName}: {\n` +
+      `      ${attributeName}: [{\n` +
       `        where: {\n` +
       `          node: {\n` +
       `            _id: ${stringifyStringLiteral(`${_id}:${attributeName}`)}\n` +
       `          }\n` +
       `        }\n` +
-      `      }`
+      `      }]`
     );
   }, '');
 
@@ -1028,13 +1062,13 @@ function localAttributesCreate(
     return (
       `${acc}\n` +
       `      ${attributeName}: {\n` +
-      `        create: {\n` +
+      `        create: [{\n` +
       `          node: {\n` +
       `            _id: ${stringifyStringLiteral(`${_id}:${attributeName}`)}\n` +
       `            _type: "${attributeSchema.dataType}"\n` +
       `            ${defaultScope}: ${typedValue}\n` +
       `          }\n` +
-      `        }\n` +
+      `        }]\n` +
       `      }`
     );
   }, '');
@@ -1050,7 +1084,7 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
     const { inputType, relationship } = attributeSchema;
 
     if (inputType === 'relationship' && relationship?.mode === 'single') {
-      const connect = `connect: {\n          where: {\n            node: {\n              _id: ${stringifyStringLiteral(attributeValue._id ?? '')}\n            }\n          }\n        }\n`;
+      const connect = `connect: [{\n          where: {\n            node: {\n              _id: ${stringifyStringLiteral(attributeValue._id ?? '')}\n            }\n          }\n        }]\n`;
 
       return `${acc}\n      ${attributeName}: {\n        ${connect}      }`;
     }

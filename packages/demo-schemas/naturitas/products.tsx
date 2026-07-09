@@ -42,6 +42,19 @@ export const products = defineEntity({
       defaultValue: '',
     },
     {
+      name: 'urlPath',
+      label: 'URL Path',
+      scope: 'global',
+      options: {
+        size: 260,
+        comment: 'Product URL path',
+      },
+      dataType: 'string',
+      isSearchable: true,
+      inputType: 'text',
+      defaultValue: '',
+    },
+    {
       name: 'productType',
       label: 'Product Type',
       scope: 'global',

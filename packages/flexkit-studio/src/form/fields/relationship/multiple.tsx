@@ -78,10 +78,9 @@ export default function MultipleRelationship({
   const connectionAttributeName = relationshipMode === 'single' ? entityName : entityNamePlural;
 
   if (relationshipAttributeMode) {
-    connectionName =
-      relationshipAttributeMode === 'single'
-        ? `${connectionAttributeName}Connection_NOT`
-        : `${connectionAttributeName}Connection_NONE`;
+    // All relationship fields are lists in the generated schema, so the list
+    // quantifier filter (_NONE) applies regardless of the relationship mode.
+    connectionName = `${connectionAttributeName}Connection_NONE`;
   }
 
   const primaryAttributeName = getPrimaryAttributeName(relationshipEntityAttributesSchema);
@@ -410,7 +409,6 @@ type DataAdapter = {
 function dataAdapter({
   data,
   defaultScope,
-  primaryAttributeName,
   relationshipEntitySchema,
   scope,
 }: DataAdapter): AttributeValue[] {
@@ -418,37 +416,51 @@ function dataAdapter({
     return [];
   }
 
+  const renderNode = (node: AttributeValue): unknown => {
+    const relationshipFieldSchema = find(propEq(node.__typename, 'name'))(
+      relationshipEntitySchema?.attributes ?? []
+    ) as Attribute | undefined;
+    const relationshipFieldName = relationshipFieldSchema?.relationship?.field ?? '';
+
+    if (relationshipFieldName) {
+      const rawFieldValue = node[relationshipFieldName];
+      const fieldNode = (Array.isArray(rawFieldValue) ? rawFieldValue[0] : rawFieldValue) as
+        | AttributeValue
+        | string
+        | null
+        | undefined;
+
+      if (fieldNode && typeof fieldNode === 'object') {
+        return fieldNode[scope] ?? fieldNode[defaultScope] ?? '';
+      }
+
+      return fieldNode;
+    }
+
+    return node[scope] ?? node[defaultScope];
+  };
+
   return data.map(
     (row: MappedEntityItem | EntityItem) =>
       map((field) => {
-        if (field && typeof field !== 'string' && !Array.isArray(field) && field.__typename) {
-          const relationshipFieldSchema = find(propEq(field.__typename, 'name'))(
-            relationshipEntitySchema?.attributes ?? []
-          ) as Attribute | undefined;
-          const relationshipFieldName = relationshipFieldSchema?.relationship?.field ?? '';
+        // All relationship fields (scoped attributes, single and multiple
+        // relationships) are lists in the schema
+        if (Array.isArray(field)) {
+          const nodes = field as unknown as AttributeValue[];
 
-          if (relationshipFieldName) {
-            return (
-              (field[relationshipFieldName] as AttributeValue)?.[scope] ??
-              (field[relationshipFieldName] as AttributeValue)?.[defaultScope] ??
-              field[relationshipFieldName]
-            );
+          if (nodes.length === 0) {
+            return '';
           }
 
-          return field[scope] ?? field[defaultScope];
+          if (nodes.length === 1) {
+            return renderNode(nodes[0]);
+          }
+
+          return nodes.slice(0, 3).map(renderNode).join(', ');
         }
 
-        if (Array.isArray(field)) {
-          const attrField = field as unknown as AttributeValue[];
-
-          return attrField
-            .slice(0, 3)
-            .map(
-              (item) =>
-                (item[primaryAttributeName] as AttributeValue | undefined)?.[scope] ??
-                (item[primaryAttributeName] as AttributeValue | undefined)?.[defaultScope]
-            )
-            .join(', ');
+        if (field && typeof field !== 'string' && field.__typename) {
+          return renderNode(field);
         }
 
         return field;
