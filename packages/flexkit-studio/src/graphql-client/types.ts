@@ -7,9 +7,17 @@ export type AttributeValue = {
   __typename: string;
 };
 
+/**
+ * Shape of xConnection fields queried for counts in Neo4j GraphQL v7:
+ * xConnection \{ aggregate \{ count \{ nodes \} \} \}.
+ */
 export type EntityQueryAggregate = {
   __typename: string;
-  count: number;
+  aggregate: {
+    count: {
+      nodes: number;
+    };
+  };
 };
 
 export type EntityQueryResult = {

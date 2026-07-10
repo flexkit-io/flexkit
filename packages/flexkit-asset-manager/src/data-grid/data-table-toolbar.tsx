@@ -142,18 +142,20 @@ export function DataTableToolbar<TData>({
     entityNamePlural: '_tags',
     schema,
     scope,
-    variables: { where: {}, options: { limit: 500, offset: 0, sort: [{ name: 'ASC' }] } },
+    variables: { where: {}, limit: 500, offset: 0, sort: [{ name: 'ASC' }] },
   });
-  const allTags = Array.isArray(tagsData)
-    ? (tagsData as unknown[]).map((t) => ({ _id: (t as { _id: string })._id, name: (t as { name: string }).name }))
-    : [];
+  const allTags = useMemo(() => {
+    const items = Array.isArray(tagsData) ? (tagsData as unknown[]) : [];
+
+    return items.map((t) => ({ _id: (t as { _id: string })._id, name: (t as { name: string }).name }));
+  }, [tagsData]);
 
   // Load a sample of assets to derive dynamic mime type options
   const { data: mimeSampleData } = useEntityQuery({
     entityNamePlural: '_assets',
     schema,
     scope,
-    variables: { where: {}, options: { limit: 500, offset: 0, sort: [{ _updatedAt: 'DESC' }] } },
+    variables: { where: {}, limit: 500, offset: 0, sort: [{ _updatedAt: 'DESC' }] },
   });
 
   type AssetItem = { _id: string; mimeType?: string | null };
@@ -308,7 +310,7 @@ export function DataTableToolbar<TData>({
         ${mutation}
       `);
       setOptions({
-        variables: { where: { _id_IN: selectedIds } },
+        variables: { where: { _id: { in: selectedIds } } },
         onCompleted: () => resolve(),
       });
       runMutation(true);
@@ -341,7 +343,7 @@ export function DataTableToolbar<TData>({
         ${mutation}
       `);
       setOptions({
-        variables: { where: { _id_IN: selectedIds } },
+        variables: { where: { _id: { in: selectedIds } } },
         onCompleted: () => resolve(),
       });
       runMutation(true);
@@ -365,16 +367,18 @@ export function DataTableToolbar<TData>({
     if (trimmed.length === 0) {
       nextWhere = {};
     } else if (safeResults.length === 0) {
-      nextWhere = { _id_IN: [] };
+      nextWhere = { _id: { in: [] } };
     } else {
-      const assetIdClauses = safeResults.filter((r) => r._entityNamePlural === '_assets').map((r) => ({ _id: r._id }));
+      const assetIdClauses = safeResults
+        .filter((r) => r._entityNamePlural === '_assets')
+        .map((r) => ({ _id: { eq: r._id } }));
 
       const tagClauses = safeResults
         .filter((r) => r._entityNamePlural === '_tags')
-        .map((r) => ({ tagsConnection_SOME: { node: { _id: r._id } } }));
+        .map((r) => ({ tags: { some: { _id: { eq: r._id } } } }));
 
       const orClauses = [...assetIdClauses, ...tagClauses];
-      nextWhere = orClauses.length > 0 ? { OR: orClauses } : { _id_IN: [] };
+      nextWhere = orClauses.length > 0 ? { OR: orClauses } : { _id: { in: [] } };
     }
 
     textWhereRef.current = nextWhere;
@@ -398,11 +402,11 @@ export function DataTableToolbar<TData>({
     const clauses: WhereClause[] = [];
 
     if (mimeValues.length > 0) {
-      clauses.push({ mimeType_IN: mimeValues } as WhereClause);
+      clauses.push({ mimeType: { in: mimeValues } } as WhereClause);
     }
 
     if (tagValues.length > 0) {
-      const orTags = tagValues.map((id) => ({ tagsConnection_SOME: { node: { _id: id } } }));
+      const orTags = tagValues.map((id) => ({ tags: { some: { _id: { eq: id } } } }));
       clauses.push(orTags.length === 1 ? orTags[0] : { OR: orTags });
     }
 

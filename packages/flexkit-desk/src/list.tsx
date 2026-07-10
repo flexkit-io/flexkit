@@ -38,7 +38,7 @@ export function List(): JSX.Element {
     checkboxSelect: 'multiple',
   });
 
-  const variables = entityId ? { where: { _id: entityId } } : { options: { offset: 0, limit: pageSize } };
+  const variables = entityId ? { where: { _id: { eq: entityId } } } : { offset: 0, limit: pageSize };
 
   const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
@@ -58,10 +58,8 @@ export function List(): JSX.Element {
         if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < count) {
           fetchMore({
             variables: {
-              options: {
-                offset: data?.length ?? 0,
-                limit: pageSize,
-              },
+              offset: data?.length ?? 0,
+              limit: pageSize,
             },
           });
         }
