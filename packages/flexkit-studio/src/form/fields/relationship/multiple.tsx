@@ -63,24 +63,20 @@ export default function MultipleRelationship({
   const relationshipEntityAttributesSchema = relationshipEntitySchema?.attributes ?? [];
   const baseEntitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const baseEntityName = baseEntitySchema?.name ?? '';
-  const relationshipMode = find<Attribute>(propEq(entityName, 'name'))(relationshipEntityAttributesSchema)?.relationship
-    ?.mode;
   let connectionName: string | undefined;
 
   /**
    * Find out if this attribute is related to the base entity (by-directional relationship)
-   * If so, get the connection name to filter out the related items already connected when showing the list (i.e. productsConnection_NONE)
+   * If so, get the relationship field name on the target entity that points back to the
+   * base entity, so EditRelationship can filter out already-connected items with a
+   * `none` quantifier filter (i.e. products: { none: { _id: { eq: ... } } }).
    * */
   const relationshipAttribute = relationshipEntityAttributesSchema.find(
     (attr) => attr.relationship?.entity === baseEntityName
   );
-  const relationshipAttributeMode = relationshipAttribute?.relationship?.mode;
-  const connectionAttributeName = relationshipMode === 'single' ? entityName : entityNamePlural;
 
-  if (relationshipAttributeMode) {
-    // All relationship fields are lists in the generated schema, so the list
-    // quantifier filter (_NONE) applies regardless of the relationship mode.
-    connectionName = `${connectionAttributeName}Connection_NONE`;
+  if (relationshipAttribute) {
+    connectionName = relationshipAttribute.name;
   }
 
   const primaryAttributeName = getPrimaryAttributeName(relationshipEntityAttributesSchema);
@@ -159,17 +155,17 @@ export default function MultipleRelationship({
       if (scrollHeight - scrollTop - clientHeight < 200 && !loading && rows.length < totalCount) {
         getData({
           variables: {
-            options: {
-              limit: PAGE_SIZE,
-              offset: rows.length,
-            },
-            where: {
-              productsConnection_SOME: {
-                node: {
-                  _id: entityId,
-                },
-              },
-            },
+            limit: PAGE_SIZE,
+            offset: rows.length,
+            where: connectionName
+              ? {
+                  [connectionName]: {
+                    some: {
+                      _id: { eq: entityId },
+                    },
+                  },
+                }
+              : {},
           },
         })
           .then(({ data: res }: { data: (EntityQueryResults & EntityQueryAggregate) | undefined }) => {
@@ -186,6 +182,7 @@ export default function MultipleRelationship({
       }
     },
     [
+      connectionName,
       defaultValue.count,
       entityId,
       getData,

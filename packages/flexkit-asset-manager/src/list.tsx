@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type JSX } from 'react';
 import { find, propEq } from 'ramda';
 import {
   assetSchema,
@@ -14,7 +14,7 @@ import {
   useGridColumnsDefinition,
 } from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
-import type { ColumnDef, SingleProject } from '@flexkit/studio';
+import type { AttributeValue, ColumnDef, SingleProject } from '@flexkit/studio';
 import { DataTableToolbar } from './data-grid/data-table-toolbar';
 
 type WhereClause = { [key: string]: unknown };
@@ -30,14 +30,14 @@ export function List(): JSX.Element {
   const { schemaErrorMessage } = useGraphQLError();
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-  const columnsDefinition = useGridColumnsDefinition({
+  const columnsDefinition = useGridColumnsDefinition<AttributeValue, unknown>({
     attributesSchema: assetSchema.attributes,
     checkboxSelect: 'multiple',
   });
 
   const [searchWhere, setSearchWhere] = useState<WhereClause>({});
 
-  const whereBase = entityId ? { _id: entityId } : { NOT: { path: null } };
+  const whereBase = entityId ? { _id: { eq: entityId } } : { NOT: { path: { eq: null } } };
   const where = useMemo(() => {
     if (!searchWhere || Object.keys(searchWhere).length === 0) {
       return whereBase;
@@ -50,7 +50,7 @@ export function List(): JSX.Element {
     return { AND: [whereBase, searchWhere] } as WhereClause;
   }, [entityId, searchWhere]);
 
-  const variables = { where, options: { offset: 0, limit: pageSize, sort: [{ _updatedAt: 'DESC' }] } };
+  const variables = { where, offset: 0, limit: pageSize, sort: [{ _updatedAt: 'DESC' }] };
 
   const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
@@ -86,10 +86,8 @@ export function List(): JSX.Element {
 
           fetchMore({
             variables: {
-              options: {
-                offset: data?.length ?? 0,
-                limit: pageSize,
-              },
+              offset: data?.length ?? 0,
+              limit: pageSize,
             },
           });
         }
@@ -137,15 +135,9 @@ export function List(): JSX.Element {
   );
 }
 
-type AttributeValue = {
-  _id: string;
-  [key: string]: string | AttributeValue | null;
-  __typename: string;
-};
-
-function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
+function getLoadingColumns(columns: ColumnDef<AttributeValue, unknown>[]): ColumnDef<AttributeValue, unknown>[] {
   return columns.map((column) => ({
     ...column,
     cell: () => <Skeleton className="fk:h-4 fk:w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
-  })) as unknown as ColumnDef<AttributeValue>[];
+  }));
 }

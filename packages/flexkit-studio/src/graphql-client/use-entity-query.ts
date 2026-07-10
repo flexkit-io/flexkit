@@ -17,7 +17,7 @@ import type {
   ImageValue,
 } from './types';
 
-type FetchMoreOptions = { variables: OperationVariables & { options: { offset: number; limit: number } } };
+type FetchMoreOptions = { variables: OperationVariables & { offset: number; limit: number } };
 type Results = (MappedEntityQueryResults | MappedFormEntityQueryResults) | { count: 0; results: [] };
 
 export function useEntityQuery({ entityNamePlural, schema, scope, variables, isForm }: UseEntityQueryParams): {

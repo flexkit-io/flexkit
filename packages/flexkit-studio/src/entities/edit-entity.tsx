@@ -146,11 +146,11 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
         ${mutation}
       `);
       setOptions({
-        variables: { where: { _id: entityId } },
+        variables: { where: { _id: { eq: entityId } } },
         refetchQueries: [
           {
             query: refreshQuery,
-            variables: { where: { _id: entityId } },
+            variables: { where: { _id: { eq: entityId } } },
           },
         ],
         onCompleted: () => {
@@ -166,7 +166,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     entityNamePlural,
     schema,
     scope: currentScope,
-    variables: { where: { _id: entityId } },
+    variables: { where: { _id: { eq: entityId } } },
     isForm: true,
   });
   const data = results as FormEntityItem[];

@@ -105,28 +105,31 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
 
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
   const conditionalWhereClause = useMemo(() => {
+    // connectionName is the relationship field on the target entity pointing
+    // back to the base entity; `none` filters out already-connected items.
     const filterOutConnectedEntities = connectionName
       ? {
           [connectionName]: {
-            node: {
-              _id: entityId,
+            none: {
+              _id: { eq: entityId },
             },
           },
         }
       : {};
-    const assetPathFilter = isAssetPicker ? { NOT: { path: null } } : {};
+    const assetPathFilter = isAssetPicker ? { NOT: { path: { eq: null } } } : {};
+    const searchFilter = { OR: searchResultIds.map((result) => ({ _id: { eq: result._id } })) };
 
     if (mode === 'multiple') {
       return {
         ...assetPathFilter,
         ...filterOutConnectedEntities,
-        OR: searchResultIds,
+        ...searchFilter,
       };
     }
 
     return {
       ...assetPathFilter,
-      OR: searchResultIds,
+      ...searchFilter,
     };
   }, [connectionName, entityId, isAssetPicker, mode, searchResultIds]);
 
@@ -135,10 +138,8 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     schema,
     scope,
     variables: {
-      options: {
-        offset: 0,
-        limit: PAGE_SIZE,
-      },
+      offset: 0,
+      limit: PAGE_SIZE,
       where: conditionalWhereClause,
     },
   });
@@ -190,10 +191,8 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
         if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < totalCount) {
           fetchMore({
             variables: {
-              options: {
-                offset: rowsCount,
-                limit: PAGE_SIZE,
-              },
+              offset: rowsCount,
+              limit: PAGE_SIZE,
               where: conditionalWhereClause,
             },
           });

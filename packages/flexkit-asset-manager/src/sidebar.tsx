@@ -50,7 +50,7 @@ export function Sidebar(): JSX.Element {
 
   const entityName = '_tag';
   const entityNamePlural = '_tags';
-  const variables = useMemo(() => ({ where: {}, options: { limit: 200, offset: 0, sort: [{ name: 'ASC' }] } }), []);
+  const variables = useMemo(() => ({ where: {}, limit: 200, offset: 0, sort: [{ name: 'ASC' }] }), []);
   const { data, isLoading } = useEntityQuery({
     entityNamePlural,
     schema,
@@ -110,7 +110,7 @@ export function Sidebar(): JSX.Element {
           ${mutation}
         `);
         setOptions({
-          variables: { where: { _id } },
+          variables: { where: { _id: { eq: _id } } },
           refetchQueries: [refreshQuery],
           onCompleted: () => {
             resolve();
@@ -152,7 +152,7 @@ export function Sidebar(): JSX.Element {
         ${mutation}
       `);
       setOptions({
-        variables: { where: { _id: tagToEdit._id } },
+        variables: { where: { _id: { eq: tagToEdit._id } } },
         refetchQueries: [refreshQuery],
         onCompleted: () => {
           setIsEditOpen(false);

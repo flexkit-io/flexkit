@@ -53,7 +53,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
       `);
 
       setOptions({
-        variables: { where: { _id } },
+        variables: { where: { _id: { eq: _id } } },
         update(cache: { evict: (arg0: { id: string }) => void }) {
           cache.evict({ id: _id });
         },
