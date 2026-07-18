@@ -1,5 +1,13 @@
 # @flexkit/studio
 
+## 0.0.26
+
+### Patch Changes
+
+- 6738fbf: Enforce list relationships due to deprecation of single element relationships
+- ad393a8: Generate GraphQL operations compatible with Neo4j GraphQL Library v7: pagination and sorting moved from the `options` argument to top-level `limit`/`offset`/`sort` arguments, counts read from `xConnection { aggregate { count { nodes } } }` instead of the removed `*Aggregate` fields, filters use the dedicated input syntax (`{ eq }`, `{ in }`, `{ some }`, `{ none }`), update mutations wrap values in the explicit `{ set: ... }` operator, and reordering an ordered asset gallery updates the existing relationship edge instead of reconnecting it (which would duplicate the relationship in v7).
+- 9de8878: Make asset scope optional in schema authoring and fix defineEntity export types
+
 ## 0.0.25
 
 ## 0.0.24
