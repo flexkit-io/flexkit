@@ -38,6 +38,7 @@ interface DeployFailureDetail {
   path?: string;
   message: string;
   hint?: string;
+  helpUrl?: string;
 }
 
 interface DeployProjectJob {
@@ -150,7 +151,11 @@ function extractFailureDetails(error: unknown): DeployFailureDetail[] {
     return [{ message: 'Deploy failed with an unknown error.' }];
   }
 
-  const nestedErrors = Array.isArray(error.errors) ? error.errors : undefined;
+  let nestedErrors = Array.isArray(error.errors) ? error.errors : undefined;
+
+  if (!nestedErrors && Array.isArray(error.details)) {
+    nestedErrors = error.details;
+  }
 
   if (nestedErrors && nestedErrors.length > 0) {
     const flattened = nestedErrors.flatMap((entry) => extractFailureDetails(entry));
@@ -168,15 +173,48 @@ function extractFailureDetails(error: unknown): DeployFailureDetail[] {
     detail.code = error.code;
   }
 
-  if (typeof error.path === 'string' && error.path.length > 0) {
-    detail.path = error.path;
+  const path = formatDeployPath(error.path);
+
+  if (path) {
+    detail.path = path;
   }
 
   if (typeof error.hint === 'string' && error.hint.length > 0) {
     detail.hint = error.hint;
   }
 
+  if (typeof error.helpUrl === 'string' && error.helpUrl.length > 0) {
+    detail.helpUrl = error.helpUrl;
+  }
+
   return [detail];
+}
+
+function formatDeployPath(path: unknown): string | undefined {
+  if (typeof path === 'string' && path.length > 0) {
+    return path;
+  }
+
+  if (!Array.isArray(path) || path.length === 0) {
+    return undefined;
+  }
+
+  let formattedPath = '';
+
+  for (const segment of path) {
+    if (typeof segment === 'number') {
+      formattedPath += `[${segment.toString()}]`;
+      continue;
+    }
+
+    if (typeof segment !== 'string') {
+      return undefined;
+    }
+
+    formattedPath += formattedPath.length > 0 ? `.${segment}` : segment;
+  }
+
+  return formattedPath;
 }
 
 function renderFailureDetails(output: Client['output'], projectId: string, details: DeployFailureDetail[]): void {
@@ -186,6 +224,10 @@ function renderFailureDetails(output: Client['output'], projectId: string, detai
     const hint = detail.hint ? ` hint=${detail.hint}` : '';
 
     output.error(`[${projectId}] code=${code} path=${path} message=${detail.message}${hint}`);
+
+    if (detail.helpUrl) {
+      output.log(`[${projectId}] Learn more: ${detail.helpUrl}`);
+    }
   }
 }
 
@@ -220,7 +262,8 @@ async function startDeployJob(
   projectId: string,
   schema: unknown,
   scopes: unknown,
-  forceDeploy: boolean
+  forceDeploy: boolean,
+  allowBreakingChanges: boolean
 ): Promise<DeployProjectResult> {
   try {
     const response = await client.fetch('/deploy', {
@@ -231,6 +274,7 @@ async function startDeployJob(
       body: JSON.stringify({
         schema,
         scopes,
+        ...(allowBreakingChanges ? { allowBreakingChanges: true } : {}),
         ...(forceDeploy ? { forceDeploy: true } : {}),
       }),
       projectId,
@@ -503,6 +547,7 @@ export default async function main(client: Client): Promise<number> {
 
   try {
     argv = parseArguments(client.argv.slice(2), {
+      '--allow-breaking-changes': Boolean,
       '--help': Boolean,
       '-h': '--help',
       '--force': Boolean,
@@ -558,7 +603,8 @@ export default async function main(client: Client): Promise<number> {
           project.projectId,
           schema,
           scopes,
-          argv.flags['--force'] ?? false
+          argv.flags['--force'] ?? false,
+          argv.flags['--allow-breaking-changes'] ?? false
         );
 
         if (!job.hasChanges) {

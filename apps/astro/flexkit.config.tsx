@@ -6,21 +6,27 @@ import { Explorer } from '@flexkit/explorer';
 import { CustomTextField } from 'demo-schemas/components/custom-input-field';
 import { CustomBooleanPreviewField } from 'demo-schemas/components/custom-boolean-preview-field';
 import { RatePreviewField } from 'demo-schemas/components/rate-preview-field';
-import { products } from 'demo-schemas/naturitas/products';
-import { categories } from 'demo-schemas/naturitas/categories';
-import { flags } from 'demo-schemas/naturitas/flags';
-import { brands } from 'demo-schemas/naturitas/brands';
-import { customers } from 'demo-schemas/naturitas/customers';
-import { customerAddresses } from 'demo-schemas/naturitas/customer-addresses';
-import { salesOrders } from 'demo-schemas/naturitas/sales-orders';
-import { salesOrderItems } from 'demo-schemas/naturitas/sales-order-items';
-import { channels } from 'demo-schemas/naturitas/channels';
-import { taxes } from 'demo-schemas/naturitas/taxes';
-import { countries } from 'demo-schemas/naturitas/countries';
-import { paymentMethods } from 'demo-schemas/naturitas/payment-methods';
-import { paymentTerms } from 'demo-schemas/naturitas/payment-terms';
-import { currencies } from 'demo-schemas/naturitas/currencies';
-import { languages } from 'demo-schemas/naturitas/languages';
+import { products } from 'demo-schemas/ecommerce/products';
+import { categories } from 'demo-schemas/ecommerce/categories';
+import { flags } from 'demo-schemas/ecommerce/flags';
+import { brands } from 'demo-schemas/ecommerce/brands';
+import { customers } from 'demo-schemas/ecommerce/customers';
+import { customerAddresses } from 'demo-schemas/ecommerce/customer-addresses';
+import { salesOrders } from 'demo-schemas/ecommerce/sales-orders';
+import { salesOrderItems } from 'demo-schemas/ecommerce/sales-order-items';
+import { channels } from 'demo-schemas/ecommerce/channels';
+import { taxes } from 'demo-schemas/ecommerce/taxes';
+import { countries } from 'demo-schemas/ecommerce/countries';
+import { paymentMethods } from 'demo-schemas/ecommerce/payment-methods';
+import { paymentTerms } from 'demo-schemas/ecommerce/payment-terms';
+import { currencies } from 'demo-schemas/ecommerce/currencies';
+import { languages } from 'demo-schemas/ecommerce/languages';
+import { flavours } from 'demo-schemas/ecommerce/flavours';
+import { essenses } from 'demo-schemas/ecommerce/essenses';
+import { uses } from 'demo-schemas/ecommerce/uses';
+import { promoTags } from 'demo-schemas/ecommerce/promo-tags';
+import { promoCodes } from 'demo-schemas/ecommerce/promo-codes';
+import { contentFormats } from 'demo-schemas/ecommerce/content-formats';
 import { contacts } from 'demo-schemas/flexkit-crm/contacts';
 import { companies } from 'demo-schemas/flexkit-crm/companies';
 import { addresses } from 'demo-schemas/flexkit-crm/addresses';
@@ -35,7 +41,7 @@ import { crmTags } from 'demo-schemas/flexkit-crm/tags';
 
 export default defineConfig([
   {
-    title: 'Naturitas',
+    title: 'E-Commerce Example',
     projectId: 'abcdefghij',
     basePath: '/studio',
     menuGroups: [
@@ -174,39 +180,31 @@ export default defineConfig([
       },
       {
         name: 'es',
-        label: 'Naturitas.es',
+        label: 'Spain',
       },
       {
         name: 'pt',
-        label: 'Naturitas.pt',
+        label: 'Portugal',
       },
       {
         name: 'fr',
-        label: 'Naturitas.fr',
+        label: 'France',
       },
       {
         name: 'it',
-        label: 'Naturitas.it',
+        label: 'Italy',
       },
       {
         name: 'uk',
-        label: 'Naturitas.co.uk',
+        label: 'United Kingdom',
       },
       {
         name: 'en',
-        label: 'Naturitas.us',
+        label: 'United States',
       },
       {
         name: 'de',
-        label: 'Naturitas.de',
-      },
-      {
-        name: 'lengow',
-        label: 'Lengow',
-      },
-      {
-        name: 'fruugo',
-        label: 'Fruugo',
+        label: 'Germany',
       },
     ],
     schema: [
@@ -225,6 +223,12 @@ export default defineConfig([
       paymentTerms,
       currencies,
       languages,
+      flavours,
+      essenses,
+      uses,
+      promoTags,
+      promoCodes,
+      contentFormats,
     ],
   },
   {

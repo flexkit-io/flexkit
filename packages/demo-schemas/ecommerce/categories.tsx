@@ -1,4 +1,4 @@
-import { FolderTree as FolderTreeIcon } from 'lucide-react';
+import { FolderTreeIcon } from 'lucide-react';
 import { defineEntity } from '@flexkit/studio';
 
 export const categories = defineEntity({

@@ -6,6 +6,13 @@ export const deployCommand: Command = {
   arguments: [],
   options: [
     {
+      name: 'allow-breaking-changes',
+      shorthand: null,
+      type: Boolean,
+      description: 'Allow intentional entity and attribute removals',
+      deprecated: false,
+    },
+    {
       name: 'force',
       shorthand: null,
       type: String,
@@ -21,6 +28,10 @@ export const deployCommand: Command = {
     {
       name: 'Force deployment when the schema has not changed',
       value: 'flexkit deploy --force',
+    },
+    {
+      name: 'Deploy intentional entity or attribute removals',
+      value: 'flexkit deploy --allow-breaking-changes',
     },
   ],
 };

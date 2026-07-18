@@ -16,7 +16,7 @@ export const channels = defineEntity({
       scope: 'global',
       options: {
         size: 130,
-        comment: 'Name of the channel (i.e. naturitas.es, fruugo, etc)',
+        comment: 'Name of the channel (i.e. Spain, United States, Germany)',
       },
       dataType: 'string',
       isSearchable: true,
