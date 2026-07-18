@@ -1,5 +1,12 @@
 # @flexkit/cli
 
+## 0.0.7
+
+### Patch Changes
+
+- 16755d7: Add `--allow-breaking-changes` for intentional schema removals and improve deploy validation error paths and documentation links.
+- bd9428e: Add a `--force` flag to deploy unchanged schemas.
+
 ## 0.0.6
 
 ### Patch Changes
