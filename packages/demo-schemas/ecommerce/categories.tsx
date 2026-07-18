@@ -51,7 +51,7 @@ export const categories = defineEntity({
       defaultValue: '',
     },
     {
-      name: 'isInMenu',
+      name: 'includeInMenu',
       label: 'Is in Menu',
       scope: 'local',
       options: {
@@ -76,17 +76,30 @@ export const categories = defineEntity({
       defaultValue: '',
     },
     {
-      name: 'pathSegment',
-      label: 'Path Segment',
+      name: 'slug',
+      label: 'Slug',
       scope: 'local',
       options: {
         size: 260,
-        comment: 'URL path segment',
+        comment: 'URL slug',
       },
       dataType: 'string',
       inputType: 'text',
       validation: (z) => z.string(),
       defaultValue: '',
+    },
+    {
+      name: 'depth',
+      label: 'Depth',
+      scope: 'global',
+      options: {
+        size: 260,
+        comment: 'URL of the category',
+      },
+      dataType: 'int',
+      inputType: 'number',
+      validation: (z) => z.number().min(0, { message: 'Depth must be greater than 0' }),
+      defaultValue: 0,
     },
     {
       name: 'metaTitle',

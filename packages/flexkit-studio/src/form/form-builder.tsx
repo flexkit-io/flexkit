@@ -7,8 +7,8 @@ import { equals, find, propEq } from 'ramda';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
-import type { Entity, Schema } from '../core/types';
-import type { EntityData, FormEntityItem } from '../graphql-client/types';
+import type { Attribute, Entity, Schema } from '../core/types';
+import type { EntityData, FormEntityItem, FormFieldValue } from '../graphql-client/types';
 import { useConfig } from '../core/config/config-context';
 import { Text as TextField } from './fields/text';
 import { Switch as SwitchField } from './fields/switch';
@@ -40,12 +40,36 @@ type Props = {
   onSubmit: (newData: EntityData, previousData?: FormEntityItem) => void;
 };
 
+function getInitialFieldValue(field: Attribute, defaultScope: string): FormFieldValue {
+  const value =
+    field.dataType === 'asset' || field.scope === 'relationship' ? '' : (field.defaultValue ?? '');
+
+  return {
+    disabled: false,
+    scope: defaultScope,
+    value,
+  };
+}
+
 function FormBuilder(
   { currentScope, defaultScope, entityId, entityName, entityNamePlural, formData, schema, setIsDirty, onSubmit }: Props,
   ref: ForwardedRef<SubmitHandle>
 ): JSX.Element {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const formSchema = useMemo(() => entitySchema?.attributes ?? [], [entitySchema]);
+  const initialFormValues = useMemo(() => {
+    if (formData) {
+      return formData;
+    }
+
+    return formSchema.reduce<FormEntityItem>(
+      (values, field) => ({
+        ...values,
+        [field.name]: getInitialFieldValue(field, defaultScope),
+      }),
+      {}
+    );
+  }, [defaultScope, formData, formSchema]);
   const validationSchema = useMemo(() => {
     return z.object(
       formSchema.reduce((acc, fieldSchema) => {
@@ -69,6 +93,7 @@ function FormBuilder(
   type UserSchema = z.infer<typeof validationSchema>;
 
   const form = useForm<UserSchema>({
+    defaultValues: initialFormValues,
     resolver: zodResolver(validationSchema),
     values: formData,
     mode: 'onBlur',
@@ -150,7 +175,7 @@ function FormBuilder(
                 key: field.name,
                 control,
                 defaultScope,
-                defaultValue: formData ? formData[field.name] : { value: '', disabled: false, scope: defaultScope },
+                defaultValue: initialFormValues[field.name],
                 entityId,
                 entityName,
                 entityNamePlural,

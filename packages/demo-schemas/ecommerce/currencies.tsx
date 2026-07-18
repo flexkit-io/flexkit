@@ -63,7 +63,7 @@ export const currencies = defineEntity({
       inputType: 'number',
       previewType: 'ratePreviewField',
       validation: (z) => z.number().min(0, { message: 'Rate is required' }),
-      defaultValue: '0',
+      defaultValue: 0,
     },
   ],
 });

@@ -49,7 +49,7 @@ export const paymentMethods = defineEntity({
       dataType: 'int',
       inputType: 'number',
       validation: (z) => z.number().min(0, { message: 'ERP ID is required' }),
-      defaultValue: '0',
+      defaultValue: 0,
     },
   ],
 });

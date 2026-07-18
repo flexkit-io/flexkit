@@ -19,6 +19,8 @@ export { defineEntity } from './core/config/define-entity';
 export type { AppOptions, FormFieldProps, LogoProps, PluginOptions, SingleProject } from './core/config/types';
 export type {
   Attribute,
+  DefaultValue,
+  DefaultValueByDataType,
   Entity,
   DataType,
   Schema,

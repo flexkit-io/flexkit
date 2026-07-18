@@ -38,7 +38,7 @@ export const taxes = defineEntity({
       previewType: 'taxRatePreviewField',
       validation: (z) =>
         z.number().min(0, { message: 'Rate is required' }).max(1, { message: 'Rate must be less than 1' }),
-      defaultValue: '0',
+      defaultValue: 0,
     },
     {
       name: 'country',
