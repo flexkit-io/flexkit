@@ -97,6 +97,8 @@ export type FormFieldValue = {
   };
   scope: string;
   value:
+    | boolean
+    | number
     | string
     | MappedEntityItem
     | MappedEntityItem[]

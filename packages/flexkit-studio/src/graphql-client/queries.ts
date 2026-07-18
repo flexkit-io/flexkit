@@ -890,7 +890,7 @@ function getOrderedAssetReorderString(connections: MultipleRelationshipConnectio
 
 function stringifyValue(
   type: DataType,
-  value: string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | null | undefined
+  value: boolean | number | string | MappedEntityItem | EntityItem | AttributeValue | ImageValue | null | undefined
 ): string | null {
   if (temporalTypes.includes(type)) {
     return value?.toString() ? stringifyStringLiteral(value.toString()) : null;
@@ -1105,7 +1105,11 @@ function localAttributesCreate(
   const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
   const attributesArray = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
-    if (!attributeValue?.value) {
+    if (
+      attributeValue?.value === undefined ||
+      attributeValue.value === null ||
+      attributeValue.value === ''
+    ) {
       return acc;
     }
 

@@ -92,6 +92,24 @@ export type DataType =
   | 'time'
   | 'asset';
 
+export type DefaultValueByDataType = {
+  asset: '';
+  bigint: string;
+  boolean: boolean | '';
+  cartesianpoint: string;
+  date: string;
+  datetime: string;
+  duration: string;
+  float: number | '';
+  id: string;
+  int: number | '';
+  point: string;
+  string: string;
+  time: string;
+};
+
+export type DefaultValue<T extends DataType = DataType> = DefaultValueByDataType[T];
+
 export type InputType =
   | 'datetime'
   | 'editor'
@@ -169,7 +187,6 @@ export type AttributeOptions = {
 };
 
 type AttributeBase = {
-  defaultValue?: string;
   inputType: InputType;
   previewType?: PreviewType;
   isEditable?: boolean;
@@ -188,9 +205,14 @@ type AttributeBase = {
   validation?: (z: ZodType) => ZodTypeAny;
 };
 
-export type Attribute =
-  | (AttributeBase & { dataType: 'asset'; scope?: 'global' })
-  | (AttributeBase & { dataType: Exclude<DataType, 'asset'>; scope: ScopeType });
+type AttributeByDataType<T extends DataType> = AttributeBase & {
+  dataType: T;
+  defaultValue?: DefaultValueByDataType[T];
+} & (T extends 'asset' ? { scope?: 'global' } : { scope: ScopeType });
+
+export type Attribute = {
+  [T in DataType]: AttributeByDataType<T>;
+}[DataType];
 
 export type Entity = {
   name: string;
