@@ -28,7 +28,7 @@ export const salesOrders = defineEntity({
       scope: 'relationship',
       options: {
         size: 150,
-        comment: 'Channel of the order (i.e. naturitas.es, fruugo, etc)',
+        comment: 'Channel of the order (i.e. Spain, France, Italy, etc.)',
       },
       dataType: 'string',
       inputType: 'relationship',

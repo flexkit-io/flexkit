@@ -528,7 +528,16 @@ const chartTooltipStyle = {
   background: 'hsl(var(--background))',
   border: '1px solid hsl(var(--border))',
   borderRadius: 6,
+  color: 'hsl(var(--foreground))',
   fontSize: 12,
+};
+
+const chartTooltipItemStyle = {
+  color: 'hsl(var(--foreground))',
+};
+
+const chartTooltipLabelStyle = {
+  color: 'hsl(var(--foreground))',
 };
 
 const chartTick = { fill: 'hsl(var(--muted-foreground))', fontSize: 11 };
@@ -616,7 +625,12 @@ const BarChart: ComponentRenderer<CartesianChartProps> = ({ element }) => {
         <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
         <XAxis axisLine={false} dataKey="x" tick={chartTick} tickLine={false} tickMargin={8} />
         <YAxis axisLine={false} tick={chartTick} tickLine={false} width={40} />
-        <RechartsTooltip contentStyle={chartTooltipStyle} cursor={{ fill: 'hsl(var(--muted))' }} />
+        <RechartsTooltip
+          contentStyle={chartTooltipStyle}
+          cursor={{ fill: 'hsl(var(--muted))' }}
+          itemStyle={chartTooltipItemStyle}
+          labelStyle={chartTooltipLabelStyle}
+        />
         <Bar dataKey="y" fill={color} name={element.props.yKey} radius={4} />
       </RechartsBarChart>
     </ChartFrame>
@@ -633,7 +647,11 @@ const LineChart: ComponentRenderer<CartesianChartProps> = ({ element }) => {
         <CartesianGrid stroke="hsl(var(--border))" vertical={false} />
         <XAxis axisLine={false} dataKey="x" tick={chartTick} tickLine={false} tickMargin={8} />
         <YAxis axisLine={false} tick={chartTick} tickLine={false} width={40} />
-        <RechartsTooltip contentStyle={chartTooltipStyle} />
+        <RechartsTooltip
+          contentStyle={chartTooltipStyle}
+          itemStyle={chartTooltipItemStyle}
+          labelStyle={chartTooltipLabelStyle}
+        />
         <Line dataKey="y" dot={false} name={element.props.yKey} stroke={color} strokeWidth={2} type="monotone" />
       </RechartsLineChart>
     </ChartFrame>
@@ -657,7 +675,11 @@ const PieChart: ComponentRenderer<PieChartProps> = ({ element }) => {
   return (
     <ChartFrame height={element.props.height} title={element.props.title}>
       <RechartsPieChart>
-        <RechartsTooltip contentStyle={chartTooltipStyle} />
+        <RechartsTooltip
+          contentStyle={chartTooltipStyle}
+          itemStyle={chartTooltipItemStyle}
+          labelStyle={chartTooltipLabelStyle}
+        />
         <Pie data={slices} dataKey="value" innerRadius="45%" nameKey="name">
           {slices.map((slice, index) => (
             <Cell fill={CHART_COLORS[index % CHART_COLORS.length]} key={`${slice.name}-${index.toString()}`} />
