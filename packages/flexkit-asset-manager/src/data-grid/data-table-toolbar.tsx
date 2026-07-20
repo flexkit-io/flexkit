@@ -49,6 +49,7 @@ import {
 interface DataTableToolbarProps<TData> {
   entityName: string;
   table: ReactTable<TData>;
+  onSearchLoadingChange?: (isLoading: boolean) => void;
   onSearchWhereChange?: (where: WhereClause) => void;
 }
 
@@ -90,6 +91,7 @@ const mimeTypes = [
 export function DataTableToolbar<TData>({
   entityName,
   table,
+  onSearchLoadingChange,
   onSearchWhereChange,
 }: DataTableToolbarProps<TData>): JSX.Element {
   const isFiltered = table.getState().columnFilters.length > 0;
@@ -120,11 +122,15 @@ export function DataTableToolbar<TData>({
   const [searchQuery, setSearchQuery] = useState<SearchRequestProps>(baseSearchRequest);
   const { results, isLoading } = useSearch(projectId ?? '', searchQuery);
   const lastWhereRef = useRef<string>('');
+  const trimmedSearch = search.trim();
+  const committedSearchQuery = searchQuery.commonParams.q ?? '';
+  const isSearchPending = trimmedSearch.length > 0 && (isLoading || committedSearchQuery !== trimmedSearch);
 
-  const debouncedSetSearchQuery = useCallback(
-    debounce((query: string) => {
-      setSearchQuery({ ...baseSearchRequest, commonParams: { q: query } });
-    }, 300),
+  const debouncedSetSearchQuery = useMemo(
+    () =>
+      debounce((query: string) => {
+        setSearchQuery({ ...baseSearchRequest, commonParams: { q: query } });
+      }, 300),
     [baseSearchRequest]
   );
 
@@ -233,7 +239,7 @@ export function DataTableToolbar<TData>({
     return allTags.map((t) => ({ value: t._id, label: t.name }));
   }, [allTags]);
 
-  function emitCombinedWhere(): void {
+  const emitCombinedWhere = useCallback((): void => {
     if (!onSearchWhereChange) {
       return;
     }
@@ -255,7 +261,7 @@ export function DataTableToolbar<TData>({
       lastWhereRef.current = whereKey;
       onSearchWhereChange(combinedWhere);
     }
-  }
+  }, [onSearchWhereChange]);
 
   async function handleBatchDelete(): Promise<void> {
     dispatch({
@@ -319,7 +325,7 @@ export function DataTableToolbar<TData>({
     setIsTagDialogOpen(false);
     setSelectedTagIds([]);
     table.resetRowSelection();
-  }, [runMutation, scope, selectedIds, selectedTagIds, setMutation, setOptions, table]);
+  }, [runMutation, schema, scope, selectedIds, selectedTagIds, setMutation, setOptions, table]);
 
   const handleRemoveTagsFromSelected = useCallback(async (): Promise<void> => {
     if (selectedIds.length === 0 || selectedRemoveTagIds.length === 0) {
@@ -352,21 +358,33 @@ export function DataTableToolbar<TData>({
     setIsRemoveTagDialogOpen(false);
     setSelectedRemoveTagIds([]);
     table.resetRowSelection();
-  }, [runMutation, scope, selectedIds, selectedRemoveTagIds, setMutation, setOptions, table]);
+  }, [runMutation, schema, scope, selectedIds, selectedRemoveTagIds, setMutation, setOptions, table]);
+
+  useEffect(() => {
+    onSearchLoadingChange?.(isSearchPending);
+  }, [isSearchPending, onSearchLoadingChange]);
 
   useEffect(() => {
     if (!onSearchWhereChange) {
       return;
     }
 
-    const safeResults = results ?? [];
-    const trimmed = search.trim();
+    if (trimmedSearch.length === 0) {
+      textWhereRef.current = {};
+      emitCombinedWhere();
 
+      return;
+    }
+
+    // Wait for debounce + search results before applying text filters (avoids empty-table flash).
+    if (isSearchPending) {
+      return;
+    }
+
+    const safeResults = results ?? [];
     let nextWhere: WhereClause = {};
 
-    if (trimmed.length === 0) {
-      nextWhere = {};
-    } else if (safeResults.length === 0) {
+    if (safeResults.length === 0) {
       nextWhere = { _id: { in: [] } };
     } else {
       const assetIdClauses = safeResults
@@ -383,7 +401,7 @@ export function DataTableToolbar<TData>({
 
     textWhereRef.current = nextWhere;
     emitCombinedWhere();
-  }, [onSearchWhereChange, results, search]);
+  }, [emitCombinedWhere, isSearchPending, onSearchWhereChange, results, trimmedSearch]);
 
   // Watch column filter changes (e.g., mime type) and push server-side where
   const columnFiltersKey = JSON.stringify(table.getState().columnFilters);
@@ -419,7 +437,7 @@ export function DataTableToolbar<TData>({
     }
 
     emitCombinedWhere();
-  }, [columnFiltersKey, onSearchWhereChange, table]);
+  }, [columnFiltersKey, emitCombinedWhere, onSearchWhereChange, table]);
 
   return (
     <div className="fk:flex fk:items-center fk:justify-between">
@@ -450,7 +468,7 @@ export function DataTableToolbar<TData>({
 
               debouncedSetSearchQuery(value);
             }}
-            className="fk:h-8 fk:w-[150px] fk:lg:w-[250px] fk:pl-8"
+            className="fk:h-8 fk:w-[150px] fk:lg:w-[250px] fk:pl-8!"
           />
           {search ? (
             <button

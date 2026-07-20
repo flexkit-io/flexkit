@@ -43,6 +43,7 @@ import {
   ScrollArea,
   Separator,
   SidebarTrigger,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -184,10 +185,54 @@ function CreditButton({ projectId }: { projectId: string }): JSX.Element | null 
   );
 }
 
+function AutomationsTableSkeleton(): JSX.Element {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Automation</TableHead>
+          <TableHead>Triggers</TableHead>
+          <TableHead>Last run</TableHead>
+          <TableHead className="fk:text-center">Runs</TableHead>
+          <TableHead className="fk:text-center">Status</TableHead>
+          <TableHead />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {Array.from({ length: 5 }, (_, index) => (
+          <TableRow key={index}>
+            <TableCell>
+              <Skeleton className="fk:h-4 fk:w-36" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="fk:h-4 fk:w-48" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="fk:h-4 fk:w-24" />
+            </TableCell>
+            <TableCell className="fk:text-center">
+              <Skeleton className="fk:mx-auto fk:h-4 fk:w-8" />
+            </TableCell>
+            <TableCell className="fk:text-center">
+              <Skeleton className="fk:mx-auto fk:h-[19px] fk:w-16" />
+            </TableCell>
+            <TableCell className="fk:text-right">
+              <Skeleton className="fk:ml-auto fk:size-8" />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 export function AutomationsPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const navigate = useNavigate();
-  const { data, mutate } = useSWR<AutomationsResponse>(projectId ? paths(projectId).automations : null, fetcher);
+  const { data, isLoading, mutate } = useSWR<AutomationsResponse>(
+    projectId ? paths(projectId).automations : null,
+    fetcher,
+  );
   const [message, setMessage] = useState('');
 
   if (!projectId || !api) {
@@ -217,6 +262,92 @@ export function AutomationsPage(): JSX.Element {
     }
 
     await mutate();
+  }
+
+  let content: JSX.Element;
+
+  if (isLoading) {
+    content = <AutomationsTableSkeleton />;
+  } else if (automations.length === 0) {
+    content = <PageMessage>No automations yet.</PageMessage>;
+  } else {
+    content = (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Automation</TableHead>
+            <TableHead>Triggers</TableHead>
+            <TableHead>Last run</TableHead>
+            <TableHead className="fk:text-center">Runs</TableHead>
+            <TableHead className="fk:text-center">Status</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {automations.map((automation) => (
+            <TableRow className="fk:cursor-pointer" key={automation.id} onClick={() => navigate(automation.id)}>
+              <TableCell>
+                <div className="fk:font-medium">{automation.name}</div>
+              </TableCell>
+              <TableCell className="fk:text-muted-foreground">{getTriggerSummary(automation)}</TableCell>
+              <TableCell>
+                {automation.lastRunAt
+                  ? formatDistance(new Date(automation.lastRunAt), new Date(), { addSuffix: true })
+                  : 'Never'}
+              </TableCell>
+              <TableCell className="fk:text-center">{automation.totalRuns}</TableCell>
+              <TableCell className="fk:text-center">
+                <Badge
+                  className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${automation.enabled ? 'fk:bg-success/20 fk:text-success' : 'fk:bg-secondary fk:text-secondary-foreground'}`}
+                  variant={automation.enabled ? 'default' : 'secondary'}
+                >
+                  {automation.enabled ? 'Enabled' : 'Disabled'}
+                </Badge>
+              </TableCell>
+              <TableCell className="fk:text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label={`Actions for ${automation.name}`}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                      }}
+                    >
+                      <Ellipsis className="fk:size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="fk:w-40">
+                    <DropdownMenuItem
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        navigate(automation.id);
+                      }}
+                    >
+                      <Pencil />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleDelete(automation);
+                      }}
+                    >
+                      <Trash2 />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
   }
 
   return (
@@ -249,85 +380,7 @@ export function AutomationsPage(): JSX.Element {
 
       {message ? <div className="fk:text-sm fk:text-destructive">{message}</div> : null}
 
-      {automations.length === 0 ? (
-        <PageMessage>No automations yet.</PageMessage>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Automation</TableHead>
-              <TableHead>Triggers</TableHead>
-              <TableHead>Last run</TableHead>
-              <TableHead className="fk:text-center">Runs</TableHead>
-              <TableHead className="fk:text-center">Status</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {automations.map((automation) => (
-              <TableRow className="fk:cursor-pointer" key={automation.id} onClick={() => navigate(automation.id)}>
-                <TableCell>
-                  <div className="fk:font-medium">{automation.name}</div>
-                </TableCell>
-                <TableCell className="fk:text-muted-foreground">{getTriggerSummary(automation)}</TableCell>
-                <TableCell>
-                  {automation.lastRunAt
-                    ? formatDistance(new Date(automation.lastRunAt), new Date(), { addSuffix: true })
-                    : 'Never'}
-                </TableCell>
-                <TableCell className="fk:text-center">{automation.totalRuns}</TableCell>
-                <TableCell className="fk:text-center">
-                  <Badge
-                    className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${automation.enabled ? 'fk:bg-success/20 fk:text-success' : 'fk:bg-secondary fk:text-secondary-foreground'}`}
-                    variant={automation.enabled ? 'default' : 'secondary'}
-                  >
-                    {automation.enabled ? 'Enabled' : 'Disabled'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="fk:text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        aria-label={`Actions for ${automation.name}`}
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                        }}
-                      >
-                        <Ellipsis className="fk:size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="fk:w-40">
-                      <DropdownMenuItem
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          navigate(automation.id);
-                        }}
-                      >
-                        <Pencil />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleDelete(automation);
-                        }}
-                      >
-                        <Trash2 />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      {content}
     </div>
   );
 }
@@ -492,7 +545,7 @@ export function RunsPage(): JSX.Element {
 
     return paths(projectId).automationRuns(automationId, pageIndex * RUNS_PAGE_SIZE, RUNS_PAGE_SIZE);
   };
-  const { data: runPages, mutate, setSize, size } = useSWRInfinite<RunsResponse>(getRunsKey, fetcher);
+  const { data: runPages, isLoading, mutate, setSize, size } = useSWRInfinite<RunsResponse>(getRunsKey, fetcher);
 
   if (!projectId || !api || !automationId) {
     return <PageMessage>Select an automation to view runs.</PageMessage>;
@@ -575,7 +628,7 @@ export function RunsPage(): JSX.Element {
       </div>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4">
-          <RunsTable basePath="." runs={runs} />
+          <RunsTable basePath="." isLoading={isLoading} runs={runs} />
           {hasMore && !isLoadingMore ? <InfiniteScrollSentinel onVisible={handleLoadMore} /> : null}
           {isLoadingMore ? (
             <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
@@ -618,7 +671,44 @@ function InfiniteScrollSentinel({ onVisible }: { onVisible: () => void }): JSX.E
   return <div className="fk:h-px" ref={sentinelRef} />;
 }
 
-function RunsTable({ basePath, runs }: { basePath: string; runs: AutomationRun[] }): JSX.Element {
+function RunsTableSkeleton(): JSX.Element {
+  return (
+    <Table>
+      <TableBody>
+        {Array.from({ length: 5 }, (_, index) => (
+          <TableRow key={index}>
+            <TableCell className="fk:py-2">
+              <Skeleton className="fk:h-4 fk:w-28" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="fk:h-4 fk:w-20" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="fk:h-[19px] fk:w-16" />
+            </TableCell>
+            <TableCell>
+              <Skeleton className="fk:h-4 fk:w-full fk:max-w-md" />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+function RunsTable({
+  basePath,
+  isLoading = false,
+  runs,
+}: {
+  basePath: string;
+  isLoading?: boolean;
+  runs: AutomationRun[];
+}): JSX.Element {
+  if (isLoading) {
+    return <RunsTableSkeleton />;
+  }
+
   if (runs.length === 0) {
     return <PageMessage>No runs found.</PageMessage>;
   }
@@ -659,7 +749,7 @@ export function RunHistoryPage(): JSX.Element {
 
     return paths(projectId).runHistory(scope, pageIndex * RUNS_PAGE_SIZE, RUNS_PAGE_SIZE);
   };
-  const { data: historyPages, setSize, size } = useSWRInfinite<HistoryResponse>(getHistoryKey, fetcher);
+  const { data: historyPages, isLoading, setSize, size } = useSWRInfinite<HistoryResponse>(getHistoryKey, fetcher);
   const metrics = historyPages?.[0]?.history.metrics;
   const runs = historyPages?.flatMap((page) => page.history.runs) ?? [];
   const lastPage = historyPages?.[historyPages.length - 1];
@@ -674,6 +764,30 @@ export function RunHistoryPage(): JSX.Element {
     void setSize((currentSize) => currentSize + 1);
   }
 
+  let metricsContent: JSX.Element | null = null;
+
+  if (isLoading) {
+    metricsContent = (
+      <div className="fk:grid fk:shrink-0 fk:gap-3 fk:md:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div className="fk:rounded-md fk:bg-muted/60 fk:p-4" key={index}>
+            <Skeleton className="fk:h-4 fk:w-24" />
+            <Skeleton className="fk:mt-2 fk:h-8 fk:w-12" />
+          </div>
+        ))}
+      </div>
+    );
+  } else if (metrics) {
+    metricsContent = (
+      <div className="fk:grid fk:shrink-0 fk:gap-3 fk:md:grid-cols-4">
+        <MetricCard title="Successful 24h" value={metrics.successful24h} />
+        <MetricCard title="Failed 24h" value={metrics.failed24h} />
+        <MetricCard title="Successful 7d" value={metrics.successful7d} />
+        <MetricCard title="Failed 7d" value={metrics.failed7d} />
+      </div>
+    );
+  }
+
   return (
     <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-6">
       <div className="fk:flex fk:shrink-0 fk:gap-2">
@@ -684,18 +798,12 @@ export function RunHistoryPage(): JSX.Element {
           Mine
         </Button>
       </div>
-      {metrics ? (
-        <div className="fk:grid fk:shrink-0 fk:gap-3 fk:md:grid-cols-4">
-          <MetricCard title="Successful 24h" value={metrics.successful24h} />
-          <MetricCard title="Failed 24h" value={metrics.failed24h} />
-          <MetricCard title="Successful 7d" value={metrics.successful7d} />
-          <MetricCard title="Failed 7d" value={metrics.failed7d} />
-        </div>
-      ) : null}
+      {metricsContent}
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4">
           <RunsTable
             basePath=".."
+            isLoading={isLoading}
             runs={runs.map((run) => ({
               ...run,
               id: `${run.automationId}/runs/${run.id}`,

@@ -36,6 +36,7 @@ export function List(): JSX.Element {
   });
 
   const [searchWhere, setSearchWhere] = useState<WhereClause>({});
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
 
   const whereBase = entityId ? { _id: { eq: entityId } } : { NOT: { path: { eq: null } } };
   const where = useMemo(() => {
@@ -60,7 +61,8 @@ export function List(): JSX.Element {
   });
 
   const lastRequestedOffsetRef = useRef<number | null>(null);
-  const isInitialLoading = isLoading && (data == null || data.length === 0);
+  const isInitialLoading =
+    isSearchLoading || (isLoading && (data == null || data.length === 0));
 
   // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
   const fetchMoreOnBottomReached = useCallback(
@@ -125,7 +127,8 @@ export function List(): JSX.Element {
             <DataTableToolbar
               entityName={assetSchema.name}
               table={table}
-              onSearchWhereChange={(w) => setSearchWhere(w)}
+              onSearchLoadingChange={setIsSearchLoading}
+              onSearchWhereChange={setSearchWhere}
             />
           )}
         />
