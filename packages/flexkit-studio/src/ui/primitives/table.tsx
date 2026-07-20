@@ -10,7 +10,7 @@ function Table({ className, onScroll, ref, ...props }: TableProps) {
     <div
       ref={ref}
       data-slot="table-container"
-      className="fk:relative fk:h-full fk:w-full fk:overflow-x-auto fk:rounded-t-md fk:border-border fk:border"
+      className="fk:relative fk:h-full fk:w-full fk:overflow-auto fk:rounded-t-md fk:border-border fk:border"
       onScroll={onScroll}
     >
       <table data-slot="table" className={cn('fk:w-full fk:caption-bottom fk:text-sm', className)} {...props} />

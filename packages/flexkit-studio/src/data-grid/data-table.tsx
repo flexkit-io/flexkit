@@ -173,7 +173,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
       {toolbarComponent && toolbarComponent(table)}
       <div className="fk:min-h-0 fk:flex-1 fk:-mb-px">
         <TablePrimitive className={cn('fk:grid fk:pb-20', classNames?.table)} onScroll={onScroll} ref={scrollRef}>
-          <TableHeader className="fk:grid">
+          <TableHeader className="fk:sticky fk:top-0 fk:z-10 fk:grid">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow className="fk:flex fk:w-full" key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
