@@ -1,7 +1,8 @@
+import { useCallback } from 'react';
 import { toast } from 'sonner';
+import { useApolloClient } from '@apollo/client/react';
 import { apiPaths } from './api-paths';
-import { useCreateAssetMutation } from '../graphql-client/use-entity-mutation';
-import type { FormEntityItem, OrderedAssetValue } from '../graphql-client/types';
+import type { OrderedAssetValue } from '../graphql-client/types';
 
 export const ACCEPTED_MIME_TYPES = [
   'image/jpeg',
@@ -79,9 +80,17 @@ export type UploadedAssetResult = UploadedFileResult & {
   _id: string;
 };
 
-type UploadResponse = {
-  pathname: string;
-  lqip?: string;
+type AssetUploadResponse = {
+  _id: string;
+  path: string | null;
+  mimeType: string | null;
+  originalFilename: string | null;
+  size: number | null;
+  width: number | null;
+  height: number | null;
+  lqip: string | null;
+  sha256: string | null;
+  deduped: boolean;
 };
 
 export type OpenFileDialogAndUploadOptions = {
@@ -92,14 +101,52 @@ export type OpenFileDialogAndUploadOptions = {
 };
 
 /**
- * Opens a native file picker and uploads selected files to the Flexkit upload endpoint.
- * It also creates an asset node in the database.
+ * Uploads a single file to the one-shot /assets endpoint, which stores the
+ * blob and creates the _asset node in a single request.
+ */
+export async function uploadAssetFile(file: File, projectId: string | undefined): Promise<UploadedAssetResult> {
+  const params = new URLSearchParams({ filename: file.name });
+  const response = await fetch(`${apiPaths(projectId).assets}?${params.toString()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed for ${file.name}`);
+  }
+
+  const data = (await response.json()) as AssetUploadResponse;
+  const asset: OrderedAssetValue = {
+    _id: data._id,
+    path: data.path ?? '',
+    originalFilename: data.originalFilename ?? file.name,
+    size: data.size ?? file.size,
+    mimeType: data.mimeType ?? file.type,
+    lqip: data.lqip ?? '',
+    width: data.width ?? 0,
+    height: data.height ?? 0,
+  };
+
+  return {
+    pathname: asset.path,
+    lqip: asset.lqip || undefined,
+    originalFilename: asset.originalFilename,
+    size: asset.size,
+    mimeType: asset.mimeType,
+    width: asset.width || undefined,
+    height: asset.height || undefined,
+    _id: asset._id,
+    asset,
+  };
+}
+
+/**
+ * Opens a native file picker and uploads selected files to the Flexkit assets
+ * endpoint, which also creates an asset node in the database.
  * Returns a list of uploaded file results. Skips files that exceed maxBytes.
  */
-async function openFileDialogAndUpload(
-  options: OpenFileDialogAndUploadOptions,
-  createAssetNode?: (file: UploadedFileResult, projectId?: string) => Promise<OrderedAssetValue>
-): Promise<UploadedAssetResult[]> {
+async function openFileDialogAndUpload(options: OpenFileDialogAndUploadOptions): Promise<UploadedAssetResult[]> {
   const { projectId, accept, multiple = true, maxBytes = 4 * 1024 * 1024 } = options;
 
   const input = document.createElement('input');
@@ -133,42 +180,7 @@ async function openFileDialogAndUpload(
       validFiles.push(file);
     }
 
-    const uploadUrl = apiPaths(projectId).upload;
-    const uploads = await Promise.all(
-      validFiles.map(async (file): Promise<UploadedAssetResult> => {
-        const dimensions = await readImageDimensions(file);
-
-        const response = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
-          body: file,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Upload failed for ${file.name}`);
-        }
-
-        const data = (await response.json()) as UploadResponse;
-
-        const result: UploadedFileResult = {
-          pathname: data.pathname,
-          lqip: data.lqip,
-          originalFilename: file.name,
-          size: file.size,
-          mimeType: file.type,
-          width: dimensions?.width,
-          height: dimensions?.height,
-        };
-
-        const asset = createAssetNode ? await createAssetNode(result, projectId) : mapUploadedFileToAsset(result);
-
-        return {
-          ...result,
-          _id: asset._id,
-          asset,
-        };
-      })
-    );
+    const uploads = await Promise.all(validFiles.map(async (file) => uploadAssetFile(file, projectId)));
 
     if (uploads.length > 0) {
       toast.success(`Uploaded ${uploads.length} file${uploads.length > 1 ? 's' : ''}`);
@@ -185,63 +197,29 @@ async function openFileDialogAndUpload(
   }
 }
 
-async function readImageDimensions(file: File): Promise<{ width: number; height: number } | null> {
-  const isImage = file.type.startsWith('image/');
-
-  if (!isImage) {
-    return null;
-  }
-
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        resolve({ width: img.width, height: img.height });
-      };
-      img.onerror = () => resolve(null);
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
-
-// Asset creation is delegated via the createAssetNode callback so callers can use Apollo useMutation
-
 export function useUploadAssets(): (options: OpenFileDialogAndUploadOptions) => Promise<UploadedAssetResult[]> {
-  const createAsset = useCreateAssetMutation();
+  const apolloClient = useApolloClient();
 
-  return async (options: OpenFileDialogAndUploadOptions): Promise<UploadedAssetResult[]> => {
-    return openFileDialogAndUpload(options, async (file) => {
-      const entityData: FormEntityItem = {
-        path: { _id: '', disabled: false, scope: 'default', value: file.pathname },
-        originalFilename: { _id: '', disabled: false, scope: 'default', value: file.originalFilename },
-        size: { _id: '', disabled: false, scope: 'default', value: file.size as unknown as string },
-        lqip: { _id: '', disabled: false, scope: 'default', value: file.lqip },
-        mimeType: { _id: '', disabled: false, scope: 'default', value: file.mimeType },
-        ...(typeof file.width === 'number'
-          ? { width: { _id: '', disabled: false, scope: 'default', value: file.width as unknown as string } }
-          : {}),
-        ...(typeof file.height === 'number'
-          ? { height: { _id: '', disabled: false, scope: 'default', value: file.height as unknown as string } }
-          : {}),
-      };
+  return useCallback(
+    async (options: OpenFileDialogAndUploadOptions) => {
+      const uploads = await openFileDialogAndUpload(options);
 
-      return createAsset(entityData);
-    });
-  };
-}
+      if (uploads.length > 0) {
+        // The upload happens outside Apollo, so active asset list queries
+        // (e.g. the Asset Manager grid) must be refetched explicitly.
+        // 'GetAssets' is the operation name getEntityQuery builds for '_assets'.
+        await apolloClient
+          .refetchQueries({
+            include: 'active',
+            onQueryUpdated: (observableQuery) => observableQuery.queryName === 'GetAssets',
+          })
+          .catch((error: unknown) => {
+            console.error('Error refreshing asset lists after upload:', error);
+          });
+      }
 
-function mapUploadedFileToAsset(file: UploadedFileResult): OrderedAssetValue {
-  return {
-    _id: '',
-    path: file.pathname,
-    originalFilename: file.originalFilename,
-    size: file.size,
-    mimeType: file.mimeType,
-    lqip: file.lqip ?? '',
-    width: file.width ?? 0,
-    height: file.height ?? 0,
-  };
+      return uploads;
+    },
+    [apolloClient]
+  );
 }

@@ -283,7 +283,9 @@ export function DataTableToolbar<TData>({
                 entityId: string;
                 entityName: string;
               };
-              dispatch({ type: 'DeleteEntity', payload });
+              // A unique _id per action prevents the actions reducer from
+              // collapsing same-millisecond batch deletions into one.
+              dispatch({ type: 'DeleteEntity', _id: `delete-${id}`, payload });
             }
 
             table.resetRowSelection();

@@ -7,8 +7,11 @@ export const help = (): string => `
 
   ${chalk.dim('Commands:')}
 
+      assets                           Manage project assets (upload, export)
       deploy                           Deploy the current schema and observe progress in real time
+      export               [dest]      Export the full dataset (entities + assets) to a tarball
       help                 [cmd]       Displays complete help for [cmd]
+      import               <input>     Import entities and assets from NDJSON, a directory or a tarball
       login                [email]     Logs into your Flexkit's account
       logout                           Logs out of your account
       project                          Manage projects (ls, add, rm)

@@ -218,7 +218,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
                       <TableCell
                         className={cn(
                           'fk:flex fk:items-center fk:truncate',
-                          cell.column.id === 'actions' && 'fk:pl-0!'
+                          cell.column.id === 'actions' && 'fk:pl-1!'
                         )}
                         key={cell.id}
                         style={{

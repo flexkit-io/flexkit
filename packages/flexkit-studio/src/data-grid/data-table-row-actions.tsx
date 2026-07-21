@@ -1,7 +1,7 @@
 'use client';
 
 import type { JSX } from 'react';
-import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, PencilIcon, Trash2Icon } from 'lucide-react';
 import type { Row } from '@tanstack/react-table';
 import { Button } from '../ui/primitives/button';
 import {
@@ -45,13 +45,13 @@ export function DataTableRowActions<TData>({
     <div className="fk:flex">
       {options.canEdit && (
         <Button className="fk:flex fk:h-7 fk:w-7 fk:p-0 fk:mr-1" onClick={handleEdit} variant="ghost">
-          <Pencil className="fk:h-4 fk:w-4" />
+          <PencilIcon className="fk:h-4 fk:w-4" />
           <span className="fk:sr-only">Edit</span>
         </Button>
       )}
       {options.canDelete && !options.canEdit && (
         <Button className="fk:flex fk:h-7 fk:w-7 fk:p-0 fk:mr-1" onClick={handleDelete} variant="ghost">
-          <Trash2 className="fk:h-4 fk:w-4" />
+          <Trash2Icon className="fk:h-4 fk:w-4" />
           <span className="fk:sr-only">Delete</span>
         </Button>
       )}
@@ -64,9 +64,15 @@ export function DataTableRowActions<TData>({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[160px]">
-            <DropdownMenuItem onClick={handleEdit}>Edit</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleEdit}>
+              <PencilIcon className="fk:mr-2 fk:h-4 fk:w-4" />
+              Edit
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDelete}>Delete</DropdownMenuItem>
+            <DropdownMenuItem className="fk:text-destructive" onClick={handleDelete}>
+              <Trash2Icon className="fk:mr-2 fk:h-4 fk:w-4" />
+              Delete
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

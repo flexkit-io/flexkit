@@ -318,6 +318,9 @@ importers:
       supports-hyperlinks:
         specifier: 3.0.0
         version: 3.0.0
+      tar:
+        specifier: 7.5.20
+        version: 7.5.20
       ts-node:
         specifier: 10.9.2
         version: 10.9.2(@types/node@22.19.15)(typescript@5.9.3)
@@ -8157,6 +8160,10 @@ packages:
 
   tar@7.5.11:
     resolution: {integrity: sha512-ChjMH33/KetonMTAtpYdgUFr0tbz69Fp2v7zWxQfYZX4g5ZN2nOBXm1R2xyA+lMIKrLKIoKAwFj93jE/avX9cQ==}
+    engines: {node: '>=18'}
+
+  tar@7.5.20:
+    resolution: {integrity: sha512-9FcyK4PA6+WbzlTM9WhQm6vB5W7cP7dUiPsv1g7YDwEQnQ1CGpK3MGlKk/ITVWMk05kHZuBhmVhiv8LZoy/PFQ==}
     engines: {node: '>=18'}
 
   term-size@2.2.1:
@@ -17312,6 +17319,14 @@ snapshots:
   tapable@2.3.0: {}
 
   tar@7.5.11:
+    dependencies:
+      '@isaacs/fs-minipass': 4.0.1
+      chownr: 3.0.0
+      minipass: 7.1.3
+      minizlib: 3.1.0
+      yallist: 5.0.0
+
+  tar@7.5.20:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0

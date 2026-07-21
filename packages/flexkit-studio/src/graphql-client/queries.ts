@@ -516,7 +516,7 @@ export function getEntityUpdateMutation(
   const data = filterOutInvalidAttributes(attributes, dataToMutate);
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const localAttributes = localAttributesUpdate(entityId, attributes, data, scope);
-  const imageAttributes = imageAttributesUpdate(entityId, attributes, data);
+  const imageAttributes = imageAttributesUpdate(attributes, originalData, data);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
   const responseType = entityNamePlural;
   const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
@@ -609,56 +609,67 @@ function globalAttributesUpdate(
   return attributesString;
 }
 
-function imageAttributesUpdate(entityId: string, schemaAttributes: Attribute[], data: FormEntityItem): string {
+/**
+ * Returns the asset _id of a field value when it points at a real asset.
+ * Cleared fields keep a stub value without a path, so path is required too.
+ */
+function getLinkedAssetId(value: ImageValue | null | undefined): string {
+  if (!value?._id || !value.path) {
+    return '';
+  }
+
+  return value._id;
+}
+
+/**
+ * Asset nodes are created up front by the /assets endpoint, so entity saves
+ * only connect/disconnect them by _id. Disconnect runs before connect so the
+ * field keeps at most one linked asset.
+ */
+function imageAttributesUpdate(schemaAttributes: Attribute[], originalData: FormEntityItem, data: FormEntityItem): string {
   const imageAttributes = pick(getImageAttributes(schemaAttributes) as [string], data);
   const attributesArray: [string, FormFieldValue][] = toPairs(imageAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
-    const imageValue = attributeValue.value as ImageValue | null;
-    const imagePath = stringifyNullableString(imageValue?.path);
-    const imageSize = imageValue?.size ? imageValue.size : 'null';
-    const imageMimeType = stringifyNullableString(imageValue?.mimeType);
-    const originalFilename = stringifyNullableString(imageValue?.originalFilename);
-    const height = imageValue?.height ? imageValue.height : 'null';
-    const width = imageValue?.width ? imageValue.width : 'null';
-    const lqip = stringifyNullableString(imageValue?.lqip);
+    const nextId = getLinkedAssetId(attributeValue.value as ImageValue | null);
+    const originalId = getLinkedAssetId(originalData[attributeName]?.value as ImageValue | null | undefined);
 
-    if (!imagePath) {
+    if (nextId === originalId) {
       return acc;
     }
 
-    if ((attributeValue.value as ImageValue)?._id) {
-      return (
-        `${acc}\n      ${attributeName}: [{\n` +
-        `        update: {\n` +
-        `          node: {\n` +
-        `            mimeType: { set: ${imageMimeType} }\n` +
-        `            originalFilename: { set: ${originalFilename} }\n` +
-        `            path: { set: ${imagePath} }\n` +
-        `            size: { set: ${imageSize} }\n` +
-        `            height: { set: ${height} }\n` +
-        `            width: { set: ${width} }\n` +
-        `            lqip: { set: ${lqip} }\n` +
-        `          }\n` +
-        `        }\n` +
-        `      }]`
-      );
+    const disconnect = originalId
+      ? `        {\n          disconnect: [{\n            where: {\n              node: {\n                _id: { eq: ${stringifyStringLiteral(originalId)} }\n              }\n            }\n          }]\n        }\n`
+      : '';
+    const connect = nextId
+      ? `        {\n          connect: [{\n            where: {\n              node: {\n                _id: { eq: ${stringifyStringLiteral(nextId)} }\n              }\n            }\n          }]\n        }\n`
+      : '';
+
+    return `${acc}\n      ${attributeName}: [\n${disconnect}${connect}      ]`;
+  }, '');
+
+  return attributesString;
+}
+
+function imageAttributesCreate(schemaAttributes: Attribute[], data: FormEntityItem): string {
+  const imageAttributes = pick(getImageAttributes(schemaAttributes) as [string], data);
+  const attributesArray: [string, FormFieldValue][] = toPairs(imageAttributes);
+  const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
+    const assetId = getLinkedAssetId(attributeValue.value as ImageValue | null);
+
+    if (!assetId) {
+      return acc;
     }
 
     return (
-      `${acc}\n      ${attributeName}: [{\n` +
-      `        create: {\n` +
-      `          node: {\n` +
-      `            _id: ${stringifyStringLiteral(`${entityId}:${attributeName}`)}\n` +
-      `            mimeType: ${imageMimeType}\n` +
-      `            originalFilename: ${originalFilename}\n` +
-      `            path: ${imagePath}\n` +
-      `            size: ${imageSize}\n` +
-      `            height: ${height}\n` +
-      `            width: ${width}\n` +
-      `            lqip: ${lqip}\n` +
+      `${acc}\n      ${attributeName}: {\n` +
+      `        connect: [{\n` +
+      `          where: {\n` +
+      `            node: {\n` +
+      `              _id: { eq: ${stringifyStringLiteral(assetId)} }\n` +
+      `            }\n` +
       `          }\n` +
-      `        }\n` +
-      `      }]`
+      `        }]\n` +
+      `      }`
     );
   }, '');
 
@@ -1072,6 +1083,7 @@ export function getEntityCreateMutation(
   const data = filterOutInvalidAttributes(attributes, entityData);
   const globalAttributes = globalAttributesUpdate(attributes, data, 'create');
   const localAttributes = localAttributesCreate(attributes, data, 'default', _id);
+  const imageAttributes = imageAttributesCreate(attributes, data);
   const relationshipAttributes = relationshipAttributesCreate(attributes, data);
   const responseType = entityNamePlural;
   const attributeNamesList = formatResponseFieldsForMutation(schema, responseType, 'default');
@@ -1084,6 +1096,7 @@ export function getEntityCreateMutation(
     `      _id: ${stringifyStringLiteral(_id)}` +
     `      ${globalAttributes}` +
     `      ${localAttributes}\n` +
+    `      ${imageAttributes}\n` +
     `      ${relationshipAttributes}\n` +
     `    }]\n` +
     `  ) {\n` +
@@ -1274,36 +1287,6 @@ export function getRelatedItemsQuery({
       `  }\n` +
       `}\n`,
   };
-}
-
-export function createAssetId(): string {
-  return uuidv4();
-}
-
-export function getAssetCreateMutation(entityData: EntityData, _id = createAssetId()): string {
-  const { attributes } = assetSchema;
-  const pluralizedEntityName = capitalize(assetSchema.plural);
-  const data = filterOutInvalidAttributes(attributes, entityData);
-  const globalAttributes = globalAttributesUpdate(attributes, data, 'create');
-  const responseType = assetSchema.plural;
-  const attributeNamesList = formatResponseFieldsForMutation([assetSchema, tagSchema], responseType, 'default');
-  const operationName = `Create${getOperationEntityName(assetSchema.plural)}`;
-
-  return (
-    `mutation ${operationName} {\n` +
-    `  create${pluralizedEntityName}(\n` +
-    `    input: [{\n` +
-    `      _id: ${stringifyStringLiteral(_id)}` +
-    `      ${globalAttributes}` +
-    `    }]\n` +
-    `  ) {\n` +
-    `    ${responseType} {\n` +
-    `      _id\n` +
-    `      ${attributeNamesList}` +
-    `    }\n` +
-    `  }\n` +
-    `}\n`
-  );
 }
 
 const capitalize = (str: string): string => {

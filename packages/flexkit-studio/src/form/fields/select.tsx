@@ -13,6 +13,16 @@ import {
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
+const SELECT_OPTION_PREFIX = 'flexkit-select-option:';
+
+function encodeOptionValue(value: string): string {
+  return `${SELECT_OPTION_PREFIX}${encodeURIComponent(value)}`;
+}
+
+function decodeOptionValue(value: string): string {
+  return decodeURIComponent(value.slice(SELECT_OPTION_PREFIX.length));
+}
+
 export function Select({ control, fieldSchema, setValue }: FormFieldParams<'select'>): JSX.Element {
   const { name, label, isEditable, options } = fieldSchema;
 
@@ -42,10 +52,14 @@ export function Select({ control, fieldSchema, setValue }: FormFieldParams<'sele
           <FormLabel>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <SelectPrimitive
-            defaultValue={field.value?.value ? String(field.value.value) : undefined}
+            defaultValue={
+              field.value?.value === undefined || field.value.value === null
+                ? undefined
+                : encodeOptionValue(String(field.value.value))
+            }
             disabled={isEditable === false || field.value?.disabled}
             onValueChange={(value) => {
-              handleInput(value, field.value);
+              handleInput(decodeOptionValue(value), field.value);
             }}
           >
             <FormControl>
@@ -61,7 +75,7 @@ export function Select({ control, fieldSchema, setValue }: FormFieldParams<'sele
                       <SelectLabel>{option.groupLabel}</SelectLabel>
                       {option.items.map((item) => {
                         return (
-                          <SelectItem key={item.label} value={item.value}>
+                          <SelectItem key={item.label} value={encodeOptionValue(item.value)}>
                             {item.label}
                           </SelectItem>
                         );
@@ -71,7 +85,7 @@ export function Select({ control, fieldSchema, setValue }: FormFieldParams<'sele
                 }
 
                 return (
-                  <SelectItem key={option.label} value={option.value}>
+                  <SelectItem key={option.label} value={encodeOptionValue(option.value)}>
                     {option.label}
                   </SelectItem>
                 );
