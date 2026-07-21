@@ -1,7 +1,7 @@
 import { ComponentType } from 'react';
 import type { JSX } from 'react';
-import type { CellContext, ColumnDef, Row, Table } from '@tanstack/react-table';
-import type { Attribute } from '../core/types';
+import type { CellContext, Column, ColumnDef, Row, Table } from '@tanstack/react-table';
+import type { Attribute, InputType } from '../core/types';
 import type { AttributeValue } from '../graphql-client/types';
 import { useConfig } from '../core/config/config-context';
 import { Checkbox } from '../ui/primitives/checkbox';
@@ -11,11 +11,23 @@ import { Editor as EditorPreviewField } from './preview-components/editor';
 import { Asset as AssetPreviewField } from './preview-components/asset';
 import { DateTime as DateTimePreviewField } from './preview-components/datetime';
 import { Tags as TagsPreviewField } from './preview-components/tags';
+import { DataTableColumnHeader } from './data-table-column-header';
+
+const SORTABLE_INPUT_TYPES = new Set<InputType>([
+  'text',
+  'textarea',
+  'number',
+  'datetime',
+  'switch',
+  'select',
+  'editor',
+]);
 
 type Props<TData> = {
   attributesSchema: Attribute[];
   checkboxSelect?: 'single' | 'multiple'; // whether to include a checkbox column for row selection
   actionsComponent?: (row: Row<TData>) => JSX.Element; // a component to be displayed in the actions column of the grid
+  enableColumnSorting?: boolean;
 };
 
 type ColumnDefinition<TData extends AttributeValue, TValue> = ColumnDef<TData, TValue> & { id?: string; size: number };
@@ -24,6 +36,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   attributesSchema,
   checkboxSelect,
   actionsComponent,
+  enableColumnSorting = false,
 }: Props<TData>): ColumnDefinition<TData, TValue>[] {
   const { getContributionPointConfig } = useConfig();
   const inputTypeToPreviewFieldMap = {
@@ -70,6 +83,12 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
       }
 
       const isTagsPreview = previewType === 'tags';
+      // Only global scalars appear on Neo4j GraphQL `{entity}Sort`. Local fields are
+      // emitted as relationships (e.g. brand.metaTitle → brand_metaTitle) and cannot be sorted.
+      const canSort =
+        enableColumnSorting &&
+        attribute.scope === 'global' &&
+        SORTABLE_INPUT_TYPES.has(attribute.inputType);
 
       return {
         accessorKey: attribute.name,
@@ -82,7 +101,12 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
 
           return selectedValues.includes(row.getValue(id));
         },
-        header: () => <div className="fk:flex fk:items-center">{attribute.label}</div>,
+        header: ({ column }: { column: Column<TData, TValue> }) =>
+          canSort ? (
+            <DataTableColumnHeader column={column} title={attribute.label} />
+          ) : (
+            <div className="fk:flex fk:items-center">{attribute.label}</div>
+          ),
         cell: ({ row }: CellContext<TData, TValue>) => {
           const PreviewComponent = previewComponent as ComponentType<{ value: TData }>;
 
@@ -90,8 +114,11 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
           // console.log(row.getAllCells());
           return <PreviewComponent value={row.getValue(attribute.name)} />;
         },
-        enableSorting: false,
+        enableSorting: canSort,
         enableHiding: true,
+        meta: {
+          label: attribute.label,
+        },
         size: attribute.options?.size ?? 150,
       };
     })

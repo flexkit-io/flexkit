@@ -34,6 +34,7 @@ import {
 } from '@flexkit/studio/ui';
 import {
   DataTableFacetedFilter,
+  DataTableSortedBy,
   useParams,
   useUploadAssets,
   useDispatch,
@@ -511,6 +512,7 @@ export function DataTableToolbar<TData>({
             <ResetIcon className="fk:ml-2 fk:h-4 fk:w-4" />
           </Button>
         )}
+        <DataTableSortedBy table={table} />
       </div>
       {selectedIds.length > 0 ? (
         <div className="fk:flex fk:items-center fk:gap-2">
