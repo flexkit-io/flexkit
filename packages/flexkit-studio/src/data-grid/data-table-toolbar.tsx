@@ -14,6 +14,7 @@ import { useAppContext, useAppDispatch } from '../core/app-context';
 import { useConfig } from '../core/config/config-context';
 import type { SingleProject } from '../core/config/types';
 import { DataTableViewOptions } from './data-table-view-options';
+import { DataTableSortedBy } from './data-table-sorted-by';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityDeleteMutation } from '../graphql-client/queries';
 
@@ -135,6 +136,7 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
           </Select>
         ) : null}
         <DataTableViewOptions table={table} />
+        <DataTableSortedBy table={table} />
       </div>
       {selectedIds.length > 0 ? (
         <Button

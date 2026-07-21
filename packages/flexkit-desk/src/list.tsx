@@ -1,4 +1,4 @@
-import { JSX, useCallback } from 'react';
+import { JSX, useCallback, useMemo, useState } from 'react';
 import { find, propEq } from 'ramda';
 import {
   getEntitySchema,
@@ -17,7 +17,7 @@ import {
   useGridColumnsDefinition,
 } from '@flexkit/studio';
 import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@flexkit/studio/ui';
-import type { ColumnDef, SingleProject, Row } from '@flexkit/studio';
+import type { ColumnDef, SingleProject, Row, SortingState, Updater } from '@flexkit/studio';
 
 const pageSize = 25;
 
@@ -31,14 +31,27 @@ export function List(): JSX.Element {
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = getEntitySchema(schema, entityName ?? '');
+  const [sorting, setSorting] = useState<SortingState>([]);
   const columnsDefinition = useGridColumnsDefinition({
     attributesSchema: entitySchema?.attributes ?? [],
     actionsComponent: (row) =>
       dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
     checkboxSelect: 'multiple',
+    enableColumnSorting: true,
   });
 
-  const variables = entityId ? { where: { _id: { eq: entityId } } } : { offset: 0, limit: pageSize };
+  const graphqlSort = useMemo(
+    () => sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' })),
+    [sorting]
+  );
+
+  const variables = entityId
+    ? { where: { _id: { eq: entityId } } }
+    : {
+        offset: 0,
+        limit: pageSize,
+        ...(graphqlSort.length > 0 ? { sort: graphqlSort } : {}),
+      };
 
   const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
@@ -46,6 +59,10 @@ export function List(): JSX.Element {
     scope,
     variables,
   });
+
+  function handleSortingChange(updater: Updater<SortingState>): void {
+    setSorting(updater);
+  }
 
   // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
   const fetchMoreOnBottomReached = useCallback(
@@ -101,6 +118,8 @@ export function List(): JSX.Element {
           data={isInitialLoading ? loadingData : (data ?? [])}
           entityName={entitySchema?.name ?? ''}
           pageSize={pageSize}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
           onScroll={(e) => {
             fetchMoreOnBottomReached(e.currentTarget);
           }}

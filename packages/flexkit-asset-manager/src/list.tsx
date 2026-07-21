@@ -14,13 +14,14 @@ import {
   useGridColumnsDefinition,
 } from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
-import type { AttributeValue, ColumnDef, SingleProject } from '@flexkit/studio';
+import type { AttributeValue, ColumnDef, SingleProject, SortingState, Updater } from '@flexkit/studio';
 import { DataTableToolbar } from './data-grid/data-table-toolbar';
 import { AssetRowActions } from './data-grid/asset-row-actions';
 
 type WhereClause = { [key: string]: unknown };
 
 const pageSize = 25;
+const defaultSort = [{ _updatedAt: 'DESC' }];
 
 export function List(): JSX.Element {
   const entityName = '_assets';
@@ -31,10 +32,12 @@ export function List(): JSX.Element {
   const { schemaErrorMessage } = useGraphQLError();
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const [sorting, setSorting] = useState<SortingState>([]);
   const columnsDefinition = useGridColumnsDefinition<AttributeValue, unknown>({
     attributesSchema: assetSchema.attributes,
     actionsComponent: (row) => <AssetRowActions row={row} />,
     checkboxSelect: 'multiple',
+    enableColumnSorting: true,
   });
 
   const [searchWhere, setSearchWhere] = useState<WhereClause>({});
@@ -53,7 +56,19 @@ export function List(): JSX.Element {
     return { AND: [whereBase, searchWhere] } as WhereClause;
   }, [entityId, searchWhere]);
 
-  const variables = { where, offset: 0, limit: pageSize, sort: [{ _updatedAt: 'DESC' }] };
+  const graphqlSort = useMemo(() => {
+    if (sorting.length === 0) {
+      return defaultSort;
+    }
+
+    return sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' }));
+  }, [sorting]);
+
+  const variables = { where, offset: 0, limit: pageSize, sort: graphqlSort };
+
+  function handleSortingChange(updater: Updater<SortingState>): void {
+    setSorting(updater);
+  }
 
   const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
@@ -129,6 +144,8 @@ export function List(): JSX.Element {
           data={isInitialLoading ? loadingData : (data ?? [])}
           entityName={assetSchema.name}
           pageSize={pageSize}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
           onScroll={(e) => {
             fetchMoreOnBottomReached(e.currentTarget as HTMLDivElement);
           }}

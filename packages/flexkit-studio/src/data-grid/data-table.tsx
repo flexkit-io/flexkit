@@ -15,6 +15,7 @@ import {
 import type {
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
   Updater,
   Row,
   RowSelectionState,
@@ -49,10 +50,12 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
   initialSelectionState?: RowSelectionState;
   onEntitySelectionChange?: (rowSelection: string[]) => void;
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
+  onSortingChange?: OnChangeFn<SortingState>;
   pageSize?: number;
   rowHeightEstimate?: number;
   rowAdditionState?: MultipleRelationshipConnection;
   rowDeletionState?: string[];
+  sorting?: SortingState;
   toolbarComponent?: (table: Table<AttributeValue>) => ReactElement;
 }
 
@@ -81,10 +84,12 @@ export function DataTable<TData extends AttributeValue, TValue>({
   initialSelectionState,
   onEntitySelectionChange,
   onScroll,
+  onSortingChange,
   pageSize,
   rowHeightEstimate,
   rowAdditionState,
   rowDeletionState,
+  sorting: sortingProp,
   toolbarComponent,
 }: DataTableProps<TData, TValue>): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -92,7 +97,8 @@ export function DataTable<TData extends AttributeValue, TValue>({
   const [rowSelection, setRowSelection] = useState(initialSelectionState ?? {});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [uncontrolledSorting, setUncontrolledSorting] = useState<SortingState>([]);
+  const sorting = sortingProp ?? uncontrolledSorting;
 
   useEffect(() => {
     if (!initialSelectionState) {
@@ -108,6 +114,16 @@ export function DataTable<TData extends AttributeValue, TValue>({
 
     setRowSelection(initialSelectionState);
   }, [initialSelectionState, rowSelection]);
+
+  function handleSortingChange(updater: Updater<SortingState>): void {
+    if (onSortingChange) {
+      onSortingChange(updater);
+
+      return;
+    }
+
+    setUncontrolledSorting(updater);
+  }
 
   const table = useReactTable({
     data,
@@ -125,7 +141,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
     },
     enableRowSelection: true,
     onRowSelectionChange: handleRowSelectionChange,
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
@@ -136,6 +152,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getRowId: (row) => row._id,
     manualPagination: true,
+    manualSorting: true,
     meta: {
       getRowBackground: (row: Row<AttributeValue>) => getRowClassnames(row, rowDeletionState, rowAdditionState),
     },
