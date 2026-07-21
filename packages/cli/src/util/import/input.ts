@@ -49,9 +49,50 @@ async function readLinesIfExists(filePath: string): Promise<string[]> {
   }
 }
 
+async function hasBundleFiles(directory: string): Promise<boolean> {
+  const exists = async (filename: string): Promise<boolean> => {
+    try {
+      await fs.access(path.join(directory, filename));
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  return (await exists('data.ndjson')) || (await exists('assets.ndjson'));
+}
+
+/**
+ * Returns the directory that actually holds the bundle files. Handles
+ * tarballs created from a folder (e.g. `tar -czf out.tar.gz export-dir/`),
+ * where everything sits inside a single top-level directory.
+ */
+async function findBundleRoot(directory: string): Promise<string> {
+  if (await hasBundleFiles(directory)) {
+    return directory;
+  }
+
+  const entries = await fs.readdir(directory, { withFileTypes: true });
+  const subdirectories = entries.filter(
+    (entry) => entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== '__MACOSX'
+  );
+
+  if (subdirectories.length === 1) {
+    const nested = path.join(directory, subdirectories[0].name);
+
+    if (await hasBundleFiles(nested)) {
+      return nested;
+    }
+  }
+
+  return directory;
+}
+
 async function resolveDirectory(directory: string, cleanup: () => Promise<void>): Promise<ImportInput> {
-  const dataLines = await readLinesIfExists(path.join(directory, 'data.ndjson'));
-  const assetLines = await readLinesIfExists(path.join(directory, 'assets.ndjson'));
+  const bundleRoot = await findBundleRoot(directory);
+  const dataLines = await readLinesIfExists(path.join(bundleRoot, 'data.ndjson'));
+  const assetLines = await readLinesIfExists(path.join(bundleRoot, 'assets.ndjson'));
 
   if (dataLines.length === 0 && assetLines.length === 0) {
     await cleanup();
@@ -59,7 +100,7 @@ async function resolveDirectory(directory: string, cleanup: () => Promise<void>)
     throw new Error(`No data.ndjson or assets.ndjson found in ${directory}.`);
   }
 
-  return { baseDir: directory, dataLines, assetLines, cleanup };
+  return { baseDir: bundleRoot, dataLines, assetLines, cleanup };
 }
 
 /**
