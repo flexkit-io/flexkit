@@ -45,6 +45,16 @@ export function getEntitySchemas(project: ConfiguredProject): EntitySchema[] {
 }
 
 /**
+ * Returns every scope name of the project ('default' first). Locally scoped
+ * attribute nodes have one GraphQL field per scope name.
+ */
+export function getScopeNames(project: ConfiguredProject): string[] {
+  const names = (project.scopes ?? []).map((scope) => scope.name);
+
+  return ['default', ...names.filter((name) => name !== 'default')];
+}
+
+/**
  * Finds an entity schema by name or plural (import lines use `_type`).
  */
 export function findEntitySchema(project: ConfiguredProject, type: string): EntitySchema | undefined {

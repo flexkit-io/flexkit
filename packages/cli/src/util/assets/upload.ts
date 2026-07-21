@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { getProjectApiUrl } from '../graphql';
+import sleep from '../sleep';
 import { mimeTypeFromFilename, mimeTypeFromResponse } from './mime';
 import type Client from '../client';
 
@@ -65,7 +66,7 @@ export async function collectUploadSources(inputs: string[], cwd: string): Promi
 
   for (const input of inputs) {
     if (isHttpUrl(input)) {
-      const pathname = new URL(input).pathname;
+      const { pathname } = new URL(input);
       const filename = decodeURIComponent(pathname.split('/').pop() || 'file.bin');
 
       sources.push({ source: input, isUrl: true, filename });
@@ -122,9 +123,29 @@ export function deriveAssetId(strategy: IdStrategy, source: UploadSource, buffer
   return undefined;
 }
 
+const MAX_RATE_LIMIT_RETRIES = 5;
+const MAX_RETRY_AFTER_SECONDS = 120;
+
+function getRetryAfterMs(response: Response): number {
+  const retryAfterSeconds = Number(response.headers.get('Retry-After'));
+
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return Math.min(retryAfterSeconds, MAX_RETRY_AFTER_SECONDS) * 1000;
+  }
+
+  const reset = Number(response.headers.get('X-RateLimit-Reset'));
+
+  if (Number.isFinite(reset) && reset > Date.now()) {
+    return Math.min(reset - Date.now(), MAX_RETRY_AFTER_SECONDS * 1000);
+  }
+
+  return 5000;
+}
+
 /**
  * Uploads a buffer to the project's one-shot /assets endpoint, which stores
- * the blob and creates the _asset node (deduped by content hash).
+ * the blob and creates the _asset node (deduped by content hash). Waits and
+ * retries when the endpoint answers 429, honoring Retry-After.
  */
 export async function uploadAssetBuffer(
   client: Client,
@@ -139,22 +160,37 @@ export async function uploadAssetBuffer(
   }
 
   const url = `${getProjectApiUrl(client, projectId)}/assets?${params.toString()}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': options.mimeType,
-      Authorization: client.authConfig.token ?? '',
-    },
-    body: new Uint8Array(buffer),
-  });
 
-  const bodyText = await response.text();
+  for (let attempt = 1; ; attempt += 1) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': options.mimeType,
+        Authorization: client.authConfig.token ?? '',
+      },
+      body: new Uint8Array(buffer),
+    });
 
-  if (!response.ok) {
-    throw new Error(`Asset upload failed for ${options.filename} (HTTP ${response.status}): ${bodyText.slice(0, 300)}`);
+    const bodyText = await response.text();
+
+    if (response.status === 429 && attempt <= MAX_RATE_LIMIT_RETRIES) {
+      const delayMs = getRetryAfterMs(response);
+
+      client.output.debug(
+        `Rate limited uploading ${options.filename} (attempt ${attempt}/${MAX_RATE_LIMIT_RETRIES}). Waiting ${Math.ceil(delayMs / 1000)}s...`
+      );
+      await sleep(delayMs);
+      continue;
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Asset upload failed for ${options.filename} (HTTP ${response.status}): ${bodyText.slice(0, 300)}`
+      );
+    }
+
+    return JSON.parse(bodyText) as AssetRecord;
   }
-
-  return JSON.parse(bodyText) as AssetRecord;
 }
 
 /**

@@ -31,7 +31,7 @@ export function buildCreateInput(
           node: {
             _id: `${parsed._id}:${local.name}`,
             _type: local.dataType,
-            default: local.value,
+            ...local.values,
           },
         },
       ],
@@ -242,15 +242,13 @@ export function buildReplaceUpdate(
   }
 
   for (const local of parsed.locals) {
-    update[local.name] = [
-      {
-        update: {
-          node: {
-            default: { set: local.value },
-          },
-        },
-      },
-    ];
+    const node: { [scope: string]: { set: unknown } } = {};
+
+    for (const [scope, value] of Object.entries(local.values)) {
+      node[scope] = { set: value };
+    }
+
+    update[local.name] = [{ update: { node } }];
   }
 
   for (const assetSingle of parsed.assetSingles) {

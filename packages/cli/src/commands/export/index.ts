@@ -7,7 +7,7 @@ import { handleError } from '../../util/handle-error';
 import { resolveProject } from '../../util/get-project';
 import { runWithConcurrency } from '../../util/concurrency';
 import { formatGraphQLErrors, graphqlRequest } from '../../util/graphql';
-import { getEntitySchemas, getClassifiedAttributes, capitalize } from '../../util/import/schema';
+import { getEntitySchemas, getClassifiedAttributes, getScopeNames, capitalize } from '../../util/import/schema';
 import {
   assetBundleFilename,
   downloadAssetFile,
@@ -25,7 +25,7 @@ const PAGE_SIZE = 100;
 
 type EntityRecord = { _id: string; [key: string]: unknown };
 
-function buildEntityQuery(entity: EntitySchema, classified: ClassifiedAttribute[]): string {
+function buildEntityQuery(entity: EntitySchema, classified: ClassifiedAttribute[], scopeNames: string[]): string {
   const selections: string[] = ['    _id'];
 
   for (const { attribute, kind } of classified) {
@@ -34,7 +34,7 @@ function buildEntityQuery(entity: EntitySchema, classified: ClassifiedAttribute[
         selections.push(`    ${attribute.name}`);
         break;
       case 'local':
-        selections.push(`    ${attribute.name} {\n      default\n    }`);
+        selections.push(`    ${attribute.name} {\n      ${scopeNames.join('\n      ')}\n    }`);
         break;
       case 'asset-single':
       case 'ref-single':
@@ -64,9 +64,10 @@ async function fetchAllEntities(
   client: Client,
   projectId: string,
   entity: EntitySchema,
-  classified: ClassifiedAttribute[]
+  classified: ClassifiedAttribute[],
+  scopeNames: string[]
 ): Promise<EntityRecord[]> {
-  const query = buildEntityQuery(entity, classified);
+  const query = buildEntityQuery(entity, classified, scopeNames);
   const records: EntityRecord[] = [];
   let offset = 0;
 
@@ -133,7 +134,8 @@ function serializeEntityLine(
   record: EntityRecord,
   classified: ClassifiedAttribute[],
   bundleFileByAssetId: Map<string, string>,
-  referencedAssetIds: Set<string>
+  referencedAssetIds: Set<string>,
+  scopeNames: string[]
 ): string {
   const line: { [key: string]: unknown } = { _type: entity.name, _id: record._id };
 
@@ -151,10 +153,25 @@ function serializeEntityLine(
 
       case 'local': {
         const node = unwrapFirst(record[attribute.name]);
-        const value = node?.default;
+        const values: { [scope: string]: unknown } = {};
 
-        if (value !== null && value !== undefined) {
-          line[attribute.name] = value;
+        for (const scope of scopeNames) {
+          const value = node?.[scope];
+
+          if (value !== null && value !== undefined) {
+            values[scope] = value;
+          }
+        }
+
+        const scopesWithValue = Object.keys(values);
+        const onlyDefault = scopesWithValue.length === 1 && scopesWithValue[0] === 'default';
+
+        // Default-only values stay plain scalars; anything scoped beyond the
+        // default is wrapped in _scopes so the import can restore every scope.
+        if (onlyDefault) {
+          line[attribute.name] = values.default;
+        } else if (scopesWithValue.length > 0) {
+          line[attribute.name] = { _scopes: values };
         }
 
         break;
@@ -303,14 +320,18 @@ export default async function main(client: Client): Promise<number> {
     const dataLines: string[] = [];
     let entityCount = 0;
 
+    const scopeNames = getScopeNames(project);
+
     for (const entity of entitySchemas) {
       output.spinner(`Exporting ${entity.plural}...`);
 
       const classified = getClassifiedAttributes(entity);
-      const records = await fetchAllEntities(client, projectId, entity, classified);
+      const records = await fetchAllEntities(client, projectId, entity, classified, scopeNames);
 
       for (const record of records) {
-        dataLines.push(serializeEntityLine(entity, record, classified, bundleFileByAssetId, referencedAssetIds));
+        dataLines.push(
+          serializeEntityLine(entity, record, classified, bundleFileByAssetId, referencedAssetIds, scopeNames)
+        );
       }
 
       entityCount += records.length;

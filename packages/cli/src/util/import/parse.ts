@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import { findEntitySchema, getClassifiedAttributes } from './schema';
+import { findEntitySchema, getClassifiedAttributes, getScopeNames } from './schema';
 import type { ConfiguredProject, EntitySchema } from './schema';
 
 export type ParsedEntity = {
@@ -8,7 +8,7 @@ export type ParsedEntity = {
   entity: EntitySchema;
   _id: string;
   globals: { [name: string]: unknown };
-  locals: { name: string; dataType: string; value: unknown }[];
+  locals: { name: string; dataType: string; values: { [scope: string]: unknown } }[];
   assetSingles: { name: string; ref: string }[];
   assetMultiples: { name: string; refs: string[] }[];
   refSingles: { name: string; refId: string }[];
@@ -58,6 +58,46 @@ function readEntityRef(value: unknown): string | null {
 }
 
 /**
+ * Reads the per-scope values of a locally scoped attribute. Accepts either a
+ * plain value (applied to the default scope) or {"_scopes": {"default": ...,
+ * "uk": ...}} with one entry per project scope.
+ */
+function readScopedValues(
+  value: unknown,
+  scopeNames: string[]
+): { values?: { [scope: string]: unknown }; error?: string } {
+  if (!isPlainObject(value)) {
+    return { values: { default: value } };
+  }
+
+  if (!isPlainObject(value._scopes)) {
+    return { error: `expects a plain value or {"_scopes": {"<scope>": <value>}}` };
+  }
+
+  const unknownScopes = Object.keys(value._scopes).filter((scope) => !scopeNames.includes(scope));
+
+  if (unknownScopes.length > 0) {
+    return {
+      error: `references unknown scope${unknownScopes.length === 1 ? '' : 's'} ${unknownScopes.join(', ')} (project scopes: ${scopeNames.join(', ')})`,
+    };
+  }
+
+  const values: { [scope: string]: unknown } = {};
+
+  for (const [scope, scopedValue] of Object.entries(value._scopes)) {
+    if (scopedValue !== null && scopedValue !== undefined) {
+      values[scope] = scopedValue;
+    }
+  }
+
+  if (Object.keys(values).length === 0) {
+    return { error: 'has an empty "_scopes" object' };
+  }
+
+  return { values };
+}
+
+/**
  * Parses NDJSON lines into schema-validated entities and collects every
  * referenced asset source.
  */
@@ -65,6 +105,7 @@ export function parseImportLines(lines: string[], project: ConfiguredProject, ba
   const entities: ParsedEntity[] = [];
   const errors: string[] = [];
   const assetRefSet = new Set<string>();
+  const scopeNames = getScopeNames(project);
 
   for (let index = 0; index < lines.length; index += 1) {
     const lineNumber = index + 1;
@@ -144,7 +185,15 @@ export function parseImportLines(lines: string[], project: ConfiguredProject, ba
         }
 
         case 'local': {
-          parsed.locals.push({ name: key, dataType: attribute.dataType, value });
+          const { values, error } = readScopedValues(value, scopeNames);
+
+          if (error || !values) {
+            errors.push(`Line ${lineNumber}: attribute "${key}" ${error ?? 'has no usable value'}.`);
+            lineHasErrors = true;
+            break;
+          }
+
+          parsed.locals.push({ name: key, dataType: attribute.dataType, values });
           break;
         }
 
