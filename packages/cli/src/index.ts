@@ -32,6 +32,9 @@ import logoutCommand from './commands/logout';
 import deployCommand from './commands/deploy';
 import projectCommand from './commands/project';
 import whoamiCommand from './commands/whoami';
+import assetsCommand from './commands/assets';
+import importCommand from './commands/import';
+import exportCommand from './commands/export';
 import doLoginPrompt from './util/login/prompt';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
@@ -304,8 +307,17 @@ const main = async (): Promise<number | undefined> => {
       let func: ((client: Client) => Promise<number>) | null;
 
       switch (subcommand) {
+        case 'assets':
+          func = assetsCommand;
+          break;
         case 'deploy':
           func = deployCommand;
+          break;
+        case 'export':
+          func = exportCommand;
+          break;
+        case 'import':
+          func = importCommand;
           break;
         case 'login':
           func = loginCommand;

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { find, propEq } from 'ramda';
 import {
   assetSchema,
@@ -16,6 +16,7 @@ import {
 import { Skeleton } from '@flexkit/studio/ui';
 import type { AttributeValue, ColumnDef, SingleProject } from '@flexkit/studio';
 import { DataTableToolbar } from './data-grid/data-table-toolbar';
+import { AssetRowActions } from './data-grid/asset-row-actions';
 
 type WhereClause = { [key: string]: unknown };
 
@@ -32,6 +33,7 @@ export function List(): JSX.Element {
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const columnsDefinition = useGridColumnsDefinition<AttributeValue, unknown>({
     attributesSchema: assetSchema.attributes,
+    actionsComponent: (row) => <AssetRowActions row={row} />,
     checkboxSelect: 'multiple',
   });
 
@@ -61,6 +63,13 @@ export function List(): JSX.Element {
   });
 
   const lastRequestedOffsetRef = useRef<number | null>(null);
+
+  // Allow infinite scroll to request again after the list data changes, e.g.
+  // when an upload refetches the query and resets rows to the first page.
+  useEffect(() => {
+    lastRequestedOffsetRef.current = null;
+  }, [data]);
+
   const isInitialLoading =
     isSearchLoading || (isLoading && (data == null || data.length === 0));
 

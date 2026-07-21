@@ -29,7 +29,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../ui/primitives/dropdown-menu';
-import { apiPaths, IMAGES_BASE_URL } from '../../core/api-paths';
+import { IMAGES_BASE_URL } from '../../core/api-paths';
+import { uploadAssetFile } from '../../core/upload';
 import { useOuterClick } from '../../ui/hooks/use-outer-click';
 import { useAppContext, useAppDispatch } from '../../core/app-context';
 import type { SingleRelationshipConnection } from '../../core/types';
@@ -169,22 +170,7 @@ export function Uploader({
       const reader = new FileReader();
 
       reader.onload = (e) => {
-        const img = new Image();
-
         setBase64PreviewImage(e.target?.result as string);
-
-        img.onload = function () {
-          setValue(name, {
-            ...(getValues(name)?.value as ImageValue),
-            value: {
-              ...(getValues(name)?.value as ImageValue),
-              width: img.width,
-              height: img.height,
-            },
-          });
-        };
-
-        img.src = reader.result as string;
       };
 
       reader.readAsDataURL(file);
@@ -195,31 +181,19 @@ export function Uploader({
     setSaving(true);
 
     try {
-      const response = await fetch(apiPaths(projectId).upload, {
-        method: 'POST',
-        headers: { 'Content-Type': file?.type || 'application/octet-stream' },
-        body: file,
-      });
-
-      const data = await response.json();
+      // The /assets endpoint stores the blob and creates the asset node in one
+      // request; the returned asset (with _id) is connected on entity save.
+      const uploaded = await uploadAssetFile(file, projectId);
 
       setValue(name, {
-        ...(getValues(name)?.value as ImageValue),
-        value: {
-          ...(getValues(name)?.value as ImageValue),
-          path: data.pathname,
-          originalFilename: file.name,
-          size: file.size,
-          mimeType: file.type,
-          lqip: data.lqip,
-          ...(isImage ? {} : { width: undefined, height: undefined }),
-        },
+        ...getValues(name),
+        value: uploaded.asset,
       });
     } catch (error) {
       console.error(error);
       setBase64PreviewImage(null);
       setValue(name, {
-        ...(getValues(name)?.value as ImageValue),
+        ...getValues(name),
         value: {
           _id: (previousValue?.value as ImageValue)?._id,
         },

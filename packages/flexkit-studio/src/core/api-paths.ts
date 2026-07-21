@@ -7,6 +7,7 @@ const baseProjectApiUrl = (projectId?: string): string =>
   projectId ? `https://${projectId}.api.${domain}` : baseApiUrl;
 
 interface ApiPaths {
+  assets: string;
   authProviders: string;
   completion: string;
   currentUser: string;
@@ -15,13 +16,13 @@ interface ApiPaths {
   logout: (basePath: string) => string;
   search: string;
   sessionId: string;
-  upload: string;
 }
 
 export const IMAGES_BASE_URL = `${baseApiUrl}/images/`;
 
 export function apiPaths(projectId = ''): ApiPaths {
   return {
+    assets: `/api/flexkit/${projectId}/assets`,
     authProviders: `/api/flexkit/${projectId}/auth/providers`,
     completion: `/api/flexkit/${projectId}/completion`,
     currentUser: `/api/flexkit/${projectId}/users/me`,
@@ -36,6 +37,5 @@ export function apiPaths(projectId = ''): ApiPaths {
     },
     search: `/api/flexkit/${projectId}/search`,
     sessionId: `${baseProjectApiUrl(projectId)}/api/auth/login/session`,
-    upload: `/api/flexkit/${projectId}/upload`,
   };
 }
