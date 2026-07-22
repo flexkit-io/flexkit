@@ -17,7 +17,7 @@ import {
   useGridColumnsDefinition,
 } from '@flexkit/studio';
 import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@flexkit/studio/ui';
-import type { ColumnDef, SingleProject, Row, SortingState, Updater } from '@flexkit/studio';
+import type { AttributeValue, ColumnDef, SingleProject, Row, SortingState, Updater } from '@flexkit/studio';
 
 const pageSize = 25;
 
@@ -32,7 +32,14 @@ export function List(): JSX.Element {
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = getEntitySchema(schema, entityName ?? '');
   const [sorting, setSorting] = useState<SortingState>([]);
-  const columnsDefinition = useGridColumnsDefinition({
+  const [sortedEntityName, setSortedEntityName] = useState(entityName);
+
+  if (entityName !== sortedEntityName) {
+    setSortedEntityName(entityName);
+    setSorting([]);
+  }
+
+  const columnsDefinition = useGridColumnsDefinition<AttributeValue, unknown>({
     attributesSchema: entitySchema?.attributes ?? [],
     actionsComponent: (row) =>
       dataRowActions({ entityName: entitySchema?.name ?? '', entityNamePlural: entityName ?? '', row }),
@@ -135,12 +142,6 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-type AttributeValue = {
-  _id: string;
-  [key: string]: string | AttributeValue | null;
-  __typename: string;
-};
-
 type DataRowActions = {
   entityName: string;
   entityNamePlural: string;
@@ -151,9 +152,9 @@ function dataRowActions({ entityName, entityNamePlural, row }: DataRowActions): 
   return <DataTableRowActions entityName={entityName} entityNamePlural={entityNamePlural} row={row} />;
 }
 
-function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
+function getLoadingColumns(columns: ColumnDef<AttributeValue, unknown>[]): ColumnDef<AttributeValue, unknown>[] {
   return columns.map((column) => ({
     ...column,
     cell: () => <Skeleton className="fk:h-4 fk:w-full" style={{ marginTop: '7px', marginBottom: '6px' }} />,
-  })) as unknown as ColumnDef<AttributeValue>[];
+  }));
 }
