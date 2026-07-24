@@ -1,5 +1,24 @@
 # @flexkit/studio
 
+## 0.0.27
+
+### Patch Changes
+
+- d68ec49: Add a CLI asset import/export pipeline and migrate uploads to the one-shot assets endpoint.
+  - CLI: new `flexkit assets upload` (files, directories, URLs, `--id-from`, `--tag`, `--json`), `flexkit import` (NDJSON/directory/tarball with `_asset` and `_ref` references, `--dry-run`, `--skip-existing`/`--replace`) and `flexkit export` / `flexkit assets export` (round-trippable tarballs with `data.ndjson`, `assets.ndjson` and files).
+  - Studio: uploads now go through the single `POST /assets` endpoint which stores the blob and creates the asset node (deduplicated by content hash) in one request; entity saves connect assets by `_id` instead of nested create/update.
+  - Asset Manager: per-row actions with Copy ID and Copy URL.
+
+- ed0a3bd: Add per-column ascending and descending sort menus on entity data tables, with a clearable Sorted by toolbar control.
+- c64d273: - Improved infinite scrolling functionality in data grids
+  - New total records count in data grids
+  - New asc/desc sorting option in data grid columns of type global
+  - Improved performance when loading data
+  - New sortable Updated At column in all entity data grids
+  - New reload button in data grids
+- 02d8b47: Keep DataTable headers sticky on vertical scroll, and show skeletons while asset search is loading.
+- 438a6c8: Tie attribute default values to their data types and preserve numeric and boolean defaults in new entity forms.
+
 ## 0.0.26
 
 ### Patch Changes

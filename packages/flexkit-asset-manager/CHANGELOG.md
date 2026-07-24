@@ -1,5 +1,23 @@
 # @flexkit/asset-manager
 
+## 0.0.27
+
+### Patch Changes
+
+- d68ec49: Add a CLI asset import/export pipeline and migrate uploads to the one-shot assets endpoint.
+  - CLI: new `flexkit assets upload` (files, directories, URLs, `--id-from`, `--tag`, `--json`), `flexkit import` (NDJSON/directory/tarball with `_asset` and `_ref` references, `--dry-run`, `--skip-existing`/`--replace`) and `flexkit export` / `flexkit assets export` (round-trippable tarballs with `data.ndjson`, `assets.ndjson` and files).
+  - Studio: uploads now go through the single `POST /assets` endpoint which stores the blob and creates the asset node (deduplicated by content hash) in one request; entity saves connect assets by `_id` instead of nested create/update.
+  - Asset Manager: per-row actions with Copy ID and Copy URL.
+
+- ed0a3bd: Add per-column ascending and descending sort menus on entity data tables, with a clearable Sorted by toolbar control.
+- 02d8b47: Keep DataTable headers sticky on vertical scroll, and show skeletons while asset search is loading.
+- Updated dependencies [d68ec49]
+- Updated dependencies [ed0a3bd]
+- Updated dependencies [c64d273]
+- Updated dependencies [02d8b47]
+- Updated dependencies [438a6c8]
+  - @flexkit/studio@0.0.27
+
 ## 0.0.26
 
 ### Patch Changes
