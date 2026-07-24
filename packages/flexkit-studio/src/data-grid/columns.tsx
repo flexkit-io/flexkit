@@ -67,6 +67,11 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
 
   const cols = attributesSchema
     .map((attribute) => {
+      // System timestamp column is always appended last; skip schema duplicates.
+      if (attribute.name === '_updatedAt') {
+        return null;
+      }
+
       const previewType =
         (attribute.inputType === 'relationship' && attribute.relationship?.entity === '_asset' ? 'asset' : undefined) ??
         attribute.previewType ??
@@ -130,6 +135,25 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     size: 80,
   };
 
+  const updatedAt = {
+    accessorKey: '_updatedAt',
+    header: ({ column }: { column: Column<TData, TValue> }) =>
+      enableColumnSorting ? (
+        <DataTableColumnHeader column={column} title="Updated At" />
+      ) : (
+        <div className="fk:flex fk:items-center">Updated At</div>
+      ),
+    cell: ({ row }: CellContext<TData, TValue>) => (
+      <DateTimePreviewField value={row.getValue('_updatedAt')} />
+    ),
+    enableSorting: enableColumnSorting,
+    enableHiding: false,
+    meta: {
+      label: 'Updated At',
+    },
+    size: 220,
+  };
+
   const singleCheckboxSelect = {
     id: 'select',
     cell: ({ row, table }: CellContext<TData, TValue>) => (
@@ -178,5 +202,6 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     ...(checkboxSelect === 'multiple' ? [multipleCheckboxSelect] : []),
     ...(actionsComponent ? [actions] : []),
     ...cols,
+    updatedAt,
   ];
 }

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Slot } from 'radix-ui';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from 'src/ui/lib/utils';
+import { cn } from '../lib/utils';
 
 const badgeVariants = cva(
   'fk:inline-flex fk:w-fit fk:shrink-0 fk:items-center fk:justify-center fk:gap-1 fk:overflow-hidden fk:rounded-full fk:border fk:border-transparent fk:px-2 fk:py-0.5 fk:text-xs fk:font-medium fk:whitespace-nowrap fk:transition-[color,box-shadow] fk:focus-visible:border-ring fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:aria-invalid:border-destructive fk:aria-invalid:ring-destructive/20 fk:dark:aria-invalid:ring-destructive/40 fk:[&>svg]:pointer-events-none fk:[&>svg]:size-3',

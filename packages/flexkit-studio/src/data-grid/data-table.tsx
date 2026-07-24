@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX, ReactElement, UIEvent } from 'react';
 import {
   flexRender,
@@ -42,19 +42,24 @@ interface DataTableProps<TData extends AttributeValue, TValue> {
   classNames?: {
     wrapper?: string;
     table?: string;
+    tableContainer?: string;
     row?: string;
   };
   columns: ColumnDef<AttributeValue, TValue>[];
   data: TData[];
   entityName: string;
+  hasMore?: boolean;
   initialSelectionState?: RowSelectionState;
+  isLoadingMore?: boolean;
   onEntitySelectionChange?: (rowSelection: string[]) => void;
+  onLoadMore?: () => void;
   onScroll?: (event: UIEvent<HTMLDivElement>) => void;
   onSortingChange?: OnChangeFn<SortingState>;
   pageSize?: number;
   rowHeightEstimate?: number;
   rowAdditionState?: MultipleRelationshipConnection;
   rowDeletionState?: string[];
+  scrollToTopKey?: number;
   sorting?: SortingState;
   toolbarComponent?: (table: Table<AttributeValue>) => ReactElement;
 }
@@ -77,18 +82,28 @@ function inferRowHeightEstimate(rowClassName?: string): number | undefined {
   return undefined;
 }
 
+function getLoadMoreThreshold(clientHeight: number): number {
+  // Prefetch about one viewport ahead so faster scrolls still request early.
+  return Math.max(600, clientHeight);
+}
+
 export function DataTable<TData extends AttributeValue, TValue>({
   classNames,
   columns,
   data,
+  entityName,
+  hasMore = false,
   initialSelectionState,
+  isLoadingMore = false,
   onEntitySelectionChange,
+  onLoadMore,
   onScroll,
   onSortingChange,
   pageSize,
   rowHeightEstimate,
   rowAdditionState,
   rowDeletionState,
+  scrollToTopKey,
   sorting: sortingProp,
   toolbarComponent,
 }: DataTableProps<TData, TValue>): JSX.Element {
@@ -99,6 +114,10 @@ export function DataTable<TData extends AttributeValue, TValue>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [uncontrolledSorting, setUncontrolledSorting] = useState<SortingState>([]);
   const sorting = sortingProp ?? uncontrolledSorting;
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [entityName, scrollToTopKey]);
 
   useEffect(() => {
     if (!initialSelectionState) {
@@ -174,6 +193,41 @@ export function DataTable<TData extends AttributeValue, TValue>({
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
+  // Keep load-more inputs in refs so callback identity churn from parents
+  // (e.g. Apollo fetchMore) cannot re-trigger the effect every render.
+  const onLoadMoreRef = useRef(onLoadMore);
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  onLoadMoreRef.current = onLoadMore;
+  hasMoreRef.current = hasMore;
+  isLoadingMoreRef.current = isLoadingMore;
+
+  const checkLoadMore = useCallback((container?: HTMLDivElement | null) => {
+    if (!onLoadMoreRef.current || !hasMoreRef.current || isLoadingMoreRef.current) {
+      return;
+    }
+
+    const scrollElement = container ?? scrollRef.current;
+
+    if (!scrollElement) {
+      return;
+    }
+
+    const { scrollHeight, scrollTop, clientHeight } = scrollElement;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+    if (distanceFromBottom >= getLoadMoreThreshold(clientHeight)) {
+      return;
+    }
+
+    onLoadMoreRef.current();
+  }, []);
+
+  // Re-check when rows/hasMore/loading settle — not when parent callback identities change.
+  useEffect(() => {
+    checkLoadMore();
+  }, [checkLoadMore, rows.length, hasMore, isLoadingMore]);
+
   function handleRowSelectionChange(updaterFn: Updater<RowSelectionState>): void {
     const selectedIds = typeof updaterFn === 'function' ? Object.keys(updaterFn(rowSelection)) : Object.keys(updaterFn);
 
@@ -181,15 +235,25 @@ export function DataTable<TData extends AttributeValue, TValue>({
     onEntitySelectionChange?.(selectedIds);
   }
 
+  function handleScroll(event: UIEvent<HTMLDivElement>): void {
+    onScroll?.(event);
+    checkLoadMore(event.currentTarget);
+  }
+
   if (schemaErrorMessage) {
     return <></>;
   }
 
   return (
-    <div className={cn('fk:flex fk:h-full fk:min-h-0 fk:w-full fk:flex-col fk:gap-4', classNames?.wrapper)}>
+    <div className={cn('fk:flex fk:h-full fk:min-h-0 fk:w-full fk:min-w-0 fk:flex-col fk:gap-4', classNames?.wrapper)}>
       {toolbarComponent && toolbarComponent(table)}
-      <div className="fk:min-h-0 fk:flex-1 fk:-mb-px">
-        <TablePrimitive className={cn('fk:grid fk:pb-20', classNames?.table)} onScroll={onScroll} ref={scrollRef}>
+      <div className="fk:relative fk:min-h-0 fk:min-w-0 fk:flex-1 fk:-mb-px">
+        <TablePrimitive
+          className={cn('fk:grid fk:pb-20', classNames?.table)}
+          containerClassName={classNames?.tableContainer}
+          onScroll={handleScroll}
+          ref={scrollRef}
+        >
           <TableHeader className="fk:sticky fk:top-0 fk:z-10 fk:grid">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow className="fk:flex fk:w-full" key={headerGroup.id}>
@@ -202,6 +266,14 @@ export function DataTable<TData extends AttributeValue, TValue>({
                       style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      {isLoadingMore ? (
+                        <div
+                          aria-hidden
+                          className="fk:pointer-events-none fk:absolute fk:top-10.25 fk:right-px fk:left-px fk:z-20 fk:h-0.5 fk:overflow-hidden fk:opacity-4"
+                        >
+                          <div className="fk:animate-progress fk:h-full fk:w-full fk:bg-foreground" />
+                        </div>
+                      ) : null}
                     </TableHead>
                   );
                 })}

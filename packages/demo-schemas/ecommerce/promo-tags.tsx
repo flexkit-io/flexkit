@@ -15,7 +15,7 @@ export const promoTags = defineEntity({
       label: 'Name',
       scope: 'local',
       options: {
-        size: 200,
+        size: 500,
         comment: 'A promotional tag of a product (i.e. black-friday)',
       },
       dataType: 'string',

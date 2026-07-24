@@ -79,12 +79,19 @@ export type FormEntityItem = {
   [attributeName: string]: FormFieldValue;
 };
 
+export type EntityQuerySelection = 'list' | 'full';
+
 export type UseEntityQueryParams = {
   entityNamePlural: string;
   schema: Schema;
   scope: string;
   variables?: OperationVariables;
   isForm?: boolean;
+  /**
+   * `list` only selects each related entity's primary attribute (desk/list grids).
+   * `full` keeps nested relationship fields (forms, relationship pickers). Default: `full`.
+   */
+  selection?: EntityQuerySelection;
 };
 
 export type FormFieldValue = {

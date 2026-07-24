@@ -93,7 +93,11 @@ export default function MultipleRelationship({
     scope,
     schema,
   });
-  const previewItems = rows.length ? rows.slice(0, 12).map((row) => row[primaryAttributeName] as string) : [];
+  const previewLimit = 12;
+  const previewItems = rows.length
+    ? rows.slice(0, previewLimit).map((row) => row[primaryAttributeName] as string)
+    : [];
+  const hasMorePreviewItems = Math.max(rows.length, defaultValue.count ?? 0) > previewItems.length;
   const [getData, { loading, data }] = useLazyQuery<EntityQueryResults & EntityQueryAggregate>(gql`
     ${entityQuery.query}
   `);
@@ -141,59 +145,51 @@ export default function MultipleRelationship({
     setRows(uniqBy(prop('_id'), [...(selectedRows as []), ...initialRows]));
   }, [data, defaultValue.count, initialRows, relationships, relationshipId]);
 
-  // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
-  const fetchMoreOnBottomReached = useCallback(
-    (containerRefElement?: HTMLDivElement | null) => {
-      const totalCount = defaultValue.count ?? 0;
+  const totalCount = defaultValue.count ?? 0;
+  const hasMore = totalCount > 0 && rows.length > 0 && rows.length < totalCount;
 
-      if (!containerRefElement || totalCount === 0 || rows.length === 0) {
-        return;
-      }
+  const handleLoadMore = useCallback(() => {
+    if (loading) {
+      return;
+    }
 
-      const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-      //once the user has scrolled within 200px of the bottom of the table, fetch more data if we can
-      if (scrollHeight - scrollTop - clientHeight < 200 && !loading && rows.length < totalCount) {
-        getData({
-          variables: {
-            limit: PAGE_SIZE,
-            offset: rows.length,
-            where: connectionName
-              ? {
-                  [connectionName]: {
-                    some: {
-                      _id: { eq: entityId },
-                    },
-                  },
-                }
-              : {},
-          },
-        })
-          .then(({ data: res }: { data: (EntityQueryResults & EntityQueryAggregate) | undefined }) => {
-            if (!res) {
-              return;
+    getData({
+      variables: {
+        limit: PAGE_SIZE,
+        offset: rows.length,
+        where: connectionName
+          ? {
+              [connectionName]: {
+                some: {
+                  _id: { eq: entityId },
+                },
+              },
             }
+          : {},
+      },
+    })
+      .then(({ data: res }: { data: (EntityQueryResults & EntityQueryAggregate) | undefined }) => {
+        if (!res) {
+          return;
+        }
 
-            const mappedData = mapQueryResult(relationshipEntitySchema?.plural ?? '', scope, res, schema);
-            setRows(uniqBy(prop('_id'), [...initialRows, ...(mappedData.results as [])]));
-          })
-          .catch((error: unknown) => {
-            console.error('Error fetching more data:', error);
-          });
-      }
-    },
-    [
-      connectionName,
-      defaultValue.count,
-      entityId,
-      getData,
-      initialRows,
-      loading,
-      relationshipEntitySchema?.plural,
-      rows.length,
-      schema,
-      scope,
-    ]
-  );
+        const mappedData = mapQueryResult(relationshipEntitySchema?.plural ?? '', scope, res, schema);
+        setRows(uniqBy(prop('_id'), [...initialRows, ...(mappedData.results as [])]));
+      })
+      .catch((error: unknown) => {
+        console.error('Error fetching more data:', error);
+      });
+  }, [
+    connectionName,
+    entityId,
+    getData,
+    initialRows,
+    loading,
+    relationshipEntitySchema?.plural,
+    rows.length,
+    schema,
+    scope,
+  ]);
 
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
@@ -216,14 +212,14 @@ export default function MultipleRelationship({
       defaultValue={defaultValue}
       name={name}
       render={() => (
-        <FormItem>
+        <FormItem className="fk:min-w-0">
           <FormLabel htmlFor={fieldId}>{label}</FormLabel>
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
-          <FormControl className="fk:flex fk:flex-col fk:w-full fk:min-h-[2.375rem] fk:pl-3 fk:pr-10 fk:py-0.5 fk:text-sm">
+          <FormControl className="fk:flex fk:flex-col fk:w-full fk:min-w-0 fk:min-h-9.5 fk:pl-3 fk:pr-3 fk:py-0.5 fk:text-sm">
             <div
               aria-controls={`relationship-dropdown-${name}`}
               aria-expanded={isOpen}
-              className={`fk:relative fk:flex fk:w-full fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:border-input fk:bg-background fk:focus-visible:outline-hidden fk:ring-offset-background fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:focus-visible:ring-offset-2 ${
+              className={`fk:relative fk:flex fk:w-full fk:min-w-0 fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:border-input fk:bg-background fk:focus-visible:outline-hidden fk:ring-offset-background fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:focus-visible:ring-offset-2 ${
                 isOpen ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
               }`}
               onClick={(e) => {
@@ -249,97 +245,111 @@ export default function MultipleRelationship({
               role="combobox"
               tabIndex={0}
             >
-              <div className="fk:flex fk:w-full fk:space-x-2">
-                {!isOpen ? (
-                  <span className="fk:flex fk:flex-wrap fk:grow fk:pb-1.5">
-                    {previewItems.map((item) => (
-                      <Badge className="fk:mr-2 fk:mt-1.5 fk:rounded-xs" key={item} variant="secondary">
-                        {item}
-                      </Badge>
-                    ))}
-                  </span>
-                ) : (
-                  <Button className="fk:h-8 fk:mr-auto fk:mt-2" onClick={handleSelection} variant="outline">
-                    <Link className="fk:h-4 fk:w-4 fk:mr-2" /> Link to a record from{' '}
-                    {relationshipEntitySchema?.menu?.label ?? relationshipEntitySchema?.plural}
-                  </Button>
-                )}
-                {!isOpen ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
-                          id={fieldId}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              wrapperRef.current?.focus();
-                              wrapperRef.current?.click();
-                            }
-                          }}
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <Maximize2 className="fk:h-4 fk:w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Expand field</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            wrapperRef.current?.blur();
-                            setIsOpen(false);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+              <div className="fk:flex fk:w-full fk:min-w-0 fk:flex-col">
+                <div className="fk:flex fk:w-full fk:space-x-2">
+                  {!isOpen ? (
+                    <span className="fk:flex fk:flex-wrap fk:grow fk:pb-1.5">
+                      {previewItems.map((item) => (
+                        <Badge className="fk:mr-2 fk:mt-1.5 fk:rounded-xs" key={item} variant="secondary">
+                          {item}
+                        </Badge>
+                      ))}
+                      {hasMorePreviewItems ? (
+                        <Badge className="fk:mr-2 fk:mt-1.5 fk:rounded-xs" variant="secondary">
+                          …
+                        </Badge>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <Button className="fk:h-8 fk:mr-auto fk:mt-2" onClick={handleSelection} variant="outline">
+                      <Link className="fk:h-4 fk:w-4 fk:mr-2" /> Link to a record from{' '}
+                      {relationshipEntitySchema?.menu?.label ?? relationshipEntitySchema?.plural}
+                    </Button>
+                  )}
+                  {!isOpen ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                            id={fieldId}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                wrapperRef.current?.focus();
+                                wrapperRef.current?.click();
+                              }
+                            }}
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <Maximize2 className="fk:h-4 fk:w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Expand field</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                            onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               wrapperRef.current?.blur();
                               setIsOpen(false);
-                            }
-                          }}
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <ClearIcon className="fk:h-4 fk:w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Close</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                wrapperRef.current?.blur();
+                                setIsOpen(false);
+                              }
+                            }}
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <ClearIcon className="fk:h-4 fk:w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Close</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+                <Collapsible
+                  className="fk:w-full fk:min-w-0 fk:space-y-2 fk:ml-0!"
+                  onOpenChange={setIsOpen}
+                  open={isOpen}
+                >
+                  <CollapsibleContent className="fk:w-full fk:min-w-0">
+                    <div className="fk:mt-3 fk:mb-2 fk:w-full fk:min-w-0" id={`relationship-dropdown-${name}`}>
+                      <DataTable
+                        classNames={{
+                          wrapper: 'fk:h-[17.5rem] fk:min-h-0 fk:min-w-0 fk:gap-0',
+                          table: 'fk:pb-0',
+                        }}
+                        columns={columns}
+                        data={rows}
+                        entityName={entityName}
+                        hasMore={hasMore}
+                        isLoadingMore={loading && rows.length > 0}
+                        onLoadMore={handleLoadMore}
+                        rowAdditionState={
+                          relationships[relationshipId]?.connect as MultipleRelationshipConnection | undefined
+                        }
+                        rowDeletionState={relationships[relationshipId]?.disconnect}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
-              <Collapsible className="fk:w-full fk:space-y-2 fk:ml-0!" onOpenChange={setIsOpen} open={isOpen}>
-                <CollapsibleContent className="fk:w-full">
-                  <div className="fk:flex fk:w-full fk:mt-3 fk:mb-2" id={`relationship-dropdown-${name}`}>
-                    <DataTable
-                      classNames={{ table: 'fk:max-h-[17.5rem]' }}
-                      columns={columns}
-                      data={rows}
-                      entityName={entityName}
-                      onScroll={(e) => {
-                        fetchMoreOnBottomReached(e.target as HTMLDivElement);
-                      }}
-                      rowAdditionState={
-                        relationships[relationshipId]?.connect as MultipleRelationshipConnection | undefined
-                      }
-                      rowDeletionState={relationships[relationshipId]?.disconnect}
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
             </div>
           </FormControl>
           <FormMessage />
@@ -403,12 +413,7 @@ type DataAdapter = {
   scope: string;
 };
 
-function dataAdapter({
-  data,
-  defaultScope,
-  relationshipEntitySchema,
-  scope,
-}: DataAdapter): AttributeValue[] {
+function dataAdapter({ data, defaultScope, relationshipEntitySchema, scope }: DataAdapter): AttributeValue[] {
   if (!Array.isArray(data)) {
     return [];
   }

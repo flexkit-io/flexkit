@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useCallback, useMemo, useState, type JSX } from 'react';
 import { find, propEq } from 'ramda';
 import {
   assetSchema,
@@ -43,8 +43,9 @@ export function List(): JSX.Element {
   const [searchWhere, setSearchWhere] = useState<WhereClause>({});
   const [isSearchLoading, setIsSearchLoading] = useState(false);
 
-  const whereBase = entityId ? { _id: { eq: entityId } } : { NOT: { path: { eq: null } } };
   const where = useMemo(() => {
+    const whereBase = entityId ? { _id: { eq: entityId } } : { NOT: { path: { eq: null } } };
+
     if (!searchWhere || Object.keys(searchWhere).length === 0) {
       return whereBase;
     }
@@ -64,66 +65,43 @@ export function List(): JSX.Element {
     return sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' }));
   }, [sorting]);
 
-  const variables = { where, offset: 0, limit: pageSize, sort: graphqlSort };
+  const variables = useMemo(
+    () => ({ where, offset: 0, limit: pageSize, sort: graphqlSort }),
+    [where, graphqlSort]
+  );
 
   function handleSortingChange(updater: Updater<SortingState>): void {
     setSorting(updater);
   }
 
-  const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
+  const { isLoading, isLoadingMore, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
     schema,
     scope,
     variables,
+    selection: 'list',
   });
-
-  const lastRequestedOffsetRef = useRef<number | null>(null);
-
-  // Allow infinite scroll to request again after the list data changes, e.g.
-  // when an upload refetches the query and resets rows to the first page.
-  useEffect(() => {
-    lastRequestedOffsetRef.current = null;
-  }, [data]);
 
   const isInitialLoading =
     isSearchLoading || (isLoading && (data == null || data.length === 0));
 
-  // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
-  const fetchMoreOnBottomReached = useCallback(
-    (containerRefElement?: HTMLDivElement | null) => {
-      const rowsCount = data?.length ?? 0;
+  const rowsCount = data?.length ?? 0;
+  const hasMore = !isSearchLoading && count > 0 && rowsCount > 0 && rowsCount < count;
 
-      if (isLoading) {
-        return;
-      }
+  const handleLoadMore = useCallback(() => {
+    fetchMore({
+      variables: {
+        offset: rowsCount,
+        limit: pageSize,
+      },
+    });
+  }, [fetchMore, rowsCount]);
 
-      if (containerRefElement && count > 0 && rowsCount > 0) {
-        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-        const remaining = scrollHeight - scrollTop - clientHeight;
-        const threshold = Math.min(500, Math.floor(clientHeight * 0.75));
-
-        //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
-        if (remaining < threshold && rowsCount < count) {
-          if (lastRequestedOffsetRef.current === rowsCount) {
-            return;
-          }
-
-          lastRequestedOffsetRef.current = rowsCount;
-
-          fetchMore({
-            variables: {
-              offset: data?.length ?? 0,
-              limit: pageSize,
-            },
-          });
-        }
-      }
-    },
-    [count, data?.length, fetchMore, isLoading]
+  const loadingData = useMemo(
+    () => Array.from({ length: pageSize }, (_, index) => ({ _id: `loading-${index}` }) as AttributeValue),
+    []
   );
-
-  const loadingData = Array(pageSize).fill({});
-  const loadingColumns = getLoadingColumns(columnsDefinition);
+  const loadingColumns = useMemo(() => getLoadingColumns(columnsDefinition), [columnsDefinition]);
 
   if (isProjectDisabled) {
     return (
@@ -136,19 +114,26 @@ export function List(): JSX.Element {
   return (
     <div className="fk:flex fk:flex-col fk:h-full fk:pl-3">
       <SchemaError />
-      <h2 className="fk:mb-4 fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">Asset Manager</h2>
+      <div className="fk:mb-4 fk:flex fk:items-center fk:gap-2">
+        <h2 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">Asset Manager</h2>
+        {!isInitialLoading ? (
+          <span className="fk:ml-auto fk:text-sm fk:font-normal fk:text-muted-foreground">
+            {count.toLocaleString()} {count === 1 ? 'record' : 'records'}
+          </span>
+        ) : null}
+      </div>
       {!schemaErrorMessage ? (
         <DataTable
           classNames={{ row: 'fk:h-20' }}
           columns={isInitialLoading ? loadingColumns : columnsDefinition}
-          data={isInitialLoading ? loadingData : (data ?? [])}
+          data={isInitialLoading ? loadingData : ((data ?? []) as AttributeValue[])}
           entityName={assetSchema.name}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
           pageSize={pageSize}
           sorting={sorting}
+          onLoadMore={handleLoadMore}
           onSortingChange={handleSortingChange}
-          onScroll={(e) => {
-            fetchMoreOnBottomReached(e.currentTarget as HTMLDivElement);
-          }}
           toolbarComponent={(table) => (
             <DataTableToolbar
               entityName={assetSchema.name}

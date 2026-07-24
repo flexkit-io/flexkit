@@ -75,17 +75,25 @@ export function ConfigProvider({
       ),
     [enhancedConfig, currentProjectId]
   );
-  const allPlugins = globalFlattenedConfig.filter(
-    (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
-  ) as PluginOptions[];
-  const currentProjectPlugins = currentProjectFlattenedConfig.filter(
-    (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
-  ) as PluginOptions[];
+  const allPlugins = useMemo(
+    () =>
+      globalFlattenedConfig.filter(
+        (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
+      ) as PluginOptions[],
+    [globalFlattenedConfig]
+  );
+  const currentProjectPlugins = useMemo(
+    () =>
+      currentProjectFlattenedConfig.filter(
+        (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
+      ) as PluginOptions[],
+    [currentProjectFlattenedConfig]
+  );
 
   const globalConfig = useMemo(
     () => ({
       contributions: {
-        apps: _getContributionPointConfig('apps', [], currentProjectPlugins),
+        apps: _getContributionPointConfig('apps', [], currentProjectPlugins) as AppOptions[] | [],
       },
       currentProjectId,
       currentProjectSchema: enhancedConfig.find((item) => item.projectId === currentProjectId)?.schema ?? [],
@@ -99,22 +107,10 @@ export function ConfigProvider({
         hasProjectIdProperty(item)
       ) as ProjectOptions[],
     }),
-    [allPlugins, currentProjectId, currentProjectPlugins, globalFlattenedConfig]
+    [allPlugins, currentProjectId, currentProjectPlugins, enhancedConfig, globalFlattenedConfig]
   );
 
-  return (
-    <ConfigContext.Provider
-      value={{
-        ...globalConfig,
-        contributions: {
-          ...globalConfig.contributions,
-          apps: globalConfig.contributions.apps as AppOptions[] | [],
-        },
-      }}
-    >
-      {children}
-    </ConfigContext.Provider>
-  );
+  return <ConfigContext.Provider value={globalConfig}>{children}</ConfigContext.Provider>;
 }
 
 export function useConfig(): ConfigContext {
