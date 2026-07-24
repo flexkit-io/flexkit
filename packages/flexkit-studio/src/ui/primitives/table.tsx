@@ -1,16 +1,20 @@
 import * as React from 'react';
-import { cn } from 'src/ui/lib/utils';
+import { cn } from '../lib/utils';
 
 type TableProps = Omit<React.ComponentProps<'table'>, 'ref'> & {
+  containerClassName?: string;
   ref?: React.Ref<HTMLDivElement>;
 };
 
-function Table({ className, onScroll, ref, ...props }: TableProps) {
+function Table({ className, containerClassName, onScroll, ref, ...props }: TableProps) {
   return (
     <div
       ref={ref}
       data-slot="table-container"
-      className="fk:relative fk:h-full fk:w-full fk:overflow-auto fk:rounded-t-md fk:border-border fk:border"
+      className={cn(
+        'fk:relative fk:h-full fk:w-full fk:min-w-0 fk:overflow-auto fk:rounded-t-md fk:border-border fk:border',
+        containerClassName
+      )}
       onScroll={onScroll}
     >
       <table data-slot="table" className={cn('fk:w-full fk:caption-bottom fk:text-sm', className)} {...props} />

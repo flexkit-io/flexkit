@@ -32,7 +32,7 @@ export function Textarea({ control, fieldSchema, setValue }: FormFieldParams<'te
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
           <div className="fk:flex">
-            <div className="fk:full-w">
+            <div className="fk:full-w fk:grid fk:gap-2">
               <FormLabel>{label}</FormLabel>
               {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
             </div>

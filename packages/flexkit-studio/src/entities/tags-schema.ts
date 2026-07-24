@@ -23,15 +23,16 @@ export const tagSchema: Entity = {
     },
     {
       name: '_updatedAt',
-      label: 'Last Updated',
+      label: 'Updated At',
       scope: 'global',
       options: {
-        size: 140,
+        size: 220,
       },
-      isEditable: true,
-      dataType: 'string',
-      inputType: 'text',
-      previewType: 'text',
+      isEditable: false,
+      isHidden: true,
+      dataType: 'datetime',
+      inputType: 'datetime',
+      previewType: 'datetime',
       defaultValue: '',
     },
     {

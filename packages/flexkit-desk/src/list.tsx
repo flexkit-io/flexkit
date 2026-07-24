@@ -20,6 +20,7 @@ import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTr
 import type { AttributeValue, ColumnDef, SingleProject, Row, SortingState, Updater } from '@flexkit/studio';
 
 const pageSize = 25;
+const defaultSort = [{ _updatedAt: 'DESC' }];
 
 export function List(): JSX.Element {
   const { entity: entityName } = useParams();
@@ -32,6 +33,7 @@ export function List(): JSX.Element {
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const entitySchema = getEntitySchema(schema, entityName ?? '');
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [scrollToTopKey, setScrollToTopKey] = useState(0);
   const [sortedEntityName, setSortedEntityName] = useState(entityName);
 
   if (entityName !== sortedEntityName) {
@@ -47,50 +49,50 @@ export function List(): JSX.Element {
     enableColumnSorting: true,
   });
 
-  const graphqlSort = useMemo(
-    () => sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' })),
-    [sorting]
-  );
+  const graphqlSort = useMemo(() => {
+    if (sorting.length === 0) {
+      return defaultSort;
+    }
+
+    return sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' }));
+  }, [sorting]);
 
   const variables = entityId
     ? { where: { _id: { eq: entityId } } }
     : {
         offset: 0,
         limit: pageSize,
-        ...(graphqlSort.length > 0 ? { sort: graphqlSort } : {}),
+        sort: graphqlSort,
       };
 
-  const { isLoading, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
+  const { isLoading, isLoadingMore, fetchMore, reload, count, data, isProjectDisabled } = useEntityQuery({
     entityNamePlural: entityName ?? '',
     schema,
     scope,
     variables,
+    selection: 'list',
   });
 
   function handleSortingChange(updater: Updater<SortingState>): void {
     setSorting(updater);
   }
 
-  // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
-  const fetchMoreOnBottomReached = useCallback(
-    (containerRefElement?: HTMLDivElement | null) => {
-      const rowsCount = data?.length ?? 0;
+  const rowsCount = data?.length ?? 0;
+  const hasMore = count > 0 && rowsCount > 0 && rowsCount < count;
 
-      if (containerRefElement && count > 0 && rowsCount > 0) {
-        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-        //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < count) {
-          fetchMore({
-            variables: {
-              offset: data?.length ?? 0,
-              limit: pageSize,
-            },
-          });
-        }
-      }
-    },
-    [count, data?.length, fetchMore, isLoading]
-  );
+  const handleLoadMore = useCallback(() => {
+    fetchMore({
+      variables: {
+        offset: rowsCount,
+        limit: pageSize,
+      },
+    });
+  }, [fetchMore, rowsCount]);
+
+  const handleReload = useCallback(() => {
+    setScrollToTopKey((key) => key + 1);
+    reload();
+  }, [reload]);
 
   const loadingData = Array(pageSize).fill({});
   const loadingColumns = getLoadingColumns(columnsDefinition);
@@ -118,19 +120,32 @@ export function List(): JSX.Element {
         <h2 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">
           {capitalize(entitySchema?.menu?.label ?? entitySchema?.plural ?? '')}
         </h2>
+        {!isInitialLoading ? (
+          <span className="fk:ml-auto fk:text-sm fk:font-normal fk:text-muted-foreground">
+            {count.toLocaleString()} {count === 1 ? 'record' : 'records'}
+          </span>
+        ) : null}
       </div>
       {!schemaErrorMessage ? (
         <DataTable
           columns={isInitialLoading ? loadingColumns : columnsDefinition}
           data={isInitialLoading ? loadingData : (data ?? [])}
           entityName={entitySchema?.name ?? ''}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
           pageSize={pageSize}
+          scrollToTopKey={scrollToTopKey}
           sorting={sorting}
+          onLoadMore={handleLoadMore}
           onSortingChange={handleSortingChange}
-          onScroll={(e) => {
-            fetchMoreOnBottomReached(e.currentTarget);
-          }}
-          toolbarComponent={(table) => <DataTableToolbar entityName={entitySchema?.name ?? ''} table={table} />}
+          toolbarComponent={(table) => (
+            <DataTableToolbar
+              entityName={entitySchema?.name ?? ''}
+              isReloading={isInitialLoading}
+              onReload={handleReload}
+              table={table}
+            />
+          )}
         />
       ) : null}
       <Outlet />

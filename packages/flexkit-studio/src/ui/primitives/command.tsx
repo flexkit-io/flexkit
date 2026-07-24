@@ -3,8 +3,8 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { SearchIcon } from 'lucide-react';
-import { cn } from 'src/ui/lib/utils';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from 'src/ui/primitives/dialog';
+import { cn } from '../lib/utils';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog';
 
 type CommandChildren = React.ComponentProps<typeof CommandPrimitive>['children'];
 

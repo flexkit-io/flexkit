@@ -144,12 +144,22 @@ export function DataTableToolbar<TData>({
     .getSelectedRowModel()
     .rows.map((row) => (row.original as unknown as { _id: string })._id);
 
+  const tagsQueryVariables = useMemo(
+    () => ({ where: {}, limit: 500, offset: 0, sort: [{ name: 'ASC' }] }),
+    []
+  );
+  const mimeSampleQueryVariables = useMemo(
+    () => ({ where: {}, limit: 500, offset: 0, sort: [{ _updatedAt: 'DESC' }] }),
+    []
+  );
+
   // Load tags for the selector
   const { data: tagsData } = useEntityQuery({
     entityNamePlural: '_tags',
     schema,
     scope,
-    variables: { where: {}, limit: 500, offset: 0, sort: [{ name: 'ASC' }] },
+    variables: tagsQueryVariables,
+    selection: 'list',
   });
   const allTags = useMemo(() => {
     const items = Array.isArray(tagsData) ? (tagsData as unknown[]) : [];
@@ -162,7 +172,8 @@ export function DataTableToolbar<TData>({
     entityNamePlural: '_assets',
     schema,
     scope,
-    variables: { where: {}, limit: 500, offset: 0, sort: [{ _updatedAt: 'DESC' }] },
+    variables: mimeSampleQueryVariables,
+    selection: 'list',
   });
 
   type AssetItem = { _id: string; mimeType?: string | null };
@@ -390,16 +401,28 @@ export function DataTableToolbar<TData>({
     if (safeResults.length === 0) {
       nextWhere = { _id: { in: [] } };
     } else {
-      const assetIdClauses = safeResults
-        .filter((r) => r._entityNamePlural === '_assets')
-        .map((r) => ({ _id: { eq: r._id } }));
-
+      // Prefer `_id: { in: [...] }` over one OR-eq per hit. Large OR trees break
+      // offset pagination and were re-triggering endless fetchMore requests.
+      const assetIds = safeResults.filter((r) => r._entityNamePlural === '_assets').map((r) => r._id);
       const tagClauses = safeResults
         .filter((r) => r._entityNamePlural === '_tags')
         .map((r) => ({ tags: { some: { _id: { eq: r._id } } } }));
 
-      const orClauses = [...assetIdClauses, ...tagClauses];
-      nextWhere = orClauses.length > 0 ? { OR: orClauses } : { _id: { in: [] } };
+      const orClauses: WhereClause[] = [];
+
+      if (assetIds.length > 0) {
+        orClauses.push({ _id: { in: assetIds } });
+      }
+
+      orClauses.push(...tagClauses);
+
+      if (orClauses.length === 0) {
+        nextWhere = { _id: { in: [] } };
+      } else if (orClauses.length === 1) {
+        nextWhere = orClauses[0] as WhereClause;
+      } else {
+        nextWhere = { OR: orClauses };
+      }
     }
 
     textWhereRef.current = nextWhere;
@@ -469,7 +492,7 @@ export function DataTableToolbar<TData>({
                 return;
               }
 
-              debouncedSetSearchQuery(value);
+              debouncedSetSearchQuery(value.trim());
             }}
             className="fk:h-8 fk:w-[150px] fk:lg:w-[250px] fk:pl-8!"
           />

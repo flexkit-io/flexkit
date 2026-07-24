@@ -133,7 +133,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     };
   }, [connectionName, entityId, isAssetPicker, mode, searchResultIds]);
 
-  const { count, data, fetchMore, isLoading } = useEntityQuery({
+  const { count, data, fetchMore, isLoading, isLoadingMore } = useEntityQuery({
     entityNamePlural,
     schema,
     scope,
@@ -141,10 +141,14 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       offset: 0,
       limit: PAGE_SIZE,
       where: conditionalWhereClause,
+      sort: [{ _updatedAt: 'DESC' }],
     },
   });
   const hasData = Boolean(data?.length);
   const isInitialLoading = isLoading && !hasData;
+  const rowsCount = data?.length ?? 0;
+  const totalCount = count - connectedEntitiesCount;
+  const hasMore = totalCount > 0 && rowsCount > 0 && rowsCount < totalCount;
 
   const columns = useGridColumnsDefinition({
     attributesSchema: entitySchema?.attributes ?? [],
@@ -179,28 +183,15 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     [actionDispatch]
   );
 
-  // called on scroll and possibly on mount to fetch more data as the user scrolls and reaches bottom of table
-  const fetchMoreOnBottomReached = useCallback(
-    (containerRefElement?: HTMLDivElement | null) => {
-      const rowsCount = data?.length ?? 0;
-      const totalCount = count - connectedEntitiesCount;
-
-      if (containerRefElement && totalCount > 0 && rowsCount > 0) {
-        const { scrollHeight, scrollTop, clientHeight } = containerRefElement;
-        //once the user has scrolled within 500px of the bottom of the table, fetch more data if we can
-        if (scrollHeight - scrollTop - clientHeight < 500 && !isLoading && rowsCount < totalCount) {
-          fetchMore({
-            variables: {
-              offset: rowsCount,
-              limit: PAGE_SIZE,
-              where: conditionalWhereClause,
-            },
-          });
-        }
-      }
-    },
-    [conditionalWhereClause, connectedEntitiesCount, count, data?.length, fetchMore, isLoading]
-  );
+  const handleLoadMore = useCallback(() => {
+    fetchMore({
+      variables: {
+        offset: rowsCount,
+        limit: PAGE_SIZE,
+        where: conditionalWhereClause,
+      },
+    });
+  }, [conditionalWhereClause, fetchMore, rowsCount]);
 
   function handleSelection(): void {
     let connect;
@@ -380,6 +371,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
           columns={isInitialLoading ? loadingColumns : columns}
           data={isInitialLoading ? loadingData : (data ?? [])}
           entityName={entitySchema?.name ?? ''}
+          hasMore={hasMore}
           initialSelectionState={
             selectedRows?.reduce(
               (acc, selected) => ({ ...acc, ...(selected.id ? { [selected.id]: true } : {}) }),
@@ -388,10 +380,9 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
               [_id: string]: boolean;
             }
           }
+          isLoadingMore={isLoadingMore}
           onEntitySelectionChange={handleSelectionChange}
-          onScroll={(e) => {
-            fetchMoreOnBottomReached(e.target as HTMLDivElement);
-          }}
+          onLoadMore={handleLoadMore}
           toolbarComponent={() => (
             <SearchBar
               entityNamePlural={entityNamePlural}

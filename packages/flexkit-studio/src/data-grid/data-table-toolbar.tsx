@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { JSX } from 'react';
 import { find, propEq } from 'ramda';
 import type { Table } from '@tanstack/react-table';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { gql } from '@apollo/client';
 import { toast } from 'sonner';
 import { Button } from '../ui/primitives/button';
@@ -20,10 +20,17 @@ import { getEntityDeleteMutation } from '../graphql-client/queries';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
+  isReloading?: boolean;
+  onReload?: () => void;
   table: Table<TData>;
 }
 
-export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarProps<TData>): JSX.Element {
+export function DataTableToolbar<TData>({
+  entityName,
+  isReloading = false,
+  onReload,
+  table,
+}: DataTableToolbarProps<TData>): JSX.Element {
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const appContext = useAppContext();
@@ -136,6 +143,18 @@ export function DataTableToolbar<TData>({ entityName, table }: DataTableToolbarP
           </Select>
         ) : null}
         <DataTableViewOptions table={table} />
+        {onReload ? (
+          <Button
+            aria-label="Reload"
+            className="fk:h-8"
+            disabled={isDeleting || isReloading}
+            onClick={onReload}
+            size="icon-sm"
+            variant="outline"
+          >
+            <RefreshCw className={isReloading ? 'fk:animate-spin' : undefined} />
+          </Button>
+        ) : null}
         <DataTableSortedBy table={table} />
       </div>
       {selectedIds.length > 0 ? (

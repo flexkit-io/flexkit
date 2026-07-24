@@ -15,7 +15,7 @@ export const contentFormats = defineEntity({
       label: 'Name',
       scope: 'local',
       options: {
-        size: 200,
+        size: 500,
         comment: 'A content format (i.e. liquid, cream, gel, oil, etc.)',
       },
       dataType: 'string',

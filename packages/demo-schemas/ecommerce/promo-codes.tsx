@@ -15,7 +15,7 @@ export const promoCodes = defineEntity({
       label: 'Code',
       scope: 'local',
       options: {
-        size: 200,
+        size: 500,
         comment: 'A promotional code (i.e. black-friday-2026)',
       },
       dataType: 'string',

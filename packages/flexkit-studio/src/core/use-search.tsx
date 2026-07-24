@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import useSWR from 'swr';
 import { find, propEq } from 'ramda';
 import { apiPaths } from './api-paths';
@@ -32,9 +33,12 @@ export function useSearch(
       mode: 'cors',
     }).then((res) => res.json() as Promise<{ results: RawSearchResultItems }>)
   );
-  const results = mapResults(data?.results ?? [], projectId, schema, scope, defaultScope);
+  const results = useMemo(
+    () => mapResults(data?.results ?? [], projectId, schema, scope, defaultScope) ?? [],
+    [data, defaultScope, projectId, schema, scope]
+  );
 
-  return { results: results ?? [], error, isLoading };
+  return { results, error, isLoading };
 }
 
 /**

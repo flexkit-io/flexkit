@@ -127,10 +127,14 @@ export function GraphQLProvider({ children }: { children: React.ReactNode }): JS
   const { currentProjectId } = useConfig();
   const [schemaErrorMessage, setSchemaErrorMessage] = useState<string | null>(null);
   const ctx = useMemo(() => ({ schemaErrorMessage, setSchemaErrorMessage }), [schemaErrorMessage]);
+  const apolloClient = useMemo(
+    () => client(currentProjectId, setSchemaErrorMessage),
+    [currentProjectId]
+  );
 
   return (
     <GraphQLErrorContext.Provider value={ctx}>
-      <ApolloProviderCompat client={client(currentProjectId, setSchemaErrorMessage)}>{children}</ApolloProviderCompat>
+      <ApolloProviderCompat client={apolloClient}>{children}</ApolloProviderCompat>
     </GraphQLErrorContext.Provider>
   );
 }

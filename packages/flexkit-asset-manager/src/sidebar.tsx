@@ -56,6 +56,7 @@ export function Sidebar(): JSX.Element {
     schema,
     scope,
     variables,
+    selection: 'list',
   });
 
   const tags: TagItem[] = (Array.isArray(data) ? (data as unknown[]) : []).map((item) => {
