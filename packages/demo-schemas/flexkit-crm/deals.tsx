@@ -22,7 +22,7 @@ export const deals = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Deal name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Deal name is required' }),
       defaultValue: '',
     },
     {
@@ -42,7 +42,7 @@ export const deals = defineEntity({
         field: 'name',
         entity: 'company',
       },
-      validation: (z) => z.string().min(1, { message: 'Company is required' }),
+      validation: (z) => z.string().min(1, { error: 'Company is required' }),
     },
     {
       name: 'contacts',
@@ -71,7 +71,7 @@ export const deals = defineEntity({
       },
       dataType: 'float',
       inputType: 'number',
-      validation: (z) => z.number().min(0, { message: 'Value must be a positive number' }),
+      validation: (z) => z.number().min(0, { error: 'Value must be a positive number' }),
       defaultValue: '',
     },
     {
@@ -107,7 +107,7 @@ export const deals = defineEntity({
         field: 'name',
         entity: 'pipelineStage',
       },
-      validation: (z) => z.string().min(1, { message: 'Pipeline stage is required' }),
+      validation: (z) => z.string().min(1, { error: 'Pipeline stage is required' }),
     },
     {
       name: 'probability',
@@ -180,7 +180,7 @@ export const deals = defineEntity({
         field: 'firstName',
         entity: 'accountManager',
       },
-      validation: (z) => z.string().min(1, { message: 'Deal owner is required' }),
+      validation: (z) => z.string().min(1, { error: 'Deal owner is required' }),
     },
     {
       name: 'products',

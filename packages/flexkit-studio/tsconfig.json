@@ -3,9 +3,8 @@
   "include": ["."],
   "exclude": ["dist", "build", "node_modules"],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "@ui/*": ["src/ui/*"]
+      "@ui/*": ["./src/ui/*"]
     },
     "declaration": true,
     "declarationMap": true

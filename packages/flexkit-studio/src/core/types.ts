@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import type { z, ZodTypeAny } from 'zod';
+import type { z } from 'zod';
 import type {
   AttributeValue,
   EntityItem,
@@ -145,7 +145,7 @@ type GroupedSelectList = {
   items: SelectList[];
 };
 
-type ZodType = typeof z;
+type ZodNamespace = typeof z;
 
 export type CommonOptions = {
   comment?: string;
@@ -202,7 +202,7 @@ type AttributeBase = {
     mode: 'single' | 'multiple';
     field: string;
   };
-  validation?: (z: ZodType) => ZodTypeAny;
+  validation?: (zod: ZodNamespace) => z.ZodType;
 };
 
 type AttributeByDataType<T extends DataType> = AttributeBase & {

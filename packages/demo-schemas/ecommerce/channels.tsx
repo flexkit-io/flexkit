@@ -22,7 +22,7 @@ export const channels = defineEntity({
       isSearchable: true,
       isUnique: true,
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Channel name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Channel name is required' }),
       defaultValue: '',
     },
   ],

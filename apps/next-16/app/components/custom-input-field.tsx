@@ -43,9 +43,7 @@ export function CustomTextField({ control, fieldSchema, setValue }: FormFieldPro
           {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <Input
-              className={`fk-w-full fk-mt-[0.1875rem] ${
-                !field.value?.scope || field.value.scope === 'default' ? 'fk-mb-3' : ''
-              }`}
+              className={`mt-0.75 w-full ${!field.value?.scope || field.value.scope === 'default' ? 'mb-3' : ''}`}
               disabled={isEditable === false || field.value?.disabled}
               id={fieldId}
               onChange={(event) => {
@@ -54,7 +52,7 @@ export function CustomTextField({ control, fieldSchema, setValue }: FormFieldPro
               value={(field.value?.value as string) || ''}
             />
           </FormControl>
-          <Badge className="flex text-[0.6875rem] ml-auto mt-2 font-light" variant="secondary">
+          <Badge className="mt-2 ml-auto flex text-[0.6875rem] font-light" variant="secondary">
             Characters: {((field.value?.value as string | undefined) ?? '').length}
           </Badge>
           <DefaultValueSwitch

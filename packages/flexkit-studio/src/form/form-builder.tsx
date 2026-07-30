@@ -1,6 +1,7 @@
-import { createElement, forwardRef, memo, useEffect, useImperativeHandle, useMemo } from 'react';
+import { createElement, forwardRef, memo, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import type { ComponentType, ForwardedRef, JSX } from 'react';
 import { useForm } from 'react-hook-form';
+import type { Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { equals, find, propEq } from 'ramda';
@@ -8,7 +9,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
 import type { Attribute, Entity, Schema } from '../core/types';
-import type { EntityData, FormEntityItem, FormFieldValue } from '../graphql-client/types';
+import type { FormEntityItem, FormFieldValue } from '../graphql-client/types';
 import { useConfig } from '../core/config/config-context';
 import { Text as TextField } from './fields/text';
 import { Switch as SwitchField } from './fields/switch';
@@ -26,6 +27,7 @@ export type SubmitHandle = {
   submit: () => void;
   hasErrors: () => void;
   hasDataChanged: () => boolean;
+  markAsSaved: () => void;
 };
 
 type Props = {
@@ -37,12 +39,11 @@ type Props = {
   formData?: FormEntityItem;
   schema: Schema;
   setIsDirty: (isDirty: boolean) => void;
-  onSubmit: (newData: EntityData, previousData?: FormEntityItem) => void;
+  onSubmit: (newData: FormEntityItem, previousData?: FormEntityItem) => void;
 };
 
 function getInitialFieldValue(field: Attribute, defaultScope: string): FormFieldValue {
-  const value =
-    field.dataType === 'asset' || field.scope === 'relationship' ? '' : (field.defaultValue ?? '');
+  const value = field.dataType === 'asset' || field.scope === 'relationship' ? '' : (field.defaultValue ?? '');
 
   return {
     disabled: false,
@@ -71,30 +72,28 @@ function FormBuilder(
     );
   }, [defaultScope, formData, formSchema]);
   const validationSchema = useMemo(() => {
-    return z.object(
-      formSchema.reduce((acc, fieldSchema) => {
-        if (typeof fieldSchema.validation === 'undefined') return acc;
+    const shape: { [fieldName: string]: z.ZodType } = {};
 
-        // Create a clearer validation schema for each field
-        return {
-          ...acc,
-          [fieldSchema.name]: z.object({
-            // Pass through the validation with more detailed error
-            value: fieldSchema.validation(z).or(
-              z.any().refine(() => false, {
-                message: fieldSchema.label ? `${fieldSchema.label} is required` : 'Required field',
-              })
-            ),
-          }),
-        };
-      }, {})
-    );
+    for (const fieldSchema of formSchema) {
+      if (typeof fieldSchema.validation === 'undefined') {
+        continue;
+      }
+
+      shape[fieldSchema.name] = z.object({
+        value: fieldSchema.validation(z).or(
+          z.any().refine(() => false, {
+            error: fieldSchema.label ? `${fieldSchema.label} is required` : 'Required field',
+          })
+        ),
+      });
+    }
+
+    return z.object(shape);
   }, [formSchema]);
-  type UserSchema = z.infer<typeof validationSchema>;
 
-  const form = useForm<UserSchema>({
+  const form = useForm<FormEntityItem>({
     defaultValues: initialFormValues,
-    resolver: zodResolver(validationSchema),
+    resolver: zodResolver(validationSchema) as Resolver<FormEntityItem>,
     values: formData,
     mode: 'onBlur',
     criteriaMode: 'all',
@@ -102,6 +101,18 @@ function FormBuilder(
 
   const { control, getValues, handleSubmit, setValue, watch, trigger } = form;
   const { getContributionPointConfig } = useConfig();
+  // Baseline for dirty checks. Updated on successful save so relationship-field
+  // noise / stale formData props cannot keep reporting dirty after Save.
+  const baselineRef = useRef<FormEntityItem | undefined>(formData);
+  const hasMarkedSavedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasMarkedSavedRef.current) {
+      return;
+    }
+
+    baselineRef.current = formData;
+  }, [formData]);
 
   const formFieldComponentsMap = {
     datetime: DateTimeField,
@@ -120,28 +131,42 @@ function FormBuilder(
       // Force validate all fields
       void trigger().then(() => {
         void handleSubmit(() => {
+          const values = getValues() as FormEntityItem;
+          // Commit baseline immediately so close matches the disabled Save button
+          // even before the mutation onCompleted handler runs.
+          hasMarkedSavedRef.current = true;
+          baselineRef.current = values;
           setIsDirty(false);
-          onSubmit(getValues(), formData);
+          onSubmit(values, formData);
         })();
       });
     },
     hasErrors() {
+      hasMarkedSavedRef.current = false;
+      baselineRef.current = formData;
       setIsDirty(true);
     },
     hasDataChanged() {
-      return hasDataChanged(getValues(), formData);
+      return hasDataChanged(getValues(), baselineRef.current);
+    },
+    markAsSaved() {
+      hasMarkedSavedRef.current = true;
+      baselineRef.current = getValues() as FormEntityItem;
+      setIsDirty(false);
     },
   }));
 
   useEffect(() => {
-    const formChangesSubscription = watch((changedData) => {
-      setIsDirty(hasDataChanged(changedData, formData));
+    const formChangesSubscription = watch(() => {
+      // Always compare the full form snapshot. The watch callback payload can be
+      // partial and falsely report dirty against the baseline.
+      setIsDirty(hasDataChanged(getValues(), baselineRef.current));
     });
 
     return () => {
       formChangesSubscription.unsubscribe();
     };
-  }, [formData, setIsDirty, watch]);
+  }, [formData, getValues, setIsDirty, watch]);
 
   if (!entitySchema || entitySchema.attributes.length === 0) {
     return (

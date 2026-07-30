@@ -34,7 +34,7 @@ export const addresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Street is required' }),
+      validation: (z) => z.string().min(1, { error: 'Street is required' }),
       defaultValue: '',
     },
     {
@@ -60,7 +60,7 @@ export const addresses = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      validation: (z) => z.string().min(1, { message: 'City is required' }),
+      validation: (z) => z.string().min(1, { error: 'City is required' }),
       defaultValue: '',
     },
     {
@@ -85,7 +85,7 @@ export const addresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Postal code is required' }),
+      validation: (z) => z.string().min(1, { error: 'Postal code is required' }),
       defaultValue: '',
     },
     {
@@ -107,7 +107,7 @@ export const addresses = defineEntity({
       },
       validation: (z) =>
         z.object({
-          _id: z.string().min(1, { message: 'Country is required' }),
+          _id: z.string().min(1, { error: 'Country is required' }),
         }),
     },
     {

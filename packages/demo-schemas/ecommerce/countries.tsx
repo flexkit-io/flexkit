@@ -23,7 +23,7 @@ export const countries = defineEntity({
       isPrimary: true,
       isUnique: true,
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Channel name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Channel name is required' }),
       defaultValue: '',
     },
     {
@@ -37,7 +37,7 @@ export const countries = defineEntity({
       dataType: 'string',
       isUnique: true,
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Country code is required' }),
+      validation: (z) => z.string().min(1, { error: 'Country code is required' }),
       defaultValue: '',
     },
     {
@@ -58,7 +58,7 @@ export const countries = defineEntity({
       },
       dataType: 'string',
       inputType: 'select',
-      validation: (z) => z.string().min(1, { message: 'Continent is required' }),
+      validation: (z) => z.string().min(1, { error: 'Continent is required' }),
       defaultValue: '',
     },
     {

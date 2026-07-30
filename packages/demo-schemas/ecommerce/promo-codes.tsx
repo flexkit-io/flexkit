@@ -22,7 +22,7 @@ export const promoCodes = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Code is required' }),
+      validation: (z) => z.string().min(1, { error: 'Code is required' }),
       defaultValue: '',
     },
     {

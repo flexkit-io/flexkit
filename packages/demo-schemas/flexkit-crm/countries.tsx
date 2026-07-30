@@ -22,7 +22,7 @@ export const crmCountries = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Country name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Country name is required' }),
       defaultValue: '',
     },
     {
@@ -36,7 +36,7 @@ export const crmCountries = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      validation: (z) => z.string().length(2, { message: 'Country code must be exactly 2 characters' }),
+      validation: (z) => z.string().length(2, { error: 'Country code must be exactly 2 characters' }),
       defaultValue: '',
     },
     {

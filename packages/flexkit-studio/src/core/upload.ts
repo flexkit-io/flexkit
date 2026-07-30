@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useApolloClient } from '@apollo/client/react';
 import { apiPaths } from './api-paths';
+import { scheduleEntityListRefetch } from '../graphql-client/refetch-entity-lists';
 import type { OrderedAssetValue } from '../graphql-client/types';
 
 export const ACCEPTED_MIME_TYPES = [
@@ -205,17 +206,10 @@ export function useUploadAssets(): (options: OpenFileDialogAndUploadOptions) => 
       const uploads = await openFileDialogAndUpload(options);
 
       if (uploads.length > 0) {
-        // The upload happens outside Apollo, so active asset list queries
-        // (e.g. the Asset Manager grid) must be refetched explicitly.
-        // 'GetAssets' is the operation name getEntityQuery builds for '_assets'.
-        await apolloClient
-          .refetchQueries({
-            include: 'active',
-            onQueryUpdated: (observableQuery) => observableQuery.queryName === 'GetAssets',
-          })
-          .catch((error: unknown) => {
-            console.error('Error refreshing asset lists after upload:', error);
-          });
+        // Upload is outside Apollo; soft-refresh mounted asset lists via useEntityQuery.
+        await scheduleEntityListRefetch(apolloClient, 'GetAssets').catch((error: unknown) => {
+          console.error('Error refreshing asset lists after upload:', error);
+        });
       }
 
       return uploads;

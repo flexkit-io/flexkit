@@ -23,7 +23,7 @@ export const products = defineEntity({
       previewType: 'text', // <-- This affects how the data is displayed in the list view (text, image, boolean, WYSIWYG preview, etc)
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
@@ -31,14 +31,14 @@ export const products = defineEntity({
       label: 'SKU',
       scope: 'global',
       options: {
-        size: 130,
+        size: 140,
         comment: 'Unique SKU identifier',
       },
       dataType: 'string',
       isSearchable: true,
       isUnique: true,
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'SKU is required' }),
+      validation: (z) => z.string().min(1, { error: 'SKU is required' }),
       defaultValue: '',
     },
     {
@@ -110,7 +110,7 @@ export const products = defineEntity({
         entity: 'brand',
       },
       // TODO: figure out how to validate relationship fields
-      // validation: (z) => z.string().min(1, { message: 'Brand is required' }),
+      // validation: (z) => z.string().min(1, { error: 'Brand is required' }),
     },
     {
       name: 'flags',
@@ -176,7 +176,7 @@ export const products = defineEntity({
       dataType: 'float',
       inputType: 'number',
       previewType: 'text',
-      validation: (z) => z.number().min(1, { message: 'Price is required' }),
+      validation: (z) => z.number().min(1, { error: 'Price is required' }),
       defaultValue: '',
     },
     {
@@ -190,7 +190,7 @@ export const products = defineEntity({
       dataType: 'float',
       inputType: 'number',
       previewType: 'text',
-      validation: (z) => z.number().min(1, { message: 'PVPR is required' }),
+      validation: (z) => z.number().min(1, { error: 'PVPR is required' }),
       defaultValue: '',
     },
     {
@@ -506,7 +506,7 @@ export const products = defineEntity({
       isSearchable: false,
       inputType: 'select',
       defaultValue: '',
-      validation: (z) => z.string().min(1, { message: 'State is required' }),
+      validation: (z) => z.string().min(1, { error: 'State is required' }),
     },
     {
       name: 'discountGroup',

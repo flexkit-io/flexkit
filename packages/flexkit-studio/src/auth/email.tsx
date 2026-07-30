@@ -14,7 +14,7 @@ import { Input } from '../ui/primitives/input';
 import { apiPaths, baseApiUrl } from '../core/api-paths';
 
 const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address' }),
+  email: z.email({ error: 'Please enter a valid email address' }),
 });
 
 export default function EmailLogin({
@@ -27,7 +27,7 @@ export default function EmailLogin({
   const [hasOtpExpired, setHasOtpExpired] = useState(false);
   const [shouldSendOtp, setShouldSendOtp] = useState(false);
   const { mutate } = useSWRConfig();
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: '',
@@ -115,7 +115,7 @@ export default function EmailLogin({
   return (
     <div className="fk:w-full">
       {hasOtpBeenSent ? (
-        <Alert variant="success">
+        <Alert variant="default">
           <AlertDescription>
             Keep this window open and in a new tab open the link we just sent to:{' '}
             <strong>{form.getValues('email')}</strong> (

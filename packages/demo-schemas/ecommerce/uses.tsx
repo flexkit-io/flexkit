@@ -22,7 +22,7 @@ export const uses = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {

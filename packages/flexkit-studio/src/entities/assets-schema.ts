@@ -25,7 +25,7 @@ export const assetSchema: Entity = {
       label: 'Filename',
       scope: 'global',
       options: {
-        size: 280,
+        size: 320,
       },
       isEditable: true,
       dataType: 'string',
@@ -52,7 +52,7 @@ export const assetSchema: Entity = {
       label: 'Width',
       scope: 'global',
       options: {
-        size: 80,
+        size: 90,
       },
       isEditable: true,
       dataType: 'int',
@@ -65,7 +65,7 @@ export const assetSchema: Entity = {
       label: 'Height',
       scope: 'global',
       options: {
-        size: 80,
+        size: 100,
       },
       isEditable: true,
       dataType: 'int',

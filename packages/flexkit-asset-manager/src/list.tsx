@@ -15,13 +15,15 @@ import {
 } from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
 import type { AttributeValue, ColumnDef, SingleProject, SortingState, Updater } from '@flexkit/studio';
+import { AssetGrid } from './data-grid/asset-grid';
 import { DataTableToolbar } from './data-grid/data-table-toolbar';
 import { AssetRowActions } from './data-grid/asset-row-actions';
+import { getStoredViewMode, setStoredViewMode, type AssetViewMode } from './data-grid/view-mode';
 
 type WhereClause = { [key: string]: unknown };
 
-const pageSize = 25;
-const defaultSort = [{ _updatedAt: 'DESC' }];
+const pageSize = 50;
+const defaultSort = [{ _updatedAt: 'DESC' }, { _id: 'DESC' }];
 
 export function List(): JSX.Element {
   const entityName = '_assets';
@@ -33,6 +35,7 @@ export function List(): JSX.Element {
   const { projects, currentProjectId } = useConfig();
   const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [viewMode, setViewMode] = useState<AssetViewMode>(() => getStoredViewMode());
   const columnsDefinition = useGridColumnsDefinition<AttributeValue, unknown>({
     attributesSchema: assetSchema.attributes,
     actionsComponent: (row) => <AssetRowActions row={row} />,
@@ -62,16 +65,26 @@ export function List(): JSX.Element {
       return defaultSort;
     }
 
-    return sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' }));
+    const primarySort = sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' }));
+    const hasIdSort = primarySort.some((entry) => '_id' in entry);
+
+    if (hasIdSort) {
+      return primarySort;
+    }
+
+    // Tie-break so offset pages stay stable when sort values collide.
+    return [...primarySort, { _id: 'DESC' }];
   }, [sorting]);
 
-  const variables = useMemo(
-    () => ({ where, offset: 0, limit: pageSize, sort: graphqlSort }),
-    [where, graphqlSort]
-  );
+  const variables = useMemo(() => ({ where, offset: 0, limit: pageSize, sort: graphqlSort }), [where, graphqlSort]);
 
   function handleSortingChange(updater: Updater<SortingState>): void {
     setSorting(updater);
+  }
+
+  function handleViewModeChange(mode: AssetViewMode): void {
+    setViewMode(mode);
+    setStoredViewMode(mode);
   }
 
   const { isLoading, isLoadingMore, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
@@ -82,8 +95,7 @@ export function List(): JSX.Element {
     selection: 'list',
   });
 
-  const isInitialLoading =
-    isSearchLoading || (isLoading && (data == null || data.length === 0));
+  const isInitialLoading = isSearchLoading || (isLoading && (data == null || data.length === 0));
 
   const rowsCount = data?.length ?? 0;
   const hasMore = !isSearchLoading && count > 0 && rowsCount > 0 && rowsCount < count;
@@ -91,11 +103,12 @@ export function List(): JSX.Element {
   const handleLoadMore = useCallback(() => {
     fetchMore({
       variables: {
-        offset: rowsCount,
+        // Offset is tracked inside useEntityQuery from page windows; value here is ignored.
+        offset: 0,
         limit: pageSize,
       },
     });
-  }, [fetchMore, rowsCount]);
+  }, [fetchMore]);
 
   const loadingData = useMemo(
     () => Array.from({ length: pageSize }, (_, index) => ({ _id: `loading-${index}` }) as AttributeValue),
@@ -122,7 +135,7 @@ export function List(): JSX.Element {
           </span>
         ) : null}
       </div>
-      {!schemaErrorMessage ? (
+      {!schemaErrorMessage && viewMode === 'list' ? (
         <DataTable
           classNames={{ row: 'fk:h-20' }}
           columns={isInitialLoading ? loadingColumns : columnsDefinition}
@@ -138,8 +151,34 @@ export function List(): JSX.Element {
             <DataTableToolbar
               entityName={assetSchema.name}
               table={table}
+              viewMode={viewMode}
               onSearchLoadingChange={setIsSearchLoading}
               onSearchWhereChange={setSearchWhere}
+              onViewModeChange={handleViewModeChange}
+            />
+          )}
+        />
+      ) : null}
+      {!schemaErrorMessage && viewMode === 'grid' ? (
+        <AssetGrid
+          columns={columnsDefinition}
+          data={isInitialLoading ? [] : ((data ?? []) as AttributeValue[])}
+          entityName={assetSchema.name}
+          hasMore={hasMore}
+          isLoading={isInitialLoading}
+          isLoadingMore={isLoadingMore}
+          pageSize={pageSize}
+          sorting={sorting}
+          onLoadMore={handleLoadMore}
+          onSortingChange={handleSortingChange}
+          toolbarComponent={(table) => (
+            <DataTableToolbar
+              entityName={assetSchema.name}
+              table={table}
+              viewMode={viewMode}
+              onSearchLoadingChange={setIsSearchLoading}
+              onSearchWhereChange={setSearchWhere}
+              onViewModeChange={handleViewModeChange}
             />
           )}
         />

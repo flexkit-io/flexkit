@@ -22,7 +22,7 @@ export const currencies = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
@@ -30,12 +30,12 @@ export const currencies = defineEntity({
       label: 'Code',
       scope: 'global',
       options: {
-        size: 75,
+        size: 110,
         comment: 'The ISO 4217 alpha-3 code of the currency',
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Code is required' }),
+      validation: (z) => z.string().min(1, { error: 'Code is required' }),
       defaultValue: '',
     },
     {
@@ -43,12 +43,12 @@ export const currencies = defineEntity({
       label: 'Symbol',
       scope: 'global',
       options: {
-        size: 75,
+        size: 120,
         comment: 'The symbol of the currency',
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Symbol is required' }),
+      validation: (z) => z.string().min(1, { error: 'Symbol is required' }),
       defaultValue: '',
     },
     {
@@ -62,7 +62,7 @@ export const currencies = defineEntity({
       dataType: 'float',
       inputType: 'number',
       previewType: 'ratePreviewField',
-      validation: (z) => z.number().min(0, { message: 'Rate is required' }),
+      validation: (z) => z.number().min(0, { error: 'Rate is required' }),
       defaultValue: 0,
     },
   ],

@@ -18,7 +18,7 @@ export const salesOrderItems = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'SKU is required' }),
+      validation: (z) => z.string().min(1, { error: 'SKU is required' }),
       defaultValue: '',
     },
     {
@@ -32,7 +32,7 @@ export const salesOrderItems = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
@@ -45,7 +45,7 @@ export const salesOrderItems = defineEntity({
       },
       dataType: 'int',
       inputType: 'number',
-      validation: (z) => z.number().min(1, { message: 'Quantity is required' }),
+      validation: (z) => z.number().min(1, { error: 'Quantity is required' }),
       defaultValue: '',
     },
     {
@@ -59,7 +59,7 @@ export const salesOrderItems = defineEntity({
       dataType: 'float',
       inputType: 'number',
       previewType: 'text',
-      validation: (z) => z.number().min(1, { message: 'Price is required' }),
+      validation: (z) => z.number().min(1, { error: 'Price is required' }),
       defaultValue: '',
     },
     {
@@ -73,7 +73,7 @@ export const salesOrderItems = defineEntity({
       dataType: 'float',
       inputType: 'number',
       previewType: 'text',
-      validation: (z) => z.number().min(1, { message: 'Row total is required' }),
+      validation: (z) => z.number().min(1, { error: 'Row total is required' }),
       defaultValue: '',
     },
     {

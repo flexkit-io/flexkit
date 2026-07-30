@@ -22,7 +22,7 @@ export const customers = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().email({ message: 'Invalid email address' }),
+      validation: (z) => z.email({ error: 'Invalid email address' }),
       defaultValue: '',
     },
     {
@@ -36,7 +36,7 @@ export const customers = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
@@ -50,7 +50,7 @@ export const customers = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      validation: (z) => z.string().min(1, { message: 'Last name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Last name is required' }),
       defaultValue: '',
     },
     {
@@ -64,7 +64,7 @@ export const customers = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      validation: (z) => z.string().min(1, { message: 'Phone is required' }),
+      validation: (z) => z.string().min(1, { error: 'Phone is required' }),
       defaultValue: '',
     },
     {

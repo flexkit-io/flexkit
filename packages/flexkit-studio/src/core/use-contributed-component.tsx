@@ -3,6 +3,7 @@ import type { ComponentType, LazyExoticComponent } from 'react';
 import { useConfig } from './config/config-context';
 import { PluginOptions } from './config/types';
 import type { LogoProps, ProjectSelectorProps, SearchProps, UserNavProps } from './config/types';
+import type { SelectOptions } from './types';
 import type { FormFieldParams } from '../form/types';
 import type { Asset } from '../data-grid/preview-components/asset';
 
@@ -19,6 +20,9 @@ interface ContributionPointMap {
   'previewFields.text': LazyExoticComponent<ComponentType<{ value: string }>>;
   'previewFields.editor': LazyExoticComponent<ComponentType<{ value: string }>>;
   'previewFields.datetime': LazyExoticComponent<ComponentType<{ value: string }>>;
+  'previewFields.select': LazyExoticComponent<
+    ComponentType<{ value: string | number | null | undefined; options?: SelectOptions }>
+  >;
 }
 
 const contributionPointMap: ContributionPointMap = {
@@ -50,6 +54,9 @@ const contributionPointMap: ContributionPointMap = {
   ),
   'previewFields.datetime': lazy(() =>
     import('../data-grid/preview-components/datetime.js').then(({ DateTime }) => ({ 'default': DateTime }))
+  ),
+  'previewFields.select': lazy(() =>
+    import('../data-grid/preview-components/select.js').then(({ Select }) => ({ 'default': Select }))
   ),
 };
 
