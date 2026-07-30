@@ -22,7 +22,7 @@ export const pipelineStages = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Stage name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Stage name is required' }),
       defaultValue: '',
     },
     {
@@ -52,7 +52,7 @@ export const pipelineStages = defineEntity({
       },
       dataType: 'float',
       inputType: 'number',
-      validation: (z) => z.number().int().min(0, { message: 'Position must be a positive number' }),
+      validation: (z) => z.number().int().min(0, { error: 'Position must be a positive number' }),
       defaultValue: '',
     },
     {

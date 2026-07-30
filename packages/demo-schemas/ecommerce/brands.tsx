@@ -23,7 +23,7 @@ export const brands = defineEntity({
       isUnique: true,
       isSearchable: true,
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
@@ -36,7 +36,7 @@ export const brands = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Slug is required' }),
+      validation: (z) => z.string().min(1, { error: 'Slug is required' }),
       defaultValue: '',
     },
     {
@@ -48,7 +48,7 @@ export const brands = defineEntity({
       },
       dataType: 'string',
       inputType: 'editor',
-      validation: (z) => z.string().min(1, { message: 'Description is required' }),
+      validation: (z) => z.string().min(1, { error: 'Description is required' }),
       defaultValue: '',
     },
     {
@@ -60,7 +60,7 @@ export const brands = defineEntity({
       },
       dataType: 'string',
       inputType: 'editor',
-      validation: (z) => z.string().min(1, { message: 'Bottom Description is required' }),
+      validation: (z) => z.string().min(1, { error: 'Bottom Description is required' }),
       defaultValue: '',
     },
     {

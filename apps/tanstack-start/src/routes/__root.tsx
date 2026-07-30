@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
+import { createRootRoute, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router';
 import '../styles.css';
 
 export const Route = createRootRoute({
@@ -39,6 +39,7 @@ export const Route = createRootRoute({
     ],
   }),
   component: RootComponent,
+  notFoundComponent: NotFoundComponent,
 });
 
 function RootComponent() {
@@ -46,6 +47,17 @@ function RootComponent() {
     <RootDocument>
       <Outlet />
     </RootDocument>
+  );
+}
+
+function NotFoundComponent() {
+  return (
+    <main>
+      <h1>Not Found</h1>
+      <p>
+        <Link to="/studio">Go to Studio</Link>
+      </p>
+    </main>
   );
 }
 

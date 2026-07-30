@@ -22,7 +22,7 @@ export const paymentTerms = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
@@ -35,7 +35,7 @@ export const paymentTerms = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Admin Ref is required' }),
+      validation: (z) => z.string().min(1, { error: 'Admin Ref is required' }),
       defaultValue: '',
     },
     {
@@ -48,7 +48,7 @@ export const paymentTerms = defineEntity({
       },
       dataType: 'int',
       inputType: 'number',
-      validation: (z) => z.number().min(0, { message: 'ERP ID is required' }),
+      validation: (z) => z.number().min(0, { error: 'ERP ID is required' }),
       defaultValue: 0,
     },
   ],

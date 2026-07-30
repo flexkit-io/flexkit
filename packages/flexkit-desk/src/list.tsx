@@ -19,8 +19,8 @@ import {
 import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@flexkit/studio/ui';
 import type { AttributeValue, ColumnDef, SingleProject, Row, SortingState, Updater } from '@flexkit/studio';
 
-const pageSize = 25;
-const defaultSort = [{ _updatedAt: 'DESC' }];
+const pageSize = 50;
+const defaultSort = [{ _updatedAt: 'DESC' }, { _id: 'DESC' }];
 
 export function List(): JSX.Element {
   const { entity: entityName } = useParams();
@@ -54,7 +54,15 @@ export function List(): JSX.Element {
       return defaultSort;
     }
 
-    return sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' }));
+    const primarySort = sorting.map(({ id, desc }) => ({ [id]: desc ? 'DESC' : 'ASC' }));
+    const hasIdSort = primarySort.some((entry) => '_id' in entry);
+
+    if (hasIdSort) {
+      return primarySort;
+    }
+
+    // Tie-break so offset pages stay stable when sort values collide.
+    return [...primarySort, { _id: 'DESC' }];
   }, [sorting]);
 
   const variables = entityId
@@ -83,11 +91,12 @@ export function List(): JSX.Element {
   const handleLoadMore = useCallback(() => {
     fetchMore({
       variables: {
-        offset: rowsCount,
+        // Offset is tracked inside useEntityQuery from page windows; value here is ignored.
+        offset: 0,
         limit: pageSize,
       },
     });
-  }, [fetchMore, rowsCount]);
+  }, [fetchMore]);
 
   const handleReload = useCallback(() => {
     setScrollToTopKey((key) => key + 1);

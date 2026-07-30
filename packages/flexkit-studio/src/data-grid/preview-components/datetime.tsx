@@ -1,17 +1,18 @@
 import { format, isValid } from 'date-fns';
+import { CopyableTruncatedText } from './copyable-truncated-text';
 
 export function DateTime({ value }: { value: string | object | unknown[] }) {
   if (value === null || value === undefined || value === '' || typeof value !== 'string') {
-    return <div className="fk:truncate" />;
+    return <CopyableTruncatedText value="" />;
   }
 
   const date = new Date(value);
 
   if (!isValid(date)) {
-    return <div className="fk:truncate" />;
+    return <CopyableTruncatedText value="" />;
   }
 
   const displayValue = format(date, 'MMM d, yyyy') + ' at ' + format(date, 'HH:mm');
 
-  return <div className="fk:truncate">{displayValue}</div>;
+  return <CopyableTruncatedText value={displayValue} />;
 }

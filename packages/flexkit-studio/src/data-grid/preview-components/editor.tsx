@@ -1,6 +1,7 @@
 import { generateText } from '@tiptap/core';
 import { defaultExtensions } from '../../form/fields/editor/extensions';
 import { Extensions } from '@tiptap/core';
+import { CopyableTruncatedText } from './copyable-truncated-text';
 
 const MAX_LENGTH = 100;
 
@@ -16,5 +17,5 @@ export function Editor({ value }: { value: string }) {
     textValue = value?.substring(0, MAX_LENGTH) ?? '';
   }
 
-  return <div className="fk:truncate">{textValue}</div>;
+  return <CopyableTruncatedText value={textValue} />;
 }

@@ -5,8 +5,6 @@ import type { JSX, ReactElement, UIEvent } from 'react';
 import {
   flexRender,
   getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -68,6 +66,9 @@ interface ExtendedDataTable extends TableMeta<unknown> {
   getRowBackground: (row: Row<AttributeValue>) => string;
 }
 
+// Matches default `fk:h-9` rows (text-sm / 28px assets + cell padding + border).
+const DEFAULT_ROW_HEIGHT_PX = 36;
+
 function inferRowHeightEstimate(rowClassName?: string): number | undefined {
   if (!rowClassName) {
     return undefined;
@@ -79,7 +80,19 @@ function inferRowHeightEstimate(rowClassName?: string): number | undefined {
     return 80;
   }
 
+  if (tokens.includes('fk:h-10')) {
+    return 40;
+  }
+
+  if (tokens.includes('fk:h-9')) {
+    return 36;
+  }
+
   return undefined;
+}
+
+function resolveRowHeightPx(rowHeightEstimate?: number, rowClassName?: string): number {
+  return rowHeightEstimate ?? inferRowHeightEstimate(rowClassName) ?? DEFAULT_ROW_HEIGHT_PX;
 }
 
 function getLoadMoreThreshold(clientHeight: number): number {
@@ -155,7 +168,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
     },
     initialState: {
       pagination: {
-        pageSize: pageSize ?? 25,
+        pageSize: pageSize ?? 50,
       },
     },
     enableRowSelection: true,
@@ -167,9 +180,10 @@ export function DataTable<TData extends AttributeValue, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
     getRowId: (row) => row._id,
+    // Filtering is applied via GraphQL `where` (Asset Manager toolbar); keep loaded
+    // pages intact instead of re-filtering them client-side.
+    manualFiltering: true,
     manualPagination: true,
     manualSorting: true,
     meta: {
@@ -178,15 +192,14 @@ export function DataTable<TData extends AttributeValue, TValue>({
   });
 
   const { rows } = table.getRowModel();
+  const rowHeightPx = resolveRowHeightPx(rowHeightEstimate, classNames?.row);
+  const hasExplicitRowHeightClass = inferRowHeightEstimate(classNames?.row) != null;
+  // Fixed row heights: skip dynamic measurement so infinite-scroll appends keep
+  // identical spacing (estimate corrections were causing a brief taller jump).
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
-    estimateSize: () => rowHeightEstimate ?? inferRowHeightEstimate(classNames?.row) ?? 45, // estimate row height for accurate scrollbar dragging
+    estimateSize: () => rowHeightPx,
     getScrollElement: () => scrollRef.current,
-    //measure dynamic row height, except in firefox because it measures table border height incorrectly
-    measureElement:
-      typeof window !== 'undefined' && navigator.userAgent.includes('Firefox')
-        ? (element) => element.getBoundingClientRect().height
-        : undefined,
     overscan: 5,
   });
 
@@ -220,6 +233,8 @@ export function DataTable<TData extends AttributeValue, TValue>({
       return;
     }
 
+    // Optimistic guard until the parent's isLoadingMore prop catches up.
+    isLoadingMoreRef.current = true;
     onLoadMoreRef.current();
   }, []);
 
@@ -292,14 +307,17 @@ export function DataTable<TData extends AttributeValue, TValue>({
 
                 return (
                   <TableRow
-                    className={`${(table.options.meta as ExtendedDataTable).getRowBackground(
-                      row
-                    )} fk:flex fk:absolute fk:w-full ${classNames?.row ?? ''}`}
+                    className={cn(
+                      (table.options.meta as ExtendedDataTable).getRowBackground(row),
+                      'fk:flex fk:absolute fk:w-full fk:overflow-hidden',
+                      !hasExplicitRowHeightClass && rowHeightEstimate == null && 'fk:h-9',
+                      classNames?.row
+                    )}
                     data-index={virtualRow.index}
                     data-state={row.getIsSelected() && 'selected'}
                     key={virtualRow.key}
-                    ref={rowVirtualizer.measureElement}
                     style={{
+                      height: `${rowHeightPx.toString()}px`,
                       transform: `translateY(${virtualRow.start.toString()}px)`,
                     }}
                   >

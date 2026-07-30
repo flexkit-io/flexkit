@@ -84,7 +84,7 @@
   "dependencies": {
     "@ai-sdk/react": "3.0.118",
     "@apollo/client": "4.0.9",
-    "@hookform/resolvers": "^3.3.2",
+    "@hookform/resolvers": "^5.5.7",
     "@lexical/code": "^0.12.2",
     "@lexical/html": "^0.12.2",
     "@lexical/link": "^0.12.2",
@@ -128,7 +128,7 @@
     "use-debounce": "10.0.3",
     "uuid": "^9.0.1",
     "vaul": "1.1.2",
-    "zod": "^3.22.4"
+    "zod": "4.4.3"
   },
   "peerDependencies": {
     "react": "^19.0.0",

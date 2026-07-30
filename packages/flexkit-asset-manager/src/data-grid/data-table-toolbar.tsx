@@ -6,6 +6,8 @@ import {
   ImageIcon,
   ImagePlayIcon,
   LayersIcon,
+  LayoutGrid,
+  List,
   ListChecks,
   MinusIcon,
   SplinePointerIcon,
@@ -18,20 +20,17 @@ import {
 import type { ReactTable, SearchRequestProps } from '@flexkit/studio';
 import {
   Button,
-  CommandDialog,
-  CommandInput,
-  CommandList,
-  CommandItem,
-  CommandGroup,
-  CommandEmpty,
-  CommandSeparator,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  ToggleGroup,
+  ToggleGroupItem,
 } from '@flexkit/studio/ui';
+import type { AssetViewMode } from './view-mode';
+import { AssetTagDialogs, type AssetTagDialogMode } from './asset-tag-dialogs';
 import {
   DataTableFacetedFilter,
   DataTableSortedBy,
@@ -39,17 +38,16 @@ import {
   useUploadAssets,
   useDispatch,
   useEntityQuery,
-  useEntityMutation,
   useAppContext,
-  gql,
   useConfig,
-  getEntityUpdateMutation,
   useSearch,
 } from '@flexkit/studio';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
   table: ReactTable<TData>;
+  viewMode: AssetViewMode;
+  onViewModeChange: (mode: AssetViewMode) => void;
   onSearchLoadingChange?: (isLoading: boolean) => void;
   onSearchWhereChange?: (where: WhereClause) => void;
 }
@@ -92,6 +90,8 @@ const mimeTypes = [
 export function DataTableToolbar<TData>({
   entityName,
   table,
+  viewMode,
+  onViewModeChange,
   onSearchLoadingChange,
   onSearchWhereChange,
 }: DataTableToolbarProps<TData>): JSX.Element {
@@ -100,11 +100,7 @@ export function DataTableToolbar<TData>({
   const uploadAssets = useUploadAssets();
   const dispatch = useDispatch();
   const { scope } = useAppContext();
-  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false);
-  const [isRemoveTagDialogOpen, setIsRemoveTagDialogOpen] = useState(false);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [selectedRemoveTagIds, setSelectedRemoveTagIds] = useState<string[]>([]);
-  const [runMutation, setMutation, setOptions] = useEntityMutation();
+  const [tagDialogMode, setTagDialogMode] = useState<AssetTagDialogMode>(null);
   const { currentProjectSchema: schema } = useConfig();
   const [search, setSearch] = useState('');
   const textWhereRef = useRef<WhereClause>({});
@@ -144,16 +140,9 @@ export function DataTableToolbar<TData>({
     .getSelectedRowModel()
     .rows.map((row) => (row.original as unknown as { _id: string })._id);
 
-  const tagsQueryVariables = useMemo(
-    () => ({ where: {}, limit: 500, offset: 0, sort: [{ name: 'ASC' }] }),
-    []
-  );
-  const mimeSampleQueryVariables = useMemo(
-    () => ({ where: {}, limit: 500, offset: 0, sort: [{ _updatedAt: 'DESC' }] }),
-    []
-  );
+  const tagsQueryVariables = useMemo(() => ({ where: {}, limit: 500, offset: 0, sort: [{ name: 'ASC' }] }), []);
 
-  // Load tags for the selector
+  // Load tags for the selector (full tags collection, not derived from loaded assets)
   const { data: tagsData } = useEntityQuery({
     entityNamePlural: '_tags',
     schema,
@@ -166,86 +155,6 @@ export function DataTableToolbar<TData>({
 
     return items.map((t) => ({ _id: (t as { _id: string })._id, name: (t as { name: string }).name }));
   }, [tagsData]);
-
-  // Load a sample of assets to derive dynamic mime type options
-  const { data: mimeSampleData } = useEntityQuery({
-    entityNamePlural: '_assets',
-    schema,
-    scope,
-    variables: mimeSampleQueryVariables,
-    selection: 'list',
-  });
-
-  type AssetItem = { _id: string; mimeType?: string | null };
-
-  function getMimeLabel(mime: string): string {
-    if (mime === 'image/gif') {
-      return 'GIF';
-    }
-
-    if (mime === 'image/jpeg') {
-      return 'JPEG';
-    }
-
-    if (mime === 'video/mp4') {
-      return 'MP4';
-    }
-
-    if (mime === 'image/png') {
-      return 'PNG';
-    }
-
-    if (mime === 'image/svg+xml') {
-      return 'SVG';
-    }
-
-    if (mime === 'image/webp') {
-      return 'WebP';
-    }
-
-    const parts = mime.split('/');
-
-    if (parts.length === 2 && parts[1]) {
-      return parts[1].toUpperCase();
-    }
-
-    return mime;
-  }
-
-  function getMimeIcon(mime: string) {
-    if (mime === 'image/svg+xml') {
-      return SplinePointerIcon;
-    }
-
-    if (mime.startsWith('image/')) {
-      return ImageIcon;
-    }
-
-    if (mime.startsWith('video/')) {
-      return FilePlayIcon;
-    }
-
-    return LayersIcon;
-  }
-
-  const dynamicMimeOptions = useMemo(() => {
-    const items = Array.isArray(mimeSampleData) ? (mimeSampleData as unknown as AssetItem[]) : [];
-    const unique = new Set<string>();
-
-    for (const item of items) {
-      const value = item.mimeType ?? '';
-
-      if (value) {
-        unique.add(value);
-      }
-    }
-
-    const values = Array.from(unique.values()).sort();
-
-    return values.map((value) => ({ value, label: getMimeLabel(value), icon: getMimeIcon(value) }));
-  }, [mimeSampleData]);
-
-  const mimeTypeOptions = dynamicMimeOptions.length > 0 ? dynamicMimeOptions : mimeTypes;
 
   const tagOptions = useMemo(() => {
     return allTags.map((t) => ({ value: t._id, label: t.name }));
@@ -290,15 +199,12 @@ export function DataTableToolbar<TData>({
           isDestructive: true,
           dialogActionCancel: () => {},
           dialogActionSubmit: () => {
-            for (const id of selectedIds) {
-              const payload = { entityId: id, entityName, silent: true } as unknown as {
-                entityId: string;
-                entityName: string;
-              };
-              // A unique _id per action prevents the actions reducer from
-              // collapsing same-millisecond batch deletions into one.
-              dispatch({ type: 'DeleteEntity', _id: `delete-${id}`, payload });
-            }
+            // One DeleteEntity action → one GraphQL mutation with `_id: { in: [...] }`.
+            dispatch({
+              type: 'DeleteEntity',
+              _id: `delete-batch-${Date.now()}`,
+              payload: { entityId: selectedIds, entityName, silent: true },
+            });
 
             table.resetRowSelection();
           },
@@ -306,73 +212,6 @@ export function DataTableToolbar<TData>({
       },
     });
   }
-
-  const handleAddTagsToSelected = useCallback(async (): Promise<void> => {
-    if (selectedIds.length === 0 || selectedTagIds.length === 0) {
-      return;
-    }
-
-    // Build relationship connect for multiple tags
-    const dataToMutate = {
-      tags: {
-        relationships: {
-          connect: selectedTagIds.map((id) => ({ _id: id })),
-        },
-        disabled: false,
-        scope,
-      },
-    } as unknown as WhereClause;
-
-    const mutation = getEntityUpdateMutation('_assets', selectedIds[0] ?? '', scope, schema, {}, dataToMutate as never);
-
-    await new Promise<void>((resolve) => {
-      setMutation(gql`
-        ${mutation}
-      `);
-      setOptions({
-        variables: { where: { _id: { in: selectedIds } } },
-        onCompleted: () => resolve(),
-      });
-      runMutation(true);
-    });
-
-    setIsTagDialogOpen(false);
-    setSelectedTagIds([]);
-    table.resetRowSelection();
-  }, [runMutation, schema, scope, selectedIds, selectedTagIds, setMutation, setOptions, table]);
-
-  const handleRemoveTagsFromSelected = useCallback(async (): Promise<void> => {
-    if (selectedIds.length === 0 || selectedRemoveTagIds.length === 0) {
-      return;
-    }
-
-    const dataToMutate = {
-      tags: {
-        relationships: {
-          disconnect: selectedRemoveTagIds,
-        },
-        disabled: false,
-        scope,
-      },
-    } as unknown as WhereClause;
-
-    const mutation = getEntityUpdateMutation('_assets', selectedIds[0] ?? '', scope, schema, {}, dataToMutate as never);
-
-    await new Promise<void>((resolve) => {
-      setMutation(gql`
-        ${mutation}
-      `);
-      setOptions({
-        variables: { where: { _id: { in: selectedIds } } },
-        onCompleted: () => resolve(),
-      });
-      runMutation(true);
-    });
-
-    setIsRemoveTagDialogOpen(false);
-    setSelectedRemoveTagIds([]);
-    table.resetRowSelection();
-  }, [runMutation, schema, scope, selectedIds, selectedRemoveTagIds, setMutation, setOptions, table]);
 
   useEffect(() => {
     onSearchLoadingChange?.(isSearchPending);
@@ -484,28 +323,25 @@ export function DataTableToolbar<TData>({
 
               if (value.trim().length === 0) {
                 setSearchQuery({ ...baseSearchRequest, commonParams: { q: '' } });
-
-                if (onSearchWhereChange) {
-                  onSearchWhereChange({});
-                }
+                textWhereRef.current = {};
+                emitCombinedWhere();
 
                 return;
               }
 
               debouncedSetSearchQuery(value.trim());
             }}
-            className="fk:h-8 fk:w-[150px] fk:lg:w-[250px] fk:pl-8!"
+            className="fk:h-8 fk:w-37.5 fk:lg:w-62.5 fk:px-7"
           />
           {search ? (
             <button
               aria-label="Clear search"
-              className="fk:absolute fk:right-2 fk:top-2 fk:text-muted-foreground fk:hover:text-foreground"
+              className="fk:absolute fk:right-2 fk:top-2 fk:text-muted-foreground fk:hover:text-foreground fk:cursor-pointer"
               onClick={() => {
                 setSearch('');
                 setSearchQuery({ ...baseSearchRequest, commonParams: { q: '' } });
-                if (onSearchWhereChange) {
-                  onSearchWhereChange({});
-                }
+                textWhereRef.current = {};
+                emitCombinedWhere();
               }}
               type="button"
             >
@@ -514,20 +350,18 @@ export function DataTableToolbar<TData>({
           ) : null}
         </div>
         {table.getColumn('mimeType') && (
-          <DataTableFacetedFilter column={table.getColumn('mimeType')} title="File type" options={mimeTypeOptions} />
+          <DataTableFacetedFilter column={table.getColumn('mimeType')} options={mimeTypes} title="File type" />
         )}
         {table.getColumn('tags') && (
-          <DataTableFacetedFilter column={table.getColumn('tags')} title="Tags" options={tagOptions} />
+          <DataTableFacetedFilter column={table.getColumn('tags')} options={tagOptions} title="Tags" />
         )}
         {isFiltered && (
           <Button
             variant="ghost"
             onClick={() => {
               table.resetColumnFilters();
-
-              if (onSearchWhereChange) {
-                onSearchWhereChange({});
-              }
+              filterWhereRef.current = {};
+              emitCombinedWhere();
             }}
             className="fk:h-8 fk:px-2 fk:lg:px-3"
           >
@@ -546,10 +380,10 @@ export function DataTableToolbar<TData>({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="fk:w-[240px]">
-              <DropdownMenuItem onClick={() => setIsTagDialogOpen(true)}>
+              <DropdownMenuItem onClick={() => setTagDialogMode('add')}>
                 <TagIcon className="fk:mr-2 fk:h-4 fk:w-4" /> Add tag
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsRemoveTagDialogOpen(true)}>
+              <DropdownMenuItem onClick={() => setTagDialogMode('remove')}>
                 <MinusIcon className="fk:mr-2 fk:h-4 fk:w-4" /> Remove tag
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -561,75 +395,37 @@ export function DataTableToolbar<TData>({
           </DropdownMenu>
         </div>
       ) : null}
-      <Button className="fk:ml-auto fk:h-8 fk:lg:flex" onClick={handleUpload} size="sm" variant="default">
-        Upload assets
-      </Button>
+      <div className="fk:ml-auto fk:flex fk:items-center fk:gap-2">
+        <ToggleGroup
+          size="sm"
+          type="single"
+          value={viewMode}
+          onValueChange={(value) => {
+            if (value === 'list' || value === 'grid') {
+              onViewModeChange(value);
+            }
+          }}
+        >
+          <ToggleGroupItem aria-label="Grid view" value="grid">
+            <LayoutGrid className="fk:h-4 fk:w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem aria-label="List view" value="list">
+            <List className="fk:h-4 fk:w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <Button className="fk:h-8 fk:lg:flex" onClick={handleUpload} size="sm" variant="default">
+          Upload assets
+        </Button>
+      </div>
 
-      <CommandDialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
-        <CommandInput placeholder="Search tags..." />
-        <CommandList className="fk:h-[300px]">
-          <CommandEmpty>No tags found.</CommandEmpty>
-          <CommandGroup heading="Tags">
-            {allTags.map((tag) => {
-              const isSelected = selectedTagIds.includes(tag._id);
-              return (
-                <CommandItem
-                  key={tag._id}
-                  onSelect={() => {
-                    setSelectedTagIds((prev) =>
-                      isSelected ? prev.filter((id) => id !== tag._id) : [...prev, tag._id]
-                    );
-                  }}
-                >
-                  <input className="fk:mr-2" checked={isSelected} onChange={() => {}} type="checkbox" />
-                  {tag.name}
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
-        </CommandList>
-        <CommandSeparator />
-        <div className="fk:p-2">
-          <Button className="fk:w-full" onClick={handleAddTagsToSelected} disabled={selectedTagIds.length === 0}>
-            Add tag(s) to selected assets
-          </Button>
-        </div>
-      </CommandDialog>
-
-      <CommandDialog open={isRemoveTagDialogOpen} onOpenChange={setIsRemoveTagDialogOpen}>
-        <CommandInput placeholder="Search tags..." />
-        <CommandList className="fk:h-[300px]">
-          <CommandEmpty>No tags found.</CommandEmpty>
-          <CommandGroup heading="Tags">
-            {allTags.map((tag) => {
-              const isSelected = selectedRemoveTagIds.includes(tag._id);
-              return (
-                <CommandItem
-                  key={tag._id}
-                  onSelect={() => {
-                    setSelectedRemoveTagIds((prev) =>
-                      isSelected ? prev.filter((id) => id !== tag._id) : [...prev, tag._id]
-                    );
-                  }}
-                >
-                  <input className="fk:mr-2" checked={isSelected} onChange={() => {}} type="checkbox" />
-                  {tag.name}
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
-        </CommandList>
-        <CommandSeparator />
-        <div className="fk:p-2">
-          <Button
-            className="fk:w-full"
-            onClick={handleRemoveTagsFromSelected}
-            disabled={selectedRemoveTagIds.length === 0}
-          >
-            Remove tag(s) from selected assets
-          </Button>
-        </div>
-      </CommandDialog>
+      {tagDialogMode !== null ? (
+        <AssetTagDialogs
+          assetIds={selectedIds}
+          mode={tagDialogMode}
+          onCompleted={() => table.resetRowSelection()}
+          onModeChange={setTagDialogMode}
+        />
+      ) : null}
     </div>
   );
 }

@@ -21,7 +21,7 @@ export const crmCurrencies = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      validation: (z) => z.string().min(1, { message: 'Currency name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Currency name is required' }),
       defaultValue: '',
     },
     {
@@ -36,7 +36,7 @@ export const crmCurrencies = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(3, { message: 'Currency code is required' }),
+      validation: (z) => z.string().min(3, { error: 'Currency code is required' }),
       defaultValue: '',
     },
     {
@@ -49,7 +49,7 @@ export const crmCurrencies = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Symbol is required' }),
+      validation: (z) => z.string().min(1, { error: 'Symbol is required' }),
       defaultValue: '',
     },
     {

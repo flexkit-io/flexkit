@@ -1,7 +1,7 @@
 import { ComponentType } from 'react';
 import type { JSX } from 'react';
 import type { CellContext, Column, ColumnDef, Row, Table } from '@tanstack/react-table';
-import type { Attribute, InputType } from '../core/types';
+import type { Attribute, InputType, SelectOptions } from '../core/types';
 import type { AttributeValue } from '../graphql-client/types';
 import { useConfig } from '../core/config/config-context';
 import { Checkbox } from '../ui/primitives/checkbox';
@@ -10,6 +10,7 @@ import { Text as TextPreviewField } from './preview-components/text';
 import { Editor as EditorPreviewField } from './preview-components/editor';
 import { Asset as AssetPreviewField } from './preview-components/asset';
 import { DateTime as DateTimePreviewField } from './preview-components/datetime';
+import { Select as SelectPreviewField } from './preview-components/select';
 import { Tags as TagsPreviewField } from './preview-components/tags';
 import { DataTableColumnHeader } from './data-table-column-header';
 
@@ -45,7 +46,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     'asset': 'asset',
     'number': 'text',
     'relationship': 'text',
-    'select': 'text',
+    'select': 'select',
     'switch': 'boolean',
     'text': 'text',
     'textarea': 'text',
@@ -58,7 +59,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     'asset': AssetPreviewField,
     'number': TextPreviewField,
     'relationship': TextPreviewField,
-    'select': TextPreviewField,
+    'select': SelectPreviewField,
     'switch': BooleanPrefiewField,
     'text': TextPreviewField,
     'textarea': TextPreviewField,
@@ -113,10 +114,22 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
             <div className="fk:flex fk:items-center">{attribute.label}</div>
           ),
         cell: ({ row }: CellContext<TData, TValue>) => {
-          const PreviewComponent = previewComponent as ComponentType<{ value: TData }>;
+          const PreviewComponent = previewComponent as ComponentType<{
+            value: TData;
+            options?: SelectOptions;
+          }>;
 
           // TODO: Pass the complete row data to the preview component, so it can concatenate values from other attributes (i.e. for the "image dimensions" column)
           // console.log(row.getAllCells());
+          if (previewType === 'select') {
+            return (
+              <PreviewComponent
+                value={row.getValue(attribute.name)}
+                options={attribute.options as SelectOptions | undefined}
+              />
+            );
+          }
+
           return <PreviewComponent value={row.getValue(attribute.name)} />;
         },
         enableSorting: canSort,

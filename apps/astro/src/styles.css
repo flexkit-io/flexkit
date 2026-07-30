@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+/* Match Flexkit Studio's class theme toggle (not OS prefers-color-scheme). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Host-owned Flexkit extensions: scan via the workspace package install path.
+   Flexkit packages ship prebuilt `fk:` CSS; custom unprefixed utilities are generated here. */
+@source "../node_modules/demo-schemas";
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}

@@ -12,7 +12,6 @@ import type {
   EntityItem,
   EntityQueryResults,
   MappedEntityItem,
-  ImageValue,
 } from '../../../graphql-client/types';
 import { useGridColumnsDefinition } from '../../../data-grid/columns';
 import { DataTable } from '../../../data-grid/data-table';
@@ -94,9 +93,7 @@ export default function MultipleRelationship({
     schema,
   });
   const previewLimit = 12;
-  const previewItems = rows.length
-    ? rows.slice(0, previewLimit).map((row) => row[primaryAttributeName] as string)
-    : [];
+  const previewItems = rows.length ? rows.slice(0, previewLimit).map((row) => row[primaryAttributeName] as string) : [];
   const hasMorePreviewItems = Math.max(rows.length, defaultValue.count ?? 0) > previewItems.length;
   const [getData, { loading, data }] = useLazyQuery<EntityQueryResults & EntityQueryAggregate>(gql`
     ${entityQuery.query}

@@ -42,6 +42,9 @@ export type { FormFieldParams } from './form/types';
 // GraphQL client
 export { useEntityQuery } from './graphql-client/use-entity-query';
 export { useEntityMutation } from './graphql-client/use-entity-mutation';
+export { useRefreshEntityList } from './graphql-client/use-refresh-entity-list';
+export { usePatchEntityList } from './graphql-client/use-patch-entity-list';
+export type { EntityListRowPatch } from './graphql-client/refetch-entity-lists';
 export type {
   AttributeValue,
   FormFieldValue,
@@ -51,6 +54,7 @@ export type {
 } from './graphql-client/types';
 export {
   getEntityDeleteMutation,
+  getEntityDeleteWhere,
   getEntityCreateMutation,
   getEntityQuery,
   getEntityUpdateMutation,

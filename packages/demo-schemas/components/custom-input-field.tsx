@@ -39,12 +39,19 @@ export function CustomTextField({ control, fieldSchema, setValue }: FormFieldPar
       name={name}
       render={({ field }: { field: { value?: FormFieldValue } }) => (
         <FormItem>
-          <FormLabel htmlFor={fieldId}>{label}</FormLabel>
-          {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+          <div className="flex items-center justify-between">
+            <div className="grid gap-2">
+              <FormLabel htmlFor={fieldId}>{label}</FormLabel>
+              {options.comment ? <FormDescription>{options.comment}</FormDescription> : null}
+            </div>
+            <Badge className="ml-auto flex w-fit self-end text-xs font-light" variant="secondary">
+              Characters: {((field.value?.value as string | undefined) ?? '').length}
+            </Badge>
+          </div>
           <FormControl>
             <Input
-              className={`fk:w-full fk:mt-[0.1875rem] ${
-                !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
+              className={`mt-[0.1875rem] w-full ${
+                !field.value?.scope || field.value.scope === 'default' ? 'mb-3' : ''
               }`}
               disabled={isEditable === false || field.value?.disabled}
               id={fieldId}
@@ -54,12 +61,6 @@ export function CustomTextField({ control, fieldSchema, setValue }: FormFieldPar
               value={(field.value?.value as string) || ''}
             />
           </FormControl>
-          <Badge
-            className="fk:flex fk:w-fit fk:self-end fk:text-[0.6875rem] fk:ml-auto fk:mt-2 fk:font-light"
-            variant="secondary"
-          >
-            Characters: {((field.value?.value as string | undefined) ?? '').length}
-          </Badge>
           <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
             onChange={(checked) => {

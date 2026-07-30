@@ -6,6 +6,7 @@ import { find, propEq } from 'ramda';
 import type { Table } from '@tanstack/react-table';
 import { Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { gql } from '@apollo/client';
+import { useApolloClient } from '@apollo/client/react';
 import { toast } from 'sonner';
 import { Button } from '../ui/primitives/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
@@ -16,7 +17,8 @@ import type { SingleProject } from '../core/config/types';
 import { DataTableViewOptions } from './data-table-view-options';
 import { DataTableSortedBy } from './data-table-sorted-by';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
-import { getEntityDeleteMutation } from '../graphql-client/queries';
+import { getEntityDeleteMutation, getEntityDeleteWhere } from '../graphql-client/queries';
+import { getEntityListQueryName, scheduleEntityListRemoval } from '../graphql-client/refetch-entity-lists';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
@@ -34,8 +36,9 @@ export function DataTableToolbar<TData>({
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const appContext = useAppContext();
+  const apolloClient = useApolloClient();
   const { projects, currentProjectId } = useConfig();
-  const { scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -51,22 +54,30 @@ export function DataTableToolbar<TData>({
     appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope: value } });
   }
 
-  async function deleteOne(_id: string): Promise<void> {
-    const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
-    const mutation = getEntityDeleteMutation(entityName, schema, _id);
+  async function deleteSelected(ids: string[]): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
 
-    await new Promise<void>((resolve) => {
+    const mutation = getEntityDeleteMutation(entityName, schema, ids);
+
+    await new Promise<void>((resolve, reject) => {
       setMutation(gql`
         ${mutation}
       `);
 
       setOptions({
-        variables: { where: { _id: { eq: _id } } },
+        variables: { where: getEntityDeleteWhere(ids) },
         update(cache: { evict: (arg0: { id: string }) => void }) {
-          cache.evict({ id: _id });
+          for (const id of ids) {
+            cache.evict({ id });
+          }
         },
         onCompleted: () => {
           resolve();
+        },
+        onError: (error: Error) => {
+          reject(error);
         },
       });
 
@@ -91,14 +102,20 @@ export function DataTableToolbar<TData>({
           isDestructive: true,
           dialogActionSubmit: async () => {
             setIsDeleting(true);
+
             try {
-              for (const id of selectedIds) {
-                await deleteOne(id);
-              }
+              const idsToDelete = [...selectedIds];
+
+              await deleteSelected(idsToDelete);
 
               table.resetRowSelection();
-
-              toast.success(selectedIds.length > 1 ? 'Items successfully deleted.' : 'Item successfully deleted.');
+              // Drop rows immediately, then soft-refetch counts/pages.
+              await scheduleEntityListRemoval(
+                apolloClient,
+                getEntityListQueryName(entityName, schema),
+                idsToDelete
+              );
+              toast.success(idsToDelete.length > 1 ? 'Items successfully deleted.' : 'Item successfully deleted.');
             } catch {
               toast.error('Failed to delete selected items.');
             } finally {

@@ -22,7 +22,7 @@ export const taxes = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Admin Ref is required' }),
+      validation: (z) => z.string().min(1, { error: 'Admin Ref is required' }),
       defaultValue: '',
     },
     {
@@ -37,7 +37,7 @@ export const taxes = defineEntity({
       inputType: 'number',
       previewType: 'taxRatePreviewField',
       validation: (z) =>
-        z.number().min(0, { message: 'Rate is required' }).max(1, { message: 'Rate must be less than 1' }),
+        z.number().min(0, { error: 'Rate is required' }).max(1, { error: 'Rate must be less than 1' }),
       defaultValue: 0,
     },
     {

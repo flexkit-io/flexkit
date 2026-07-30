@@ -20,7 +20,7 @@ export const languages = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Code is required' }),
+      validation: (z) => z.string().min(1, { error: 'Code is required' }),
       defaultValue: '',
     },
     {
@@ -35,7 +35,7 @@ export const languages = defineEntity({
       inputType: 'text',
       isSearchable: false,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
   ],

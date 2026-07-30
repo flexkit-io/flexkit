@@ -30,7 +30,7 @@ import {
   useConfig,
 } from '@flexkit/studio';
 import { getEntityCreateMutation, getEntityQuery, getEntityUpdateMutation } from '@flexkit/studio';
-import type { EntityData, FormEntityItem } from '@flexkit/studio';
+import type { FormEntityItem } from '@flexkit/studio';
 
 type TagItem = { _id: string; name: string };
 
@@ -73,7 +73,7 @@ export function Sidebar(): JSX.Element {
 
     setIsSubmitting(true);
     const _id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
-    const entityData = { name: { value: name, disabled: false, scope: 'default' } } as unknown as EntityData;
+    const entityData: FormEntityItem = { name: { value: name, disabled: false, scope: 'default' } };
     const mutation = getEntityCreateMutation(entityNamePlural, schema, entityData, _id);
     const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
     const refreshQuery = gql`
@@ -106,7 +106,7 @@ export function Sidebar(): JSX.Element {
         ${entityQuery.query}
       `;
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
         setMutation(gql`
           ${mutation}
         `);
@@ -115,6 +115,9 @@ export function Sidebar(): JSX.Element {
           refetchQueries: [refreshQuery],
           onCompleted: () => {
             resolve();
+          },
+          onError: (error: Error) => {
+            reject(error);
           },
         });
         runMutation(true);
@@ -133,8 +136,8 @@ export function Sidebar(): JSX.Element {
 
     setIsSubmitting(true);
 
-    const dataToMutate = { name: { value: name, disabled: false, scope: 'default' } } as unknown as EntityData;
-    const originalData = {} as unknown as FormEntityItem;
+    const dataToMutate: FormEntityItem = { name: { value: name, disabled: false, scope: 'default' } };
+    const originalData: FormEntityItem = {};
     const mutation = getEntityUpdateMutation(
       entityNamePlural,
       tagToEdit._id,

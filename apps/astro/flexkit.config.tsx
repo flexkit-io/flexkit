@@ -6,6 +6,8 @@ import { Explorer } from '@flexkit/explorer';
 import { CustomTextField } from 'demo-schemas/components/custom-input-field';
 import { CustomBooleanPreviewField } from 'demo-schemas/components/custom-boolean-preview-field';
 import { RatePreviewField } from 'demo-schemas/components/rate-preview-field';
+import { ReviewStatusPreviewField } from 'demo-schemas/components/review-status-preview';
+import { RatingPreviewField } from 'demo-schemas/components/rating-preview';
 import { products } from 'demo-schemas/ecommerce/products';
 import { categories } from 'demo-schemas/ecommerce/categories';
 import { flags } from 'demo-schemas/ecommerce/flags';
@@ -27,6 +29,7 @@ import { uses } from 'demo-schemas/ecommerce/uses';
 import { promoTags } from 'demo-schemas/ecommerce/promo-tags';
 import { promoCodes } from 'demo-schemas/ecommerce/promo-codes';
 import { contentFormats } from 'demo-schemas/ecommerce/content-formats';
+import { reviews } from 'demo-schemas/ecommerce/reviews';
 import { contacts } from 'demo-schemas/flexkit-crm/contacts';
 import { companies } from 'demo-schemas/flexkit-crm/companies';
 import { addresses } from 'demo-schemas/flexkit-crm/addresses';
@@ -46,6 +49,7 @@ export default defineConfig([
     basePath: '/studio',
     menuGroups: [
       { title: 'Catalog', name: 'catalog' },
+      { title: 'UGC', name: 'ugc' },
       { title: 'Operations', name: 'operations' },
       { title: 'Finance', name: 'finance' },
       { title: 'Config', name: 'config' },
@@ -96,6 +100,14 @@ export default defineConfig([
             ratePreviewField: {
               component: RatePreviewField,
               description: 'A tax rate preview field',
+            },
+            reviewStatusPreviewField: {
+              component: ReviewStatusPreviewField,
+              description: 'Colored chips for review moderation status',
+            },
+            ratingPreviewField: {
+              component: RatingPreviewField,
+              description: 'Star rating preview for 1–5 scores',
             },
           },
           navbar: {
@@ -206,6 +218,30 @@ export default defineConfig([
         name: 'de',
         label: 'Germany',
       },
+      {
+        name: 'sk',
+        label: 'Slovakia',
+      },
+      {
+        name: 'nl',
+        label: 'Netherlands',
+      },
+      {
+        name: 'ro',
+        label: 'Romania',
+      },
+      {
+        name: 'hu',
+        label: 'Hungary',
+      },
+      {
+        name: 'pl',
+        label: 'Poland',
+      },
+      {
+        name: 'fi',
+        label: 'Finland',
+      },
     ],
     schema: [
       products,
@@ -229,6 +265,7 @@ export default defineConfig([
       promoTags,
       promoCodes,
       contentFormats,
+      reviews,
     ],
   },
   {

@@ -84,7 +84,7 @@ export const salesOrders = defineEntity({
       },
       dataType: 'string',
       inputType: 'select',
-      validation: (z) => z.string().min(1, { message: 'State is required' }),
+      validation: (z) => z.string().min(1, { error: 'State is required' }),
       defaultValue: '',
     },
     {
@@ -116,7 +116,7 @@ export const salesOrders = defineEntity({
       },
       dataType: 'string',
       inputType: 'select',
-      validation: (z) => z.string().min(1, { message: 'Payment method is required' }),
+      validation: (z) => z.string().min(1, { error: 'Payment method is required' }),
       defaultValue: '',
     },
     {
@@ -140,7 +140,7 @@ export const salesOrders = defineEntity({
       },
       dataType: 'string',
       inputType: 'select',
-      validation: (z) => z.string().min(1, { message: 'Currency is required' }),
+      validation: (z) => z.string().min(1, { error: 'Currency is required' }),
       defaultValue: '',
     },
     {
@@ -154,7 +154,7 @@ export const salesOrders = defineEntity({
       dataType: 'float',
       inputType: 'number',
       previewType: 'text',
-      validation: (z) => z.number().min(1, { message: 'Total is required' }),
+      validation: (z) => z.number().min(1, { error: 'Total is required' }),
       defaultValue: '',
     },
     {

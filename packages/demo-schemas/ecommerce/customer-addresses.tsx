@@ -17,7 +17,7 @@ export const customerAddresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
@@ -30,7 +30,7 @@ export const customerAddresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Last name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Last name is required' }),
       defaultValue: '',
     },
     {
@@ -43,7 +43,7 @@ export const customerAddresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'textarea',
-      validation: (z) => z.string().min(1, { message: 'Address is required' }),
+      validation: (z) => z.string().min(1, { error: 'Address is required' }),
       defaultValue: '',
     },
     {
@@ -56,7 +56,7 @@ export const customerAddresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Zipcode is required' }),
+      validation: (z) => z.string().min(1, { error: 'Zipcode is required' }),
       defaultValue: '',
     },
     {
@@ -69,7 +69,7 @@ export const customerAddresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'City is required' }),
+      validation: (z) => z.string().min(1, { error: 'City is required' }),
       defaultValue: '',
     },
     {
@@ -82,7 +82,7 @@ export const customerAddresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Phone is required' }),
+      validation: (z) => z.string().min(1, { error: 'Phone is required' }),
       defaultValue: '',
     },
     {
@@ -95,7 +95,7 @@ export const customerAddresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Country is required' }),
+      validation: (z) => z.string().min(1, { error: 'Country is required' }),
       defaultValue: '',
     },
     {

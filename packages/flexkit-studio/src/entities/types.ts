@@ -47,7 +47,8 @@ export type ActionDeleteEntity = {
   _id?: string;
   type: 'DeleteEntity';
   payload: {
-    entityId: string;
+    /** One id, or many ids for a single batch delete mutation. */
+    entityId: string | string[];
     entityName: string;
     silent?: boolean;
   };

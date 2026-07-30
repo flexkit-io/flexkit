@@ -22,7 +22,7 @@ export const categories = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
@@ -35,7 +35,7 @@ export const categories = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Description is required' }),
+      validation: (z) => z.string().min(1, { error: 'Description is required' }),
       defaultValue: '',
     },
     {
@@ -72,7 +72,7 @@ export const categories = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      validation: (z) => z.string().min(1, { message: 'Path is required' }),
+      validation: (z) => z.string().min(1, { error: 'Path is required' }),
       defaultValue: '',
     },
     {
@@ -98,7 +98,7 @@ export const categories = defineEntity({
       },
       dataType: 'int',
       inputType: 'number',
-      validation: (z) => z.number().min(0, { message: 'Depth must be greater than 0' }),
+      validation: (z) => z.number().min(0, { error: 'Depth must be greater than 0' }),
       defaultValue: 0,
     },
     {

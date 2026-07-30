@@ -105,32 +105,41 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
 
   const [selectedRows, setSelectedRows] = useState(initialSelectionState);
   const conditionalWhereClause = useMemo(() => {
-    // connectionName is the relationship field on the target entity pointing
-    // back to the base entity; `none` filters out already-connected items.
-    const filterOutConnectedEntities = connectionName
-      ? {
-          [connectionName]: {
-            none: {
-              _id: { eq: entityId },
-            },
-          },
-        }
-      : {};
-    const assetPathFilter = isAssetPicker ? { NOT: { path: { eq: null } } } : {};
-    const searchFilter = { OR: searchResultIds.map((result) => ({ _id: { eq: result._id } })) };
+    const clauses: Array<{ [key: string]: unknown }> = [];
 
-    if (mode === 'multiple') {
-      return {
-        ...assetPathFilter,
-        ...filterOutConnectedEntities,
-        ...searchFilter,
-      };
+    if (isAssetPicker) {
+      clauses.push({ NOT: { path: { eq: null } } });
     }
 
-    return {
-      ...assetPathFilter,
-      ...searchFilter,
-    };
+    // Exclude already-connected items only when editing an existing parent.
+    // On create, entityId is undefined — applying `none: { _id: { eq: undefined } }`
+    // makes Neo4j return no rows.
+    if (mode === 'multiple' && connectionName && entityId) {
+      clauses.push({
+        [connectionName]: {
+          none: {
+            _id: { eq: entityId },
+          },
+        },
+      });
+    }
+
+    // Empty OR matches nothing; only constrain when the user has searched.
+    if (searchResultIds.length > 0) {
+      clauses.push({
+        OR: searchResultIds.map((result) => ({ _id: { eq: result._id } })),
+      });
+    }
+
+    if (clauses.length === 0) {
+      return {};
+    }
+
+    if (clauses.length === 1) {
+      return clauses[0];
+    }
+
+    return { AND: clauses };
   }, [connectionName, entityId, isAssetPicker, mode, searchResultIds]);
 
   const { count, data, fetchMore, isLoading, isLoadingMore } = useEntityQuery({
@@ -141,7 +150,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       offset: 0,
       limit: PAGE_SIZE,
       where: conditionalWhereClause,
-      sort: [{ _updatedAt: 'DESC' }],
+      sort: [{ _updatedAt: 'DESC' }, { _id: 'DESC' }],
     },
   });
   const hasData = Boolean(data?.length);
@@ -186,12 +195,13 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
   const handleLoadMore = useCallback(() => {
     fetchMore({
       variables: {
-        offset: rowsCount,
+        // Offset is tracked inside useEntityQuery from page windows; value here is ignored.
+        offset: 0,
         limit: PAGE_SIZE,
         where: conditionalWhereClause,
       },
     });
-  }, [conditionalWhereClause, fetchMore, rowsCount]);
+  }, [conditionalWhereClause, fetchMore]);
 
   function handleSelection(): void {
     let connect;

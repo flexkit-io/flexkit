@@ -1,12 +1,10 @@
 import { find, omit, pick, propEq, toPairs, uniq } from 'ramda';
-import { v4 as uuidv4 } from 'uuid';
 import { getAttributeScope } from '../core/attribute-scope';
 import { assetSchema } from '../entities/assets-schema';
 import { tagSchema } from '../entities/tags-schema';
 import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
 import type {
   AttributeValue,
-  EntityData,
   EntityItem,
   EntityQueryResults,
   FormEntityItem,
@@ -34,6 +32,14 @@ const assetFields = `_id
       height
       width
       lqip`;
+
+const assetFieldsWithoutLqip = `_id
+      originalFilename
+      mimeType
+      path
+      size
+      height
+      width`;
 
 type AssetRelationshipConnection = {
   edges?: {
@@ -101,10 +107,15 @@ function unwrapNode(value: unknown): AttributeValue | null {
   return (value as AttributeValue | null) ?? null;
 }
 
-function getAssetConnectionSelection(attributeName: string, includeProperties = true): string {
+function getAssetConnectionSelection(
+  attributeName: string,
+  includeProperties = true,
+  includeLqip = true
+): string {
   const propertiesSelection = includeProperties
     ? `        properties {\n` + `          sortOrder\n` + `        }\n`
     : '';
+  const nodeFields = includeLqip ? assetFields : assetFieldsWithoutLqip;
 
   return (
     `    ${attributeName}Connection {\n` +
@@ -116,7 +127,7 @@ function getAssetConnectionSelection(attributeName: string, includeProperties = 
     `      edges {\n` +
     propertiesSelection +
     `        node {\n` +
-    `          ${assetFields}\n` +
+    `          ${nodeFields}\n` +
     `        }\n` +
     `      }\n` +
     `    }\n`
@@ -157,11 +168,7 @@ function getPrimaryAttribute(schemaAttributes: Attribute[]): Attribute | undefin
  * Selection set for a related entity's primary attribute only — enough for list-grid
  * relationship columns (mapQueryResult / sliceFirstThreeItems).
  */
-function getPrimaryAttributeSelection(
-  primaryAttribute: Attribute | undefined,
-  scope: string,
-  schema: Schema
-): string {
+function getPrimaryAttributeSelection(primaryAttribute: Attribute | undefined, scope: string, schema: Schema): string {
   if (!primaryAttribute) {
     return '';
   }
@@ -200,7 +207,11 @@ function getPrimaryAttributeSelection(
   return `      ${primaryAttribute.name}\n`;
 }
 
-function getFullRelatedEntityAttributesSelection(relatedEntity: Entity | undefined, scope: string, schema: Schema): string {
+function getFullRelatedEntityAttributesSelection(
+  relatedEntity: Entity | undefined,
+  scope: string,
+  schema: Schema
+): string {
   return (
     relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
@@ -262,7 +273,18 @@ export function getEntityQuery(
   }
 
   const globalAttributesList: string = getAttributeListByScope('global', attributes)
-    .filter((attributeName) => attributeName !== '_updatedAt')
+    .filter((attributeName) => {
+      if (attributeName === '_updatedAt') {
+        return false;
+      }
+
+      // List grids resolve previews from path/CDN; base64 lqip × page size is costly.
+      if (selection === 'list' && attributeName === 'lqip') {
+        return false;
+      }
+
+      return true;
+    })
     .join('\n  ');
   const imageAttributes: string[] = getImageAttributes(attributes);
   const localAttributes: readonly string[] = getAttributeListByScope(['local'], attributes);
@@ -275,8 +297,12 @@ export function getEntityQuery(
     ''
   );
   const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
+  const imageFieldsSelection =
+    selection === 'list'
+      ? `_id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width`
+      : `_id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip`;
   const imageAttributesList: string = imageAttributes.reduce((acc, attribute) => {
-    return `${acc}\n    ${attribute} {\n      _id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n  `;
+    return `${acc}\n    ${attribute} {\n      ${imageFieldsSelection}\n    }\n  `;
   }, '');
 
   const relationshipAttributes = attributes.filter((attribute) => getAttributeScope(attribute) === 'relationship');
@@ -284,7 +310,8 @@ export function getEntityQuery(
     if (isAssetRelationshipAttribute(attribute)) {
       return `${acc}\n${getAssetConnectionSelection(
         attribute.name,
-        hasOrderedAssetConnectionProperties(attribute, entitySchema)
+        hasOrderedAssetConnectionProperties(attribute, entitySchema),
+        selection !== 'list'
       )}`;
     }
 
@@ -316,7 +343,7 @@ export function getEntityQuery(
     queryEntityName: entityNamePlural,
     query:
       `query ${operationName}(${heading}) {\n` +
-      getConnectionCountSelection(entityNamePlural) +
+      getConnectionCountSelection(entityNamePlural, '(where: $where)') +
       `  ${entityNamePlural}${filters} {\n` +
       `    _id\n` +
       `    _updatedAt\n` +
@@ -594,7 +621,8 @@ export function getEntityUpdateMutation(
   scope: string,
   schema: Schema,
   originalData: FormEntityItem,
-  dataToMutate: EntityData
+  dataToMutate: FormEntityItem,
+  options?: { responseFields?: string }
 ): string {
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
@@ -611,7 +639,8 @@ export function getEntityUpdateMutation(
   const imageAttributes = imageAttributesUpdate(attributes, originalData, data);
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
   const responseType = entityNamePlural;
-  const attributeNamesList = formatResponseFieldsForMutation(schema, entityNamePlural, scope);
+  const attributeNamesList =
+    options?.responseFields ?? formatResponseFieldsForMutation(schema, entityNamePlural, scope);
   const operationName = `Update${getOperationEntityName(entityNamePlural)}`;
 
   return (
@@ -632,7 +661,7 @@ export function getEntityUpdateMutation(
 /**
  * Filter out any attribute received from the form that does not exist in the schema.
  */
-function filterOutInvalidAttributes(attributes: Attribute[], dataToMutate: EntityData): FormEntityItem {
+function filterOutInvalidAttributes(attributes: Attribute[], dataToMutate: FormEntityItem): FormEntityItem {
   const nonUpdatableAttributes: readonly string[] = attributes
     .map((attribute) => {
       if (attribute.isEditable === false) {
@@ -647,7 +676,7 @@ function filterOutInvalidAttributes(attributes: Attribute[], dataToMutate: Entit
   return pick(
     attributes.map((attribute) => attribute.name) as unknown as readonly [number, ...number[]],
     data
-  ) as unknown as FormEntityItem;
+  ) as FormEntityItem;
 }
 
 /**
@@ -691,6 +720,11 @@ function globalAttributesUpdate(
     const valueToStringify = Array.isArray(value?.value) ? null : (value?.value ?? null);
     const typedValue = stringifyValue(attributeSchema.dataType, valueToStringify);
 
+    // Omit empty optional globals on create — `field: ` with no value is invalid GraphQL.
+    if (operation === 'create' && (typedValue === null || typedValue === '')) {
+      return acc;
+    }
+
     if (operation === 'update') {
       return `${acc}\n      ${attributeName}: { set: ${typedValue} }`;
     }
@@ -718,7 +752,11 @@ function getLinkedAssetId(value: ImageValue | null | undefined): string {
  * only connect/disconnect them by _id. Disconnect runs before connect so the
  * field keeps at most one linked asset.
  */
-function imageAttributesUpdate(schemaAttributes: Attribute[], originalData: FormEntityItem, data: FormEntityItem): string {
+function imageAttributesUpdate(
+  schemaAttributes: Attribute[],
+  originalData: FormEntityItem,
+  data: FormEntityItem
+): string {
   const imageAttributes = pick(getImageAttributes(schemaAttributes) as [string], data);
   const attributesArray: [string, FormFieldValue][] = toPairs(imageAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
@@ -844,26 +882,29 @@ function relationshipAttributesUpdate(
         return `${acc}${orderedAssetRelationshipUpdate(attributeName, originalData[attributeName], attributeValue)}`;
       }
 
-      const nodesToDisconnect: string | undefined = attributeValue.relationships?.disconnect?.reduce(
-        (disconnectString: string, _id: string) => {
-          return `${disconnectString}              {\n                node: {\n                  _id: { eq: ${stringifyStringLiteral(_id)} }\n                }\n              }\n`;
-        },
-        ''
-      );
+      // Neo4j GraphQL v7 expects list-shaped connect/disconnect entries with
+      // `where.node`. The old `disconnect.where.OR` form drops the filter and
+      // disconnects every related node.
+      const disconnectIds = uniq(attributeValue.relationships?.disconnect ?? []).filter(Boolean);
       const connections = (attributeValue.relationships?.connect as MultipleRelationshipConnection | null) ?? [];
       const idsToConnect = connections.map((node) => stringifyStringLiteral(node._id)).join(', ');
-      const disconnect = nodesToDisconnect
-        ? `disconnect: {\n          where: {\n            OR: [\n${nodesToDisconnect}            ]\n          }\n        }\n`
+      const disconnect = disconnectIds.length
+        ? `        {\n          disconnect: [\n${disconnectIds
+            .map(
+              (_id) =>
+                `            {\n              where: {\n                node: {\n                  _id: { eq: ${stringifyStringLiteral(_id)} }\n                }\n              }\n            }\n`
+            )
+            .join('')}          ]\n        }\n`
         : '';
       const connect = idsToConnect
-        ? `connect: {\n          where: {\n            node: {\n              _id: { in: [${idsToConnect}] }\n            }\n          }\n        }\n`
+        ? `        {\n          connect: [{\n            where: {\n              node: {\n                _id: { in: [${idsToConnect}] }\n              }\n            }\n          }]\n        }\n`
         : '';
 
       if (!disconnect && !connect) {
         return acc;
       }
 
-      return `${acc}\n      ${attributeName}: {\n        ${disconnect}        ${connect}      }`;
+      return `${acc}\n      ${attributeName}: [\n${disconnect}${connect}      ]`;
     }
 
     return `${acc}\n`;
@@ -1003,7 +1044,12 @@ function stringifyValue(
     return stringifyStringLiteral(value?.toString() ?? 'null');
   }
 
-  return value?.toString() ?? null;
+  // Empty optional numbers/booleans must not stringify to "" (breaks GraphQL as `field: `).
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  return value.toString();
 }
 
 function stringifyNullableString(value: string | null | undefined): string {
@@ -1105,13 +1151,18 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
 }
 
 /**
- * Returns a string with the GraphQl mutation needed to delete an entity.
+ * Returns a string with the GraphQl mutation needed to delete one or more entities.
  */
-export function getEntityDeleteMutation(entityName: string, schema: Schema, _id: string): string {
+export function getEntityDeleteMutation(
+  entityName: string,
+  schema: Schema,
+  ids: string | readonly string[]
+): string {
+  const idList = typeof ids === 'string' ? [ids] : [...ids];
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
-  const localAttributes = localAttributesDelete(attributes, _id);
+  const localAttributes = localAttributesDelete(attributes, idList);
   const operationName = `Delete${getOperationEntityName(entitySchema?.plural ?? entityName)}`;
 
   if (entityName === '_asset') {
@@ -1140,15 +1191,28 @@ export function getEntityDeleteMutation(entityName: string, schema: Schema, _id:
   );
 }
 
-function localAttributesDelete(schemaAttributes: Attribute[], _id: string): string {
+export function getEntityDeleteWhere(ids: string | readonly string[]): { _id: { eq: string } } | { _id: { in: string[] } } {
+  const idList = typeof ids === 'string' ? [ids] : [...ids];
+
+  if (idList.length === 1) {
+    return { _id: { eq: idList[0] as string } };
+  }
+
+  return { _id: { in: idList } };
+}
+
+function localAttributesDelete(schemaAttributes: Attribute[], ids: readonly string[]): string {
   const localAttributes = getAttributeListByScope('local', schemaAttributes);
   const attributesString: string = localAttributes.reduce((acc, attributeName) => {
+    const localIds = ids.map((id) => stringifyStringLiteral(`${id}:${attributeName}`)).join(', ');
+    const idFilter = ids.length === 1 ? `_id: { eq: ${localIds} }` : `_id: { in: [${localIds}] }`;
+
     return (
       `${acc}\n` +
       `      ${attributeName}: [{\n` +
       `        where: {\n` +
       `          node: {\n` +
-      `            _id: { eq: ${stringifyStringLiteral(`${_id}:${attributeName}`)} }\n` +
+      `            ${idFilter}\n` +
       `          }\n` +
       `        }\n` +
       `      }]`
@@ -1161,7 +1225,7 @@ function localAttributesDelete(schemaAttributes: Attribute[], _id: string): stri
 export function getEntityCreateMutation(
   entityNamePlural: string,
   schema: Schema,
-  entityData: EntityData,
+  entityData: FormEntityItem,
   _id: string
 ): string {
   const entitySchema = getEntitySchema(schema, entityNamePlural);
@@ -1210,11 +1274,7 @@ function localAttributesCreate(
   const localAttributes = pick(getAttributeListByScope('local', schemaAttributes) as [string], data);
   const attributesArray = toPairs(localAttributes);
   const attributesString: string = attributesArray.reduce((acc, [attributeName, attributeValue]) => {
-    if (
-      attributeValue?.value === undefined ||
-      attributeValue.value === null ||
-      attributeValue.value === ''
-    ) {
+    if (attributeValue?.value === undefined || attributeValue.value === null || attributeValue.value === '') {
       return acc;
     }
 
@@ -1248,7 +1308,11 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
     const { inputType, relationship } = attributeSchema;
 
     if (inputType === 'relationship' && relationship?.mode === 'single') {
-      const connect = `connect: [{\n          where: {\n            node: {\n              _id: { eq: ${stringifyStringLiteral(attributeValue._id ?? '')} }\n            }\n          }\n        }]\n`;
+      if (!attributeValue._id) {
+        return acc;
+      }
+
+      const connect = `connect: [{\n          where: {\n            node: {\n              _id: { eq: ${stringifyStringLiteral(attributeValue._id)} }\n            }\n          }\n        }]\n`;
 
       return `${acc}\n      ${attributeName}: {\n        ${connect}      }`;
     }
@@ -1397,7 +1461,7 @@ const capitalize = (str: string): string => {
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-function getOperationEntityName(entityName: string): string {
+export function getOperationEntityName(entityName: string): string {
   const normalizedEntityName = entityName
     .split(/[^0-9A-Za-z]+/)
     .filter(Boolean)

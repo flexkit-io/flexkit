@@ -5,6 +5,7 @@ import type { JSX } from 'react';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
+import { useApolloClient } from '@apollo/client/react';
 import { useAppContext, useAppDispatch } from '../core/app-context';
 import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
@@ -12,8 +13,9 @@ import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import { useConfig } from '../core/config/config-context';
 import { useEntityQuery } from '../graphql-client/use-entity-query';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
-import { getEntityQuery, getEntityUpdateMutation } from '../graphql-client/queries';
-import type { EntityData, FormEntityItem } from '../graphql-client/types';
+import { getEntityListQueryName, scheduleEntityListRefetch } from '../graphql-client/refetch-entity-lists';
+import { getEntityUpdateMutation } from '../graphql-client/queries';
+import type { FormEntityItem } from '../graphql-client/types';
 import { ReadOnlyMode } from '../core/error/read-only-mode';
 import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
@@ -45,12 +47,13 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const [currentScope, setCurrentScope] = useState(scope);
   const dispatch = useDispatch();
   const appDispatch = useAppDispatch();
+  const apolloClient = useApolloClient();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
-  const { setIsDirty } = useDrawerModalContext();
+  const { isDirty, setIsDirty } = useDrawerModalContext();
 
   const setFormIsDirty = useCallback(
-    (isDirty: boolean) => {
-      setIsDirty(isDirty);
+    (nextIsDirty: boolean) => {
+      setIsDirty(nextIsDirty);
     },
     [setIsDirty]
   );
@@ -61,33 +64,35 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     }
   }, [mutationData.error]);
 
+  // Use the same dirty flag as the Save button. hasDataChanged() can stay true
+  // after a successful save (stale formData baseline / relationship field noise).
   const handleBeforeClose = useCallback(() => {
-    if (ref.current?.hasDataChanged()) {
-      dispatch({
-        type: 'AlertDialog',
-        _id: 'unsavedChanges',
-        payload: {
-          options: {
-            dialogTitle: 'Unsaved Changes',
-            dialogMessage:
-              'Are you sure you want to leave? There are unsaved changes. If you leave, your changes will be lost.',
-            dialogCancelTitle: 'Stay Here',
-            dialogActionLabel: 'Discard Changes',
-            dialogActionCancel: () => {
-              dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
-            },
-            dialogActionSubmit: () => {
-              dispatch({ type: 'Dismiss', _id: action._id, payload: {} });
-            },
-          },
-        },
-      });
-
-      return false;
+    if (!isDirty) {
+      return true;
     }
 
-    return true;
-  }, [dispatch, action._id]);
+    dispatch({
+      type: 'AlertDialog',
+      _id: 'unsavedChanges',
+      payload: {
+        options: {
+          dialogTitle: 'Unsaved Changes',
+          dialogMessage:
+            'Are you sure you want to leave? There are unsaved changes. If you leave, your changes will be lost.',
+          dialogCancelTitle: 'Stay Here',
+          dialogActionLabel: 'Discard Changes',
+          dialogActionCancel: () => {
+            dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
+          },
+          dialogActionSubmit: () => {
+            dispatch({ type: 'Dismiss', _id: action._id, payload: {} });
+          },
+        },
+      },
+    });
+
+    return false;
+  }, [action._id, dispatch, isDirty]);
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
@@ -100,8 +105,8 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     ref.current?.submit();
   }, [ref]);
 
-  function handleScopeChange(scope: string): void {
-    if (ref.current?.hasDataChanged()) {
+  function handleScopeChange(nextScope: string): void {
+    if (isDirty) {
       dispatch({
         type: 'AlertDialog',
         _id: 'unsavedChanges',
@@ -116,8 +121,8 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
               dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
             },
             dialogActionSubmit: () => {
-              setCurrentScope(scope);
-              appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope } });
+              setCurrentScope(nextScope);
+              appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope: nextScope } });
             },
           },
         },
@@ -126,40 +131,32 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       return;
     }
 
-    setCurrentScope(scope);
-    appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope } });
+    setCurrentScope(nextScope);
+    appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope: nextScope } });
   }
 
   const saveEntity = useCallback(
-    (newData: EntityData, previousData?: FormEntityItem) => {
+    (newData: FormEntityItem, previousData?: FormEntityItem) => {
       if (!previousData) {
         return;
       }
 
       const mutation = getEntityUpdateMutation(entityNamePlural, entityId, currentScope, schema, previousData, newData);
-      const entityQuery = getEntityQuery(entityNamePlural, currentScope, schema);
-      const refreshQuery = gql`
-        ${entityQuery.query}
-      `;
 
       setMutation(gql`
         ${mutation}
       `);
       setOptions({
         variables: { where: { _id: { eq: entityId } } },
-        refetchQueries: [
-          {
-            query: refreshQuery,
-            variables: { where: { _id: { eq: entityId } } },
-          },
-        ],
         onCompleted: () => {
+          ref.current?.markAsSaved();
+          void scheduleEntityListRefetch(apolloClient, getEntityListQueryName(entityNamePlural, schema));
           toast.success('Your changes have been saved.');
         },
       });
       runMutation(true);
     },
-    [currentScope, entityId, entityNamePlural, runMutation, schema, setMutation, setOptions]
+    [apolloClient, currentScope, entityId, entityNamePlural, runMutation, schema, setMutation, setOptions]
   );
 
   const { isLoading, data: results } = useEntityQuery({

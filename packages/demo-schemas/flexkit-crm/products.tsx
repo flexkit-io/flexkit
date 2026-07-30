@@ -22,7 +22,7 @@ export const crmProducts = defineEntity({
       inputType: 'text',
       isSearchable: true,
       isPrimary: true,
-      validation: (z) => z.string().min(1, { message: 'Product name is required' }),
+      validation: (z) => z.string().min(1, { error: 'Product name is required' }),
       defaultValue: '',
     },
     {
@@ -36,7 +36,7 @@ export const crmProducts = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      validation: (z) => z.string().min(1, { message: 'SKU is required' }),
+      validation: (z) => z.string().min(1, { error: 'SKU is required' }),
       defaultValue: '',
     },
     {
@@ -61,7 +61,7 @@ export const crmProducts = defineEntity({
       },
       dataType: 'float',
       inputType: 'number',
-      validation: (z) => z.number().min(0, { message: 'Price must be a positive number' }),
+      validation: (z) => z.number().min(0, { error: 'Price must be a positive number' }),
       defaultValue: '',
     },
     {
