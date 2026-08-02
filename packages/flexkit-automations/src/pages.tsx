@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
-import type { TextUIPart, UIMessage, UIMessageChunk } from 'ai';
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import type { ReasoningUIPart, TextUIPart, UIMessage, UIMessageChunk } from 'ai';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { parseJsonEventStream, readUIMessageStream, uiMessageChunkSchema } from 'ai';
 import { format, formatDistance } from 'date-fns';
 import {
@@ -34,6 +34,10 @@ import { useConfig } from '@flexkit/studio';
 import {
   Badge,
   Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -60,9 +64,17 @@ import {
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
+import { ApprovalCard, ApprovalStatusBadge } from './approval-card';
 import { AutomationForm } from './form';
 import { RunSpecPart } from './spec-renderer';
-import type { Automation, AutomationCreditBalance, AutomationRun, RunHistory } from './types';
+import type {
+  Automation,
+  AutomationApproval,
+  AutomationApprovals,
+  AutomationCreditBalance,
+  AutomationRun,
+  RunHistory,
+} from './types';
 
 interface AutomationsResponse {
   automations: Automation[];
@@ -104,13 +116,25 @@ function PageMessage({ children }: { children: string }): JSX.Element {
   );
 }
 
+function getStatusBadgeClass(status: string): string {
+  if (status === 'success') {
+    return 'fk:bg-success/20 fk:text-success';
+  }
+
+  if (status === 'awaiting_approval') {
+    return 'fk:bg-amber-500/20 fk:text-amber-600';
+  }
+
+  return 'fk:bg-secondary fk:text-secondary-foreground';
+}
+
 function StatusBadge({ status }: { status: string }): JSX.Element {
   return (
     <Badge
-      className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${status === 'success' ? 'fk:bg-success/20 fk:text-success' : 'fk:bg-secondary fk:text-secondary-foreground'}`}
+      className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${getStatusBadgeClass(status)}`}
       variant={status === 'success' ? 'default' : 'secondary'}
     >
-      {status}
+      {status === 'awaiting_approval' ? 'awaiting approval' : status}
     </Badge>
   );
 }
@@ -231,7 +255,7 @@ export function AutomationsPage(): JSX.Element {
   const navigate = useNavigate();
   const { data, isLoading, mutate } = useSWR<AutomationsResponse>(
     projectId ? paths(projectId).automations : null,
-    fetcher,
+    fetcher
   );
   const [message, setMessage] = useState('');
 
@@ -822,6 +846,156 @@ export function RunHistoryPage(): JSX.Element {
   );
 }
 
+const APPROVALS_PAGE_SIZE = 25;
+
+export function ApprovalsPage(): JSX.Element {
+  const { api, projectId } = useProjectApi();
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'all'>('pending');
+  const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
+  const getApprovalsKey = (pageIndex: number, previousPage: AutomationApprovals | null): string | null => {
+    if (!projectId) {
+      return null;
+    }
+
+    if (previousPage && !previousPage.hasMore) {
+      return null;
+    }
+
+    return paths(projectId).approvals({
+      limit: APPROVALS_PAGE_SIZE,
+      offset: pageIndex * APPROVALS_PAGE_SIZE,
+      status: statusFilter === 'pending' ? 'pending' : undefined,
+    });
+  };
+  const {
+    data: approvalPages,
+    isLoading,
+    mutate,
+    setSize,
+    size,
+  } = useSWRInfinite<AutomationApprovals>(getApprovalsKey, fetcher, { refreshInterval: 30_000 });
+  const approvals = approvalPages?.flatMap((page) => page.approvals) ?? [];
+  const pendingCount = approvalPages?.[0]?.pendingCount ?? 0;
+  const lastPage = approvalPages?.[approvalPages.length - 1];
+  const hasMore = lastPage?.hasMore ?? false;
+  const isLoadingMore = approvalPages !== undefined && size > approvalPages.length;
+  const selectedApproval = approvals.find((approval) => approval.id === selectedApprovalId) ?? null;
+
+  // Deciding while on Pending removes the row, so selectedApproval becomes null and
+  // the dialog closes — but selectedApprovalId would still be set. Clear it once the
+  // current filter's data has loaded without that id, otherwise switching to All
+  // would reopen the dialog without a click.
+  useEffect(() => {
+    if (selectedApprovalId === null || selectedApproval !== null || isLoading || approvalPages === undefined) {
+      return;
+    }
+
+    setSelectedApprovalId(null);
+  }, [approvalPages, isLoading, selectedApproval, selectedApprovalId]);
+
+  if (!projectId || !api) {
+    return <PageMessage>Select a project to view approvals.</PageMessage>;
+  }
+
+  function handleLoadMore(): void {
+    void setSize((currentSize) => currentSize + 1);
+  }
+
+  function handleStatusFilterChange(nextFilter: 'pending' | 'all'): void {
+    if (nextFilter === statusFilter) {
+      return;
+    }
+
+    // useSWRInfinite keeps `size` across key changes. Reset so the new filter
+    // only fetches page 0 instead of replaying every previously loaded page.
+    void setSize(1);
+    setStatusFilter(nextFilter);
+  }
+
+  return (
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-6">
+      <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2">
+        <Button
+          size="sm"
+          variant={statusFilter === 'pending' ? 'default' : 'outline'}
+          onClick={() => handleStatusFilterChange('pending')}
+        >
+          Pending{pendingCount > 0 ? ` (${pendingCount.toString()})` : ''}
+        </Button>
+        <Button
+          size="sm"
+          variant={statusFilter === 'all' ? 'default' : 'outline'}
+          onClick={() => handleStatusFilterChange('all')}
+        >
+          All
+        </Button>
+      </div>
+      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
+        <div className="fk:pb-6 fk:pr-4">
+          {isLoading ? (
+            <RunsTableSkeleton />
+          ) : approvals.length === 0 ? (
+            <PageMessage>
+              {statusFilter === 'pending' ? 'No proposals are waiting for approval.' : 'No approvals found.'}
+            </PageMessage>
+          ) : (
+            <Table>
+              <TableBody>
+                {approvals.map((approval) => (
+                  <TableRow
+                    className="fk:cursor-pointer"
+                    key={approval.id}
+                    onClick={() => setSelectedApprovalId(approval.id)}
+                  >
+                    <TableCell>
+                      <ApprovalStatusBadge status={approval.status} />
+                    </TableCell>
+                    <TableCell className="fk:font-medium">{approval.operationsSummary}</TableCell>
+                    <TableCell className="fk:text-muted-foreground">{approval.automationName}</TableCell>
+                    <TableCell className="fk:text-muted-foreground">
+                      {formatDistance(new Date(approval.requestedAt), new Date(), { addSuffix: true })}
+                    </TableCell>
+                    <TableCell onClick={(event) => event.stopPropagation()}>
+                      <Link
+                        className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
+                        to={`../${approval.automationId}/runs/${approval.runId}`}
+                      >
+                        View run
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {hasMore && !isLoadingMore ? <InfiniteScrollSentinel onVisible={handleLoadMore} /> : null}
+          {isLoadingMore ? (
+            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
+              <LoaderCircle className="fk:size-4 fk:animate-spin" />
+              <span>Loading more approvals...</span>
+            </div>
+          ) : null}
+        </div>
+      </ScrollArea>
+      <Dialog open={selectedApproval !== null} onOpenChange={(open) => !open && setSelectedApprovalId(null)}>
+        <DialogContent className="fk:max-h-[85vh] fk:overflow-y-auto fk:sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Mutation proposal</DialogTitle>
+          </DialogHeader>
+          {selectedApproval ? (
+            <ApprovalCard
+              api={api}
+              approval={selectedApproval}
+              key={`${selectedApproval.id}-${selectedApproval.status}`}
+              onDecided={() => void mutate()}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function MetricCard({ title, value }: { title: string; value: number }): JSX.Element {
   return (
     <div className="fk:rounded-md fk:bg-muted/60 fk:p-4">
@@ -859,6 +1033,15 @@ interface ReplayDataParts {
   'execute-graphql': {
     operationType?: 'query' | 'mutation';
     status: 'loading' | 'done' | 'error';
+    error?: ReplayError;
+  };
+  'mutation-approval': {
+    approvalId: string;
+    affectedCount?: number | null;
+    decidedBy?: string;
+    operationsSummary: string;
+    reason?: string;
+    status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled' | 'executed' | 'error';
     error?: ReplayError;
   };
   'generating-files': {
@@ -928,12 +1111,18 @@ interface ReplayTools {
 
 type ReplayMessage = UIMessage<ReplayMetadata, ReplayDataParts, ReplayTools>;
 type ReplayMessagePart = ReplayMessage['parts'][number];
-type RunStreamStatus = 'streaming' | 'finished' | 'error' | 'unavailable';
+type RunStreamStatus = 'streaming' | 'paused' | 'finished' | 'error' | 'unavailable';
 type ConsumeOnceResult = 'finished' | 'incomplete' | 'unavailable';
 
 const MAX_STREAM_ATTEMPTS = 5;
 const STREAM_RETRY_DELAY_MS = 2000;
 const JSON_RENDER_SPEC_PART_TYPE = 'data-spec';
+
+interface RunReplayActions {
+  onApprovalDecided: (_approvalId?: string) => void;
+}
+
+const RunReplayActionsContext = createContext<RunReplayActions | null>(null);
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -947,8 +1136,49 @@ function isAbortError(error: unknown): boolean {
   return error.name === 'AbortError' || error.message.toLowerCase().includes('aborted');
 }
 
+function isReasoningPart(part: ReplayMessagePart): part is ReasoningUIPart {
+  return part.type === 'reasoning';
+}
+
+function hasRenderableReasoning(part: ReplayMessagePart): boolean {
+  if (!isReasoningPart(part)) {
+    return false;
+  }
+
+  // Keep streaming indicators, and keep completed rationale for finished /
+  // paused replays so reviewers can still see why the agent acted.
+  return part.state === 'streaming' || part.text.trim().length > 0;
+}
+
 function hasRenderableParts(parts: ReplayMessagePart[]): boolean {
-  return parts.some((part) => part.type !== 'step-start');
+  return parts.some((part) => {
+    if (part.type === 'step-start') {
+      return false;
+    }
+
+    if (part.type === 'reasoning') {
+      return hasRenderableReasoning(part);
+    }
+
+    return true;
+  });
+}
+
+function getReasoningLabel(text: string): string {
+  const trimmed = text.trim();
+
+  if (!trimmed || /^reasoning\.?$/i.test(trimmed)) {
+    return 'Reasoning…';
+  }
+
+  const firstLine = trimmed.split(/\r?\n/, 1)[0]?.trim() ?? trimmed;
+  const maxLength = 72;
+
+  if (firstLine.length <= maxLength) {
+    return firstLine;
+  }
+
+  return `${firstLine.slice(0, maxLength).trimEnd()}…`;
 }
 
 function getMarkerIds(messages: ReplayMessage[]): Set<string> {
@@ -1027,15 +1257,109 @@ function getPartData<T>(part: ReplayMessagePart): T {
   return (part as { data: T }).data;
 }
 
+function messageHasPendingMutationApproval(message: ReplayMessage | undefined): boolean {
+  if (!message) {
+    return false;
+  }
+
+  return message.parts.some((part) => {
+    if (part.type !== 'data-mutation-approval') {
+      return false;
+    }
+
+    return getPartData<ReplayDataParts['mutation-approval']>(part).status === 'pending';
+  });
+}
+
+function isTerminalRunStatus(status: AutomationRun['status'] | null | undefined): boolean {
+  return status === 'success' || status === 'failed' || status === 'cancelled' || status === 'skipped';
+}
+
+function getMutationApprovalIds(
+  message: ReplayMessage | undefined,
+  options?: { pendingOnly?: boolean }
+): string[] {
+  if (!message) {
+    return [];
+  }
+
+  const approvalIds: string[] = [];
+  const pendingOnly = options?.pendingOnly ?? false;
+
+  for (const part of message.parts) {
+    if (part.type !== 'data-mutation-approval') {
+      continue;
+    }
+
+    const data = getPartData<ReplayDataParts['mutation-approval']>(part);
+
+    if (pendingOnly && data.status !== 'pending') {
+      continue;
+    }
+
+    approvalIds.push(data.approvalId);
+  }
+
+  return approvalIds;
+}
+
+function getPendingMutationApprovalIds(message: ReplayMessage | undefined): string[] {
+  return getMutationApprovalIds(message, { pendingOnly: true });
+}
+
+function shouldPauseStreamForApproval({
+  latestMessage,
+  recordStatus,
+  suppressApprovalPause,
+}: {
+  latestMessage: ReplayMessage | undefined;
+  recordStatus: AutomationRun['status'] | null | undefined;
+  suppressApprovalPause: boolean;
+}): boolean {
+  if (isTerminalRunStatus(recordStatus)) {
+    return false;
+  }
+
+  // After a local approval decision the run/stream can still look suspended
+  // until the workflow hook resumes — keep reconnecting in that case.
+  if (suppressApprovalPause) {
+    return false;
+  }
+
+  // The run record is authoritative once execution has resumed. A stale
+  // pending data-mutation-approval part can linger in the replay until the
+  // next workflow step writes an updated status.
+  if (recordStatus === 'running') {
+    return false;
+  }
+
+  if (recordStatus === 'awaiting_approval') {
+    return true;
+  }
+
+  // Fall back to the stream part when the run record hasn't caught up yet.
+  return messageHasPendingMutationApproval(latestMessage);
+}
+
 function useRunStream(
   streamApi: string,
-  options?: { recordStatus?: AutomationRun['status'] | null }
+  options?: {
+    recordStatus?: AutomationRun['status'] | null;
+    resumeToken?: number;
+    suppressApprovalPause?: boolean;
+  }
 ): {
   message: ReplayMessage | undefined;
   status: RunStreamStatus;
 } {
   const [message, setMessage] = useState<ReplayMessage>();
   const [status, setStatus] = useState<RunStreamStatus>('streaming');
+  const recordStatus = options?.recordStatus;
+  const resumeToken = options?.resumeToken ?? 0;
+  // Read via ref so clearing the post-decide suppress window does not abort a
+  // healthy reconnect the way resetting resumeToken would.
+  const suppressApprovalPauseRef = useRef(options?.suppressApprovalPause ?? false);
+  suppressApprovalPauseRef.current = options?.suppressApprovalPause ?? false;
 
   useEffect(() => {
     if (!streamApi) {
@@ -1046,6 +1370,8 @@ function useRunStream(
     }
 
     const abortController = new AbortController();
+    let latestMessage: ReplayMessage | undefined;
+    setStatus('streaming');
 
     const consumeOnce = async (): Promise<ConsumeOnceResult> => {
       const response = await fetch(`${streamApi}?startIndex=0`, {
@@ -1093,17 +1419,19 @@ function useRunStream(
           break;
         }
 
-        setMessage({ ...current });
+        latestMessage = { ...current };
+        setMessage(latestMessage);
       }
 
       return sawFinish ? 'finished' : 'incomplete';
     };
 
     const consume = async (): Promise<void> => {
-      for (let attempt = 0; attempt < MAX_STREAM_ATTEMPTS; attempt++) {
+      let attempt = 0;
+
+      while (!abortController.signal.aborted) {
         if (attempt > 0) {
           await delay(STREAM_RETRY_DELAY_MS);
-          setMessage(undefined);
         }
 
         try {
@@ -1124,16 +1452,64 @@ function useRunStream(
 
             return;
           }
+
+          // The run record is authoritative once it reaches a terminal status.
+          // Without this, a lingering post-decide suppress flag would reconnect
+          // forever when the replay never emits a finish chunk.
+          if (isTerminalRunStatus(recordStatus)) {
+            setStatus('finished');
+
+            return;
+          }
+
+          // Workflow hooks close the readable without a finish chunk while the
+          // run is suspended on a mutation approval. Pause instead of treating
+          // that as an error or a perpetual "Running..." state.
+          if (
+            shouldPauseStreamForApproval({
+              latestMessage,
+              recordStatus,
+              suppressApprovalPause: suppressApprovalPauseRef.current,
+            })
+          ) {
+            setStatus('paused');
+
+            return;
+          }
+
+          // Keep reconnecting while the run is active, or right after a local
+          // approval decision while the workflow is still waking up.
+          const shouldKeepRetrying = recordStatus === 'running' || suppressApprovalPauseRef.current;
+
+          if (!shouldKeepRetrying && attempt >= MAX_STREAM_ATTEMPTS - 1) {
+            setStatus('error');
+
+            return;
+          }
         } catch (error) {
           if (abortController.signal.aborted || isAbortError(error)) {
             return;
           }
 
           console.error('Automation run stream error', error);
-        }
-      }
 
-      setStatus(options?.recordStatus === 'running' ? 'streaming' : 'error');
+          if (isTerminalRunStatus(recordStatus)) {
+            setStatus('finished');
+
+            return;
+          }
+
+          const shouldKeepRetrying = recordStatus === 'running' || suppressApprovalPauseRef.current;
+
+          if (!shouldKeepRetrying && attempt >= MAX_STREAM_ATTEMPTS - 1) {
+            setStatus('error');
+
+            return;
+          }
+        }
+
+        attempt += 1;
+      }
     };
 
     const loadTimeout = window.setTimeout(() => {
@@ -1144,7 +1520,7 @@ function useRunStream(
       window.clearTimeout(loadTimeout);
       abortController.abort('Run replay unmounted');
     };
-  }, [options?.recordStatus, streamApi]);
+  }, [recordStatus, resumeToken, streamApi]);
 
   return { message, status };
 }
@@ -1158,6 +1534,11 @@ export function RunDetailPage(): JSX.Element {
     fetcher
   );
   const [isCancelling, startCancelTransition] = useTransition();
+  const [streamFinished, setStreamFinished] = useState(false);
+
+  useEffect(() => {
+    setStreamFinished(false);
+  }, [runId]);
 
   if (!projectId || !api || !automationId || !runId) {
     return <PageMessage>Select a run.</PageMessage>;
@@ -1166,12 +1547,24 @@ export function RunDetailPage(): JSX.Element {
   const runApi = api;
   const selectedRunId = runId;
   const run = data?.run;
+  // Keep Cancel available while awaiting approval; streamFinished only hides it
+  // for in-flight runs after the workflow stream reports completion.
+  const showCancel = run?.status === 'awaiting_approval' || (run?.status === 'running' && !streamFinished);
 
   function handleCancel(): void {
     startCancelTransition(async () => {
       await runApi.cancelRun(selectedRunId);
       await mutate();
     });
+  }
+
+  function handleStreamFinished(): void {
+    setStreamFinished(true);
+    void mutate();
+  }
+
+  function handleRunUpdated(): void {
+    void mutate();
   }
 
   return (
@@ -1198,11 +1591,14 @@ export function RunDetailPage(): JSX.Element {
               Runs
             </Link>
           </Button>
-          <h2 className="fk:mt-4 fk:text-lg fk:font-medium">
-            {run ? `Run from ${format(new Date(run.startedAt), 'PPpp')}` : 'Loading run...'}
-          </h2>
+          <div className="fk:mt-4 fk:flex fk:flex-wrap fk:items-center fk:gap-2">
+            <h2 className="fk:text-sm fk:font-medium">
+              {run ? `Run from ${format(new Date(run.startedAt), 'PPpp')}` : 'Loading run...'}
+            </h2>
+            {run ? <StatusBadge status={run.status} /> : null}
+          </div>
         </div>
-        {run?.status === 'running' ? (
+        {showCancel ? (
           <Button disabled={isCancelling} size="sm" variant="destructive" onClick={handleCancel}>
             {isCancelling ? 'Cancelling...' : 'Cancel run'}
           </Button>
@@ -1210,60 +1606,283 @@ export function RunDetailPage(): JSX.Element {
       </div>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4 fk:max-w-5xl fk:mx-auto">
-          {run ? <RunReplay api={api} run={run} /> : <PageMessage>Loading run...</PageMessage>}
+          {run ? (
+            <RunReplay api={api} run={run} onRunUpdated={handleRunUpdated} onStreamFinished={handleStreamFinished} />
+          ) : (
+            <PageMessage>Loading run...</PageMessage>
+          )}
         </div>
       </ScrollArea>
     </div>
   );
 }
 
-function RunReplay({ api, run }: { api: ReturnType<typeof createApiClient>; run: AutomationRun }): JSX.Element {
+function toMutationApprovalPartData(approval: AutomationApproval): ReplayDataParts['mutation-approval'] {
+  return {
+    affectedCount: approval.affectedCount,
+    approvalId: approval.id,
+    decidedBy: approval.decidedBy ?? undefined,
+    operationsSummary: approval.operationsSummary,
+    reason: approval.reason ?? undefined,
+    status: approval.status,
+  };
+}
+
+function getRunReplayEmptyLabel({
+  isAwaitingApproval,
+  status,
+}: {
+  isAwaitingApproval: boolean;
+  status: RunStreamStatus;
+}): string {
+  if (status === 'unavailable') {
+    return 'No replay events were recorded.';
+  }
+
+  if (isAwaitingApproval || status === 'paused') {
+    return 'Awaiting approval...';
+  }
+
+  return 'Loading run replay...';
+}
+
+function RunReplay({
+  api,
+  onRunUpdated,
+  onStreamFinished,
+  run,
+}: {
+  api: ReturnType<typeof createApiClient>;
+  onRunUpdated?: () => void;
+  onStreamFinished?: () => void;
+  run: AutomationRun;
+}): JSX.Element {
+  const { projectId } = useProjectApi();
   const { workflowRunId } = run;
   const streamApi = workflowRunId ? api.getStreamUrl(workflowRunId) : '';
-  const { message, status } = useRunStream(streamApi, { recordStatus: run.status });
+  // Increments to force a stream reconnect after a decide; not used as the
+  // pause-suppress flag (that would stick for the rest of the run).
+  const [resumeToken, setResumeToken] = useState(0);
+  const [suppressApprovalPause, setSuppressApprovalPause] = useState(false);
+  // Retain fallback cards across the post-decide suppress window. Local
+  // approve/reject sets suppressApprovalPause, which clears isAwaitingApproval
+  // and the pending SWR key — without a sticky list the card unmounts and an
+  // empty stream falls back to the loading state until reconnect writes a
+  // data-mutation-approval part.
+  const [stickyFallbackApprovals, setStickyFallbackApprovals] = useState<AutomationApproval[]>([]);
+  const lastDecidedApprovalIdRef = useRef<string | null>(null);
+  const { message, status } = useRunStream(streamApi, {
+    recordStatus: run.status,
+    resumeToken,
+    suppressApprovalPause,
+  });
   const rawMessages = useMemo(() => (message ? [message] : []), [message]);
   const messages = useSessionMessages(rawMessages);
+  const onRunUpdatedRef = useRef(onRunUpdated);
+  onRunUpdatedRef.current = onRunUpdated;
+  const onStreamFinishedRef = useRef(onStreamFinished);
+  onStreamFinishedRef.current = onStreamFinished;
+  const replayActions = useMemo<RunReplayActions>(
+    () => ({
+      onApprovalDecided: (approvalId) => {
+        if (approvalId) {
+          lastDecidedApprovalIdRef.current = approvalId;
+        }
+
+        setSuppressApprovalPause(true);
+        setResumeToken((current) => current + 1);
+        onRunUpdatedRef.current?.();
+      },
+    }),
+    []
+  );
+  // Prefer the run record over a stale pending stream part once the workflow
+  // has resumed (`running`) or finished.
+  const isAwaitingApproval =
+    !suppressApprovalPause &&
+    run.status !== 'running' &&
+    !isTerminalRunStatus(run.status) &&
+    (status === 'paused' || run.status === 'awaiting_approval' || messageHasPendingMutationApproval(message));
+  // When the durable stream has no pending data-mutation-approval part
+  // (empty replay, or earlier tool/text parts only), MutationApprovalPart
+  // never mounts — load pending proposals for this run as a fallback.
+  // Query by runId so the proposal is found even when it is not among the
+  // first page of project-wide pending approvals.
+  const streamHasPendingApproval = messageHasPendingMutationApproval(message);
+  const shouldLoadApprovalFallback = isAwaitingApproval && !streamHasPendingApproval && projectId != null;
+  const { data: pendingApprovalsData } = useSWR<AutomationApprovals>(
+    shouldLoadApprovalFallback && projectId
+      ? paths(projectId).approvals({ limit: 25, offset: 0, runId: run.id, status: 'pending' })
+      : null,
+    fetcher,
+    { refreshInterval: STREAM_RETRY_DELAY_MS }
+  );
+  // Skip rows the stream already renders — including decided parts — so a
+  // refreshed/approved stream event and a still-pending list response do not
+  // produce two cards for the same proposal.
+  const streamApprovalIds = useMemo(() => new Set(getMutationApprovalIds(message)), [message]);
+  const fallbackApprovals = stickyFallbackApprovals.filter((approval) => !streamApprovalIds.has(approval.id));
+  const hasReplayContent = messages.length > 0 || fallbackApprovals.length > 0;
+
+  useEffect(() => {
+    setResumeToken(0);
+    setSuppressApprovalPause(false);
+    lastDecidedApprovalIdRef.current = null;
+    setStickyFallbackApprovals([]);
+  }, [run.id]);
+
+  useEffect(() => {
+    const approvals = pendingApprovalsData?.approvals;
+
+    if (!approvals?.length) {
+      return;
+    }
+
+    setStickyFallbackApprovals((current) => {
+      const byId = new Map(current.map((approval) => [approval.id, approval]));
+
+      for (const approval of approvals) {
+        byId.set(approval.id, approval);
+      }
+
+      return [...byId.values()];
+    });
+  }, [pendingApprovalsData]);
+
+  useEffect(() => {
+    setStickyFallbackApprovals((current) => {
+      if (current.length === 0) {
+        return current;
+      }
+
+      const next = current.filter((approval) => !streamApprovalIds.has(approval.id));
+
+      return next.length === current.length ? current : next;
+    });
+  }, [streamApprovalIds]);
+
+  // Clear the post-decide suppress window once the workflow has resumed, or
+  // when a later pending approval appears in the same run (we may have missed
+  // an intermediate `running` status between polls).
+  useEffect(() => {
+    if (!suppressApprovalPause) {
+      return;
+    }
+
+    if (run.status === 'running') {
+      setSuppressApprovalPause(false);
+
+      return;
+    }
+
+    if (run.status !== 'awaiting_approval') {
+      return;
+    }
+
+    const pendingIds = getPendingMutationApprovalIds(message);
+    const decidedId = lastDecidedApprovalIdRef.current;
+
+    if (pendingIds.length === 0 || decidedId === null) {
+      return;
+    }
+
+    if (pendingIds.every((approvalId) => approvalId !== decidedId)) {
+      setSuppressApprovalPause(false);
+    }
+  }, [message, run.status, suppressApprovalPause]);
+
+  useEffect(() => {
+    if (status !== 'finished') {
+      return;
+    }
+
+    onStreamFinishedRef.current?.();
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== 'paused') {
+      return;
+    }
+
+    onRunUpdatedRef.current?.();
+  }, [status]);
+
+  // Poll while suspended on approval so a decision made elsewhere (Approvals
+  // inbox, another tab) updates this view. Local approve/reject also bumps
+  // resumeToken to reconnect the stream immediately; the run status only flips
+  // back to `running` once the suspended workflow step resumes.
+  useEffect(() => {
+    if (run.status !== 'awaiting_approval') {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      onRunUpdatedRef.current?.();
+    }, STREAM_RETRY_DELAY_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [run.status]);
 
   if (!workflowRunId) {
     return <PageMessage>The run has not started streaming yet.</PageMessage>;
   }
 
+  const showAwaitingSpinner = isAwaitingApproval && status !== 'finished' && status !== 'error';
+  const emptyLabel = getRunReplayEmptyLabel({ isAwaitingApproval, status });
+
   return (
-    <div className="fk:space-y-4">
-      {run.status === 'failed' && run.error ? (
-        <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm">
-          {run.summary ?? run.error}
-        </div>
-      ) : null}
-      {status === 'unavailable' ? (
-        <div className="fk:rounded-md fk:border fk:border-amber-500/30 fk:bg-amber-500/5 fk:p-4 fk:text-sm">
-          The workflow replay is no longer available. Generated artifacts may still be available below.
-        </div>
-      ) : null}
-      {status === 'error' && messages.length === 0 ? (
-        <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm">
-          Failed to load the run stream. Try reloading the page.
-        </div>
-      ) : null}
-      {messages.length > 0 ? (
-        <div className="fk:space-y-5 fk:rounded-md fk:bg-background">
-          {messages.map((replayMessage) => (
-            <ReplayMessage key={replayMessage.id} api={api} message={replayMessage} />
-          ))}
-          {status === 'streaming' ? (
-            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
-              <LoaderCircle className="fk:size-4 fk:animate-spin" />
-              <span>Running...</span>
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground">
-          <LoaderCircle className="fk:size-4 fk:animate-spin" />
-          <span>{status === 'unavailable' ? 'No replay events were recorded.' : 'Loading run replay...'}</span>
-        </div>
-      )}
-    </div>
+    <RunReplayActionsContext.Provider value={replayActions}>
+      <div className="fk:space-y-4">
+        {run.status === 'failed' && run.error ? (
+          <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm">
+            {run.summary ?? run.error}
+          </div>
+        ) : null}
+        {status === 'unavailable' ? (
+          <div className="fk:rounded-md fk:border fk:border-amber-500/30 fk:bg-amber-500/5 fk:p-4 fk:text-sm">
+            The workflow replay is no longer available. Generated artifacts may still be available below.
+          </div>
+        ) : null}
+        {status === 'error' && !hasReplayContent ? (
+          <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm">
+            Failed to load the run stream. Try reloading the page.
+          </div>
+        ) : null}
+        {hasReplayContent ? (
+          <div className="fk:space-y-5 fk:rounded-md fk:bg-background">
+            {messages.map((replayMessage) => (
+              <ReplayMessage key={replayMessage.id} api={api} message={replayMessage} />
+            ))}
+            {fallbackApprovals.map((approval) => (
+              <MutationApprovalPart
+                api={api}
+                key={approval.id}
+                message={toMutationApprovalPartData(approval)}
+              />
+            ))}
+            {status === 'streaming' && !isAwaitingApproval ? (
+              <div className="fk:flex fk:items-center fk:shimmer fk:shimmer-duration-1000 fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
+                <LoaderCircle className="fk:size-4 fk:animate-spin" />
+                <span>Running...</span>
+              </div>
+            ) : null}
+            {showAwaitingSpinner ? (
+              <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
+                <LoaderCircle className="fk:size-4 fk:animate-spin" />
+                <span>Awaiting approval...</span>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground">
+            <LoaderCircle className="fk:size-4 fk:animate-spin" />
+            <span>{emptyLabel}</span>
+          </div>
+        )}
+      </div>
+    </RunReplayActionsContext.Provider>
   );
 }
 
@@ -1319,8 +1938,10 @@ function MessagePart({
     return <TextPart part={part} />;
   }
 
-  if (part.type === 'reasoning') {
-    return <ReasoningPart text={part.text} />;
+  if (isReasoningPart(part)) {
+    return hasRenderableReasoning(part) ? (
+      <ReasoningPart streaming={part.state === 'streaming'} text={part.text} />
+    ) : null;
   }
 
   if (part.type === 'data-generating-files') {
@@ -1426,6 +2047,10 @@ function MessagePart({
     );
   }
 
+  if (part.type === 'data-mutation-approval') {
+    return <MutationApprovalPart api={api} message={getPartData<ReplayDataParts['mutation-approval']>(part)} />;
+  }
+
   if (part.type === 'data-bulk-graphql-action') {
     return <BulkGraphqlActionPart message={getPartData<ReplayDataParts['bulk-graphql-action']>(part)} />;
   }
@@ -1495,15 +2120,27 @@ function TextPart({ part }: { part: TextUIPart }): JSX.Element {
   );
 }
 
-function ReasoningPart({ text }: { text: string }): JSX.Element {
+function ReasoningPart({ streaming, text }: { streaming: boolean; text: string }): JSX.Element {
+  if (streaming) {
+    return (
+      <p
+        className="fk:shimmer fk:inline-flex fk:items-center fk:gap-1.5 fk:text-sm fk:text-muted-foreground fk:shimmer-duration-1000"
+        role="status"
+      >
+        <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
+        {getReasoningLabel(text)}
+      </p>
+    );
+  }
+
   return (
-    <ToolMessage className="fk:bg-muted/30">
-      <ToolHeader>
-        <BrainIcon className="fk:size-3.5" />
+    <details className="fk:rounded-xl fk:border fk:border-border fk:bg-muted/30 fk:px-3.5 fk:py-3">
+      <summary className="fk:flex fk:cursor-pointer fk:items-center fk:gap-1.5 fk:text-sm fk:font-medium fk:text-muted-foreground">
+        <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
         Reasoning
-      </ToolHeader>
+      </summary>
       <p className="fk:mt-2 fk:whitespace-pre-wrap fk:text-xs fk:text-muted-foreground">{text}</p>
-    </ToolMessage>
+    </details>
   );
 }
 
@@ -1682,6 +2319,120 @@ function RunSummaryPart({ message }: { message: ReplayDataParts['run-summary'] }
         <span>{title}</span>
       </ToolHeader>
       {message.status === 'failed' ? <p className="fk:whitespace-pre-wrap fk:text-xs">{message.summary}</p> : null}
+    </ToolMessage>
+  );
+}
+
+interface ApprovalResponse {
+  approval: AutomationApproval;
+}
+
+function MutationApprovalPart({
+  api,
+  message,
+}: {
+  api: ReturnType<typeof createApiClient>;
+  message: ReplayDataParts['mutation-approval'];
+}): JSX.Element {
+  const { projectId } = useProjectApi();
+  const replayActions = useContext(RunReplayActionsContext);
+  const previousApprovalStatusRef = useRef<AutomationApproval['status'] | undefined>(undefined);
+  // Poll while the stream still says pending so a decision from the Approvals
+  // inbox / another tab updates this card. RunReplay refreshes the run record
+  // on the same interval but does not touch this approval fetch.
+  const { data, error, isValidating, mutate } = useSWR<ApprovalResponse>(
+    projectId ? paths(projectId).approval(message.approvalId) : null,
+    fetcher,
+    {
+      refreshInterval: (latestData) => {
+        if (message.status !== 'pending') {
+          return 0;
+        }
+
+        if (latestData?.approval?.status && latestData.approval.status !== 'pending') {
+          return 0;
+        }
+
+        return STREAM_RETRY_DELAY_MS;
+      },
+    }
+  );
+  const approvalStatus = data?.approval?.status;
+  const isPending = (approvalStatus ?? message.status) === 'pending';
+
+  // The stream part changes when the proposal is decided or executed; refresh
+  // the full approval (preview, result, error) from the API when that happens.
+  useEffect(() => {
+    void mutate();
+  }, [message.status, mutate]);
+
+  // When polling discovers an external decide while the replay part is still
+  // pending, reconnect the stream the same way a local decide does.
+  useEffect(() => {
+    const previousStatus = previousApprovalStatusRef.current;
+    previousApprovalStatusRef.current = approvalStatus;
+
+    if (message.status !== 'pending' || !approvalStatus || approvalStatus === 'pending') {
+      return;
+    }
+
+    if (previousStatus !== undefined && previousStatus !== 'pending') {
+      return;
+    }
+
+    replayActions?.onApprovalDecided(data?.approval?.id ?? message.approvalId);
+  }, [approvalStatus, data?.approval?.id, message.approvalId, message.status, replayActions]);
+
+  function handleDecided(nextApproval: AutomationApproval): void {
+    // Keep the external-decide effect from bumping resumeToken again after a
+    // local decide already reconnected the stream.
+    if (nextApproval.status !== 'pending') {
+      previousApprovalStatusRef.current = nextApproval.status;
+    }
+
+    void mutate();
+    // Revalidate the run record and reconnect the workflow stream so the page
+    // reflects resumed execution instead of a stale awaiting_approval/error state.
+    replayActions?.onApprovalDecided(nextApproval.id);
+  }
+
+  let body: JSX.Element;
+
+  if (data?.approval) {
+    body = <ApprovalCard api={api} approval={data.approval} key={data.approval.status} onDecided={handleDecided} />;
+  } else if (error && !isValidating) {
+    const detail = error instanceof Error && error.message ? error.message : 'Request failed';
+
+    body = (
+      <div className="fk:space-y-2">
+        <p className="fk:text-xs fk:text-destructive">
+          Failed to load proposal {message.operationsSummary}: {detail}
+        </p>
+        <Button size="sm" variant="outline" onClick={() => void mutate()}>
+          Retry
+        </Button>
+      </div>
+    );
+  } else {
+    body = (
+      <div className="fk:flex fk:items-center fk:gap-2 fk:text-xs fk:text-muted-foreground">
+        <LoaderCircle className="fk:size-3.5 fk:animate-spin" />
+        <span>Loading proposal {message.operationsSummary}...</span>
+      </div>
+    );
+  }
+
+  return (
+    <ToolMessage>
+      <ToolHeader>
+        <DatabaseZapIcon className="fk:size-3.5" />
+        Mutation approval
+        {isPending ? <LoaderCircle className="fk:ml-1 fk:size-3.5 fk:animate-spin" /> : null}
+      </ToolHeader>
+      <div className="fk:mt-2">{body}</div>
+      {message.status === 'error' && message.error ? (
+        <p className="fk:mt-2 fk:text-xs fk:text-destructive">{message.error.message}</p>
+      ) : null}
     </ToolMessage>
   );
 }

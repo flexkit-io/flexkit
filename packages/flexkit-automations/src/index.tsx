@@ -2,6 +2,7 @@ import { Bot as BotIcon } from 'lucide-react';
 import type { PluginOptions } from '@flexkit/studio';
 import { Root } from './root';
 import {
+  ApprovalsPage,
   AutomationDetailPage,
   AutomationsPage,
   CreateAutomationPage,
@@ -29,6 +30,10 @@ export function Automations(): PluginOptions {
               path: 'runs',
             },
             {
+              component: <ApprovalsPage />,
+              path: 'approvals',
+            },
+            {
               component: <CreateAutomationPage />,
               path: 'new',
             },
@@ -54,9 +59,13 @@ export function Automations(): PluginOptions {
 
 export type {
   Automation,
+  AutomationApproval,
+  AutomationApprovalStatus,
+  AutomationApprovals,
   AutomationArtifact,
   AutomationCreditBalance,
   AutomationInput,
+  AutomationMutationPolicy,
   AutomationRun,
   AutomationRunStatus,
   AutomationToolChannel,

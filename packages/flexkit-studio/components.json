@@ -11,7 +11,7 @@
     "prefix": "fk-"
   },
   "aliases": {
-    "components": ".",
-    "utils": "../lib/utils"
+    "components": "src/ui/primitives",
+    "utils": "src/ui/lib/utils"
   }
 }

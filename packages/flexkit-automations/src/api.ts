@@ -1,5 +1,7 @@
 import type {
   Automation,
+  AutomationApproval,
+  AutomationApprovalStatus,
   AutomationArtifact,
   AutomationInput,
   AutomationToolChannel,
@@ -7,8 +9,18 @@ import type {
   MutationResult,
 } from './types';
 
+export interface DecideApprovalInput {
+  approved: boolean;
+  force?: boolean;
+  reason?: string;
+}
+
 export interface ApiClient {
   cancelRun: (_runId: string) => Promise<MutationResult>;
+  decideApproval: (
+    _approvalId: string,
+    _input: DecideApprovalInput
+  ) => Promise<MutationResult & { approval?: AutomationApproval }>;
   createAutomation: (_input: AutomationInput) => Promise<MutationResult & { automation?: Automation }>;
   deleteAutomation: (_automationId: string) => Promise<MutationResult>;
   getArtifactUrl: (_artifactId: string, _options?: { download?: boolean }) => string;
@@ -92,6 +104,25 @@ export function createApiClient(projectId: string): ApiClient {
   return {
     cancelRun: async (runId) =>
       request<MutationResult>(`${automationsBasePath}/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' }),
+    decideApproval: async (approvalId, input) => {
+      const response = await fetch(`${automationsBasePath}/approvals/${encodeURIComponent(approvalId)}/decide`, {
+        body: JSON.stringify(input),
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+      });
+      const data = (await response.json()) as MutationResult & { approval?: AutomationApproval; error?: string };
+
+      // Business errors (stale_preview, already_decided) come back as 400
+      // with a structured body the caller must be able to inspect.
+      if (!response.ok && typeof data.success !== 'boolean') {
+        throw new Error(data.error ? String(data.error) : 'Request failed');
+      }
+
+      return data;
+    },
     createAutomation: async (input) =>
       request<MutationResult & { automation?: Automation }>(automationsBasePath, {
         body: JSON.stringify(input),
@@ -170,6 +201,14 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 };
 
 export function paths(projectId: string): {
+  approval: (_approvalId: string) => string;
+  approvals: (_options?: {
+    limit?: number;
+    offset?: number;
+    runId?: string;
+    status?: AutomationApprovalStatus;
+  }) => string;
+  approvalsCount: string;
   automation: (_automationId: string) => string;
   automationRuns: (_automationId: string, _offset?: number, _limit?: number) => string;
   automations: string;
@@ -182,6 +221,25 @@ export function paths(projectId: string): {
   const basePath = `/api/flexkit/${projectId}/automations`;
 
   return {
+    approval: (approvalId) => `${basePath}/approvals/${encodeURIComponent(approvalId)}`,
+    approvals: (options = {}) => {
+      const { limit = 25, offset = 0, runId, status } = options;
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
+
+      if (status) {
+        params.set('status', status);
+      }
+
+      if (runId) {
+        params.set('runId', runId);
+      }
+
+      return `${basePath}/approvals?${params.toString()}`;
+    },
+    approvalsCount: `${basePath}/approvals?limit=1`,
     automation: (automationId) => `${basePath}/${encodeURIComponent(automationId)}`,
     automationRuns: (automationId, offset = 0, limit = 25) =>
       `${basePath}/${encodeURIComponent(automationId)}/runs?offset=${offset.toString()}&limit=${limit.toString()}`,
