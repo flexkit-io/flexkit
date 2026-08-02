@@ -194,6 +194,23 @@ function OperationDocuments({ operations }: { operations: AutomationApprovalOper
   );
 }
 
+/** Fields the card syncs from parent props; ignores object identity from SWR. */
+function isSameApprovalSnapshot(left: AutomationApproval, right: AutomationApproval): boolean {
+  return (
+    left.id === right.id &&
+    left.status === right.status &&
+    left.decidedAt === right.decidedAt &&
+    left.decidedBy === right.decidedBy &&
+    left.executedAt === right.executedAt &&
+    left.error === right.error &&
+    left.reason === right.reason &&
+    left.expiresAt === right.expiresAt &&
+    left.operationsSummary === right.operationsSummary &&
+    left.affectedCount === right.affectedCount &&
+    JSON.stringify(left.preview) === JSON.stringify(right.preview)
+  );
+}
+
 export function ApprovalCard({
   api,
   approval: initialApproval,
@@ -205,9 +222,11 @@ export function ApprovalCard({
 }): JSX.Element {
   const [approval, setApproval] = useState(initialApproval);
   // Keep local state for decide() responses, but adopt fresher parent data when
-  // list polling / SWR revalidation replaces the prop (e.g. refreshed preview
-  // while still pending). Never regress a local decision back to pending —
-  // mutate/revalidation can briefly return stale pending rows.
+  // list polling / SWR revalidation replaces the prop with meaningfully new
+  // data (e.g. refreshed preview while still pending). Never regress a local
+  // decision back to pending — mutate/revalidation can briefly return stale
+  // pending rows. Do not clear isStale here: a reference-only revalidation
+  // must not drop the stale-preview banner / "Approve anyway" (force) path.
   const [prevInitialApproval, setPrevInitialApproval] = useState(initialApproval);
   const [errorMessage, setErrorMessage] = useState('');
   const [isDeciding, startDecideTransition] = useTransition();
@@ -218,18 +237,15 @@ export function ApprovalCard({
   if (initialApproval !== prevInitialApproval) {
     setPrevInitialApproval(initialApproval);
 
-    const wouldRegressDecision =
-      approval.id === initialApproval.id &&
-      approval.status !== 'pending' &&
-      initialApproval.status === 'pending';
+    if (!isSameApprovalSnapshot(initialApproval, prevInitialApproval)) {
+      const wouldRegressDecision =
+        approval.id === initialApproval.id &&
+        approval.status !== 'pending' &&
+        initialApproval.status === 'pending';
 
-    if (!wouldRegressDecision) {
-      setApproval(initialApproval);
-      // Parent data is the current server snapshot (e.g. after stale_preview
-      // refreshed the stored preview, or list polling caught up). Drop the
-      // local stale banner so we don't keep "Approve anyway" once the card
-      // already shows matching preview data.
-      setIsStale(false);
+      if (!wouldRegressDecision) {
+        setApproval(initialApproval);
+      }
     }
   }
 
