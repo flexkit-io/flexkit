@@ -1119,7 +1119,7 @@ const STREAM_RETRY_DELAY_MS = 2000;
 const JSON_RENDER_SPEC_PART_TYPE = 'data-spec';
 
 interface RunReplayActions {
-  onApprovalDecided: () => void;
+  onApprovalDecided: (_approvalId?: string) => void;
 }
 
 const RunReplayActionsContext = createContext<RunReplayActions | null>(null);
@@ -1275,14 +1275,36 @@ function isTerminalRunStatus(status: AutomationRun['status'] | null | undefined)
   return status === 'success' || status === 'failed' || status === 'cancelled' || status === 'skipped';
 }
 
+function getPendingMutationApprovalIds(message: ReplayMessage | undefined): string[] {
+  if (!message) {
+    return [];
+  }
+
+  const approvalIds: string[] = [];
+
+  for (const part of message.parts) {
+    if (part.type !== 'data-mutation-approval') {
+      continue;
+    }
+
+    const data = getPartData<ReplayDataParts['mutation-approval']>(part);
+
+    if (data.status === 'pending') {
+      approvalIds.push(data.approvalId);
+    }
+  }
+
+  return approvalIds;
+}
+
 function shouldPauseStreamForApproval({
   latestMessage,
   recordStatus,
-  resumeToken,
+  suppressApprovalPause,
 }: {
   latestMessage: ReplayMessage | undefined;
   recordStatus: AutomationRun['status'] | null | undefined;
-  resumeToken: number;
+  suppressApprovalPause: boolean;
 }): boolean {
   if (isTerminalRunStatus(recordStatus)) {
     return false;
@@ -1290,7 +1312,7 @@ function shouldPauseStreamForApproval({
 
   // After a local approval decision the run/stream can still look suspended
   // until the workflow hook resumes — keep reconnecting in that case.
-  if (resumeToken > 0) {
+  if (suppressApprovalPause) {
     return false;
   }
 
@@ -1311,7 +1333,11 @@ function shouldPauseStreamForApproval({
 
 function useRunStream(
   streamApi: string,
-  options?: { recordStatus?: AutomationRun['status'] | null; resumeToken?: number }
+  options?: {
+    recordStatus?: AutomationRun['status'] | null;
+    resumeToken?: number;
+    suppressApprovalPause?: boolean;
+  }
 ): {
   message: ReplayMessage | undefined;
   status: RunStreamStatus;
@@ -1320,6 +1346,10 @@ function useRunStream(
   const [status, setStatus] = useState<RunStreamStatus>('streaming');
   const recordStatus = options?.recordStatus;
   const resumeToken = options?.resumeToken ?? 0;
+  // Read via ref so clearing the post-decide suppress window does not abort a
+  // healthy reconnect the way resetting resumeToken would.
+  const suppressApprovalPauseRef = useRef(options?.suppressApprovalPause ?? false);
+  suppressApprovalPauseRef.current = options?.suppressApprovalPause ?? false;
 
   useEffect(() => {
     if (!streamApi) {
@@ -1414,8 +1444,8 @@ function useRunStream(
           }
 
           // The run record is authoritative once it reaches a terminal status.
-          // Without this, a lingering resumeToken after a local approval would
-          // reconnect forever when the replay never emits a finish chunk.
+          // Without this, a lingering post-decide suppress flag would reconnect
+          // forever when the replay never emits a finish chunk.
           if (isTerminalRunStatus(recordStatus)) {
             setStatus('finished');
 
@@ -1425,7 +1455,13 @@ function useRunStream(
           // Workflow hooks close the readable without a finish chunk while the
           // run is suspended on a mutation approval. Pause instead of treating
           // that as an error or a perpetual "Running..." state.
-          if (shouldPauseStreamForApproval({ latestMessage, recordStatus, resumeToken })) {
+          if (
+            shouldPauseStreamForApproval({
+              latestMessage,
+              recordStatus,
+              suppressApprovalPause: suppressApprovalPauseRef.current,
+            })
+          ) {
             setStatus('paused');
 
             return;
@@ -1433,7 +1469,7 @@ function useRunStream(
 
           // Keep reconnecting while the run is active, or right after a local
           // approval decision while the workflow is still waking up.
-          const shouldKeepRetrying = recordStatus === 'running' || resumeToken > 0;
+          const shouldKeepRetrying = recordStatus === 'running' || suppressApprovalPauseRef.current;
 
           if (!shouldKeepRetrying && attempt >= MAX_STREAM_ATTEMPTS - 1) {
             setStatus('error');
@@ -1453,7 +1489,7 @@ function useRunStream(
             return;
           }
 
-          const shouldKeepRetrying = recordStatus === 'running' || resumeToken > 0;
+          const shouldKeepRetrying = recordStatus === 'running' || suppressApprovalPauseRef.current;
 
           if (!shouldKeepRetrying && attempt >= MAX_STREAM_ATTEMPTS - 1) {
             setStatus('error');
@@ -1571,6 +1607,35 @@ export function RunDetailPage(): JSX.Element {
   );
 }
 
+function toMutationApprovalPartData(approval: AutomationApproval): ReplayDataParts['mutation-approval'] {
+  return {
+    affectedCount: approval.affectedCount,
+    approvalId: approval.id,
+    decidedBy: approval.decidedBy ?? undefined,
+    operationsSummary: approval.operationsSummary,
+    reason: approval.reason ?? undefined,
+    status: approval.status,
+  };
+}
+
+function getRunReplayEmptyLabel({
+  isAwaitingApproval,
+  status,
+}: {
+  isAwaitingApproval: boolean;
+  status: RunStreamStatus;
+}): string {
+  if (status === 'unavailable') {
+    return 'No replay events were recorded.';
+  }
+
+  if (isAwaitingApproval || status === 'paused') {
+    return 'Awaiting approval...';
+  }
+
+  return 'Loading run replay...';
+}
+
 function RunReplay({
   api,
   onRunUpdated,
@@ -1582,10 +1647,19 @@ function RunReplay({
   onStreamFinished?: () => void;
   run: AutomationRun;
 }): JSX.Element {
+  const { projectId } = useProjectApi();
   const { workflowRunId } = run;
   const streamApi = workflowRunId ? api.getStreamUrl(workflowRunId) : '';
+  // Increments to force a stream reconnect after a decide; not used as the
+  // pause-suppress flag (that would stick for the rest of the run).
   const [resumeToken, setResumeToken] = useState(0);
-  const { message, status } = useRunStream(streamApi, { recordStatus: run.status, resumeToken });
+  const [suppressApprovalPause, setSuppressApprovalPause] = useState(false);
+  const lastDecidedApprovalIdRef = useRef<string | null>(null);
+  const { message, status } = useRunStream(streamApi, {
+    recordStatus: run.status,
+    resumeToken,
+    suppressApprovalPause,
+  });
   const rawMessages = useMemo(() => (message ? [message] : []), [message]);
   const messages = useSessionMessages(rawMessages);
   const onRunUpdatedRef = useRef(onRunUpdated);
@@ -1594,7 +1668,12 @@ function RunReplay({
   onStreamFinishedRef.current = onStreamFinished;
   const replayActions = useMemo<RunReplayActions>(
     () => ({
-      onApprovalDecided: () => {
+      onApprovalDecided: (approvalId) => {
+        if (approvalId) {
+          lastDecidedApprovalIdRef.current = approvalId;
+        }
+
+        setSuppressApprovalPause(true);
         setResumeToken((current) => current + 1);
         onRunUpdatedRef.current?.();
       },
@@ -1604,14 +1683,59 @@ function RunReplay({
   // Prefer the run record over a stale pending stream part once the workflow
   // has resumed (`running`) or finished.
   const isAwaitingApproval =
-    resumeToken === 0 &&
+    !suppressApprovalPause &&
     run.status !== 'running' &&
     !isTerminalRunStatus(run.status) &&
     (status === 'paused' || run.status === 'awaiting_approval' || messageHasPendingMutationApproval(message));
+  // When the durable stream closes before any UI message chunks arrive (common
+  // if the page opens mid-approval), MutationApprovalPart never mounts from
+  // replay parts — load pending proposals for this run as a fallback.
+  const shouldLoadApprovalFallback = isAwaitingApproval && messages.length === 0 && projectId != null;
+  const { data: pendingApprovalsData } = useSWR<AutomationApprovals>(
+    shouldLoadApprovalFallback && projectId ? paths(projectId).approvals('pending', 0, 25) : null,
+    fetcher,
+    { refreshInterval: STREAM_RETRY_DELAY_MS }
+  );
+  const fallbackApprovals = useMemo(
+    () => pendingApprovalsData?.approvals.filter((approval) => approval.runId === run.id) ?? [],
+    [pendingApprovalsData?.approvals, run.id]
+  );
 
   useEffect(() => {
     setResumeToken(0);
+    setSuppressApprovalPause(false);
+    lastDecidedApprovalIdRef.current = null;
   }, [run.id]);
+
+  // Clear the post-decide suppress window once the workflow has resumed, or
+  // when a later pending approval appears in the same run (we may have missed
+  // an intermediate `running` status between polls).
+  useEffect(() => {
+    if (!suppressApprovalPause) {
+      return;
+    }
+
+    if (run.status === 'running') {
+      setSuppressApprovalPause(false);
+
+      return;
+    }
+
+    if (run.status !== 'awaiting_approval') {
+      return;
+    }
+
+    const pendingIds = getPendingMutationApprovalIds(message);
+    const decidedId = lastDecidedApprovalIdRef.current;
+
+    if (pendingIds.length === 0 || decidedId === null) {
+      return;
+    }
+
+    if (pendingIds.every((approvalId) => approvalId !== decidedId)) {
+      setSuppressApprovalPause(false);
+    }
+  }, [message, run.status, suppressApprovalPause]);
 
   useEffect(() => {
     if (status !== 'finished') {
@@ -1651,6 +1775,9 @@ function RunReplay({
     return <PageMessage>The run has not started streaming yet.</PageMessage>;
   }
 
+  const showAwaitingSpinner = isAwaitingApproval && status !== 'finished' && status !== 'error';
+  const emptyLabel = getRunReplayEmptyLabel({ isAwaitingApproval, status });
+
   return (
     <RunReplayActionsContext.Provider value={replayActions}>
       <div className="fk:space-y-4">
@@ -1664,7 +1791,7 @@ function RunReplay({
             The workflow replay is no longer available. Generated artifacts may still be available below.
           </div>
         ) : null}
-        {status === 'error' && messages.length === 0 ? (
+        {status === 'error' && messages.length === 0 && fallbackApprovals.length === 0 ? (
           <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm">
             Failed to load the run stream. Try reloading the page.
           </div>
@@ -1680,7 +1807,23 @@ function RunReplay({
                 <span>Running...</span>
               </div>
             ) : null}
-            {isAwaitingApproval && status !== 'finished' && status !== 'error' ? (
+            {showAwaitingSpinner ? (
+              <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
+                <LoaderCircle className="fk:size-4 fk:animate-spin" />
+                <span>Awaiting approval...</span>
+              </div>
+            ) : null}
+          </div>
+        ) : fallbackApprovals.length > 0 ? (
+          <div className="fk:space-y-5 fk:rounded-md fk:bg-background">
+            {fallbackApprovals.map((approval) => (
+              <MutationApprovalPart
+                api={api}
+                key={approval.id}
+                message={toMutationApprovalPartData(approval)}
+              />
+            ))}
+            {showAwaitingSpinner ? (
               <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
                 <LoaderCircle className="fk:size-4 fk:animate-spin" />
                 <span>Awaiting approval...</span>
@@ -1690,7 +1833,7 @@ function RunReplay({
         ) : (
           <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground">
             <LoaderCircle className="fk:size-4 fk:animate-spin" />
-            <span>{status === 'unavailable' ? 'No replay events were recorded.' : 'Loading run replay...'}</span>
+            <span>{emptyLabel}</span>
           </div>
         )}
       </div>
@@ -2192,8 +2335,8 @@ function MutationApprovalPart({
       return;
     }
 
-    replayActions?.onApprovalDecided();
-  }, [approvalStatus, message.status, replayActions]);
+    replayActions?.onApprovalDecided(data?.approval?.id ?? message.approvalId);
+  }, [approvalStatus, data?.approval?.id, message.approvalId, message.status, replayActions]);
 
   function handleDecided(nextApproval: AutomationApproval): void {
     // Keep the external-decide effect from bumping resumeToken again after a
@@ -2205,7 +2348,7 @@ function MutationApprovalPart({
     void mutate();
     // Revalidate the run record and reconnect the workflow stream so the page
     // reflects resumed execution instead of a stale awaiting_approval/error state.
-    replayActions?.onApprovalDecided();
+    replayActions?.onApprovalDecided(nextApproval.id);
   }
 
   let body: JSX.Element;
