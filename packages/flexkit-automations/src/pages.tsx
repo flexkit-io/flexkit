@@ -1503,8 +1503,7 @@ export function RunDetailPage(): JSX.Element {
   const run = data?.run;
   // Keep Cancel available while awaiting approval; streamFinished only hides it
   // for in-flight runs after the workflow stream reports completion.
-  const showCancel =
-    run?.status === 'awaiting_approval' || (run?.status === 'running' && !streamFinished);
+  const showCancel = run?.status === 'awaiting_approval' || (run?.status === 'running' && !streamFinished);
 
   function handleCancel(): void {
     startCancelTransition(async () => {
@@ -1562,12 +1561,7 @@ export function RunDetailPage(): JSX.Element {
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4 fk:max-w-5xl fk:mx-auto">
           {run ? (
-            <RunReplay
-              api={api}
-              run={run}
-              onRunUpdated={handleRunUpdated}
-              onStreamFinished={handleStreamFinished}
-            />
+            <RunReplay api={api} run={run} onRunUpdated={handleRunUpdated} onStreamFinished={handleStreamFinished} />
           ) : (
             <PageMessage>Loading run...</PageMessage>
           )}
@@ -1635,10 +1629,12 @@ function RunReplay({
     onRunUpdatedRef.current?.();
   }, [status]);
 
-  // The decide endpoint settles the approval immediately, but the run status
-  // only flips back to `running` once the suspended workflow step resumes.
+  // Poll while suspended on approval so a decision made elsewhere (Approvals
+  // inbox, another tab) updates this view. Local approve/reject also bumps
+  // resumeToken to reconnect the stream immediately; the run status only flips
+  // back to `running` once the suspended workflow step resumes.
   useEffect(() => {
-    if (resumeToken === 0 || run.status !== 'awaiting_approval') {
+    if (run.status !== 'awaiting_approval') {
       return;
     }
 
@@ -1649,7 +1645,7 @@ function RunReplay({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [resumeToken, run.status]);
+  }, [run.status]);
 
   if (!workflowRunId) {
     return <PageMessage>The run has not started streaming yet.</PageMessage>;
@@ -2152,7 +2148,7 @@ function MutationApprovalPart({
 }): JSX.Element {
   const { projectId } = useProjectApi();
   const replayActions = useContext(RunReplayActionsContext);
-  const { data, mutate } = useSWR<ApprovalResponse>(
+  const { data, error, isValidating, mutate } = useSWR<ApprovalResponse>(
     projectId ? paths(projectId).approval(message.approvalId) : null,
     fetcher
   );
@@ -2170,6 +2166,32 @@ function MutationApprovalPart({
     replayActions?.onApprovalDecided();
   }
 
+  let body: JSX.Element;
+
+  if (data?.approval) {
+    body = <ApprovalCard api={api} approval={data.approval} key={data.approval.status} onDecided={handleDecided} />;
+  } else if (error && !isValidating) {
+    const detail = error instanceof Error && error.message ? error.message : 'Request failed';
+
+    body = (
+      <div className="fk:space-y-2">
+        <p className="fk:text-xs fk:text-destructive">
+          Failed to load proposal {message.operationsSummary}: {detail}
+        </p>
+        <Button size="sm" variant="outline" onClick={() => void mutate()}>
+          Retry
+        </Button>
+      </div>
+    );
+  } else {
+    body = (
+      <div className="fk:flex fk:items-center fk:gap-2 fk:text-xs fk:text-muted-foreground">
+        <LoaderCircle className="fk:size-3.5 fk:animate-spin" />
+        <span>Loading proposal {message.operationsSummary}...</span>
+      </div>
+    );
+  }
+
   return (
     <ToolMessage>
       <ToolHeader>
@@ -2177,16 +2199,7 @@ function MutationApprovalPart({
         Mutation approval
         {message.status === 'pending' ? <LoaderCircle className="fk:ml-1 fk:size-3.5 fk:animate-spin" /> : null}
       </ToolHeader>
-      <div className="fk:mt-2">
-        {data?.approval ? (
-          <ApprovalCard api={api} approval={data.approval} key={data.approval.status} onDecided={handleDecided} />
-        ) : (
-          <div className="fk:flex fk:items-center fk:gap-2 fk:text-xs fk:text-muted-foreground">
-            <LoaderCircle className="fk:size-3.5 fk:animate-spin" />
-            <span>Loading proposal {message.operationsSummary}...</span>
-          </div>
-        )}
-      </div>
+      <div className="fk:mt-2">{body}</div>
       {message.status === 'error' && message.error ? (
         <p className="fk:mt-2 fk:text-xs fk:text-destructive">{message.error.message}</p>
       ) : null}
