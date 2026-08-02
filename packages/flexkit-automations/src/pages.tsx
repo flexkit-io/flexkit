@@ -1275,12 +1275,16 @@ function isTerminalRunStatus(status: AutomationRun['status'] | null | undefined)
   return status === 'success' || status === 'failed' || status === 'cancelled' || status === 'skipped';
 }
 
-function getPendingMutationApprovalIds(message: ReplayMessage | undefined): string[] {
+function getMutationApprovalIds(
+  message: ReplayMessage | undefined,
+  options?: { pendingOnly?: boolean }
+): string[] {
   if (!message) {
     return [];
   }
 
   const approvalIds: string[] = [];
+  const pendingOnly = options?.pendingOnly ?? false;
 
   for (const part of message.parts) {
     if (part.type !== 'data-mutation-approval') {
@@ -1289,12 +1293,18 @@ function getPendingMutationApprovalIds(message: ReplayMessage | undefined): stri
 
     const data = getPartData<ReplayDataParts['mutation-approval']>(part);
 
-    if (data.status === 'pending') {
-      approvalIds.push(data.approvalId);
+    if (pendingOnly && data.status !== 'pending') {
+      continue;
     }
+
+    approvalIds.push(data.approvalId);
   }
 
   return approvalIds;
+}
+
+function getPendingMutationApprovalIds(message: ReplayMessage | undefined): string[] {
+  return getMutationApprovalIds(message, { pendingOnly: true });
 }
 
 function shouldPauseStreamForApproval({
@@ -1701,7 +1711,13 @@ function RunReplay({
     fetcher,
     { refreshInterval: STREAM_RETRY_DELAY_MS }
   );
-  const fallbackApprovals = pendingApprovalsData?.approvals ?? [];
+  // Skip rows the stream already renders — including decided parts — so a
+  // refreshed/approved stream event and a still-pending list response do not
+  // produce two cards for the same proposal.
+  const streamApprovalIds = new Set(getMutationApprovalIds(message));
+  const fallbackApprovals = (pendingApprovalsData?.approvals ?? []).filter(
+    (approval) => !streamApprovalIds.has(approval.id)
+  );
   const hasReplayContent = messages.length > 0 || fallbackApprovals.length > 0;
 
   useEffect(() => {
