@@ -861,11 +861,11 @@ export function ApprovalsPage(): JSX.Element {
       return null;
     }
 
-    return paths(projectId).approvals(
-      statusFilter === 'pending' ? 'pending' : undefined,
-      pageIndex * APPROVALS_PAGE_SIZE,
-      APPROVALS_PAGE_SIZE
-    );
+    return paths(projectId).approvals({
+      limit: APPROVALS_PAGE_SIZE,
+      offset: pageIndex * APPROVALS_PAGE_SIZE,
+      status: statusFilter === 'pending' ? 'pending' : undefined,
+    });
   };
   const {
     data: approvalPages,
@@ -1687,19 +1687,22 @@ function RunReplay({
     run.status !== 'running' &&
     !isTerminalRunStatus(run.status) &&
     (status === 'paused' || run.status === 'awaiting_approval' || messageHasPendingMutationApproval(message));
-  // When the durable stream closes before any UI message chunks arrive (common
-  // if the page opens mid-approval), MutationApprovalPart never mounts from
-  // replay parts — load pending proposals for this run as a fallback.
-  const shouldLoadApprovalFallback = isAwaitingApproval && messages.length === 0 && projectId != null;
+  // When the durable stream has no pending data-mutation-approval part
+  // (empty replay, or earlier tool/text parts only), MutationApprovalPart
+  // never mounts — load pending proposals for this run as a fallback.
+  // Query by runId so the proposal is found even when it is not among the
+  // first page of project-wide pending approvals.
+  const streamHasPendingApproval = messageHasPendingMutationApproval(message);
+  const shouldLoadApprovalFallback = isAwaitingApproval && !streamHasPendingApproval && projectId != null;
   const { data: pendingApprovalsData } = useSWR<AutomationApprovals>(
-    shouldLoadApprovalFallback && projectId ? paths(projectId).approvals('pending', 0, 25) : null,
+    shouldLoadApprovalFallback && projectId
+      ? paths(projectId).approvals({ limit: 25, offset: 0, runId: run.id, status: 'pending' })
+      : null,
     fetcher,
     { refreshInterval: STREAM_RETRY_DELAY_MS }
   );
-  const fallbackApprovals = useMemo(
-    () => pendingApprovalsData?.approvals.filter((approval) => approval.runId === run.id) ?? [],
-    [pendingApprovalsData?.approvals, run.id]
-  );
+  const fallbackApprovals = pendingApprovalsData?.approvals ?? [];
+  const hasReplayContent = messages.length > 0 || fallbackApprovals.length > 0;
 
   useEffect(() => {
     setResumeToken(0);
@@ -1791,31 +1794,16 @@ function RunReplay({
             The workflow replay is no longer available. Generated artifacts may still be available below.
           </div>
         ) : null}
-        {status === 'error' && messages.length === 0 && fallbackApprovals.length === 0 ? (
+        {status === 'error' && !hasReplayContent ? (
           <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm">
             Failed to load the run stream. Try reloading the page.
           </div>
         ) : null}
-        {messages.length > 0 ? (
+        {hasReplayContent ? (
           <div className="fk:space-y-5 fk:rounded-md fk:bg-background">
             {messages.map((replayMessage) => (
               <ReplayMessage key={replayMessage.id} api={api} message={replayMessage} />
             ))}
-            {status === 'streaming' && !isAwaitingApproval ? (
-              <div className="fk:flex fk:items-center fk:shimmer fk:shimmer-duration-1000 fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
-                <LoaderCircle className="fk:size-4 fk:animate-spin" />
-                <span>Running...</span>
-              </div>
-            ) : null}
-            {showAwaitingSpinner ? (
-              <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
-                <LoaderCircle className="fk:size-4 fk:animate-spin" />
-                <span>Awaiting approval...</span>
-              </div>
-            ) : null}
-          </div>
-        ) : fallbackApprovals.length > 0 ? (
-          <div className="fk:space-y-5 fk:rounded-md fk:bg-background">
             {fallbackApprovals.map((approval) => (
               <MutationApprovalPart
                 api={api}
@@ -1823,6 +1811,12 @@ function RunReplay({
                 message={toMutationApprovalPartData(approval)}
               />
             ))}
+            {status === 'streaming' && !isAwaitingApproval ? (
+              <div className="fk:flex fk:items-center fk:shimmer fk:shimmer-duration-1000 fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
+                <LoaderCircle className="fk:size-4 fk:animate-spin" />
+                <span>Running...</span>
+              </div>
+            ) : null}
             {showAwaitingSpinner ? (
               <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
                 <LoaderCircle className="fk:size-4 fk:animate-spin" />

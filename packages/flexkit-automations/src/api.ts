@@ -202,7 +202,12 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 
 export function paths(projectId: string): {
   approval: (_approvalId: string) => string;
-  approvals: (_status?: AutomationApprovalStatus, _offset?: number, _limit?: number) => string;
+  approvals: (_options?: {
+    limit?: number;
+    offset?: number;
+    runId?: string;
+    status?: AutomationApprovalStatus;
+  }) => string;
   approvalsCount: string;
   automation: (_automationId: string) => string;
   automationRuns: (_automationId: string, _offset?: number, _limit?: number) => string;
@@ -217,10 +222,22 @@ export function paths(projectId: string): {
 
   return {
     approval: (approvalId) => `${basePath}/approvals/${encodeURIComponent(approvalId)}`,
-    approvals: (status, offset = 0, limit = 25) => {
-      const statusParam = status ? `&status=${status}` : '';
+    approvals: (options = {}) => {
+      const { limit = 25, offset = 0, runId, status } = options;
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
 
-      return `${basePath}/approvals?offset=${offset.toString()}&limit=${limit.toString()}${statusParam}`;
+      if (status) {
+        params.set('status', status);
+      }
+
+      if (runId) {
+        params.set('runId', runId);
+      }
+
+      return `${basePath}/approvals?${params.toString()}`;
     },
     approvalsCount: `${basePath}/approvals?limit=1`,
     automation: (automationId) => `${basePath}/${encodeURIComponent(automationId)}`,
