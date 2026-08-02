@@ -1664,6 +1664,12 @@ function RunReplay({
   // pause-suppress flag (that would stick for the rest of the run).
   const [resumeToken, setResumeToken] = useState(0);
   const [suppressApprovalPause, setSuppressApprovalPause] = useState(false);
+  // Retain fallback cards across the post-decide suppress window. Local
+  // approve/reject sets suppressApprovalPause, which clears isAwaitingApproval
+  // and the pending SWR key — without a sticky list the card unmounts and an
+  // empty stream falls back to the loading state until reconnect writes a
+  // data-mutation-approval part.
+  const [stickyFallbackApprovals, setStickyFallbackApprovals] = useState<AutomationApproval[]>([]);
   const lastDecidedApprovalIdRef = useRef<string | null>(null);
   const { message, status } = useRunStream(streamApi, {
     recordStatus: run.status,
@@ -1714,17 +1720,46 @@ function RunReplay({
   // Skip rows the stream already renders — including decided parts — so a
   // refreshed/approved stream event and a still-pending list response do not
   // produce two cards for the same proposal.
-  const streamApprovalIds = new Set(getMutationApprovalIds(message));
-  const fallbackApprovals = (pendingApprovalsData?.approvals ?? []).filter(
-    (approval) => !streamApprovalIds.has(approval.id)
-  );
+  const streamApprovalIds = useMemo(() => new Set(getMutationApprovalIds(message)), [message]);
+  const fallbackApprovals = stickyFallbackApprovals.filter((approval) => !streamApprovalIds.has(approval.id));
   const hasReplayContent = messages.length > 0 || fallbackApprovals.length > 0;
 
   useEffect(() => {
     setResumeToken(0);
     setSuppressApprovalPause(false);
     lastDecidedApprovalIdRef.current = null;
+    setStickyFallbackApprovals([]);
   }, [run.id]);
+
+  useEffect(() => {
+    const approvals = pendingApprovalsData?.approvals;
+
+    if (!approvals?.length) {
+      return;
+    }
+
+    setStickyFallbackApprovals((current) => {
+      const byId = new Map(current.map((approval) => [approval.id, approval]));
+
+      for (const approval of approvals) {
+        byId.set(approval.id, approval);
+      }
+
+      return [...byId.values()];
+    });
+  }, [pendingApprovalsData]);
+
+  useEffect(() => {
+    setStickyFallbackApprovals((current) => {
+      if (current.length === 0) {
+        return current;
+      }
+
+      const next = current.filter((approval) => !streamApprovalIds.has(approval.id));
+
+      return next.length === current.length ? current : next;
+    });
+  }, [streamApprovalIds]);
 
   // Clear the post-decide suppress window once the workflow has resumed, or
   // when a later pending approval appears in the same run (we may have missed
