@@ -969,9 +969,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
   const [enabled, setEnabled] = useState(automation?.enabled ?? false);
   const [modelId, setModelId] = useState(automation?.modelId ?? '');
+  const knownMutationPolicy = automation?.mutationPolicy;
   const [mutationPolicy, setMutationPolicy] = useState<AutomationMutationPolicy>(
-    automation?.mutationPolicy ?? 'require_approval'
+    knownMutationPolicy ?? 'require_approval'
   );
+  const [mutationPolicyTouched, setMutationPolicyTouched] = useState(false);
   const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -1153,11 +1155,13 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         provider,
       };
     });
+    const shouldIncludeMutationPolicy =
+      mode === 'create' || !automation || knownMutationPolicy !== undefined || mutationPolicyTouched;
     const input: AutomationInput = {
       enabled,
       instructions,
       modelId: effectiveModelId,
-      mutationPolicy,
+      ...(shouldIncludeMutationPolicy ? { mutationPolicy } : {}),
       name,
       toolConfigs,
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
@@ -1298,7 +1302,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         </p>
         <Select
           value={mutationPolicy}
-          onValueChange={(value) => setMutationPolicy(value === 'auto_approve' ? 'auto_approve' : 'require_approval')}
+          onValueChange={(value) => {
+            setMutationPolicyTouched(true);
+            setMutationPolicy(value === 'auto_approve' ? 'auto_approve' : 'require_approval');
+          }}
         >
           <SelectTrigger aria-label="Mutation policy" className="fk:w-fit" id="automation-mutation-policy">
             <SelectValue />

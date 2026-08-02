@@ -212,11 +212,7 @@ export function ApprovalCard({
   const isPending = approval.status === 'pending';
   const { preview } = approval;
 
-  function applyResult(nextApproval?: AutomationApproval): void {
-    if (!nextApproval) {
-      return;
-    }
-
+  function applyResult(nextApproval: AutomationApproval): void {
     setApproval(nextApproval);
     onDecided?.(nextApproval);
   }
@@ -240,7 +236,23 @@ export function ApprovalCard({
 
         setIsStale(false);
         setIsRejectDialogOpen(false);
-        applyResult(result.approval);
+
+        // Prefer the server payload; if a successful decide or already_decided
+        // omits `approval`, exit pending so Approve/Reject disable.
+        const nextApproval =
+          result.approval ??
+          (result.success || result.errorCode === 'already_decided'
+            ? {
+                ...approval,
+                decidedAt: approval.decidedAt ?? new Date().toISOString(),
+                reason: reason ?? approval.reason,
+                status: approved ? 'approved' : 'rejected',
+              }
+            : null);
+
+        if (nextApproval) {
+          applyResult(nextApproval);
+        }
 
         if (!result.success && result.errorCode !== 'already_decided') {
           setErrorMessage(

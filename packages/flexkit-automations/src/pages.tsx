@@ -1437,8 +1437,10 @@ export function RunDetailPage(): JSX.Element {
   const runApi = api;
   const selectedRunId = runId;
   const run = data?.run;
-  const isActiveRun = run?.status === 'running' || run?.status === 'awaiting_approval';
-  const showCancel = Boolean(isActiveRun && !streamFinished);
+  // Keep Cancel available while awaiting approval; streamFinished only hides it
+  // for in-flight runs after the workflow stream reports completion.
+  const showCancel =
+    run?.status === 'awaiting_approval' || (run?.status === 'running' && !streamFinished);
 
   function handleCancel(): void {
     startCancelTransition(async () => {

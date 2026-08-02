@@ -52,7 +52,8 @@ export interface Automation {
   instructions: string;
   lastRunAt: string | null;
   modelId: string;
-  mutationPolicy: AutomationMutationPolicy;
+  /** May be absent from older API responses. */
+  mutationPolicy?: AutomationMutationPolicy;
   name: string;
   projectId: string;
   totalRuns: number;
@@ -189,7 +190,8 @@ export interface AutomationInput {
   enabled: boolean;
   instructions: string;
   modelId: string;
-  mutationPolicy: AutomationMutationPolicy;
+  /** Omit on update when the loaded automation had no known policy. */
+  mutationPolicy?: AutomationMutationPolicy;
   name: string;
   toolConfigs: AutomationToolConfigInput[];
   triggers: AutomationTrigger[];
