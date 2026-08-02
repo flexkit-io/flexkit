@@ -1275,10 +1275,7 @@ function isTerminalRunStatus(status: AutomationRun['status'] | null | undefined)
   return status === 'success' || status === 'failed' || status === 'cancelled' || status === 'skipped';
 }
 
-function getMutationApprovalIds(
-  message: ReplayMessage | undefined,
-  options?: { pendingOnly?: boolean }
-): string[] {
+function getMutationApprovalIds(message: ReplayMessage | undefined, options?: { pendingOnly?: boolean }): string[] {
   if (!message) {
     return [];
   }
@@ -1447,7 +1444,10 @@ function useRunStream(
             return;
           }
 
-          if (result === 'finished') {
+          // The stream route wraps every readable session with a finish chunk,
+          // including sessions that close while the durable workflow continues.
+          // Only the run record can confirm that the automation itself finished.
+          if (result === 'finished' && isTerminalRunStatus(recordStatus)) {
             setStatus('finished');
 
             return;
@@ -1528,7 +1528,15 @@ function useRunStream(
 export function RunDetailPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const { automationId, runId } = useParams<{ automationId: string; runId: string }>();
-  const { data, mutate } = useSWR<RunResponse>(projectId && runId ? paths(projectId).run(runId) : null, fetcher);
+  const { data, mutate } = useSWR<RunResponse>(projectId && runId ? paths(projectId).run(runId) : null, fetcher, {
+    refreshInterval: (latestData) => {
+      if (!latestData?.run || isTerminalRunStatus(latestData.run.status)) {
+        return 0;
+      }
+
+      return STREAM_RETRY_DELAY_MS;
+    },
+  });
   const { data: automationData } = useSWR<AutomationResponse>(
     projectId && automationId ? paths(projectId).automation(automationId) : null,
     fetcher
@@ -1856,11 +1864,7 @@ function RunReplay({
               <ReplayMessage key={replayMessage.id} api={api} message={replayMessage} />
             ))}
             {fallbackApprovals.map((approval) => (
-              <MutationApprovalPart
-                api={api}
-                key={approval.id}
-                message={toMutationApprovalPartData(approval)}
-              />
+              <MutationApprovalPart api={api} key={approval.id} message={toMutationApprovalPartData(approval)} />
             ))}
             {status === 'streaming' && !isAwaitingApproval ? (
               <div className="fk:flex fk:items-center fk:shimmer fk:shimmer-duration-1000 fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
