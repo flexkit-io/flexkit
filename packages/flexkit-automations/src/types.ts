@@ -190,7 +190,6 @@ export interface AutomationInput {
   enabled: boolean;
   instructions: string;
   modelId: string;
-  /** Omit on update when the loaded automation had no known policy. */
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
   toolConfigs: AutomationToolConfigInput[];

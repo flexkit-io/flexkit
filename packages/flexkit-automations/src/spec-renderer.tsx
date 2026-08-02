@@ -580,6 +580,41 @@ function uniqueRowsByKey(data: { [key: string]: unknown }[], key: string): { [ke
   return order.map((value) => rowsByKey.get(value) ?? {});
 }
 
+// Re-applied json-render patches can append the same row sequence again. Collapse
+// exact repetitions before aggregating so sum/count/avg are not inflated, while
+// still allowing multiple intentional rows per category (including identical
+// rows used for count). Periods of length 1 are skipped for that reason.
+function collapseRepeatedRowSequences(
+  data: { [key: string]: unknown }[]
+): { [key: string]: unknown }[] {
+  if (data.length < 4) {
+    return data;
+  }
+
+  const serialized = data.map((row) => JSON.stringify(row));
+
+  for (let period = 2; period <= Math.floor(data.length / 2); period++) {
+    if (data.length % period !== 0) {
+      continue;
+    }
+
+    let isRepeated = true;
+
+    for (let index = period; index < data.length; index++) {
+      if (serialized[index] !== serialized[index % period]) {
+        isRepeated = false;
+        break;
+      }
+    }
+
+    if (isRepeated) {
+      return data.slice(0, period);
+    }
+  }
+
+  return data;
+}
+
 function getChartPoints(props: CartesianChartProps): ChartPoint[] {
   const data = props.data ?? [];
 
@@ -591,9 +626,10 @@ function getChartPoints(props: CartesianChartProps): ChartPoint[] {
     }));
   }
 
+  const rows = collapseRepeatedRowSequences(data);
   const groups = new Map<string, { count: number; sum: number }>();
 
-  for (const row of data) {
+  for (const row of rows) {
     const key = String(row[props.xKey] ?? '');
     const group = groups.get(key) ?? { count: 0, sum: 0 };
 

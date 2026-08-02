@@ -969,11 +969,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
   const [enabled, setEnabled] = useState(automation?.enabled ?? false);
   const [modelId, setModelId] = useState(automation?.modelId ?? '');
-  const knownMutationPolicy = automation?.mutationPolicy;
   const [mutationPolicy, setMutationPolicy] = useState<AutomationMutationPolicy>(
-    knownMutationPolicy ?? 'require_approval'
+    automation?.mutationPolicy ?? 'require_approval'
   );
-  const [mutationPolicyTouched, setMutationPolicyTouched] = useState(false);
   const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -1155,13 +1153,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         provider,
       };
     });
-    const shouldIncludeMutationPolicy =
-      mode === 'create' || !automation || knownMutationPolicy !== undefined || mutationPolicyTouched;
     const input: AutomationInput = {
       enabled,
       instructions,
       modelId: effectiveModelId,
-      ...(shouldIncludeMutationPolicy ? { mutationPolicy } : {}),
+      mutationPolicy,
       name,
       toolConfigs,
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
@@ -1303,7 +1299,6 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         <Select
           value={mutationPolicy}
           onValueChange={(value) => {
-            setMutationPolicyTouched(true);
             setMutationPolicy(value === 'auto_approve' ? 'auto_approve' : 'require_approval');
           }}
         >

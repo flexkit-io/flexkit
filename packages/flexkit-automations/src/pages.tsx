@@ -881,6 +881,18 @@ export function ApprovalsPage(): JSX.Element {
   const isLoadingMore = approvalPages !== undefined && size > approvalPages.length;
   const selectedApproval = approvals.find((approval) => approval.id === selectedApprovalId) ?? null;
 
+  // Deciding while on Pending removes the row, so selectedApproval becomes null and
+  // the dialog closes — but selectedApprovalId would still be set. Clear it once the
+  // current filter's data has loaded without that id, otherwise switching to All
+  // would reopen the dialog without a click.
+  useEffect(() => {
+    if (selectedApprovalId === null || selectedApproval !== null || isLoading || approvalPages === undefined) {
+      return;
+    }
+
+    setSelectedApprovalId(null);
+  }, [approvalPages, isLoading, selectedApproval, selectedApprovalId]);
+
   if (!projectId || !api) {
     return <PageMessage>Select a project to view approvals.</PageMessage>;
   }
@@ -889,20 +901,31 @@ export function ApprovalsPage(): JSX.Element {
     void setSize((currentSize) => currentSize + 1);
   }
 
+  function handleStatusFilterChange(nextFilter: 'pending' | 'all'): void {
+    if (nextFilter === statusFilter) {
+      return;
+    }
+
+    // useSWRInfinite keeps `size` across key changes. Reset so the new filter
+    // only fetches page 0 instead of replaying every previously loaded page.
+    void setSize(1);
+    setStatusFilter(nextFilter);
+  }
+
   return (
     <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-6">
       <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2">
         <Button
           size="sm"
           variant={statusFilter === 'pending' ? 'default' : 'outline'}
-          onClick={() => setStatusFilter('pending')}
+          onClick={() => handleStatusFilterChange('pending')}
         >
           Pending{pendingCount > 0 ? ` (${pendingCount.toString()})` : ''}
         </Button>
         <Button
           size="sm"
           variant={statusFilter === 'all' ? 'default' : 'outline'}
-          onClick={() => setStatusFilter('all')}
+          onClick={() => handleStatusFilterChange('all')}
         >
           All
         </Button>

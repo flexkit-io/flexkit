@@ -280,11 +280,13 @@ export function ApprovalCard({
 
         // When already_decided includes an approval, the badge reflects truth.
         // Otherwise surface the server message (including already_decided
-        // without a payload).
+        // without a payload). errorMessage may be omitted on some 400 bodies.
         if (!result.success && (result.errorCode !== 'already_decided' || !result.approval)) {
-          setErrorMessage(
-            typeof result.errorMessage === 'string' ? result.errorMessage : result.errorMessage.join(', ')
-          );
+          const message = Array.isArray(result.errorMessage)
+            ? result.errorMessage.join(', ')
+            : result.errorMessage;
+
+          setErrorMessage(message || 'Failed to submit the decision.');
         }
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : 'Failed to submit the decision.');
