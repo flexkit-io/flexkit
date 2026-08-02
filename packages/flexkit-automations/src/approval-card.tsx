@@ -205,7 +205,9 @@ export function ApprovalCard({
 }): JSX.Element {
   const [approval, setApproval] = useState(initialApproval);
   // Keep local state for decide() responses, but adopt fresher parent data when
-  // list polling / SWR revalidation replaces the prop (status may stay pending).
+  // list polling / SWR revalidation replaces the prop (e.g. refreshed preview
+  // while still pending). Never regress a local decision back to pending —
+  // mutate/revalidation can briefly return stale pending rows.
   const [prevInitialApproval, setPrevInitialApproval] = useState(initialApproval);
   const [errorMessage, setErrorMessage] = useState('');
   const [isDeciding, startDecideTransition] = useTransition();
@@ -215,7 +217,20 @@ export function ApprovalCard({
 
   if (initialApproval !== prevInitialApproval) {
     setPrevInitialApproval(initialApproval);
-    setApproval(initialApproval);
+
+    const wouldRegressDecision =
+      approval.id === initialApproval.id &&
+      approval.status !== 'pending' &&
+      initialApproval.status === 'pending';
+
+    if (!wouldRegressDecision) {
+      setApproval(initialApproval);
+      // Parent data is the current server snapshot (e.g. after stale_preview
+      // refreshed the stored preview, or list polling caught up). Drop the
+      // local stale banner so we don't keep "Approve anyway" once the card
+      // already shows matching preview data.
+      setIsStale(false);
+    }
   }
 
   const isPending = approval.status === 'pending';
