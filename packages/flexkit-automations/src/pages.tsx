@@ -2148,10 +2148,29 @@ function MutationApprovalPart({
 }): JSX.Element {
   const { projectId } = useProjectApi();
   const replayActions = useContext(RunReplayActionsContext);
+  const previousApprovalStatusRef = useRef<AutomationApproval['status'] | undefined>(undefined);
+  // Poll while the stream still says pending so a decision from the Approvals
+  // inbox / another tab updates this card. RunReplay refreshes the run record
+  // on the same interval but does not touch this approval fetch.
   const { data, error, isValidating, mutate } = useSWR<ApprovalResponse>(
     projectId ? paths(projectId).approval(message.approvalId) : null,
-    fetcher
+    fetcher,
+    {
+      refreshInterval: (latestData) => {
+        if (message.status !== 'pending') {
+          return 0;
+        }
+
+        if (latestData?.approval?.status && latestData.approval.status !== 'pending') {
+          return 0;
+        }
+
+        return STREAM_RETRY_DELAY_MS;
+      },
+    }
   );
+  const approvalStatus = data?.approval?.status;
+  const isPending = (approvalStatus ?? message.status) === 'pending';
 
   // The stream part changes when the proposal is decided or executed; refresh
   // the full approval (preview, result, error) from the API when that happens.
@@ -2159,7 +2178,30 @@ function MutationApprovalPart({
     void mutate();
   }, [message.status, mutate]);
 
-  function handleDecided(): void {
+  // When polling discovers an external decide while the replay part is still
+  // pending, reconnect the stream the same way a local decide does.
+  useEffect(() => {
+    const previousStatus = previousApprovalStatusRef.current;
+    previousApprovalStatusRef.current = approvalStatus;
+
+    if (message.status !== 'pending' || !approvalStatus || approvalStatus === 'pending') {
+      return;
+    }
+
+    if (previousStatus !== undefined && previousStatus !== 'pending') {
+      return;
+    }
+
+    replayActions?.onApprovalDecided();
+  }, [approvalStatus, message.status, replayActions]);
+
+  function handleDecided(nextApproval: AutomationApproval): void {
+    // Keep the external-decide effect from bumping resumeToken again after a
+    // local decide already reconnected the stream.
+    if (nextApproval.status !== 'pending') {
+      previousApprovalStatusRef.current = nextApproval.status;
+    }
+
     void mutate();
     // Revalidate the run record and reconnect the workflow stream so the page
     // reflects resumed execution instead of a stale awaiting_approval/error state.
@@ -2197,7 +2239,7 @@ function MutationApprovalPart({
       <ToolHeader>
         <DatabaseZapIcon className="fk:size-3.5" />
         Mutation approval
-        {message.status === 'pending' ? <LoaderCircle className="fk:ml-1 fk:size-3.5 fk:animate-spin" /> : null}
+        {isPending ? <LoaderCircle className="fk:ml-1 fk:size-3.5 fk:animate-spin" /> : null}
       </ToolHeader>
       <div className="fk:mt-2">{body}</div>
       {message.status === 'error' && message.error ? (
