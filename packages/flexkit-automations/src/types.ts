@@ -1,7 +1,11 @@
-export type AutomationRunStatus = 'running' | 'success' | 'skipped' | 'failed' | 'cancelled';
+export type AutomationRunStatus = 'running' | 'awaiting_approval' | 'success' | 'skipped' | 'failed' | 'cancelled';
 export type AutomationTriggerType = 'entity' | 'manual' | 'schedule' | 'webhook';
 export type AutomationTriggerEvent = 'create' | 'update' | 'delete';
 export type AutomationToolProvider = 'slack' | 'teams';
+export type AutomationMutationPolicy = 'require_approval' | 'auto_approve';
+export type AutomationApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
+export type AutomationApprovalKind = 'graphql' | 'bulk';
+export type AutomationApprovalPreviewKind = 'create' | 'update' | 'delete' | 'unknown';
 
 export interface AutomationScheduleTrigger {
   cron: string;
@@ -48,11 +52,65 @@ export interface Automation {
   instructions: string;
   lastRunAt: string | null;
   modelId: string;
+  mutationPolicy: AutomationMutationPolicy;
   name: string;
   projectId: string;
   totalRuns: number;
   triggers: AutomationTrigger[];
   updatedAt: string | null;
+}
+
+export interface AutomationApprovalOperation {
+  query: string;
+  variables: { [key: string]: unknown } | null;
+}
+
+export interface AutomationApprovalPreviewRow {
+  after: { [key: string]: unknown } | null;
+  before: { [key: string]: unknown } | null;
+  id: string | null;
+}
+
+export interface AutomationApprovalPreviewOperation {
+  affectedCount: number | null;
+  columns: string[];
+  /** Read-only fields shown alongside the changed columns for reviewer context. */
+  contextColumns?: string[];
+  entity: string | null;
+  kind: AutomationApprovalPreviewKind;
+  rows: AutomationApprovalPreviewRow[];
+  truncated: boolean;
+}
+
+export interface AutomationApprovalPreview {
+  operations: AutomationApprovalPreviewOperation[];
+}
+
+export interface AutomationApproval {
+  affectedCount: number | null;
+  automationId: string;
+  automationName: string;
+  decidedAt: string | null;
+  decidedBy: string | null;
+  error: string | null;
+  executedAt: string | null;
+  expiresAt: string;
+  id: string;
+  kind: AutomationApprovalKind;
+  operations: AutomationApprovalOperation[];
+  operationsSummary: string;
+  preview: AutomationApprovalPreview | null;
+  projectId: string;
+  reason: string | null;
+  requestedAt: string;
+  runId: string;
+  status: AutomationApprovalStatus;
+}
+
+export interface AutomationApprovals {
+  approvals: AutomationApproval[];
+  hasMore: boolean;
+  pendingCount: number;
 }
 
 export interface AutomationRun {
@@ -131,6 +189,7 @@ export interface AutomationInput {
   enabled: boolean;
   instructions: string;
   modelId: string;
+  mutationPolicy: AutomationMutationPolicy;
   name: string;
   toolConfigs: AutomationToolConfigInput[];
   triggers: AutomationTrigger[];

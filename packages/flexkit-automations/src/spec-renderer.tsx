@@ -71,7 +71,7 @@ const Card: ComponentRenderer<CardProps> = ({ children, element }) => {
 
   return (
     <div
-      className={`fk:w-full fk:rounded-lg fk:border fk:border-border fk:bg-card fk:p-4 ${maxWidthClass} ${centeredClass} ${props.className ?? ''}`}
+      className={`fk:w-full fk:rounded-lg fk:border fk:border-border fk:bg-card fk:p-4 fk:gap-2 fk:flex fk:flex-col ${maxWidthClass} ${centeredClass} ${props.className ?? ''}`}
     >
       {props.title && <div className="fk:text-sm fk:font-medium">{props.title}</div>}
       {props.description && <div className="fk:mt-0.5 fk:text-xs fk:text-muted-foreground">{props.description}</div>}
@@ -259,7 +259,7 @@ const Table: ComponentRenderer<TableProps> = ({ element }) => {
   const rows = (element.props.rows ?? []).map((row) => row.map(String));
 
   return (
-    <div className="fk:w-full fk:overflow-hidden fk:rounded-md fk:border fk:border-border fk:mt-2">
+    <div className="fk:w-full fk:overflow-hidden fk:rounded-md fk:mt-2">
       <TablePrimitive>
         {element.props.caption && <TableCaption>{element.props.caption}</TableCaption>}
         <TableHeader>
@@ -563,11 +563,32 @@ function toNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function uniqueRowsByKey(data: { [key: string]: unknown }[], key: string): { [key: string]: unknown }[] {
+  const rowsByKey = new Map<string, { [key: string]: unknown }>();
+  const order: string[] = [];
+
+  for (const row of data) {
+    const value = String(row[key] ?? '');
+
+    if (!rowsByKey.has(value)) {
+      order.push(value);
+    }
+
+    rowsByKey.set(value, row);
+  }
+
+  return order.map((value) => rowsByKey.get(value) ?? {});
+}
+
 function getChartPoints(props: CartesianChartProps): ChartPoint[] {
   const data = props.data ?? [];
 
   if (!props.aggregate) {
-    return data.map((row) => ({ x: String(row[props.xKey] ?? ''), y: toNumber(row[props.yKey]) }));
+    // Guard against repeated category sequences from re-applied json-render patches.
+    return uniqueRowsByKey(data, props.xKey).map((row) => ({
+      x: String(row[props.xKey] ?? ''),
+      y: toNumber(row[props.yKey]),
+    }));
   }
 
   const groups = new Map<string, { count: number; sum: number }>();
@@ -631,7 +652,7 @@ const BarChart: ComponentRenderer<CartesianChartProps> = ({ element }) => {
           itemStyle={chartTooltipItemStyle}
           labelStyle={chartTooltipLabelStyle}
         />
-        <Bar dataKey="y" fill={color} name={element.props.yKey} radius={4} />
+        <Bar dataKey="y" fill={color} isAnimationActive={false} name={element.props.yKey} radius={4} />
       </RechartsBarChart>
     </ChartFrame>
   );
@@ -652,7 +673,15 @@ const LineChart: ComponentRenderer<CartesianChartProps> = ({ element }) => {
           itemStyle={chartTooltipItemStyle}
           labelStyle={chartTooltipLabelStyle}
         />
-        <Line dataKey="y" dot={false} name={element.props.yKey} stroke={color} strokeWidth={2} type="monotone" />
+        <Line
+          dataKey="y"
+          dot={false}
+          isAnimationActive={false}
+          name={element.props.yKey}
+          stroke={color}
+          strokeWidth={2}
+          type="monotone"
+        />
       </RechartsLineChart>
     </ChartFrame>
   );
@@ -667,7 +696,7 @@ interface PieChartProps {
 }
 
 const PieChart: ComponentRenderer<PieChartProps> = ({ element }) => {
-  const slices = (element.props.data ?? []).map((row) => ({
+  const slices = uniqueRowsByKey(element.props.data ?? [], element.props.nameKey).map((row) => ({
     name: String(row[element.props.nameKey] ?? ''),
     value: toNumber(row[element.props.valueKey]),
   }));
@@ -680,7 +709,7 @@ const PieChart: ComponentRenderer<PieChartProps> = ({ element }) => {
           itemStyle={chartTooltipItemStyle}
           labelStyle={chartTooltipLabelStyle}
         />
-        <Pie data={slices} dataKey="value" innerRadius="45%" nameKey="name">
+        <Pie data={slices} dataKey="value" innerRadius="45%" isAnimationActive={false} nameKey="name">
           {slices.map((slice, index) => (
             <Cell fill={CHART_COLORS[index % CHART_COLORS.length]} key={`${slice.name}-${index.toString()}`} />
           ))}
@@ -823,9 +852,54 @@ interface SpecMessagePart {
   type: string;
 }
 
+const SPEC_DATA_PART_TYPE = 'data-spec';
+
+function partsAfterLastStepStart(parts: SpecMessagePart[]): SpecMessagePart[] {
+  let lastStepStart = -1;
+
+  for (let index = 0; index < parts.length; index++) {
+    if (parts[index]?.type === 'step-start') {
+      lastStepStart = index;
+    }
+  }
+
+  if (lastStepStart < 0) {
+    return parts;
+  }
+
+  return parts.slice(lastStepStart + 1);
+}
+
+function dedupeSpecParts(parts: SpecMessagePart[]): SpecMessagePart[] {
+  const seenPatchLines = new Set<string>();
+  const deduped: SpecMessagePart[] = [];
+
+  for (const part of parts) {
+    if (part.type !== SPEC_DATA_PART_TYPE) {
+      continue;
+    }
+
+    const payload = part.data;
+
+    if (payload && typeof payload === 'object' && 'type' in payload && payload.type === 'patch' && 'patch' in payload) {
+      const line = JSON.stringify(payload.patch);
+
+      if (seenPatchLines.has(line)) {
+        continue;
+      }
+
+      seenPatchLines.add(line);
+    }
+
+    deduped.push(part);
+  }
+
+  return deduped;
+}
+
 export function RunSpecPart({ parts }: { parts: SpecMessagePart[] }): JSX.Element | null {
   const spec = useMemo(() => {
-    const builtSpec = buildSpecFromParts(parts);
+    const builtSpec = buildSpecFromParts(dedupeSpecParts(partsAfterLastStepStart(parts)));
 
     return builtSpec ? sanitizeSpec(builtSpec) : null;
   }, [parts]);

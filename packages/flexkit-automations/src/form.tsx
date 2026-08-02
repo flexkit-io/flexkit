@@ -50,6 +50,7 @@ import type {
   Automation,
   AutomationEntityTrigger,
   AutomationInput,
+  AutomationMutationPolicy,
   AutomationScheduleTrigger,
   AutomationTools,
   AutomationToolChannel,
@@ -968,6 +969,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
   const [enabled, setEnabled] = useState(automation?.enabled ?? false);
   const [modelId, setModelId] = useState(automation?.modelId ?? '');
+  const [mutationPolicy, setMutationPolicy] = useState<AutomationMutationPolicy>(
+    automation?.mutationPolicy ?? 'require_approval'
+  );
   const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -1153,6 +1157,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       enabled,
       instructions,
       modelId: effectiveModelId,
+      mutationPolicy,
       name,
       toolConfigs,
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
@@ -1281,6 +1286,28 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           <FieldError id="automation-instructions-error" message={validation.instructions} />
         ) : null}
         {toolsData && validation.model ? <FieldError message={validation.model} /> : null}
+      </div>
+
+      <div className="fk:space-y-3">
+        <Label className="fk:mb-1" htmlFor="automation-mutation-policy">
+          Mutations
+        </Label>
+        <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
+          How data changes proposed by the agent are handled. With approval required, runs pause until a project
+          member reviews a before/after preview in the Approvals inbox.
+        </p>
+        <Select
+          value={mutationPolicy}
+          onValueChange={(value) => setMutationPolicy(value === 'auto_approve' ? 'auto_approve' : 'require_approval')}
+        >
+          <SelectTrigger aria-label="Mutation policy" className="fk:w-fit" id="automation-mutation-policy">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="start">
+            <SelectItem value="require_approval">Require approval (recommended)</SelectItem>
+            <SelectItem value="auto_approve">Auto-approve</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="fk:space-y-4">

@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import type { TextUIPart, UIMessage, UIMessageChunk } from 'ai';
+import type { ReasoningUIPart, TextUIPart, UIMessage, UIMessageChunk } from 'ai';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { parseJsonEventStream, readUIMessageStream, uiMessageChunkSchema } from 'ai';
 import { format, formatDistance } from 'date-fns';
@@ -34,6 +34,10 @@ import { useConfig } from '@flexkit/studio';
 import {
   Badge,
   Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -60,9 +64,17 @@ import {
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
+import { ApprovalCard, ApprovalStatusBadge } from './approval-card';
 import { AutomationForm } from './form';
 import { RunSpecPart } from './spec-renderer';
-import type { Automation, AutomationCreditBalance, AutomationRun, RunHistory } from './types';
+import type {
+  Automation,
+  AutomationApproval,
+  AutomationApprovals,
+  AutomationCreditBalance,
+  AutomationRun,
+  RunHistory,
+} from './types';
 
 interface AutomationsResponse {
   automations: Automation[];
@@ -104,13 +116,25 @@ function PageMessage({ children }: { children: string }): JSX.Element {
   );
 }
 
+function getStatusBadgeClass(status: string): string {
+  if (status === 'success') {
+    return 'fk:bg-success/20 fk:text-success';
+  }
+
+  if (status === 'awaiting_approval') {
+    return 'fk:bg-amber-500/20 fk:text-amber-600';
+  }
+
+  return 'fk:bg-secondary fk:text-secondary-foreground';
+}
+
 function StatusBadge({ status }: { status: string }): JSX.Element {
   return (
     <Badge
-      className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${status === 'success' ? 'fk:bg-success/20 fk:text-success' : 'fk:bg-secondary fk:text-secondary-foreground'}`}
+      className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${getStatusBadgeClass(status)}`}
       variant={status === 'success' ? 'default' : 'secondary'}
     >
-      {status}
+      {status === 'awaiting_approval' ? 'awaiting approval' : status}
     </Badge>
   );
 }
@@ -231,7 +255,7 @@ export function AutomationsPage(): JSX.Element {
   const navigate = useNavigate();
   const { data, isLoading, mutate } = useSWR<AutomationsResponse>(
     projectId ? paths(projectId).automations : null,
-    fetcher,
+    fetcher
   );
   const [message, setMessage] = useState('');
 
@@ -822,6 +846,133 @@ export function RunHistoryPage(): JSX.Element {
   );
 }
 
+const APPROVALS_PAGE_SIZE = 25;
+
+export function ApprovalsPage(): JSX.Element {
+  const { api, projectId } = useProjectApi();
+  const [statusFilter, setStatusFilter] = useState<'pending' | 'all'>('pending');
+  const [selectedApprovalId, setSelectedApprovalId] = useState<string | null>(null);
+  const getApprovalsKey = (pageIndex: number, previousPage: AutomationApprovals | null): string | null => {
+    if (!projectId) {
+      return null;
+    }
+
+    if (previousPage && !previousPage.hasMore) {
+      return null;
+    }
+
+    return paths(projectId).approvals(
+      statusFilter === 'pending' ? 'pending' : undefined,
+      pageIndex * APPROVALS_PAGE_SIZE,
+      APPROVALS_PAGE_SIZE
+    );
+  };
+  const {
+    data: approvalPages,
+    isLoading,
+    mutate,
+    setSize,
+    size,
+  } = useSWRInfinite<AutomationApprovals>(getApprovalsKey, fetcher, { refreshInterval: 30_000 });
+  const approvals = approvalPages?.flatMap((page) => page.approvals) ?? [];
+  const pendingCount = approvalPages?.[0]?.pendingCount ?? 0;
+  const lastPage = approvalPages?.[approvalPages.length - 1];
+  const hasMore = lastPage?.hasMore ?? false;
+  const isLoadingMore = approvalPages !== undefined && size > approvalPages.length;
+  const selectedApproval = approvals.find((approval) => approval.id === selectedApprovalId) ?? null;
+
+  if (!projectId || !api) {
+    return <PageMessage>Select a project to view approvals.</PageMessage>;
+  }
+
+  function handleLoadMore(): void {
+    void setSize((currentSize) => currentSize + 1);
+  }
+
+  return (
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-6">
+      <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2">
+        <Button
+          size="sm"
+          variant={statusFilter === 'pending' ? 'default' : 'outline'}
+          onClick={() => setStatusFilter('pending')}
+        >
+          Pending{pendingCount > 0 ? ` (${pendingCount.toString()})` : ''}
+        </Button>
+        <Button
+          size="sm"
+          variant={statusFilter === 'all' ? 'default' : 'outline'}
+          onClick={() => setStatusFilter('all')}
+        >
+          All
+        </Button>
+      </div>
+      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
+        <div className="fk:pb-6 fk:pr-4">
+          {isLoading ? (
+            <RunsTableSkeleton />
+          ) : approvals.length === 0 ? (
+            <PageMessage>
+              {statusFilter === 'pending' ? 'No proposals are waiting for approval.' : 'No approvals found.'}
+            </PageMessage>
+          ) : (
+            <Table>
+              <TableBody>
+                {approvals.map((approval) => (
+                  <TableRow
+                    className="fk:cursor-pointer"
+                    key={approval.id}
+                    onClick={() => setSelectedApprovalId(approval.id)}
+                  >
+                    <TableCell>
+                      <ApprovalStatusBadge status={approval.status} />
+                    </TableCell>
+                    <TableCell className="fk:font-medium">{approval.operationsSummary}</TableCell>
+                    <TableCell className="fk:text-muted-foreground">{approval.automationName}</TableCell>
+                    <TableCell className="fk:text-muted-foreground">
+                      {formatDistance(new Date(approval.requestedAt), new Date(), { addSuffix: true })}
+                    </TableCell>
+                    <TableCell onClick={(event) => event.stopPropagation()}>
+                      <Link
+                        className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
+                        to={`../${approval.automationId}/runs/${approval.runId}`}
+                      >
+                        View run
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          {hasMore && !isLoadingMore ? <InfiniteScrollSentinel onVisible={handleLoadMore} /> : null}
+          {isLoadingMore ? (
+            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
+              <LoaderCircle className="fk:size-4 fk:animate-spin" />
+              <span>Loading more approvals...</span>
+            </div>
+          ) : null}
+        </div>
+      </ScrollArea>
+      <Dialog open={selectedApproval !== null} onOpenChange={(open) => !open && setSelectedApprovalId(null)}>
+        <DialogContent className="fk:max-h-[85vh] fk:overflow-y-auto fk:sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Mutation proposal</DialogTitle>
+          </DialogHeader>
+          {selectedApproval ? (
+            <ApprovalCard
+              api={api}
+              approval={selectedApproval}
+              key={`${selectedApproval.id}-${selectedApproval.status}`}
+              onDecided={() => void mutate()}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function MetricCard({ title, value }: { title: string; value: number }): JSX.Element {
   return (
     <div className="fk:rounded-md fk:bg-muted/60 fk:p-4">
@@ -859,6 +1010,15 @@ interface ReplayDataParts {
   'execute-graphql': {
     operationType?: 'query' | 'mutation';
     status: 'loading' | 'done' | 'error';
+    error?: ReplayError;
+  };
+  'mutation-approval': {
+    approvalId: string;
+    affectedCount?: number | null;
+    decidedBy?: string;
+    operationsSummary: string;
+    reason?: string;
+    status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled' | 'executed' | 'error';
     error?: ReplayError;
   };
   'generating-files': {
@@ -947,8 +1107,39 @@ function isAbortError(error: unknown): boolean {
   return error.name === 'AbortError' || error.message.toLowerCase().includes('aborted');
 }
 
+function isStreamingReasoningPart(part: ReplayMessagePart): part is ReasoningUIPart {
+  return part.type === 'reasoning' && part.state === 'streaming';
+}
+
 function hasRenderableParts(parts: ReplayMessagePart[]): boolean {
-  return parts.some((part) => part.type !== 'step-start');
+  return parts.some((part) => {
+    if (part.type === 'step-start') {
+      return false;
+    }
+
+    if (part.type === 'reasoning') {
+      return isStreamingReasoningPart(part);
+    }
+
+    return true;
+  });
+}
+
+function getReasoningLabel(text: string): string {
+  const trimmed = text.trim();
+
+  if (!trimmed || /^reasoning\.?$/i.test(trimmed)) {
+    return 'Reasoning…';
+  }
+
+  const firstLine = trimmed.split(/\r?\n/, 1)[0]?.trim() ?? trimmed;
+  const maxLength = 72;
+
+  if (firstLine.length <= maxLength) {
+    return firstLine;
+  }
+
+  return `${firstLine.slice(0, maxLength).trimEnd()}…`;
 }
 
 function getMarkerIds(messages: ReplayMessage[]): Set<string> {
@@ -1158,6 +1349,11 @@ export function RunDetailPage(): JSX.Element {
     fetcher
   );
   const [isCancelling, startCancelTransition] = useTransition();
+  const [streamFinished, setStreamFinished] = useState(false);
+
+  useEffect(() => {
+    setStreamFinished(false);
+  }, [runId]);
 
   if (!projectId || !api || !automationId || !runId) {
     return <PageMessage>Select a run.</PageMessage>;
@@ -1166,12 +1362,18 @@ export function RunDetailPage(): JSX.Element {
   const runApi = api;
   const selectedRunId = runId;
   const run = data?.run;
+  const showCancel = run?.status === 'running' && !streamFinished;
 
   function handleCancel(): void {
     startCancelTransition(async () => {
       await runApi.cancelRun(selectedRunId);
       await mutate();
     });
+  }
+
+  function handleStreamFinished(): void {
+    setStreamFinished(true);
+    void mutate();
   }
 
   return (
@@ -1198,11 +1400,11 @@ export function RunDetailPage(): JSX.Element {
               Runs
             </Link>
           </Button>
-          <h2 className="fk:mt-4 fk:text-lg fk:font-medium">
+          <h2 className="fk:mt-4 fk:text-sm fk:font-medium">
             {run ? `Run from ${format(new Date(run.startedAt), 'PPpp')}` : 'Loading run...'}
           </h2>
         </div>
-        {run?.status === 'running' ? (
+        {showCancel ? (
           <Button disabled={isCancelling} size="sm" variant="destructive" onClick={handleCancel}>
             {isCancelling ? 'Cancelling...' : 'Cancel run'}
           </Button>
@@ -1210,19 +1412,41 @@ export function RunDetailPage(): JSX.Element {
       </div>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4 fk:max-w-5xl fk:mx-auto">
-          {run ? <RunReplay api={api} run={run} /> : <PageMessage>Loading run...</PageMessage>}
+          {run ? (
+            <RunReplay api={api} run={run} onStreamFinished={handleStreamFinished} />
+          ) : (
+            <PageMessage>Loading run...</PageMessage>
+          )}
         </div>
       </ScrollArea>
     </div>
   );
 }
 
-function RunReplay({ api, run }: { api: ReturnType<typeof createApiClient>; run: AutomationRun }): JSX.Element {
+function RunReplay({
+  api,
+  onStreamFinished,
+  run,
+}: {
+  api: ReturnType<typeof createApiClient>;
+  onStreamFinished?: () => void;
+  run: AutomationRun;
+}): JSX.Element {
   const { workflowRunId } = run;
   const streamApi = workflowRunId ? api.getStreamUrl(workflowRunId) : '';
   const { message, status } = useRunStream(streamApi, { recordStatus: run.status });
   const rawMessages = useMemo(() => (message ? [message] : []), [message]);
   const messages = useSessionMessages(rawMessages);
+  const onStreamFinishedRef = useRef(onStreamFinished);
+  onStreamFinishedRef.current = onStreamFinished;
+
+  useEffect(() => {
+    if (status !== 'finished') {
+      return;
+    }
+
+    onStreamFinishedRef.current?.();
+  }, [status]);
 
   if (!workflowRunId) {
     return <PageMessage>The run has not started streaming yet.</PageMessage>;
@@ -1251,7 +1475,7 @@ function RunReplay({ api, run }: { api: ReturnType<typeof createApiClient>; run:
             <ReplayMessage key={replayMessage.id} api={api} message={replayMessage} />
           ))}
           {status === 'streaming' ? (
-            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
+            <div className="fk:flex fk:items-center fk:shimmer fk:shimmer-duration-1000 fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
               <LoaderCircle className="fk:size-4 fk:animate-spin" />
               <span>Running...</span>
             </div>
@@ -1320,6 +1544,10 @@ function MessagePart({
   }
 
   if (part.type === 'reasoning') {
+    if (!isStreamingReasoningPart(part)) {
+      return null;
+    }
+
     return <ReasoningPart text={part.text} />;
   }
 
@@ -1426,6 +1654,10 @@ function MessagePart({
     );
   }
 
+  if (part.type === 'data-mutation-approval') {
+    return <MutationApprovalPart api={api} message={getPartData<ReplayDataParts['mutation-approval']>(part)} />;
+  }
+
   if (part.type === 'data-bulk-graphql-action') {
     return <BulkGraphqlActionPart message={getPartData<ReplayDataParts['bulk-graphql-action']>(part)} />;
   }
@@ -1497,13 +1729,13 @@ function TextPart({ part }: { part: TextUIPart }): JSX.Element {
 
 function ReasoningPart({ text }: { text: string }): JSX.Element {
   return (
-    <ToolMessage className="fk:bg-muted/30">
-      <ToolHeader>
-        <BrainIcon className="fk:size-3.5" />
-        Reasoning
-      </ToolHeader>
-      <p className="fk:mt-2 fk:whitespace-pre-wrap fk:text-xs fk:text-muted-foreground">{text}</p>
-    </ToolMessage>
+    <p
+      className="fk:shimmer fk:inline-flex fk:items-center fk:gap-1.5 fk:text-sm fk:text-muted-foreground fk:shimmer-duration-1000"
+      role="status"
+    >
+      <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
+      {getReasoningLabel(text)}
+    </p>
   );
 }
 
@@ -1682,6 +1914,53 @@ function RunSummaryPart({ message }: { message: ReplayDataParts['run-summary'] }
         <span>{title}</span>
       </ToolHeader>
       {message.status === 'failed' ? <p className="fk:whitespace-pre-wrap fk:text-xs">{message.summary}</p> : null}
+    </ToolMessage>
+  );
+}
+
+interface ApprovalResponse {
+  approval: AutomationApproval;
+}
+
+function MutationApprovalPart({
+  api,
+  message,
+}: {
+  api: ReturnType<typeof createApiClient>;
+  message: ReplayDataParts['mutation-approval'];
+}): JSX.Element {
+  const { projectId } = useProjectApi();
+  const { data, mutate } = useSWR<ApprovalResponse>(
+    projectId ? paths(projectId).approval(message.approvalId) : null,
+    fetcher
+  );
+
+  // The stream part changes when the proposal is decided or executed; refresh
+  // the full approval (preview, result, error) from the API when that happens.
+  useEffect(() => {
+    void mutate();
+  }, [message.status, mutate]);
+
+  return (
+    <ToolMessage>
+      <ToolHeader>
+        <DatabaseZapIcon className="fk:size-3.5" />
+        Mutation approval
+        {message.status === 'pending' ? <LoaderCircle className="fk:ml-1 fk:size-3.5 fk:animate-spin" /> : null}
+      </ToolHeader>
+      <div className="fk:mt-2">
+        {data?.approval ? (
+          <ApprovalCard api={api} approval={data.approval} key={data.approval.status} onDecided={() => void mutate()} />
+        ) : (
+          <div className="fk:flex fk:items-center fk:gap-2 fk:text-xs fk:text-muted-foreground">
+            <LoaderCircle className="fk:size-3.5 fk:animate-spin" />
+            <span>Loading proposal {message.operationsSummary}...</span>
+          </div>
+        )}
+      </div>
+      {message.status === 'error' && message.error ? (
+        <p className="fk:mt-2 fk:text-xs fk:text-destructive">{message.error.message}</p>
+      ) : null}
     </ToolMessage>
   );
 }

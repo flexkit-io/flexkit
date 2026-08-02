@@ -13,13 +13,17 @@
 
 </div>
 
-**Flexkit Asset Manager is a Studio plugin that provides a first-class interface for managing digital assets such as images, documents, PDFs, and other files within your Flexkit projects.**
+Flexkit is an AI-native platform for building custom business applications. It combines a flexible graph-based data model, a powerful GraphQL API, integrated asset management, and AI capabilities that can understand, query, and automate your data.
 
-It allows users to upload, browse, organize, and relate assets to entities defined in their schema, making assets a natural part of the same graph-based data model used for business data.
+**The Asset Manager is a Studio plugin that provides a first-class interface for managing digital assets such as images, documents, PDFs, and other files within your Flexkit projects.**
 
-The Asset Manager integrates seamlessly with the Flexkit Studio and GraphQL API, enabling assets to be queried, related, and managed just like any other entity. It is designed to be extensible and customizable, so teams can adapt asset workflows, metadata, and UI components to the needs of their product.
+It allows your team to upload, browse, organize, and relate assets to entities defined in your schema, making assets a natural part of the same graph-based data model used for the rest of your business data.
 
-![Screenshot](assets/screenshot.png)
+Assets integrate seamlessly with the Flexkit Studio, GraphQL API, and AI capabilities, allowing both developers and AI-powered workflows to discover, retrieve, and work with files alongside structured data. Whether accessed from your application, an automation, or an AI agent, assets remain part of the same unified knowledge graph.
+
+The Asset Manager is designed to be extensible and customizable, enabling teams to adapt asset workflows, metadata, and user interfaces to the specific needs of their products while providing a solid foundation for future AI-powered experiences.
+
+![Screenshot](assets/screenshot.jpeg)
 
 ## Installation
 
