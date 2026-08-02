@@ -854,22 +854,6 @@ interface SpecMessagePart {
 
 const SPEC_DATA_PART_TYPE = 'data-spec';
 
-function partsAfterLastStepStart(parts: SpecMessagePart[]): SpecMessagePart[] {
-  let lastStepStart = -1;
-
-  for (let index = 0; index < parts.length; index++) {
-    if (parts[index]?.type === 'step-start') {
-      lastStepStart = index;
-    }
-  }
-
-  if (lastStepStart < 0) {
-    return parts;
-  }
-
-  return parts.slice(lastStepStart + 1);
-}
-
 function dedupeSpecParts(parts: SpecMessagePart[]): SpecMessagePart[] {
   const seenPatchLines = new Set<string>();
   const deduped: SpecMessagePart[] = [];
@@ -899,7 +883,7 @@ function dedupeSpecParts(parts: SpecMessagePart[]): SpecMessagePart[] {
 
 export function RunSpecPart({ parts }: { parts: SpecMessagePart[] }): JSX.Element | null {
   const spec = useMemo(() => {
-    const builtSpec = buildSpecFromParts(dedupeSpecParts(partsAfterLastStepStart(parts)));
+    const builtSpec = buildSpecFromParts(dedupeSpecParts(parts));
 
     return builtSpec ? sanitizeSpec(builtSpec) : null;
   }, [parts]);

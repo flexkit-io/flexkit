@@ -204,11 +204,20 @@ export function ApprovalCard({
   onDecided?: (_approval: AutomationApproval) => void;
 }): JSX.Element {
   const [approval, setApproval] = useState(initialApproval);
+  // Keep local state for decide() responses, but adopt fresher parent data when
+  // list polling / SWR revalidation replaces the prop (status may stay pending).
+  const [prevInitialApproval, setPrevInitialApproval] = useState(initialApproval);
   const [errorMessage, setErrorMessage] = useState('');
   const [isDeciding, startDecideTransition] = useTransition();
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isStale, setIsStale] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+
+  if (initialApproval !== prevInitialApproval) {
+    setPrevInitialApproval(initialApproval);
+    setApproval(initialApproval);
+  }
+
   const isPending = approval.status === 'pending';
   const { preview } = approval;
 
@@ -237,24 +246,27 @@ export function ApprovalCard({
         setIsStale(false);
         setIsRejectDialogOpen(false);
 
-        // Prefer the server payload; if a successful decide or already_decided
-        // omits `approval`, exit pending so Approve/Reject disable.
-        const nextApproval =
-          result.approval ??
-          (result.success || result.errorCode === 'already_decided'
-            ? {
-                ...approval,
-                decidedAt: approval.decidedAt ?? new Date().toISOString(),
-                reason: reason ?? approval.reason,
-                status: approved ? 'approved' : 'rejected',
-              }
-            : null);
-
-        if (nextApproval) {
-          applyResult(nextApproval);
+        if (result.approval) {
+          applyResult(result.approval);
+        } else if (result.success) {
+          // Successful decide omitted the payload — exit pending using the
+          // decision we just submitted (the server accepted it).
+          applyResult({
+            ...approval,
+            decidedAt: approval.decidedAt ?? new Date().toISOString(),
+            reason: reason ?? approval.reason,
+            status: approved ? 'approved' : 'rejected',
+          });
+        } else if (result.errorCode === 'already_decided') {
+          // Never invent a status from the click — the real decision may differ.
+          // Ask the parent to revalidate so the true approval can load.
+          onDecided?.(approval);
         }
 
-        if (!result.success && result.errorCode !== 'already_decided') {
+        // When already_decided includes an approval, the badge reflects truth.
+        // Otherwise surface the server message (including already_decided
+        // without a payload).
+        if (!result.success && (result.errorCode !== 'already_decided' || !result.approval)) {
           setErrorMessage(
             typeof result.errorMessage === 'string' ? result.errorMessage : result.errorMessage.join(', ')
           );

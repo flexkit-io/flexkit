@@ -1113,8 +1113,18 @@ function isAbortError(error: unknown): boolean {
   return error.name === 'AbortError' || error.message.toLowerCase().includes('aborted');
 }
 
-function isStreamingReasoningPart(part: ReplayMessagePart): part is ReasoningUIPart {
-  return part.type === 'reasoning' && part.state === 'streaming';
+function isReasoningPart(part: ReplayMessagePart): part is ReasoningUIPart {
+  return part.type === 'reasoning';
+}
+
+function hasRenderableReasoning(part: ReplayMessagePart): boolean {
+  if (!isReasoningPart(part)) {
+    return false;
+  }
+
+  // Keep streaming indicators, and keep completed rationale for finished /
+  // paused replays so reviewers can still see why the agent acted.
+  return part.state === 'streaming' || part.text.trim().length > 0;
 }
 
 function hasRenderableParts(parts: ReplayMessagePart[]): boolean {
@@ -1124,7 +1134,7 @@ function hasRenderableParts(parts: ReplayMessagePart[]): boolean {
     }
 
     if (part.type === 'reasoning') {
-      return isStreamingReasoningPart(part);
+      return hasRenderableReasoning(part);
     }
 
     return true;
@@ -1238,6 +1248,10 @@ function messageHasPendingMutationApproval(message: ReplayMessage | undefined): 
   });
 }
 
+function isTerminalRunStatus(status: AutomationRun['status'] | null | undefined): boolean {
+  return status === 'success' || status === 'failed' || status === 'cancelled' || status === 'skipped';
+}
+
 function shouldPauseStreamForApproval({
   latestMessage,
   recordStatus,
@@ -1247,6 +1261,10 @@ function shouldPauseStreamForApproval({
   recordStatus: AutomationRun['status'] | null | undefined;
   resumeToken: number;
 }): boolean {
+  if (isTerminalRunStatus(recordStatus)) {
+    return false;
+  }
+
   // After a local approval decision the run/stream can still look suspended
   // until the workflow hook resumes — keep reconnecting in that case.
   if (resumeToken > 0) {
@@ -1364,6 +1382,15 @@ function useRunStream(
             return;
           }
 
+          // The run record is authoritative once it reaches a terminal status.
+          // Without this, a lingering resumeToken after a local approval would
+          // reconnect forever when the replay never emits a finish chunk.
+          if (isTerminalRunStatus(recordStatus)) {
+            setStatus('finished');
+
+            return;
+          }
+
           // Workflow hooks close the readable without a finish chunk while the
           // run is suspended on a mutation approval. Pause instead of treating
           // that as an error or a perpetual "Running..." state.
@@ -1388,6 +1415,12 @@ function useRunStream(
           }
 
           console.error('Automation run stream error', error);
+
+          if (isTerminalRunStatus(recordStatus)) {
+            setStatus('finished');
+
+            return;
+          }
 
           const shouldKeepRetrying = recordStatus === 'running' || resumeToken > 0;
 
@@ -1686,12 +1719,10 @@ function MessagePart({
     return <TextPart part={part} />;
   }
 
-  if (part.type === 'reasoning') {
-    if (!isStreamingReasoningPart(part)) {
-      return null;
-    }
-
-    return <ReasoningPart text={part.text} />;
+  if (isReasoningPart(part)) {
+    return hasRenderableReasoning(part) ? (
+      <ReasoningPart streaming={part.state === 'streaming'} text={part.text} />
+    ) : null;
   }
 
   if (part.type === 'data-generating-files') {
@@ -1870,15 +1901,27 @@ function TextPart({ part }: { part: TextUIPart }): JSX.Element {
   );
 }
 
-function ReasoningPart({ text }: { text: string }): JSX.Element {
+function ReasoningPart({ streaming, text }: { streaming: boolean; text: string }): JSX.Element {
+  if (streaming) {
+    return (
+      <p
+        className="fk:shimmer fk:inline-flex fk:items-center fk:gap-1.5 fk:text-sm fk:text-muted-foreground fk:shimmer-duration-1000"
+        role="status"
+      >
+        <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
+        {getReasoningLabel(text)}
+      </p>
+    );
+  }
+
   return (
-    <p
-      className="fk:shimmer fk:inline-flex fk:items-center fk:gap-1.5 fk:text-sm fk:text-muted-foreground fk:shimmer-duration-1000"
-      role="status"
-    >
-      <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
-      {getReasoningLabel(text)}
-    </p>
+    <details className="fk:rounded-xl fk:border fk:border-border fk:bg-muted/30 fk:px-3.5 fk:py-3">
+      <summary className="fk:flex fk:cursor-pointer fk:items-center fk:gap-1.5 fk:text-sm fk:font-medium fk:text-muted-foreground">
+        <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
+        Reasoning
+      </summary>
+      <p className="fk:mt-2 fk:whitespace-pre-wrap fk:text-xs fk:text-muted-foreground">{text}</p>
+    </details>
   );
 }
 
