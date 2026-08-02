@@ -563,73 +563,19 @@ function toNumber(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function uniqueRowsByKey(data: { [key: string]: unknown }[], key: string): { [key: string]: unknown }[] {
-  const rowsByKey = new Map<string, { [key: string]: unknown }>();
-  const order: string[] = [];
-
-  for (const row of data) {
-    const value = String(row[key] ?? '');
-
-    if (!rowsByKey.has(value)) {
-      order.push(value);
-    }
-
-    rowsByKey.set(value, row);
-  }
-
-  return order.map((value) => rowsByKey.get(value) ?? {});
-}
-
-// Re-applied json-render patches can append the same row sequence again. Collapse
-// exact repetitions before aggregating so sum/count/avg are not inflated, while
-// still allowing multiple intentional rows per category (including identical
-// rows used for count). Periods of length 1 are skipped for that reason.
-function collapseRepeatedRowSequences(
-  data: { [key: string]: unknown }[]
-): { [key: string]: unknown }[] {
-  if (data.length < 4) {
-    return data;
-  }
-
-  const serialized = data.map((row) => JSON.stringify(row));
-
-  for (let period = 2; period <= Math.floor(data.length / 2); period++) {
-    if (data.length % period !== 0) {
-      continue;
-    }
-
-    let isRepeated = true;
-
-    for (let index = period; index < data.length; index++) {
-      if (serialized[index] !== serialized[index % period]) {
-        isRepeated = false;
-        break;
-      }
-    }
-
-    if (isRepeated) {
-      return data.slice(0, period);
-    }
-  }
-
-  return data;
-}
-
 function getChartPoints(props: CartesianChartProps): ChartPoint[] {
   const data = props.data ?? [];
 
   if (!props.aggregate) {
-    // Guard against repeated category sequences from re-applied json-render patches.
-    return uniqueRowsByKey(data, props.xKey).map((row) => ({
+    return data.map((row) => ({
       x: String(row[props.xKey] ?? ''),
       y: toNumber(row[props.yKey]),
     }));
   }
 
-  const rows = collapseRepeatedRowSequences(data);
   const groups = new Map<string, { count: number; sum: number }>();
 
-  for (const row of rows) {
+  for (const row of data) {
     const key = String(row[props.xKey] ?? '');
     const group = groups.get(key) ?? { count: 0, sum: 0 };
 
@@ -732,7 +678,7 @@ interface PieChartProps {
 }
 
 const PieChart: ComponentRenderer<PieChartProps> = ({ element }) => {
-  const slices = uniqueRowsByKey(element.props.data ?? [], element.props.nameKey).map((row) => ({
+  const slices = (element.props.data ?? []).map((row) => ({
     name: String(row[element.props.nameKey] ?? ''),
     value: toNumber(row[element.props.valueKey]),
   }));
