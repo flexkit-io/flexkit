@@ -1294,10 +1294,18 @@ function shouldPauseStreamForApproval({
     return false;
   }
 
+  // The run record is authoritative once execution has resumed. A stale
+  // pending data-mutation-approval part can linger in the replay until the
+  // next workflow step writes an updated status.
+  if (recordStatus === 'running') {
+    return false;
+  }
+
   if (recordStatus === 'awaiting_approval') {
     return true;
   }
 
+  // Fall back to the stream part when the run record hasn't caught up yet.
   return messageHasPendingMutationApproval(latestMessage);
 }
 
@@ -1599,8 +1607,12 @@ function RunReplay({
     }),
     []
   );
+  // Prefer the run record over a stale pending stream part once the workflow
+  // has resumed (`running`) or finished.
   const isAwaitingApproval =
     resumeToken === 0 &&
+    run.status !== 'running' &&
+    !isTerminalRunStatus(run.status) &&
     (status === 'paused' || run.status === 'awaiting_approval' || messageHasPendingMutationApproval(message));
 
   useEffect(() => {
