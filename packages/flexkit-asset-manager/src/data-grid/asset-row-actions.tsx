@@ -8,7 +8,7 @@ import {
   TagIcon,
   Trash2 as Trash2Icon,
 } from 'lucide-react';
-import { assetSchema, IMAGES_BASE_URL, useDispatch } from '@flexkit/studio';
+import { assetSchema, IMAGES_BASE_URL, useCanMutate, useDispatch } from '@flexkit/studio';
 import type { Row } from '@flexkit/studio';
 import {
   Button,
@@ -26,13 +26,15 @@ type AssetRow = {
 };
 
 interface AssetRowActionsProps<TData> {
+  overlay?: boolean;
   row: Row<TData>;
 }
 
-export function AssetRowActions<TData>({ row }: AssetRowActionsProps<TData>): JSX.Element {
+export function AssetRowActions<TData>({ overlay = false, row }: AssetRowActionsProps<TData>): JSX.Element {
   const [copiedField, setCopiedField] = useState<'id' | 'url' | null>(null);
   const [tagDialogMode, setTagDialogMode] = useState<AssetTagDialogMode>(null);
   const dispatch = useDispatch();
+  const canMutate = useCanMutate();
   const asset = row.original as AssetRow;
   const assetId = asset._id ?? '';
   const assetPath = asset.path ?? '';
@@ -47,15 +49,17 @@ export function AssetRowActions<TData>({ row }: AssetRowActionsProps<TData>): JS
     window.setTimeout(() => setCopiedField(null), 1500);
   }
 
+  // Pure white glyph; parent wrapper applies mix-blend-difference so it inverts over the asset.
+  // A light hover fill also inverts, so the hit area reads as a contrast disc on any asset.
+  const triggerClassName = overlay
+    ? 'fk:flex fk:h-7 fk:w-7 fk:p-0 fk:text-white fk:group-hover:bg-background/10 fk:group-hover:text-white! fk:data-[state=open]:bg-background/15'
+    : 'fk:flex fk:h-8 fk:w-8 fk:p-0 fk:data-[state=open]:bg-muted';
+
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            className="fk:flex fk:h-8 fk:w-8 fk:p-0 fk:data-[state=open]:bg-muted"
-            onClick={(event) => event.stopPropagation()}
-            variant="ghost"
-          >
+          <Button className={triggerClassName} onClick={(event) => event.stopPropagation()} variant="ghost">
             <EllipsisIcon className="fk:h-4 fk:w-4" />
             <span className="fk:sr-only">Open menu</span>
           </Button>
@@ -91,7 +95,7 @@ export function AssetRowActions<TData>({ row }: AssetRowActionsProps<TData>): JS
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            disabled={!assetId}
+            disabled={!assetId || !canMutate}
             onClick={(event) => {
               event.stopPropagation();
               setTagDialogMode('add');
@@ -101,7 +105,7 @@ export function AssetRowActions<TData>({ row }: AssetRowActionsProps<TData>): JS
             Add tag
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={!assetId}
+            disabled={!assetId || !canMutate}
             onClick={(event) => {
               event.stopPropagation();
               setTagDialogMode('remove');
@@ -113,7 +117,7 @@ export function AssetRowActions<TData>({ row }: AssetRowActionsProps<TData>): JS
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="fk:text-destructive"
-            disabled={!assetId}
+            disabled={!assetId || !canMutate}
             onClick={(event) => {
               event.stopPropagation();
               handleDelete();
@@ -125,11 +129,7 @@ export function AssetRowActions<TData>({ row }: AssetRowActionsProps<TData>): JS
         </DropdownMenuContent>
       </DropdownMenu>
       {tagDialogMode !== null ? (
-        <AssetTagDialogs
-          assetIds={assetId ? [assetId] : []}
-          mode={tagDialogMode}
-          onModeChange={setTagDialogMode}
-        />
+        <AssetTagDialogs assetIds={assetId ? [assetId] : []} mode={tagDialogMode} onModeChange={setTagDialogMode} />
       ) : null}
     </>
   );

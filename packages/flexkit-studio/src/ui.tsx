@@ -42,6 +42,7 @@ export {
   FormMessage,
   FormField,
 } from './ui/primitives/form';
+export { Checkbox } from './ui/primitives/checkbox';
 export { Input } from './ui/primitives/input';
 export {
   Command,
@@ -114,4 +115,5 @@ export { Textarea } from './ui/primitives/textarea';
 export { ToggleGroup, ToggleGroupItem } from './ui/primitives/toggle-group';
 export { Toggle, toggleVariants } from './ui/primitives/toggle';
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipPortal, TooltipProvider } from './ui/primitives/tooltip';
+export { InsufficientPermissionsTooltipContent, PermissionTooltip } from './ui/components/permission-tooltip';
 export { toast, Toaster } from './ui/primitives/sonner';

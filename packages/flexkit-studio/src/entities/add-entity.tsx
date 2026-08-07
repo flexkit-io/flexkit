@@ -21,6 +21,8 @@ import type { Entity } from '../core/types';
 import { getEntityCreateMutation } from '../graphql-client/queries';
 import type { FormEntityItem } from '../graphql-client/types';
 import { Button } from '../ui/primitives/button';
+import { PermissionTooltip } from '../ui/components/permission-tooltip';
+import { useCanMutate } from '../core/permissions';
 import { useDispatch } from './actions-context';
 import { type Action, type ActionAddEntity } from './types';
 
@@ -33,6 +35,7 @@ type Props = {
 export default function AddEntity({ action, depth, isFocused }: Props): JSX.Element {
   const { entityName } = action.payload;
   const ref = useRef<SubmitHandle>(null);
+  const canMutate = useCanMutate();
   const { projects, currentProjectId } = useConfig();
   const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
@@ -112,16 +115,19 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   return (
     <DrawerModal
       actions={
-        <Button
-          className="fk:px-8 fk:min-w-32"
-          onClick={() => {
-            handleSave();
-          }}
-          variant="default"
-        >
-          {mutationData.loading ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
-          Save
-        </Button>
+        <PermissionTooltip disabled={!canMutate}>
+          <Button
+            className="fk:px-8 fk:min-w-32"
+            disabled={!canMutate}
+            onClick={() => {
+              handleSave();
+            }}
+            variant="default"
+          >
+            {mutationData.loading ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
+            Save
+          </Button>
+        </PermissionTooltip>
       }
       beforeClose={handleBeforeClose}
       depth={depth}

@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/primitives/dropdown-menu';
 import { useDispatch } from '../entities/actions-context';
+import { useCanMutate } from '../core/permissions';
 
 interface DataTableRowActionsProps<TData> {
   entityName: string;
@@ -30,8 +31,13 @@ export function DataTableRowActions<TData>({
   options = { canDelete: true, canEdit: true },
 }: DataTableRowActionsProps<TData>): JSX.Element {
   const actionDispatch = useDispatch();
+  const canMutate = useCanMutate();
   // @ts-expect-error -- the DataGrid's original type doesn't know about the _id property
   const entityId = row.original._id;
+  // Read-only roles keep the pencil (the drawer doubles as their read view)
+  // but lose the delete affordance entirely.
+  const canDelete = (options.canDelete ?? true) && canMutate;
+  const canEdit = options.canEdit ?? true;
 
   function handleEdit(): void {
     actionDispatch({ type: 'EditEntity', payload: { entityId, entityNamePlural } });
@@ -43,19 +49,19 @@ export function DataTableRowActions<TData>({
 
   return (
     <div className="fk:flex">
-      {options.canEdit && (
+      {canEdit && (
         <Button className="fk:flex fk:h-7 fk:w-7 fk:p-0 fk:mr-1" onClick={handleEdit} variant="ghost">
           <PencilIcon className="fk:h-4 fk:w-4" />
           <span className="fk:sr-only">Edit</span>
         </Button>
       )}
-      {options.canDelete && !options.canEdit && (
+      {canDelete && !canEdit && (
         <Button className="fk:flex fk:h-7 fk:w-7 fk:p-0 fk:mr-1" onClick={handleDelete} variant="ghost">
           <Trash2Icon className="fk:h-4 fk:w-4" />
           <span className="fk:sr-only">Delete</span>
         </Button>
       )}
-      {options.canEdit && options.canDelete && (
+      {canEdit && canDelete && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button className="fk:flex fk:h-7 fk:w-7 fk:p-0" variant="ghost">

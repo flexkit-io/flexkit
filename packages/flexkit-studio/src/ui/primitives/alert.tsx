@@ -3,13 +3,12 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/utils';
 
 const alertVariants = cva(
-  'fk:relative fk:grid fk:w-full fk:grid-cols-[0_1fr] fk:items-start fk:gap-y-0.5 fk:rounded-lg fk:border fk:px-4 fk:py-3 fk:text-sm fk:has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] fk:has-[>svg]:gap-x-3 fk:[&>svg]:size-4 fk:[&>svg]:translate-y-0.5 fk:[&>svg]:text-current',
+  'fk:relative fk:w-full fk:rounded-lg fk:border fk:px-4 fk:py-3 fk:[&>svg~*]:pl-7 fk:[&>svg+div]:translate-y-[-3px] fk:[&>svg]:absolute fk:[&>svg]:left-4 fk:[&>svg]:top-4 fk:[&>svg]:text-foreground',
   {
     variants: {
       variant: {
-        default: 'fk:bg-card fk:text-card-foreground',
-        destructive:
-          'fk:bg-card fk:text-destructive fk:*:data-[slot=alert-description]:text-destructive/90 fk:[&>svg]:text-current',
+        'default': 'fk:bg-card fk:text-card-foreground',
+        destructive: 'fk:border-none fk:text-destructive fk:bg-destructive-foreground fk:[&>svg]:text-destructive',
       },
     },
     defaultVariants: {
@@ -34,14 +33,7 @@ function AlertTitle({ className, ...props }: React.ComponentProps<'div'>) {
 
 function AlertDescription({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div
-      data-slot="alert-description"
-      className={cn(
-        'fk:col-start-2 fk:grid fk:justify-items-start fk:gap-1 fk:text-sm fk:text-muted-foreground fk:[&_p]:leading-relaxed',
-        className
-      )}
-      {...props}
-    />
+    <div data-slot="alert-description" className={cn('fk:text-sm fk:[&_p]:leading-relaxed', className)} {...props} />
   );
 }
 

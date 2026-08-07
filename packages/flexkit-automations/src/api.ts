@@ -6,6 +6,7 @@ import type {
   AutomationInput,
   AutomationToolChannel,
   AutomationToolProvider,
+  AutomationVisibility,
   MutationResult,
 } from './types';
 
@@ -211,11 +212,18 @@ export function paths(projectId: string): {
   approvalsCount: string;
   automation: (_automationId: string) => string;
   automationRuns: (_automationId: string, _offset?: number, _limit?: number) => string;
-  automations: string;
+  automations: (_options?: {
+    enabled?: boolean[];
+    limit?: number;
+    offset?: number;
+    search?: string;
+    visibility?: AutomationVisibility[];
+  }) => string;
   creditBalance: string;
   entities: string;
   run: (_runId: string) => string;
   runHistory: (_scope: 'mine' | 'team', _offset?: number, _limit?: number) => string;
+  spaces: string;
   tools: (_automationId?: string) => string;
 } {
   const basePath = `/api/flexkit/${projectId}/automations`;
@@ -243,12 +251,35 @@ export function paths(projectId: string): {
     automation: (automationId) => `${basePath}/${encodeURIComponent(automationId)}`,
     automationRuns: (automationId, offset = 0, limit = 25) =>
       `${basePath}/${encodeURIComponent(automationId)}/runs?offset=${offset.toString()}&limit=${limit.toString()}`,
-    automations: basePath,
+    automations: (options = {}) => {
+      const { enabled, limit = 25, offset = 0, search, visibility } = options;
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
+
+      if (enabled && enabled.length > 0) {
+        params.set('enabled', enabled.map((value) => (value ? 'true' : 'false')).join(','));
+      }
+
+      if (visibility && visibility.length > 0) {
+        params.set('visibility', visibility.join(','));
+      }
+
+      const trimmedSearch = search?.trim();
+
+      if (trimmedSearch) {
+        params.set('q', trimmedSearch);
+      }
+
+      return `${basePath}?${params.toString()}`;
+    },
     creditBalance: `${basePath}/credits`,
     entities: `${basePath}/entities`,
     run: (runId) => `${basePath}/runs/${encodeURIComponent(runId)}`,
     runHistory: (scope, offset = 0, limit = 25) =>
       `${basePath}/runs?scope=${scope}&offset=${offset.toString()}&limit=${limit.toString()}`,
+    spaces: `/api/flexkit/${projectId}/spaces`,
     tools: (automationId) =>
       automationId ? `${basePath}/${encodeURIComponent(automationId)}/tools` : `${basePath}/tools`,
   };

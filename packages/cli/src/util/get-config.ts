@@ -224,8 +224,8 @@ function transformConfig(rawConfig: ProjectConfig | ProjectConfig[]): ProjectCon
       return item;
     }
 
-    const { title, projectId, schema, scopes, basePath = '' } = item;
-    return { title, projectId, schema, scopes, basePath };
+    const { title, projectId, schema, scopes, spaces, basePath = '' } = item;
+    return { title, projectId, schema, scopes, spaces, basePath };
   };
 
   return Array.isArray(rawConfig) ? rawConfig.map(transform) : transform(rawConfig);

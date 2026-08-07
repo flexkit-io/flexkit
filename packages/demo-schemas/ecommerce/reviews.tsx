@@ -9,6 +9,7 @@ export const reviews = defineEntity({
     group: 'ugc',
     icon: <StarIcon />,
   },
+  spaces: ['mkt'],
   attributes: [
     {
       name: 'reviewId',

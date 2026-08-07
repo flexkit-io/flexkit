@@ -69,7 +69,9 @@ export default function EmailLogin({
 
       const confirmOtpUrl = new URL(apiPaths(projectId).loginOtpConfirm, baseApiUrl);
       const setTokenUrl = '/api/flexkit/set-token';
-      fetch(`${confirmOtpUrl.href}?email=${form.getValues('email')}&token=${token}`)
+      fetch(
+        `${confirmOtpUrl.href}?email=${encodeURIComponent(form.getValues('email'))}&token=${encodeURIComponent(token)}`
+      )
         .then((res) => {
           if (res.status === 200) {
             // set the token cookie
@@ -115,12 +117,12 @@ export default function EmailLogin({
   return (
     <div className="fk:w-full">
       {hasOtpBeenSent ? (
-        <Alert variant="default">
+        <Alert className="fk:dark:bg-foreground fk:dark:text-background" variant="default">
           <AlertDescription>
             Keep this window open and in a new tab open the link we just sent to:{' '}
             <strong>{form.getValues('email')}</strong> (
             <Button
-              className="fk:p-0 fk:hover:underline fk:dark:text-background"
+              className="fk:p-0 fk:hover:underline fk:text-link"
               onClick={() => {
                 window.location.reload();
               }}
@@ -143,7 +145,7 @@ export default function EmailLogin({
                   There is no Flexkit account associated with this email address.{' '}
                   <a
                     className="fk:text-black/90 fk:dark:text-white/90 fk:underline"
-                    href={`https://flexkit.io/signup/email?email=${form.getValues('email')}`}
+                    href={`https://flexkit.io/signup/email?email=${encodeURIComponent(form.getValues('email'))}`}
                   >
                     Sign up?
                   </a>
@@ -161,7 +163,7 @@ export default function EmailLogin({
                     }}
                     variant="link"
                   >
-                    Try again
+                    try again
                   </Button>
                   .{' '}
                 </AlertDescription>

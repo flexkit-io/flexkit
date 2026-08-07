@@ -9,9 +9,11 @@ import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
 import { toast } from 'sonner';
 import { Button } from '../ui/primitives/button';
+import { PermissionTooltip } from '../ui/components/permission-tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { useDispatch } from '../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../core/app-context';
+import { useCanMutate } from '../core/permissions';
 import { useConfig } from '../core/config/config-context';
 import type { SingleProject } from '../core/config/types';
 import { DataTableViewOptions } from './data-table-view-options';
@@ -41,6 +43,7 @@ export function DataTableToolbar<TData>({
   const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const [isDeleting, setIsDeleting] = useState(false);
+  const canMutate = useCanMutate();
 
   // Collect selected entity ids from the table
   // @ts-expect-error -- the DataGrid's original type doesn't know about the _id property
@@ -175,30 +178,34 @@ export function DataTableToolbar<TData>({
         <DataTableSortedBy table={table} />
       </div>
       {selectedIds.length > 0 ? (
-        <Button
-          className="fk:h-8 fk:mr-2 fk:lg:flex"
-          disabled={isDeleting}
-          onClick={handleBatchDelete}
-          size="sm"
-          variant="destructive"
-        >
-          {isDeleting ? (
-            <Loader2 className="fk:mr-2 fk:h-4 fk:w-4 fk:animate-spin" />
-          ) : (
-            <Trash2 className="fk:mr-2 fk:h-4 fk:w-4" />
-          )}
-          Delete ({selectedIds.length})
-        </Button>
+        <PermissionTooltip disabled={!canMutate}>
+          <Button
+            className="fk:h-8 fk:mr-2 fk:lg:flex"
+            disabled={isDeleting || !canMutate}
+            onClick={handleBatchDelete}
+            size="sm"
+            variant="destructive"
+          >
+            {isDeleting ? (
+              <Loader2 className="fk:mr-2 fk:h-4 fk:w-4 fk:animate-spin" />
+            ) : (
+              <Trash2 className="fk:mr-2 fk:h-4 fk:w-4" />
+            )}
+            Delete ({selectedIds.length})
+          </Button>
+        </PermissionTooltip>
       ) : null}
-      <Button
-        className="fk:ml-auto fk:h-8 fk:lg:flex"
-        disabled={isDeleting}
-        onClick={handleCreate}
-        size="sm"
-        variant="default"
-      >
-        Create
-      </Button>
+      <PermissionTooltip disabled={!canMutate}>
+        <Button
+          className="fk:ml-auto fk:h-8 fk:lg:flex"
+          disabled={isDeleting || !canMutate}
+          onClick={handleCreate}
+          size="sm"
+          variant="default"
+        >
+          Create
+        </Button>
+      </PermissionTooltip>
     </div>
   );
 }

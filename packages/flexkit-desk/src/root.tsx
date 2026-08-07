@@ -1,6 +1,6 @@
 import { JSX } from 'react';
 import { find, propEq } from 'ramda';
-import { Outlet, useAuth, useConfig } from '@flexkit/studio';
+import { filterEntitiesForSpaces, Outlet, useAuth, useConfig } from '@flexkit/studio';
 import { Sidebar, SidebarInset, SidebarProvider } from '@flexkit/studio/ui';
 import type { SingleProject } from '@flexkit/studio';
 
@@ -10,6 +10,9 @@ export function Root(): JSX.Element {
   const [, auth] = useAuth();
   const { projects, currentProjectId } = useConfig();
   const { schema, menuGroups } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  // Space-bound entities are hidden from non-members; the generated
+  // @authorization rules block their data server-side either way.
+  const visibleSchema = filterEntitiesForSpaces(schema, auth.user?.spaces);
   const defaultOpen =
     document.cookie
       .split('; ')
@@ -18,7 +21,7 @@ export function Root(): JSX.Element {
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
-      <Sidebar schema={schema} menuGroups={menuGroups} />
+      <Sidebar schema={visibleSchema} menuGroups={menuGroups} />
       <SidebarInset>
         <Outlet />
       </SidebarInset>

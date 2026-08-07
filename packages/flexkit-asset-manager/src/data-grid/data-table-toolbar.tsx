@@ -26,6 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  PermissionTooltip,
   ToggleGroup,
   ToggleGroupItem,
 } from '@flexkit/studio/ui';
@@ -34,6 +35,7 @@ import { AssetTagDialogs, type AssetTagDialogMode } from './asset-tag-dialogs';
 import {
   DataTableFacetedFilter,
   DataTableSortedBy,
+  useCanMutate,
   useParams,
   useUploadAssets,
   useDispatch,
@@ -102,6 +104,7 @@ export function DataTableToolbar<TData>({
   const { scope } = useAppContext();
   const [tagDialogMode, setTagDialogMode] = useState<AssetTagDialogMode>(null);
   const { currentProjectSchema: schema } = useConfig();
+  const canMutate = useCanMutate();
   const [search, setSearch] = useState('');
   const textWhereRef = useRef<WhereClause>({});
   const filterWhereRef = useRef<WhereClause>({});
@@ -305,7 +308,7 @@ export function DataTableToolbar<TData>({
   }, [columnFiltersKey, emitCombinedWhere, onSearchWhereChange, table]);
 
   return (
-    <div className="fk:flex fk:items-center fk:justify-between">
+    <div className="fk:flex fk:items-center fk:justify-between fk:pr-3">
       <div className="fk:flex fk:flex-1 fk:items-center fk:space-x-2">
         <div className="fk:relative">
           {isLoading ? (
@@ -374,11 +377,13 @@ export function DataTableToolbar<TData>({
       {selectedIds.length > 0 ? (
         <div className="fk:flex fk:items-center fk:gap-2">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="fk:h-8 fk:mr-2 fk:lg:flex" size="sm" variant="secondary">
-                Actions <ListChecks className="fk:ml-2 fk:h-4 fk:w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <PermissionTooltip disabled={!canMutate}>
+              <DropdownMenuTrigger asChild>
+                <Button className="fk:h-8 fk:mr-2 fk:lg:flex" disabled={!canMutate} size="sm" variant="secondary">
+                  Actions <ListChecks className="fk:ml-2 fk:h-4 fk:w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </PermissionTooltip>
             <DropdownMenuContent align="end" className="fk:w-[240px]">
               <DropdownMenuItem onClick={() => setTagDialogMode('add')}>
                 <TagIcon className="fk:mr-2 fk:h-4 fk:w-4" /> Add tag
@@ -413,9 +418,17 @@ export function DataTableToolbar<TData>({
             <List className="fk:h-4 fk:w-4" />
           </ToggleGroupItem>
         </ToggleGroup>
-        <Button className="fk:h-8 fk:lg:flex" onClick={handleUpload} size="sm" variant="default">
-          Upload assets
-        </Button>
+        <PermissionTooltip disabled={!canMutate}>
+          <Button
+            className="fk:h-8 fk:lg:flex"
+            disabled={!canMutate}
+            onClick={handleUpload}
+            size="sm"
+            variant="default"
+          >
+            Upload assets
+          </Button>
+        </PermissionTooltip>
       </div>
 
       {tagDialogMode !== null ? (

@@ -44,7 +44,7 @@ export function useEntityQuery({
   isLoadingMore: boolean;
   isProjectDisabled: boolean;
   isProjectReadOnly: boolean;
-  reload: () => void;
+  reload: (options?: { preserve?: boolean }) => Promise<void>;
   schemaErrorMessage: string | null;
 } {
   const [result, setResult] = useState<Results>({
@@ -188,39 +188,47 @@ export function useEntityQuery({
     [entityNamePlural, isForm, schema, scope]
   );
 
-  const reload = useCallback((): void => {
-    if (isReloadingRef.current) {
-      return;
-    }
+  const reload = useCallback(
+    (options?: { preserve?: boolean }): Promise<void> => {
+      if (isReloadingRef.current) {
+        return Promise.resolve();
+      }
 
-    isReloadingRef.current = true;
-    isLoadingMoreRef.current = false;
-    setIsLoadingMore(false);
-    syncedQueryKeyRef.current = null;
-    pendingQueryKeyRef.current = null;
-    nextOffsetRef.current = 0;
-    setIsReloading(true);
-    setResult({ count: 0, results: [] });
+      const preserve = options?.preserve === true;
 
-    void refetchRef
-      .current()
-      .then(({ data: res }) => {
-        const queryKey = JSON.stringify({ entityNamePlural, scope, selection, variables });
-        const mapped = mapResults({ data: res, entityNamePlural, isForm, schema, scope });
+      isReloadingRef.current = true;
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
 
-        syncedQueryKeyRef.current = queryKey;
+      if (!preserve) {
+        syncedQueryKeyRef.current = null;
         pendingQueryKeyRef.current = null;
-        nextOffsetRef.current = getVariablesOffset(variables) + mapped.results.length;
-        setResult(mapped);
-      })
-      .catch((fetchError: unknown) => {
-        console.error('Error reloading data:', fetchError);
-      })
-      .finally(() => {
-        isReloadingRef.current = false;
-        setIsReloading(false);
-      });
-  }, [entityNamePlural, isForm, schema, scope, selection, variables]);
+        nextOffsetRef.current = 0;
+        setIsReloading(true);
+        setResult({ count: 0, results: [] });
+      }
+
+      return refetchRef
+        .current()
+        .then(({ data: res }) => {
+          const queryKey = JSON.stringify({ entityNamePlural, scope, selection, variables });
+          const mapped = mapResults({ data: res, entityNamePlural, isForm, schema, scope });
+
+          syncedQueryKeyRef.current = queryKey;
+          pendingQueryKeyRef.current = null;
+          nextOffsetRef.current = getVariablesOffset(variables) + mapped.results.length;
+          setResult(mapped);
+        })
+        .catch((fetchError: unknown) => {
+          console.error('Error reloading data:', fetchError);
+        })
+        .finally(() => {
+          isReloadingRef.current = false;
+          setIsReloading(false);
+        });
+    },
+    [entityNamePlural, isForm, schema, scope, selection, variables]
+  );
 
   useEffect(() => {
     if (schemaMismatchMessage) {

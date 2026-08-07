@@ -202,6 +202,11 @@ type AttributeBase = {
     mode: 'single' | 'multiple';
     field: string;
   };
+  /**
+   * Space codes that can read/write this attribute. Members of any listed
+   * space have access; users outside all listed spaces cannot see the value.
+   */
+  spaces?: string[];
   validation?: (zod: ZodNamespace) => z.ZodType;
 };
 
@@ -224,6 +229,11 @@ export type Entity = {
         group?: string;
         icon?: JSX.Element;
       };
+  /**
+   * Space codes that can access this entity. Members of any listed space have
+   * access; users outside all listed spaces cannot see the entity at all.
+   */
+  spaces?: string[];
   attributes: Attribute[];
 };
 
@@ -237,6 +247,13 @@ type Scope = {
 };
 
 export type Scopes = Scope[];
+
+export type Space = {
+  code: string;
+  label: string;
+};
+
+export type Spaces = Space[];
 
 export type FormFieldSchema = Attribute;
 

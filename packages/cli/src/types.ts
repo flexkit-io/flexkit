@@ -67,6 +67,13 @@ type Scope = {
 
 export type Scopes = Scope[];
 
+export type Space = {
+  code: string;
+  label: string;
+};
+
+export type Spaces = Space[];
+
 type DataType =
   | 'cartesianpoint'
   | 'bigint'
@@ -186,6 +193,7 @@ type AttributeBase = {
     mode: 'single' | 'multiple';
     field: string;
   };
+  spaces?: string[];
 };
 
 type AttributeByDataType<T extends DataType> = AttributeBase & {
@@ -206,6 +214,7 @@ export interface ProjectOptions {
     name: string;
   }[];
   scopes?: Scopes;
+  spaces?: Spaces;
   schema: {
     name: string;
     plural: string;
@@ -215,6 +224,7 @@ export interface ProjectOptions {
           label?: string;
           group?: string;
         };
+    spaces?: string[];
     attributes: Attribute[];
   }[];
 }
@@ -236,9 +246,11 @@ export interface FlexkitConfig {
     schema?: {
       name: string;
       plural: string;
+      spaces?: string[];
       attributes: Attribute[];
     }[];
     scopes?: Scopes;
+    spaces?: Spaces;
     title?: string;
     projectId: string;
   }[];

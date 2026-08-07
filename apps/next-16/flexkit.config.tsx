@@ -55,6 +55,44 @@ export default defineConfig([
       { title: 'Finance', name: 'finance' },
       { title: 'Config', name: 'config' },
     ],
+    spaces: [
+      {
+        code: 'gtm',
+        label: 'GTM',
+      },
+      {
+        code: 'mkt',
+        label: 'Marketing',
+      },
+      {
+        code: 'finance',
+        label: 'Finance',
+      },
+      {
+        code: 'ops',
+        label: 'Operations',
+      },
+      {
+        code: 'cx',
+        label: 'Customer Support',
+      },
+      {
+        code: 'legal',
+        label: 'Legal',
+      },
+      {
+        code: 'people',
+        label: 'People',
+      },
+      {
+        code: 'data',
+        label: 'Data & Analytics',
+      },
+      {
+        code: 'it',
+        label: 'IT',
+      },
+    ],
     plugins: [
       Desk(),
       AssetManager(),

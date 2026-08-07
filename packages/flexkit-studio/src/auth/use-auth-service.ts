@@ -11,7 +11,9 @@ export default function useAuthService(): AuthService {
   const { projects } = useConfig();
   const currentProject = projects.find((project) => project.projectId === projectId) ?? projects[0];
   const { data: user, isLoading: isLoadingUser } = useSWR(apiPaths(projectId ?? '').currentUser, (url: string) =>
-    fetch(url, { mode: 'cors', credentials: 'include' }).then((res) => res.json() as Promise<User>)
+    fetch(url, { mode: 'cors', credentials: 'include' })
+      .then((res) => res.json() as Promise<User>)
+      .then((data) => ({ ...data, spaces: data.spaces ?? [] }))
   );
   const isLoading = isLoadingUser;
 

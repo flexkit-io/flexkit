@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
-import { useTheme } from '../theme-context';
+import BoringAvatar from 'boring-avatars';
 import { Monitor, Moon, Sun } from 'lucide-react';
+import { useTheme } from '../theme-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../primitives/avatar';
 import { Button } from '../primitives/button';
 import { Skeleton } from '../primitives/skeleton';
@@ -15,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from '../primitives/dropdown-menu';
 import { useAuth } from '../../auth/auth-context';
+
+const AVATAR_COLORS = ['#06d9b6', '#a4f479', '#d4d323', '#fb468f', '#0ec4f1'];
 
 type Props = {
   projectId: string;
@@ -33,8 +36,16 @@ export function UserNav({ projectId }: Props): JSX.Element {
       <DropdownMenuTrigger asChild>
         <Button className="fk:relative fk:h-8 fk:w-8 fk:rounded-full" variant="ghost">
           <Avatar className="fk:h-8 fk:w-8">
-            <AvatarImage alt="@shadcn" src={auth.user?.avatar_url} />
-            <AvatarFallback>{auth.user?.display_name.charAt(0).toUpperCase() ?? ''}</AvatarFallback>
+            {auth.user?.avatar_url ? <AvatarImage alt={auth.user.display_name} src={auth.user.avatar_url} /> : null}
+            <AvatarFallback className="fk:bg-transparent">
+              <BoringAvatar
+                className="fk:size-8"
+                colors={AVATAR_COLORS}
+                name={auth.user?.id ?? 'user'}
+                size={32}
+                variant="marble"
+              />
+            </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
