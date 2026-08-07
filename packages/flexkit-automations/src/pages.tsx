@@ -1905,6 +1905,10 @@ function getRunReplayEmptyLabel({
     return 'No replay events were recorded.';
   }
 
+  if (status === 'error') {
+    return 'Unable to load run replay.';
+  }
+
   if (isAwaitingApproval || status === 'paused') {
     return 'Awaiting approval...';
   }
@@ -2139,7 +2143,7 @@ function RunReplay({
           </div>
         ) : (
           <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground">
-            {status === 'unavailable' ? (
+            {status === 'unavailable' || status === 'error' ? (
               <TriangleAlertIcon className="fk:size-4" />
             ) : (
               <LoaderCircle className="fk:size-4 fk:animate-spin" />
