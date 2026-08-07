@@ -7,6 +7,8 @@ import { useCachedImageSrc } from '../../ui/hooks/use-cached-image-src';
 export type Asset = {
   _id: string;
   path: string;
+  /** Total connected assets; the fetched array is bounded by the query's `first`. */
+  totalCount?: number;
 };
 
 const transparentImageBackground =
@@ -106,10 +108,28 @@ function SingleAsset({ value }: { value: Asset }) {
 
 function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
   const assets = value.filter((asset) => Boolean(asset.path)).slice(0, 3);
+  // Queries bound connection edges, so the array length undercounts; the
+  // aggregate total travels on each item as totalCount.
+  const totalCount = Math.max(value[0]?.totalCount ?? 0, value.length);
 
+  // All fetched edges can lack `path` (still-processing uploads, incomplete
+  // nodes) while totalCount > 0 — especially likely now that list queries
+  // only fetch the first 3 edges. Show a count so the cell is not blank.
   if (assets.length === 0) {
+    if (totalCount > 0) {
+      return (
+        <div className="fk:flex fk:items-center">
+          <span className="fk:text-xs fk:text-muted-foreground">
+            {totalCount === 1 ? '1 asset' : `${totalCount} assets`}
+          </span>
+        </div>
+      );
+    }
+
     return null;
   }
+
+  const overflowCount = totalCount - assets.length;
 
   return (
     <div className="fk:flex fk:items-center">
@@ -124,8 +144,8 @@ function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
           />
         ))}
       </div>
-      {value.length > 3 ? (
-        <span className="fk:ml-2 fk:text-xs fk:text-muted-foreground">+{value.length - 3}</span>
+      {overflowCount > 0 ? (
+        <span className="fk:ml-2 fk:text-xs fk:text-muted-foreground">+{overflowCount}</span>
       ) : null}
     </div>
   );

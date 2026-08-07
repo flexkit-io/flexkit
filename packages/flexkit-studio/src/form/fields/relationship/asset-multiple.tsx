@@ -1,5 +1,7 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { JSX, RefObject, SyntheticEvent } from 'react';
+import { gql } from '@apollo/client';
+import { useLazyQuery } from '@apollo/client/react';
 import { useParams } from 'react-router-dom';
 import {
   ArrowDown as ArrowDownIcon,
@@ -15,6 +17,12 @@ import { useAppContext, useAppDispatch } from '../../../core/app-context';
 import { IMAGES_BASE_URL } from '../../../core/api-paths';
 import { useUploadAssets } from '../../../core/upload';
 import type { MultipleRelationshipConnection } from '../../../core/types';
+import {
+  FULL_ASSET_CONNECTION_LIMIT,
+  getEntityAssetConnectionQuery,
+  getKnownAssetSortOrders,
+  getOrderedAssetsFromConnection,
+} from '../../../graphql-client/queries';
 import type { OrderedAssetValue } from '../../../graphql-client/types';
 import { Button } from '../../../ui/primitives/button';
 import { Collapsible, CollapsibleContent } from '../../../ui/primitives/collapsible';
@@ -24,11 +32,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 import { useOuterClick } from '../../../ui/hooks/use-outer-click';
 import type { FormFieldParams } from '../../types';
 
+const PAGE_SIZE = FULL_ASSET_CONNECTION_LIMIT;
+
+type AssetConnectionPageResult = {
+  [entityNamePlural: string]:
+    | {
+        [connectionField: string]: unknown;
+      }[]
+    | undefined;
+};
+
 export default function AssetMultipleRelationship({
   control,
   defaultValue,
   entityId,
+  entityName,
+  entityNamePlural,
   fieldSchema,
+  schema,
   setValue,
 }: FormFieldParams<'relationship'>): JSX.Element {
   const { name, label, options, relationship } = fieldSchema;
@@ -44,9 +65,31 @@ export default function AssetMultipleRelationship({
   const pendingLocalRowsSignatureRef = useRef<string | null>(null);
   const removedAssetIdsRef = useRef<string[]>([]);
   const syncedRowsSignatureRef = useRef('');
+  const knownAssetSortOrdersRef = useRef<{ [id: string]: number }>(defaultValue.knownAssetSortOrders ?? {});
   const [isOpen, setIsOpen] = useState(false);
   const initialRows = useMemo(() => normalizeAssets(defaultValue.value), [defaultValue.value]);
   const [rows, setRows] = useState<OrderedAssetValue[]>(initialRows);
+  const [loadedServerCount, setLoadedServerCount] = useState(
+    () => Object.keys(defaultValue.knownAssetSortOrders ?? getKnownAssetSortOrders(initialRows)).length
+  );
+  // Advertised connection total; clamped down when a page returns fewer edges than
+  // the aggregate claimed so Load more does not stay enabled forever.
+  const [serverTotalCount, setServerTotalCount] = useState(() =>
+    Math.max(defaultValue.count ?? 0, initialRows[0]?.totalCount ?? 0, initialRows.length)
+  );
+  const assetConnectionQuery = useMemo(
+    () =>
+      getEntityAssetConnectionQuery({
+        attributeName: name,
+        entityName,
+        entityNamePlural,
+        schema,
+      }),
+    [entityName, entityNamePlural, name, schema]
+  );
+  const [fetchAssetConnection, { loading: isLoadingMore }] = useLazyQuery<AssetConnectionPageResult>(gql`
+    ${assetConnectionQuery.query}
+  `);
   useOuterClick(wrapperRef as RefObject<HTMLDivElement>, setIsOpen);
 
   useEffect(() => {
@@ -54,6 +97,14 @@ export default function AssetMultipleRelationship({
 
     originalAssetIdsRef.current = initialRows.map((asset) => asset._id);
     removedAssetIdsRef.current = [];
+    const nextKnownSortOrders = {
+      ...(defaultValue.knownAssetSortOrders ?? {}),
+      ...getKnownAssetSortOrders(initialRows),
+    };
+
+    knownAssetSortOrdersRef.current = nextKnownSortOrders;
+    setLoadedServerCount(Object.keys(nextKnownSortOrders).length);
+    setServerTotalCount(Math.max(defaultValue.count ?? 0, initialRows[0]?.totalCount ?? 0, initialRows.length));
 
     setRows((currentRows) => {
       const currentRowsSignature = getRowsSignature(currentRows);
@@ -74,7 +125,7 @@ export default function AssetMultipleRelationship({
 
       return initialRows;
     });
-  }, [initialRows]);
+  }, [defaultValue.count, defaultValue.knownAssetSortOrders, initialRows]);
 
   useEffect(() => {
     const connections = relationships[relationshipId]?.connect as MultipleRelationshipConnection | undefined;
@@ -133,6 +184,7 @@ export default function AssetMultipleRelationship({
 
     setValue(name, {
       ...defaultValue,
+      knownAssetSortOrders: knownAssetSortOrdersRef.current,
       relationships: {
         connect,
         disconnect,
@@ -141,6 +193,86 @@ export default function AssetMultipleRelationship({
     });
   }, [appDispatch, defaultValue, name, relationshipId, rows, setValue]);
 
+  const totalCount = Math.max(serverTotalCount, loadedServerCount);
+  const hasMore = Boolean(entityId) && totalCount > loadedServerCount;
+
+  const handleLoadMore = useCallback(() => {
+    if (!entityId || isLoadingMore || !hasMore) {
+      return;
+    }
+
+    const nextFirst = loadedServerCount + PAGE_SIZE;
+
+    void fetchAssetConnection({
+      variables: {
+        where: { _id: { eq: entityId } },
+        first: nextFirst,
+      },
+    })
+      .then((result) => {
+        const entityRows = result.data?.[entityNamePlural];
+        const entity = Array.isArray(entityRows) ? entityRows[0] : undefined;
+        const connection = entity?.[`${name}Connection`];
+        const fetchedAssets = getOrderedAssetsFromConnection(connection);
+        const responseTotal = fetchedAssets[0]?.totalCount;
+
+        if (typeof responseTotal === 'number') {
+          setServerTotalCount(responseTotal);
+        }
+
+        if (fetchedAssets.length === 0) {
+          // Aggregate overstated available edges; stop paging.
+          setServerTotalCount(loadedServerCount);
+
+          return;
+        }
+
+        const previousKnownCount = Object.keys(knownAssetSortOrdersRef.current).length;
+        const nextKnownSortOrders = {
+          ...knownAssetSortOrdersRef.current,
+          ...getKnownAssetSortOrders(fetchedAssets),
+        };
+        const nextLoadedCount = Object.keys(nextKnownSortOrders).length;
+
+        knownAssetSortOrdersRef.current = nextKnownSortOrders;
+        setLoadedServerCount(nextLoadedCount);
+
+        // Fewer edges than requested, or the page added no new known ids —
+        // clamp the advertised total so hasMore clears instead of no-op looping.
+        if (fetchedAssets.length < nextFirst || nextLoadedCount <= previousKnownCount) {
+          setServerTotalCount(nextLoadedCount);
+        }
+
+        for (const asset of fetchedAssets) {
+          if (!originalAssetIdsRef.current.includes(asset._id)) {
+            originalAssetIdsRef.current = [...originalAssetIdsRef.current, asset._id];
+          }
+        }
+
+        setRows((currentRows) => {
+          const currentIds = new Set(currentRows.map((asset) => asset._id));
+          const removedIds = new Set(removedAssetIdsRef.current);
+          const toAppend = fetchedAssets.filter((asset) => !currentIds.has(asset._id) && !removedIds.has(asset._id));
+
+          if (toAppend.length === 0) {
+            // Still rewrite knownAssetSortOrders onto the form value.
+            syncedRowsSignatureRef.current = '';
+
+            return [...currentRows];
+          }
+
+          const nextRows = [...currentRows, ...toAppend];
+
+          pendingLocalRowsSignatureRef.current = getRowsSignature(nextRows);
+
+          return nextRows;
+        });
+      })
+      .catch((error: unknown) => {
+        console.error('Error fetching more assets:', error);
+      });
+  }, [entityId, entityNamePlural, fetchAssetConnection, hasMore, isLoadingMore, loadedServerCount, name]);
+
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
     event.stopPropagation();
@@ -148,7 +280,7 @@ export default function AssetMultipleRelationship({
     actionDispatch({
       type: 'EditRelationship',
       payload: {
-        connectedEntitiesCount: rows.length,
+        connectedEntitiesCount: Math.max(rows.length, totalCount),
         entityName: relationship?.entity ?? '_asset',
         entityId,
         relationshipId,
@@ -225,6 +357,9 @@ export default function AssetMultipleRelationship({
     });
   }
 
+  const previewTotal = Math.max(rows.length, totalCount);
+  const collapsedPreview = rows.slice(0, 8);
+
   return (
     <FormField
       control={control}
@@ -255,16 +390,17 @@ export default function AssetMultipleRelationship({
                 <div className="fk:flex fk:w-full fk:items-center fk:gap-2 fk:pr-9">
                   {isOpen && rows.length > 0 ? (
                     <div className="fk:flex fk:h-9 fk:items-center fk:text-muted-foreground">
-                      {rows.length} {rows.length === 1 ? 'asset' : 'assets'} selected
+                      {previewTotal} {previewTotal === 1 ? 'asset' : 'assets'}
+                      {hasMore ? ` (${rows.length} loaded)` : ''} selected
                     </div>
                   ) : rows.length > 0 ? (
                     <div className="fk:flex fk:min-h-9 fk:flex-wrap fk:gap-2">
-                      {rows.slice(0, 8).map((asset) => (
+                      {collapsedPreview.map((asset) => (
                         <AssetThumbnail asset={asset} key={asset._id} />
                       ))}
-                      {!isOpen && rows.length > 8 ? (
+                      {!isOpen && previewTotal > 8 ? (
                         <div className="fk:flex fk:h-9 fk:w-9 fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted fk:text-xs fk:text-muted-foreground">
-                          +{rows.length - 8}
+                          +{previewTotal - 8}
                         </div>
                       ) : null}
                     </div>
@@ -328,6 +464,25 @@ export default function AssetMultipleRelationship({
                               />
                             ))}
                           </div>
+                          {hasMore ? (
+                            <div className="fk:flex fk:justify-center fk:py-3 fk:pr-3">
+                              <Button
+                                className="fk:h-8"
+                                disabled={isLoadingMore}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  handleLoadMore();
+                                }}
+                                type="button"
+                                variant="outline"
+                              >
+                                {isLoadingMore
+                                  ? 'Loading…'
+                                  : `Load more (${loadedServerCount} of ${totalCount})`}
+                              </Button>
+                            </div>
+                          ) : null}
                         </ScrollArea>
                       ) : null}
                     </div>
@@ -467,6 +622,7 @@ function normalizeAsset(value: unknown, sortOrder: number): OrderedAssetValue | 
     width: Number(asset.width ?? 0),
     height: Number(asset.height ?? 0),
     sortOrder: asset.sortOrder ?? sortOrder,
+    totalCount: typeof asset.totalCount === 'number' ? asset.totalCount : undefined,
   };
 }
 

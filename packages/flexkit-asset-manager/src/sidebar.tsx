@@ -78,7 +78,8 @@ export function Sidebar(): JSX.Element {
     const _id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
     const entityData: FormEntityItem = { name: { value: name, disabled: false, scope: 'default' } };
     const mutation = getEntityCreateMutation(entityNamePlural, schema, entityData, _id);
-    const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
+    // Match the mounted list query: 'list' skips the unbounded assets connection.
+    const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection: 'list' });
     const refreshQuery = gql`
       ${entityQuery.query}
     `;
@@ -104,7 +105,8 @@ export function Sidebar(): JSX.Element {
     async (_id: string): Promise<void> => {
       setIsDeleting(true);
       const mutation = getEntityDeleteMutation(entityName, schema, _id);
-      const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
+      // Match the mounted list query: 'list' skips the unbounded assets connection.
+    const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection: 'list' });
       const refreshQuery = gql`
         ${entityQuery.query}
       `;
@@ -149,7 +151,8 @@ export function Sidebar(): JSX.Element {
       originalData,
       dataToMutate
     );
-    const entityQuery = getEntityQuery(entityNamePlural, scope, schema);
+    // Match the mounted list query: 'list' skips the unbounded assets connection.
+    const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection: 'list' });
     const refreshQuery = gql`
       ${entityQuery.query}
     `;

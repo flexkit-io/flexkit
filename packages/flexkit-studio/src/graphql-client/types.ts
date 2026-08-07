@@ -63,6 +63,8 @@ export type ImageValue = {
 
 export type OrderedAssetValue = ImageValue & {
   sortOrder?: number;
+  /** Aggregate count of all connected assets; edges are bounded by `first`. */
+  totalCount?: number;
 };
 
 export type MappedEntityQueryResults = {
@@ -98,6 +100,13 @@ export type FormFieldValue = {
   _id?: string;
   count?: number;
   disabled: boolean;
+  /**
+   * Server-known asset sort orders for ordered asset relationships. Grows as
+   * the form field pages in more connection edges beyond the initial `first`.
+   * Update mutations use this so paged-in assets are treated as existing
+   * (reorder/disconnect) rather than new connects.
+   */
+  knownAssetSortOrders?: { [id: string]: number };
   relationships?: {
     connect?: SingleRelationshipConnection | MultipleRelationshipConnection;
     disconnect?: string[];

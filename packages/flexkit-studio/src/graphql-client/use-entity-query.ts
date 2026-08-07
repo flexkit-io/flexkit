@@ -73,6 +73,16 @@ export function useEntityQuery({
       `,
     [entityQuery.query]
   );
+  // fetchMore pages skip the top-level aggregate count (a filtered label scan
+  // on the server); the total from the first page still stands.
+  const fetchMoreEntityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection, includeCount: false });
+  const fetchMoreDocument = useMemo(
+    () =>
+      gql`
+        ${fetchMoreEntityQuery.query}
+      `,
+    [fetchMoreEntityQuery.query]
+  );
   const { schemaErrorMessage, setSchemaErrorMessage } = useGraphQLError();
   const {
     loading: isLoading,
@@ -87,9 +97,11 @@ export function useEntityQuery({
   });
   const fetchNextPageRef = useRef(fetchNextPage);
   const refetchRef = useRef(refetch);
+  const fetchMoreDocumentRef = useRef(fetchMoreDocument);
   const previousNetworkStatusRef = useRef(networkStatus);
   fetchNextPageRef.current = fetchNextPage;
   refetchRef.current = refetch;
+  fetchMoreDocumentRef.current = fetchMoreDocument;
 
   // Parse 403 error response to determine the specific error code
   const serverError = getServerError(error);
@@ -142,6 +154,7 @@ export function useEntityQuery({
       fetchNextPageRef
         .current({
           ...args,
+          query: fetchMoreDocumentRef.current,
           variables: {
             ...args.variables,
             offset,
@@ -171,8 +184,9 @@ export function useEntityQuery({
               } as Results;
             }
 
+            // Count-free pagination pages report 0; the first page's total stands.
             return {
-              count: mappedFetchMoreResults.count,
+              count: mappedFetchMoreResults.count || prevRows.count,
               results: merged,
             } as Results;
           });
