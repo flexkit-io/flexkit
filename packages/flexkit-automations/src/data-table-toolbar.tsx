@@ -25,13 +25,34 @@ interface AutomationsDataTableToolbarProps<TData> {
   table: ReactTable<TData>;
 }
 
-function debounce<TArgs extends unknown[]>(fn: (...args: TArgs) => void, ms = 300) {
-  let timeoutId: ReturnType<typeof setTimeout>;
+type DebouncedFn<TArgs extends unknown[]> = ((...args: TArgs) => void) & {
+  cancel: () => void;
+};
 
-  return function (this: unknown, ...args: TArgs) {
+function debounce<TArgs extends unknown[]>(fn: (...args: TArgs) => void, ms = 300): DebouncedFn<TArgs> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const debounced = function (this: unknown, ...args: TArgs) {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+
+    timeoutId = setTimeout(() => {
+      timeoutId = undefined;
+      fn.apply(this, args);
+    }, ms);
+  } as DebouncedFn<TArgs>;
+
+  debounced.cancel = () => {
+    if (timeoutId === undefined) {
+      return;
+    }
+
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn.apply(this, args), ms);
+    timeoutId = undefined;
   };
+
+  return debounced;
 }
 
 export function AutomationsDataTableToolbar<TData>({
@@ -58,7 +79,14 @@ export function AutomationsDataTableToolbar<TData>({
     setDraftSearch(search);
   }, [search]);
 
+  useEffect(() => {
+    return () => {
+      debouncedSearchChange.cancel();
+    };
+  }, [debouncedSearchChange]);
+
   function clearSearch(): void {
+    debouncedSearchChange.cancel();
     setDraftSearch('');
     onSearchChange('');
   }
@@ -89,6 +117,7 @@ export function AutomationsDataTableToolbar<TData>({
                   setDraftSearch(value);
 
                   if (value.trim().length === 0) {
+                    debouncedSearchChange.cancel();
                     onSearchChange('');
 
                     return;

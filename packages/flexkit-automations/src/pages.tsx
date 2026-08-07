@@ -2139,7 +2139,11 @@ function RunReplay({
           </div>
         ) : (
           <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground">
-            <TriangleAlertIcon className="fk:size-4" />
+            {status === 'unavailable' ? (
+              <TriangleAlertIcon className="fk:size-4" />
+            ) : (
+              <LoaderCircle className="fk:size-4 fk:animate-spin" />
+            )}
             <span>{emptyLabel}</span>
           </div>
         )}

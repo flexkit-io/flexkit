@@ -134,6 +134,12 @@ export function DataTableToolbar<TData>({
     [baseSearchRequest]
   );
 
+  useEffect(() => {
+    return () => {
+      debouncedSetSearchQuery.cancel();
+    };
+  }, [debouncedSetSearchQuery]);
+
   async function handleUpload(): Promise<void> {
     await uploadAssets({ projectId, accept: 'image/*', multiple: true, maxBytes: 4 * 1024 * 1024 });
   }
@@ -186,6 +192,14 @@ export function DataTableToolbar<TData>({
       onSearchWhereChange(combinedWhere);
     }
   }, [onSearchWhereChange]);
+
+  function clearSearch(): void {
+    debouncedSetSearchQuery.cancel();
+    setSearch('');
+    setSearchQuery({ ...baseSearchRequest, commonParams: { q: '' } });
+    textWhereRef.current = {};
+    emitCombinedWhere();
+  }
 
   async function handleBatchDelete(): Promise<void> {
     dispatch({
@@ -325,9 +339,7 @@ export function DataTableToolbar<TData>({
               setSearch(value);
 
               if (value.trim().length === 0) {
-                setSearchQuery({ ...baseSearchRequest, commonParams: { q: '' } });
-                textWhereRef.current = {};
-                emitCombinedWhere();
+                clearSearch();
 
                 return;
               }
@@ -340,12 +352,7 @@ export function DataTableToolbar<TData>({
             <button
               aria-label="Clear search"
               className="fk:absolute fk:right-2 fk:top-2 fk:text-muted-foreground fk:hover:text-foreground fk:cursor-pointer"
-              onClick={() => {
-                setSearch('');
-                setSearchQuery({ ...baseSearchRequest, commonParams: { q: '' } });
-                textWhereRef.current = {};
-                emitCombinedWhere();
-              }}
+              onClick={clearSearch}
               type="button"
             >
               <ResetIcon className="fk:h-4 fk:w-4" />
@@ -443,11 +450,32 @@ export function DataTableToolbar<TData>({
   );
 }
 
-function debounce<TArgs extends unknown[]>(fn: (...args: TArgs) => void, ms = 300) {
-  let timeoutId: ReturnType<typeof setTimeout>;
+type DebouncedFn<TArgs extends unknown[]> = ((...args: TArgs) => void) & {
+  cancel: () => void;
+};
 
-  return function (this: unknown, ...args: TArgs) {
+function debounce<TArgs extends unknown[]>(fn: (...args: TArgs) => void, ms = 300): DebouncedFn<TArgs> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const debounced = function (this: unknown, ...args: TArgs) {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+
+    timeoutId = setTimeout(() => {
+      timeoutId = undefined;
+      fn.apply(this, args);
+    }, ms);
+  } as DebouncedFn<TArgs>;
+
+  debounced.cancel = () => {
+    if (timeoutId === undefined) {
+      return;
+    }
+
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn.apply(this, args), ms);
+    timeoutId = undefined;
   };
+
+  return debounced;
 }
