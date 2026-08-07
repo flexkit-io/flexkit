@@ -23,7 +23,7 @@ type EntityQuery = {
 };
 
 /** Page size for asset connections in forms (galleries, ordered assets). */
-const FULL_ASSET_CONNECTION_LIMIT = 25;
+export const FULL_ASSET_CONNECTION_LIMIT = 25;
 /** List grids render at most 3 stacked asset thumbnails (plus a "+N" badge). */
 const LIST_ASSET_CONNECTION_LIMIT = 3;
 /** Grids preview at most 3 nested relationship values (sliceFirstThreeItems). */
@@ -86,7 +86,7 @@ function isAssetAttribute(attribute: Attribute | undefined): boolean {
   return attribute?.dataType === 'asset' || attribute?.inputType === 'asset';
 }
 
-function getOrderedAssetsFromConnection(connection: unknown): OrderedAssetValue[] {
+export function getOrderedAssetsFromConnection(connection: unknown): OrderedAssetValue[] {
   const typedConnection = connection as AssetRelationshipConnection | undefined;
   const edges = typedConnection?.edges ?? [];
   // Edges are bounded by `first`; the aggregate count carries the real total so
@@ -108,6 +108,20 @@ function getOrderedAssetsFromConnection(connection: unknown): OrderedAssetValue[
       return result;
     }, [])
     .sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER));
+}
+
+/** Build the sort-order map update mutations use to detect new vs existing assets. */
+export function getKnownAssetSortOrders(assets: OrderedAssetValue[]): { [id: string]: number } {
+  return assets.reduce<{ [id: string]: number }>((result, asset, index) => {
+    if (!asset._id) {
+      return result;
+    }
+
+    return {
+      ...result,
+      [asset._id]: asset.sortOrder ?? index,
+    };
+  }, {});
 }
 
 /**
@@ -598,16 +612,29 @@ export function mapQueryResultForFormFields(
         ) as AttributeValue | null;
         const _id = value?._id;
         const aggregateCount = getConnectionCount(entity[`${attributeName}Connection`]);
-        const mappedValue = isAssetRelationshipAttribute(relationshipAttribute)
-          ? getOrderedAssetsFromConnection(entity[`${attributeName}Connection`])
-          : value;
+
+        if (isAssetRelationshipAttribute(relationshipAttribute)) {
+          const assets = getOrderedAssetsFromConnection(entity[`${attributeName}Connection`]);
+
+          return {
+            ...acc,
+            [attributeName]: {
+              count: aggregateCount,
+              _id,
+              knownAssetSortOrders: getKnownAssetSortOrders(assets),
+              value: assets,
+              disabled: false,
+              scope,
+            },
+          };
+        }
 
         return {
           ...acc,
           [attributeName]: {
             count: aggregateCount,
             _id,
-            value: mappedValue,
+            value,
             disabled: false,
             scope,
           },
@@ -976,7 +1003,13 @@ function orderedAssetRelationshipUpdate(
     sortOrder: connection.sortOrder ?? index,
   }));
   const orderedConnectionIds = orderedConnections.map((connection) => connection._id);
-  const originalSortOrderById = getRelationshipSortOrderById(originalValue);
+  // Merge paged-in server assets from the live field so load-more edges are not
+  // mistaken for brand-new connects (which would duplicate relationship edges).
+  const originalSortOrderById = {
+    ...getRelationshipSortOrderById(originalValue),
+    ...(originalValue?.knownAssetSortOrders ?? {}),
+    ...(attributeValue.knownAssetSortOrders ?? {}),
+  };
   const disconnectedIds = uniq(attributeValue.relationships?.disconnect ?? []).filter(
     (_id) => _id && !orderedConnectionIds.includes(_id)
   );
@@ -1512,6 +1545,56 @@ export function getRelatedItemsQuery({
       `    ${localAttributesList}` +
       `    ${imageAttributesList}` +
       `    ${relationshipAttributesList}` +
+      `  }\n` +
+      `}\n`,
+  };
+}
+
+/**
+ * Pages an entity's ordered asset connection beyond the initial form `first`.
+ * Callers grow `first` (e.g. loaded + page size) so already-fetched edges are
+ * re-returned in sortOrder and can be merged without a cursor.
+ */
+export function getEntityAssetConnectionQuery({
+  attributeName,
+  entityName,
+  entityNamePlural,
+  schema,
+}: {
+  attributeName: string;
+  entityName: string;
+  entityNamePlural: string;
+  schema: Schema;
+}): EntityQuery {
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
+  const attribute = find(propEq(attributeName, 'name'))(entitySchema?.attributes ?? []) as Attribute | undefined;
+  const includeProperties = hasOrderedAssetConnectionProperties(attribute, entitySchema);
+  const propertiesSelection = includeProperties
+    ? `        properties {\n` + `          sortOrder\n` + `        }\n`
+    : '';
+  const connectionArguments = includeProperties
+    ? '(first: $first, sort: [{ edge: { sortOrder: ASC } }])'
+    : '(first: $first)';
+  const operationName = `Get${getOperationEntityName(entityName)}AssetConnection`;
+
+  return {
+    queryEntityName: entityNamePlural,
+    query:
+      `query ${operationName}($where: ${entityName}Where, $first: Int) {\n` +
+      `  ${entityNamePlural}(where: $where) {\n` +
+      `    ${attributeName}Connection${connectionArguments} {\n` +
+      `      aggregate {\n` +
+      `        count {\n` +
+      `          nodes\n` +
+      `        }\n` +
+      `      }\n` +
+      `      edges {\n` +
+      propertiesSelection +
+      `        node {\n` +
+      `          ${assetFields}\n` +
+      `        }\n` +
+      `      }\n` +
+      `    }\n` +
       `  }\n` +
       `}\n`,
   };
