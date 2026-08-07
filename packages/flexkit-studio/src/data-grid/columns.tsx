@@ -3,6 +3,8 @@ import type { JSX } from 'react';
 import type { CellContext, Column, ColumnDef, Row, Table } from '@tanstack/react-table';
 import type { Attribute, InputType, SelectOptions } from '../core/types';
 import type { AttributeValue } from '../graphql-client/types';
+import { useAuth } from '../auth/auth-context';
+import { filterAttributesForSpaces } from '../core/spaces';
 import { useConfig } from '../core/config/config-context';
 import { Checkbox } from '../ui/primitives/checkbox';
 import { Boolean as BooleanPrefiewField } from './preview-components/boolean';
@@ -40,6 +42,10 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   enableColumnSorting = false,
 }: Props<TData>): ColumnDefinition<TData, TValue>[] {
   const { getContributionPointConfig } = useConfig();
+  const [, auth] = useAuth();
+  // Space-bound attributes are filtered out for non-members; their values are
+  // null-ed by the server anyway, this just avoids rendering empty columns.
+  const visibleAttributesSchema = filterAttributesForSpaces(attributesSchema, auth.user?.spaces);
   const inputTypeToPreviewFieldMap = {
     'datetime': 'datetime',
     'editor': 'editor',
@@ -66,7 +72,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     'tags': TagsPreviewField,
   };
 
-  const cols = attributesSchema
+  const cols = visibleAttributesSchema
     .map((attribute) => {
       // System timestamp column is always appended last; skip schema duplicates.
       if (attribute.name === '_updatedAt') {

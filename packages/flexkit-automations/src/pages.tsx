@@ -1,6 +1,6 @@
-import type { JSX } from 'react';
+import type { JSX, UIEvent } from 'react';
 import type { ReasoningUIPart, TextUIPart, UIMessage, UIMessageChunk } from 'ai';
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { parseJsonEventStream, readUIMessageStream, uiMessageChunkSchema } from 'ai';
 import { format, formatDistance } from 'date-fns';
 import {
@@ -25,12 +25,20 @@ import {
   SendIcon,
   TerminalIcon,
   Trash2,
+  TriangleAlertIcon,
   XCircleIcon,
   XIcon,
   ZapIcon,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useConfig } from '@flexkit/studio';
+import {
+  getCoreRowModel,
+  useCanMutate,
+  useConfig,
+  useReactTable,
+  type ColumnDef,
+  type ColumnFiltersState,
+} from '@flexkit/studio';
 import {
   Badge,
   Button,
@@ -44,6 +52,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   ExternalLink,
+  PermissionTooltip,
   ScrollArea,
   Separator,
   SidebarTrigger,
@@ -65,6 +74,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
 import { ApprovalCard, ApprovalStatusBadge } from './approval-card';
+import { AutomationsDataTableToolbar } from './data-table-toolbar';
 import { AutomationForm } from './form';
 import { RunSpecPart } from './spec-renderer';
 import type {
@@ -73,11 +83,21 @@ import type {
   AutomationApprovals,
   AutomationCreditBalance,
   AutomationRun,
+  AutomationVisibility,
+  ProjectSpace,
   RunHistory,
 } from './types';
 
 interface AutomationsResponse {
   automations: Automation[];
+  count: number;
+  hasMore: boolean;
+}
+
+const AUTOMATIONS_PAGE_SIZE = 25;
+
+function getLoadMoreThreshold(clientHeight: number): number {
+  return Math.max(600, clientHeight);
 }
 
 interface AutomationResponse {
@@ -131,7 +151,7 @@ function getStatusBadgeClass(status: string): string {
 function StatusBadge({ status }: { status: string }): JSX.Element {
   return (
     <Badge
-      className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${getStatusBadgeClass(status)}`}
+      className={`fk:border-none fk:h-4.75 fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${getStatusBadgeClass(status)}`}
       variant={status === 'success' ? 'default' : 'secondary'}
     >
       {status === 'awaiting_approval' ? 'awaiting approval' : status}
@@ -209,6 +229,20 @@ function CreditButton({ projectId }: { projectId: string }): JSX.Element | null 
   );
 }
 
+function getVisibilityLabel(automation: Automation, spaceLabelById: Map<string, string>): string {
+  const visibility = automation.visibility ?? 'project';
+
+  if (visibility === 'space') {
+    return (automation.spaceId ? spaceLabelById.get(automation.spaceId) : undefined) ?? 'Space';
+  }
+
+  if (visibility === 'personal') {
+    return 'Personal';
+  }
+
+  return 'Project';
+}
+
 function AutomationsTableSkeleton(): JSX.Element {
   return (
     <Table>
@@ -218,6 +252,7 @@ function AutomationsTableSkeleton(): JSX.Element {
           <TableHead>Triggers</TableHead>
           <TableHead>Last run</TableHead>
           <TableHead className="fk:text-center">Runs</TableHead>
+          <TableHead>Visibility</TableHead>
           <TableHead className="fk:text-center">Status</TableHead>
           <TableHead />
         </TableRow>
@@ -237,8 +272,11 @@ function AutomationsTableSkeleton(): JSX.Element {
             <TableCell className="fk:text-center">
               <Skeleton className="fk:mx-auto fk:h-4 fk:w-8" />
             </TableCell>
+            <TableCell>
+              <Skeleton className="fk:h-4.75 fk:w-16" />
+            </TableCell>
             <TableCell className="fk:text-center">
-              <Skeleton className="fk:mx-auto fk:h-[19px] fk:w-16" />
+              <Skeleton className="fk:mx-auto fk:h-4.75 fk:w-16" />
             </TableCell>
             <TableCell className="fk:text-right">
               <Skeleton className="fk:ml-auto fk:size-8" />
@@ -250,25 +288,188 @@ function AutomationsTableSkeleton(): JSX.Element {
   );
 }
 
+function columnFilterValues(filters: ColumnFiltersState, columnId: string): string[] {
+  const filter = filters.find((entry) => entry.id === columnId);
+  const value = filter?.value;
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === 'string');
+}
+
+function mapStatusFilterToEnabled(values: string[]): boolean[] | undefined {
+  if (values.length === 0) {
+    return undefined;
+  }
+
+  const enabled = values
+    .map((value) => {
+      if (value === 'enabled') {
+        return true;
+      }
+
+      if (value === 'disabled') {
+        return false;
+      }
+
+      return null;
+    })
+    .filter((value): value is boolean => value !== null);
+
+  if (enabled.length === 0) {
+    return undefined;
+  }
+
+  return enabled;
+}
+
+function mapVisibilityFilter(values: string[]): AutomationVisibility[] | undefined {
+  if (values.length === 0) {
+    return undefined;
+  }
+
+  const visibility = values.filter(
+    (value): value is AutomationVisibility => value === 'project' || value === 'space' || value === 'personal'
+  );
+
+  if (visibility.length === 0) {
+    return undefined;
+  }
+
+  return visibility;
+}
+
 export function AutomationsPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const navigate = useNavigate();
-  const { data, isLoading, mutate } = useSWR<AutomationsResponse>(
-    projectId ? paths(projectId).automations : null,
-    fetcher
-  );
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [search, setSearch] = useState('');
   const [message, setMessage] = useState('');
+  const canMutate = useCanMutate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const statusFilterValues = columnFilterValues(columnFilters, 'status');
+  const visibilityFilterValues = columnFilterValues(columnFilters, 'visibility');
+  const enabledFilter = mapStatusFilterToEnabled(statusFilterValues);
+  const visibilityFilter = mapVisibilityFilter(visibilityFilterValues);
+  const hasActiveFilters = columnFilters.length > 0 || search.trim().length > 0;
+  const filterKey = JSON.stringify({ enabledFilter, search, visibilityFilter });
+
+  const getAutomationsKey = (pageIndex: number, previousPage: AutomationsResponse | null): string | null => {
+    if (!projectId) {
+      return null;
+    }
+
+    if (previousPage && previousPage.hasMore === false) {
+      return null;
+    }
+
+    return paths(projectId).automations({
+      enabled: enabledFilter,
+      limit: AUTOMATIONS_PAGE_SIZE,
+      offset: pageIndex * AUTOMATIONS_PAGE_SIZE,
+      search: search.trim() || undefined,
+      visibility: visibilityFilter,
+    });
+  };
+  const {
+    data: automationPages,
+    isLoading,
+    mutate,
+    setSize,
+    size,
+  } = useSWRInfinite<AutomationsResponse>(getAutomationsKey, fetcher);
+  const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(projectId ? paths(projectId).spaces : null, fetcher);
+  const spaceLabelById = useMemo(
+    () => new Map((spacesData?.spaces ?? []).map((space) => [space.id, space.label])),
+    [spacesData?.spaces]
+  );
+  const automations = automationPages?.flatMap((page) => page.automations) ?? [];
+  const lastPage = automationPages?.[automationPages.length - 1];
+  const hasMore = lastPage?.hasMore ?? false;
+  const isLoadingMore = automationPages !== undefined && size > automationPages.length;
+  const automationsCount = automationPages?.[0]?.count;
+  const isInitialLoading = isLoading && automations.length === 0;
+
+  const filterColumns = useMemo<ColumnDef<Automation>[]>(
+    () => [
+      { id: 'status', accessorKey: 'enabled' },
+      { id: 'visibility', accessorKey: 'visibility' },
+    ],
+    []
+  );
+  const table = useReactTable({
+    columns: filterColumns,
+    data: automations,
+    getCoreRowModel: getCoreRowModel(),
+    manualFiltering: true,
+    onColumnFiltersChange: (updater) => {
+      void setSize(1);
+      setColumnFilters(updater);
+    },
+    state: { columnFilters },
+  });
+
+  const onLoadMoreRef = useRef(() => {
+    void setSize((currentSize) => currentSize + 1);
+  });
+  const hasMoreRef = useRef(hasMore);
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  onLoadMoreRef.current = () => {
+    void setSize((currentSize) => currentSize + 1);
+  };
+  hasMoreRef.current = hasMore;
+  isLoadingMoreRef.current = isLoadingMore;
+
+  const checkLoadMore = useCallback((container?: HTMLDivElement | null) => {
+    if (!onLoadMoreRef.current || !hasMoreRef.current || isLoadingMoreRef.current) {
+      return;
+    }
+
+    const scrollElement = container ?? scrollRef.current;
+
+    if (!scrollElement) {
+      return;
+    }
+
+    const { scrollHeight, scrollTop, clientHeight } = scrollElement;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+    if (distanceFromBottom >= getLoadMoreThreshold(clientHeight)) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
+    onLoadMoreRef.current();
+  }, []);
+
+  useEffect(() => {
+    checkLoadMore();
+  }, [checkLoadMore, automations.length, hasMore, isLoadingMore, filterKey]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [filterKey]);
+
+  const searchRef = useRef(search);
+  searchRef.current = search;
+
+  const handleSearchChange = useCallback(
+    (nextSearch: string) => {
+      if (nextSearch === searchRef.current) {
+        return;
+      }
+
+      void setSize(1);
+      setSearch(nextSearch);
+    },
+    [setSize]
+  );
 
   if (!projectId || !api) {
     return <PageMessage>Select a project to view automations.</PageMessage>;
   }
-
-  const automations = [...(data?.automations ?? [])].sort((a, b) => {
-    const aTime = a.lastRunAt ? new Date(a.lastRunAt).getTime() : 0;
-    const bTime = b.lastRunAt ? new Date(b.lastRunAt).getTime() : 0;
-
-    return bTime - aTime;
-  });
 
   async function handleDelete(automation: Automation): Promise<void> {
     setMessage('');
@@ -288,12 +489,16 @@ export function AutomationsPage(): JSX.Element {
     await mutate();
   }
 
+  function handleScroll(event: UIEvent<HTMLDivElement>): void {
+    checkLoadMore(event.currentTarget);
+  }
+
   let content: JSX.Element;
 
-  if (isLoading) {
+  if (isLoading && automations.length === 0) {
     content = <AutomationsTableSkeleton />;
   } else if (automations.length === 0) {
-    content = <PageMessage>No automations yet.</PageMessage>;
+    content = <PageMessage>{hasActiveFilters ? 'No results.' : 'No automations yet.'}</PageMessage>;
   } else {
     content = (
       <Table>
@@ -303,6 +508,7 @@ export function AutomationsPage(): JSX.Element {
             <TableHead>Triggers</TableHead>
             <TableHead>Last run</TableHead>
             <TableHead className="fk:text-center">Runs</TableHead>
+            <TableHead>Visibility</TableHead>
             <TableHead className="fk:text-center">Status</TableHead>
             <TableHead />
           </TableRow>
@@ -311,7 +517,7 @@ export function AutomationsPage(): JSX.Element {
           {automations.map((automation) => (
             <TableRow className="fk:cursor-pointer" key={automation.id} onClick={() => navigate(automation.id)}>
               <TableCell>
-                <div className="fk:font-medium">{automation.name}</div>
+                <span className="fk:font-medium">{automation.name}</span>
               </TableCell>
               <TableCell className="fk:text-muted-foreground">{getTriggerSummary(automation)}</TableCell>
               <TableCell>
@@ -320,9 +526,17 @@ export function AutomationsPage(): JSX.Element {
                   : 'Never'}
               </TableCell>
               <TableCell className="fk:text-center">{automation.totalRuns}</TableCell>
+              <TableCell>
+                <Badge
+                  className="fk:h-4.75 fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide"
+                  variant={automation.visibility === 'personal' ? 'secondary' : 'outline'}
+                >
+                  {getVisibilityLabel(automation, spaceLabelById)}
+                </Badge>
+              </TableCell>
               <TableCell className="fk:text-center">
                 <Badge
-                  className={`fk:border-none fk:h-[19px] fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${automation.enabled ? 'fk:bg-success/20 fk:text-success' : 'fk:bg-secondary fk:text-secondary-foreground'}`}
+                  className={`fk:border-none fk:h-4.75 fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide ${automation.enabled ? 'fk:bg-success/20 fk:text-success' : 'fk:bg-secondary fk:text-secondary-foreground'}`}
                   variant={automation.enabled ? 'default' : 'secondary'}
                 >
                   {automation.enabled ? 'Enabled' : 'Disabled'}
@@ -355,6 +569,7 @@ export function AutomationsPage(): JSX.Element {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
+                      disabled={!canMutate}
                       variant="destructive"
                       onClick={(event) => {
                         event.stopPropagation();
@@ -375,8 +590,8 @@ export function AutomationsPage(): JSX.Element {
   }
 
   return (
-    <div className="fk:space-y-6 fk:h-full">
-      <div className="fk:mb-4 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:gap-4">
+      <div className="fk:flex fk:shrink-0 fk:items-start fk:gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
             <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
@@ -384,27 +599,64 @@ export function AutomationsPage(): JSX.Element {
           <TooltipContent>Toggle Sidebar</TooltipContent>
         </Tooltip>
         <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
-        <div className="fk:flex-1">
-          <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">Automations</h1>
+        <div className="fk:min-w-0 fk:flex-1">
+          <div className="fk:flex fk:items-center fk:gap-2">
+            <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">Automations</h1>
+            {!isInitialLoading && automationsCount !== undefined ? (
+              <span className="fk:ml-auto fk:text-sm fk:font-normal fk:text-muted-foreground">
+                {automationsCount.toLocaleString()} {automationsCount === 1 ? 'automation' : 'automations'}
+              </span>
+            ) : null}
+          </div>
           <p className="fk:mt-1 fk:text-sm fk:text-muted-foreground">
             Agent-powered tasks that run on a schedule or when your data changes.
             <ExternalLink href="https://flexkit.io/docs/automations">Learn more</ExternalLink>
           </p>
         </div>
-        <div className="fk:flex fk:flex-wrap fk:items-center fk:justify-end fk:gap-3">
-          <CreditButton projectId={projectId} />
-          <Button asChild size="sm">
-            <Link to="new">
-              <Plus className="fk:mr-2 fk:size-4" />
-              New Automation
-            </Link>
-          </Button>
-        </div>
       </div>
 
       {message ? <div className="fk:text-sm fk:text-destructive">{message}</div> : null}
 
-      {content}
+      <AutomationsDataTableToolbar
+        actions={
+          <>
+            <CreditButton projectId={projectId} />
+            {canMutate ? (
+              <Button asChild className="fk:h-8" size="sm">
+                <Link to="new">
+                  <Plus className="fk:mr-2 fk:size-4" />
+                  New Automation
+                </Link>
+              </Button>
+            ) : (
+              <PermissionTooltip disabled>
+                <Button className="fk:h-8" disabled size="sm">
+                  <Plus className="fk:mr-2 fk:size-4" />
+                  New Automation
+                </Button>
+              </PermissionTooltip>
+            )}
+          </>
+        }
+        isSearchLoading={isLoading && search.trim().length > 0}
+        search={search}
+        table={table}
+        onSearchChange={handleSearchChange}
+      />
+
+      <div className="fk:relative fk:min-h-0 fk:min-w-0 fk:flex-1">
+        {isLoadingMore ? (
+          <div
+            aria-hidden
+            className="fk:pointer-events-none fk:absolute fk:top-0 fk:right-px fk:left-px fk:z-20 fk:h-0.5 fk:overflow-hidden fk:opacity-40"
+          >
+            <div className="fk:animate-progress fk:h-full fk:w-full fk:bg-foreground" />
+          </div>
+        ) : null}
+        <div className="fk:h-full fk:overflow-auto fk:pb-20" onScroll={handleScroll} ref={scrollRef}>
+          {content}
+        </div>
+      </div>
     </div>
   );
 }
@@ -451,6 +703,7 @@ export function AutomationDetailPage(): JSX.Element {
   const { automationId } = useParams<{ automationId: string }>();
   const navigate = useNavigate();
   const [isRunning, startTransition] = useTransition();
+  const canMutate = useCanMutate();
   const { data, mutate } = useSWR<AutomationResponse>(
     projectId && automationId ? paths(projectId).automation(automationId) : null,
     fetcher
@@ -465,7 +718,7 @@ export function AutomationDetailPage(): JSX.Element {
   }
 
   const automationApi = api;
-  const canRunAutomation = isAutomationRunnable(data.automation);
+  const canRunAutomation = isAutomationRunnable(data.automation) && canMutate;
   const selectedAutomationId = automationId;
 
   function handleRunNow(): void {
@@ -517,14 +770,16 @@ export function AutomationDetailPage(): JSX.Element {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button disabled={isRunning || !canRunAutomation} size="sm" onClick={handleRunNow}>
-          {isRunning ? (
-            <LoaderCircle className="fk:mr-2 fk:size-4 fk:animate-spin" />
-          ) : (
-            <Play className="fk:mr-2 fk:size-4" />
-          )}
-          Run now
-        </Button>
+        <PermissionTooltip disabled={!canMutate}>
+          <Button disabled={isRunning || !canRunAutomation} size="sm" onClick={handleRunNow}>
+            {isRunning ? (
+              <LoaderCircle className="fk:mr-2 fk:size-4 fk:animate-spin" />
+            ) : (
+              <Play className="fk:mr-2 fk:size-4" />
+            )}
+            Run now
+          </Button>
+        </PermissionTooltip>
       </div>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4">
@@ -570,13 +825,14 @@ export function RunsPage(): JSX.Element {
     return paths(projectId).automationRuns(automationId, pageIndex * RUNS_PAGE_SIZE, RUNS_PAGE_SIZE);
   };
   const { data: runPages, isLoading, mutate, setSize, size } = useSWRInfinite<RunsResponse>(getRunsKey, fetcher);
+  const canMutate = useCanMutate();
 
   if (!projectId || !api || !automationId) {
     return <PageMessage>Select an automation to view runs.</PageMessage>;
   }
 
   const automationApi = api;
-  const canRunAutomation = isAutomationRunnable(data?.automation);
+  const canRunAutomation = isAutomationRunnable(data?.automation) && canMutate;
   const selectedAutomationId = automationId;
 
   function handleRunNow(): void {
@@ -641,14 +897,16 @@ export function RunsPage(): JSX.Element {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button disabled={isRunning || !canRunAutomation} size="sm" onClick={handleRunNow}>
-          {isRunning ? (
-            <LoaderCircle className="fk:mr-2 fk:size-4 fk:animate-spin" />
-          ) : (
-            <Play className="fk:mr-2 fk:size-4" />
-          )}
-          Run now
-        </Button>
+        <PermissionTooltip disabled={!canMutate}>
+          <Button disabled={isRunning || !canRunAutomation} size="sm" onClick={handleRunNow}>
+            {isRunning ? (
+              <LoaderCircle className="fk:mr-2 fk:size-4 fk:animate-spin" />
+            ) : (
+              <Play className="fk:mr-2 fk:size-4" />
+            )}
+            Run now
+          </Button>
+        </PermissionTooltip>
       </div>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4">
@@ -792,7 +1050,7 @@ export function RunHistoryPage(): JSX.Element {
 
   if (isLoading) {
     metricsContent = (
-      <div className="fk:grid fk:shrink-0 fk:gap-3 fk:md:grid-cols-4">
+      <div className="fk:grid fk:shrink-0 fk:gap-3 fk:grid-cols-4">
         {Array.from({ length: 4 }, (_, index) => (
           <div className="fk:rounded-md fk:bg-muted/60 fk:p-4" key={index}>
             <Skeleton className="fk:h-4 fk:w-24" />
@@ -803,7 +1061,7 @@ export function RunHistoryPage(): JSX.Element {
     );
   } else if (metrics) {
     metricsContent = (
-      <div className="fk:grid fk:shrink-0 fk:gap-3 fk:md:grid-cols-4">
+      <div className="fk:grid fk:shrink-0 fk:gap-3 fk:grid-cols-4">
         <MetricCard title="Successful 24h" value={metrics.successful24h} />
         <MetricCard title="Failed 24h" value={metrics.failed24h} />
         <MetricCard title="Successful 7d" value={metrics.successful7d} />
@@ -1647,6 +1905,10 @@ function getRunReplayEmptyLabel({
     return 'No replay events were recorded.';
   }
 
+  if (status === 'error') {
+    return 'Unable to load run replay.';
+  }
+
   if (isAwaitingApproval || status === 'paused') {
     return 'Awaiting approval...';
   }
@@ -1881,7 +2143,11 @@ function RunReplay({
           </div>
         ) : (
           <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground">
-            <LoaderCircle className="fk:size-4 fk:animate-spin" />
+            {status === 'unavailable' || status === 'error' ? (
+              <TriangleAlertIcon className="fk:size-4" />
+            ) : (
+              <LoaderCircle className="fk:size-4 fk:animate-spin" />
+            )}
             <span>{emptyLabel}</span>
           </div>
         )}

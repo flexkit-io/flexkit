@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  PermissionTooltip,
   Select,
   SelectContent,
   SelectItem,
@@ -45,6 +46,7 @@ import {
   WebhookIcon,
   XIcon,
 } from 'lucide-react';
+import { useAuth, useCanMutate } from '@flexkit/studio';
 import { fetcher, getWebhookTriggerUrl, paths, type ApiClient } from './api';
 import type {
   Automation,
@@ -59,7 +61,9 @@ import type {
   AutomationTrigger,
   AutomationTriggerEvent,
   AutomationProviderTools,
+  AutomationVisibility,
   AutomationWebhookTrigger,
+  ProjectSpace,
 } from './types';
 
 interface AutomationFormProps {
@@ -135,6 +139,7 @@ interface FormValidation {
   instructions: string;
   model: string;
   name: string;
+  space: string;
   toolErrors: { [provider: string]: string };
   triggerErrors: { [triggerKey: string]: string };
 }
@@ -144,6 +149,7 @@ function isFormValidationClean(validation: FormValidation): boolean {
     !validation.instructions &&
     !validation.model &&
     !validation.name &&
+    !validation.space &&
     Object.keys(validation.toolErrors).length === 0 &&
     Object.keys(validation.triggerErrors).length === 0
   );
@@ -422,17 +428,18 @@ function ChannelPicker({
           <div className="fk:max-h-56 fk:overflow-auto fk:p-1">
             {filteredChannels.length > 0 ? (
               filteredChannels.map((channel) => (
-                <button
-                  className="fk:flex fk:w-full fk:items-center fk:rounded-sm fk:px-2 fk:py-1.5 fk:text-left fk:text-sm hover:fk:bg-accent"
+                <Button
+                  className="fk:h-auto fk:w-full fk:justify-start fk:rounded-sm fk:px-2 fk:py-1.5 fk:font-normal"
                   key={getChannelKey(channel)}
                   type="button"
+                  variant="ghost"
                   onClick={() => handleSelect(channel)}
                 >
                   <CheckIcon
                     className={`fk:mr-2 fk:size-4 ${selectedIds.has(channel.id) ? 'fk:opacity-100' : 'fk:opacity-0'}`}
                   />
                   {channel.name}
-                </button>
+                </Button>
               ))
             ) : (
               <div className="fk:px-2 fk:py-6 fk:text-center fk:text-sm fk:text-muted-foreground">
@@ -567,14 +574,15 @@ function CronEditor({
 
   return (
     <div className="fk:relative" ref={containerRef}>
-      <button
-        className="fk:flex fk:items-center fk:gap-1.5 fk:rounded-md fk:bg-background/90 fk:px-2 fk:py-1 fk:font-mono fk:text-sm fk:shadow-sm hover:fk:bg-accent"
+      <Button
+        className="fk:h-auto fk:gap-1.5 fk:bg-background/90 fk:px-2 fk:py-1 fk:font-mono fk:font-normal fk:shadow-sm hover:fk:bg-accent"
         type="button"
+        variant="ghost"
         onClick={() => setOpen((current) => !current)}
       >
         {value || 'Set cron'}
         <ChevronDownIcon className="fk:size-3.5 fk:opacity-50" />
-      </button>
+      </Button>
       {open ? (
         <div className="fk:absolute fk:z-50 fk:mt-1 fk:w-72 fk:rounded-md fk:border fk:bg-popover fk:p-3 fk:text-popover-foreground fk:shadow-md">
           <div className="fk:mb-2 fk:text-xs fk:text-muted-foreground">Cron expression ({timezone})</div>
@@ -689,9 +697,10 @@ function WebhookTriggerRow({
       <span>Webhook triggered</span>
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
-            className="fk:flex fk:min-w-0 fk:max-w-60 fk:items-center fk:gap-1.5 fk:rounded-md fk:bg-background/90 fk:px-2 fk:py-1 fk:text-xs fk:shadow-sm hover:fk:bg-accent"
+          <Button
+            className="fk:h-auto fk:min-w-0 fk:max-w-60 fk:gap-1.5 fk:bg-background/90 fk:px-2 fk:py-1 fk:text-xs fk:font-normal fk:shadow-sm hover:fk:bg-accent"
             type="button"
+            variant="ghost"
             onClick={() => copyToClipboard(url, setCopiedUrl)}
           >
             <span className="fk:truncate">{url}</span>
@@ -700,7 +709,7 @@ function WebhookTriggerRow({
             ) : (
               <CopyIcon className="fk:size-3.5 fk:shrink-0 fk:opacity-60" />
             )}
-          </button>
+          </Button>
         </TooltipTrigger>
         <TooltipContent className="fk:max-w-96 fk:break-all">{url}</TooltipContent>
       </Tooltip>
@@ -880,13 +889,14 @@ function TriggersField({
       ))}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
-            className="fk:flex fk:w-full fk:items-center fk:gap-3 fk:rounded-b-lg fk:px-3 fk:py-3 fk:text-sm fk:text-muted-foreground hover:fk:bg-muted hover:fk:text-foreground"
+          <Button
+            className={`fk:h-auto fk:w-full fk:justify-start fk:gap-3 fk:px-3 fk:py-3 fk:text-muted-foreground hover:fk:bg-muted hover:fk:text-foreground ${triggers.length === 0 ? 'fk:rounded-lg' : 'fk:rounded-none fk:rounded-b-lg'}`}
             type="button"
+            variant="ghost"
           >
             <PlusIcon className="fk:size-4" />
             Add Trigger
-          </button>
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="fk:w-56">
           <DropdownMenuSub>
@@ -972,6 +982,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [mutationPolicy, setMutationPolicy] = useState<AutomationMutationPolicy>(
     automation?.mutationPolicy ?? 'require_approval'
   );
+  const [visibility, setVisibility] = useState<AutomationVisibility>(automation?.visibility ?? 'project');
+  const [spaceId, setSpaceId] = useState<string | null>(automation?.spaceId ?? null);
   const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -980,6 +992,13 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const toolsUrl = paths(projectId).tools(automation?.id);
   const { data: toolsData } = useSWR<ToolsResponse>(toolsUrl, fetcher);
   const { data: entitiesData } = useSWR<{ entities: string[] }>(paths(projectId).entities, fetcher);
+  const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
+  const [, auth] = useAuth();
+  const canMutate = useCanMutate();
+  const userSpaceCodes = auth.user?.spaces ?? [];
+  // Only spaces the caller belongs to are offered; the server rejects
+  // bindings to spaces outside the caller's membership anyway.
+  const selectableSpaces = (spacesData?.spaces ?? []).filter((space) => userSpaceCodes.includes(space.code));
   const modelOptions = useMemo(
     () => getModelOptions(toolsData?.tools.models ?? [], mode, modelId || automation?.modelId || ''),
     [automation?.modelId, mode, modelId, toolsData?.tools.models]
@@ -1017,10 +1036,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       instructions: instructions.trim() ? '' : 'Instructions are required',
       model: effectiveModelId ? '' : 'Select a model',
       name: name.trim() ? '' : 'Name is required',
+      space: visibility === 'space' && !spaceId ? 'Select a space' : '',
       toolErrors,
       triggerErrors,
     };
-  }, [effectiveModelId, instructions, name, toolsFormData, triggers]);
+  }, [effectiveModelId, instructions, name, spaceId, toolsFormData, triggers, visibility]);
   const isValid = isFormValidationClean(validation);
   const showNameError = touched.name && Boolean(validation.name);
   const showInstructionsError = touched.instructions && Boolean(validation.instructions);
@@ -1096,7 +1116,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   );
 
   useEffect(() => {
-    if (!toolsFormData) {
+    // Viewers cannot edit the channel selection and the channels endpoint
+    // requires write access; the saved channels already render from the
+    // automation's own tool config.
+    if (!toolsFormData || !canMutate) {
       return;
     }
 
@@ -1107,7 +1130,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         void loadProviderChannels(provider);
       }
     }
-  }, [loadProviderChannels, toolsFormData]);
+  }, [canMutate, loadProviderChannels, toolsFormData]);
 
   function updateTool(provider: AutomationToolProvider, value: Partial<AutomationProviderToolFormData>): void {
     setToolsFormData((current) => {
@@ -1135,6 +1158,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
+    if (!canMutate) {
+      return;
+    }
+
     if (!isValid) {
       setTouched({ instructions: true, name: true });
 
@@ -1159,8 +1186,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       modelId: effectiveModelId,
       mutationPolicy,
       name,
+      spaceId: visibility === 'space' ? spaceId : null,
       toolConfigs,
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
+      visibility,
     };
 
     try {
@@ -1220,6 +1249,59 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           onChange={(event) => setName(event.target.value)}
         />
         {showNameError ? <FieldError id="automation-name-error" message={validation.name} /> : null}
+      </div>
+
+      <div className="fk:space-y-3">
+        <Label className="fk:mb-1" htmlFor="automation-visibility">
+          Visibility
+        </Label>
+        <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
+          Who can see and manage this automation. Space automations are only visible to members of the selected space;
+          personal automations are private to you.
+        </p>
+        <div className="fk:flex fk:items-center fk:gap-2">
+          <Select
+            value={visibility}
+            onValueChange={(value) => {
+              setVisibility(value === 'space' || value === 'personal' ? value : 'project');
+
+              if (value !== 'space') {
+                setSpaceId(null);
+              }
+            }}
+          >
+            <SelectTrigger aria-label="Visibility" className="fk:w-fit" id="automation-visibility">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              <SelectItem value="project">Project</SelectItem>
+              <SelectItem disabled={selectableSpaces.length === 0} value="space">
+                Space
+              </SelectItem>
+              <SelectItem value="personal">Personal</SelectItem>
+            </SelectContent>
+          </Select>
+          {visibility === 'space' ? (
+            <Select
+              value={spaceId ?? ''}
+              onValueChange={(value) => {
+                setSpaceId(value || null);
+              }}
+            >
+              <SelectTrigger aria-label="Space" className="fk:w-fit">
+                <SelectValue placeholder="Select a space" />
+              </SelectTrigger>
+              <SelectContent align="start">
+                {selectableSpaces.map((space) => (
+                  <SelectItem key={space.id} value={space.id}>
+                    {space.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+        </div>
+        {visibility === 'space' && validation.space ? <FieldError message={validation.space} /> : null}
       </div>
 
       <div className="fk:space-y-3">
@@ -1407,7 +1489,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                       <Label className="fk:mr-3 fk:text-xs fk:font-medium">Channels</Label>
                       <ChannelPicker
                         channels={tool.availableChannels}
-                        disabled={tool.loadingChannels}
+                        disabled={tool.loadingChannels || !canMutate}
                         loading={tool.loadingChannels}
                         provider={provider}
                         value={tool.channels}
@@ -1443,9 +1525,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         {!isValid ? (
           <span className="fk:text-xs fk:text-muted-foreground">Complete the required fields to save</span>
         ) : null}
-        <Button disabled={isSaving || !isValid} type="submit">
-          {isSaving ? 'Saving...' : mode === 'create' ? 'Create automation' : 'Update automation'}
-        </Button>
+        <PermissionTooltip disabled={!canMutate}>
+          <Button disabled={isSaving || !isValid || !canMutate} type="submit">
+            {isSaving ? 'Saving...' : mode === 'create' ? 'Create automation' : 'Update automation'}
+          </Button>
+        </PermissionTooltip>
       </div>
     </form>
   );

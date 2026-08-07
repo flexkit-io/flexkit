@@ -826,7 +826,19 @@ function localAttributesUpdate(
       return `${acc}\n      ${attributeName}: [{\n        update: {\n          node: {\n            ${scope}: { set: ${typedValue} }\n          }\n        }\n      }]`;
     }
 
-    if (!typedValue) {
+    // Match localAttributesCreate: never create nodes for empty values. Empty
+    // locals used to stringify to the string "null" and create with a
+    // deterministic id; the next save then hit a unique-constraint failure
+    // because the form still had no _id for those fields.
+    if (
+      attributeValue.disabled ||
+      Array.isArray(attributeValue.value) ||
+      attributeValue.value === undefined ||
+      attributeValue.value === null ||
+      attributeValue.value === '' ||
+      typedValue === null ||
+      typedValue === ''
+    ) {
       return acc;
     }
 
@@ -1041,7 +1053,12 @@ function stringifyValue(
   }
 
   if (stringTypes.includes(type)) {
-    return stringifyStringLiteral(value?.toString() ?? 'null');
+    // null/undefined must be GraphQL null, not the string literal "null".
+    if (value === undefined || value === null) {
+      return null;
+    }
+
+    return stringifyStringLiteral(value.toString());
   }
 
   // Empty optional numbers/booleans must not stringify to "" (breaks GraphQL as `field: `).
@@ -1485,4 +1502,56 @@ export function getEntitySchema(schema: Schema, entityNamePlural: string): Entit
   }
 
   return find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
+}
+
+/**
+ * Pulls local-attribute node _ids out of an update mutation response so the
+ * form can adopt them without a full refetch (which re-dirties the drawer).
+ */
+export function getLocalAttributeIdsFromUpdateResponse(
+  response: unknown,
+  entityNamePlural: string,
+  schema: Schema
+): { [attributeName: string]: string } {
+  if (!response || typeof response !== 'object') {
+    return {};
+  }
+
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
+
+  if (!entitySchema) {
+    return {};
+  }
+
+  const updateKey = `update${capitalize(entityNamePlural)}`;
+  const payload = (response as { [key: string]: unknown })[updateKey];
+
+  if (!payload || typeof payload !== 'object') {
+    return {};
+  }
+
+  const entities = (payload as { [key: string]: unknown })[entityNamePlural];
+  const entity = Array.isArray(entities) ? entities[0] : undefined;
+
+  if (!entity || typeof entity !== 'object') {
+    return {};
+  }
+
+  return entitySchema.attributes.reduce<{ [attributeName: string]: string }>((ids, attribute) => {
+    if (getAttributeScope(attribute) !== 'local') {
+      return ids;
+    }
+
+    const node = unwrapNode((entity as { [key: string]: unknown })[attribute.name]);
+    const nodeId = node?._id;
+
+    if (typeof nodeId !== 'string' || nodeId.length === 0) {
+      return ids;
+    }
+
+    return {
+      ...ids,
+      [attribute.name]: nodeId,
+    };
+  }, {});
 }

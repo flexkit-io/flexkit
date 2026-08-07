@@ -6,6 +6,7 @@ export type AutomationMutationPolicy = 'require_approval' | 'auto_approve';
 export type AutomationApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
 export type AutomationApprovalKind = 'graphql' | 'bulk';
 export type AutomationApprovalPreviewKind = 'create' | 'update' | 'delete' | 'unknown';
+export type AutomationVisibility = 'project' | 'space' | 'personal';
 
 export interface AutomationScheduleTrigger {
   cron: string;
@@ -45,8 +46,15 @@ export interface AutomationModel {
   name: string;
 }
 
+export interface ProjectSpace {
+  code: string;
+  id: string;
+  label: string;
+}
+
 export interface Automation {
   createdAt: string | null;
+  createdBy?: string;
   enabled: boolean;
   id: string;
   instructions: string;
@@ -56,9 +64,13 @@ export interface Automation {
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
   projectId: string;
+  /** Space the automation belongs to when visibility is "space". */
+  spaceId?: string | null;
   totalRuns: number;
   triggers: AutomationTrigger[];
   updatedAt: string | null;
+  /** May be absent from older API responses; treated as "project". */
+  visibility?: AutomationVisibility;
 }
 
 export interface AutomationApprovalOperation {
@@ -192,8 +204,11 @@ export interface AutomationInput {
   modelId: string;
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
+  /** Space id required when visibility is "space". */
+  spaceId?: string | null;
   toolConfigs: AutomationToolConfigInput[];
   triggers: AutomationTrigger[];
+  visibility?: AutomationVisibility;
 }
 
 export interface MutationResult {

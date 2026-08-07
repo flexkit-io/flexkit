@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  PermissionTooltip,
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -24,6 +25,7 @@ import {
 import {
   gql,
   useAppContext,
+  useCanMutate,
   useEntityMutation,
   useEntityQuery,
   getEntityDeleteMutation,
@@ -47,6 +49,7 @@ export function Sidebar(): JSX.Element {
   const [editTagName, setEditTagName] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const canMutate = useCanMutate();
 
   const entityName = '_tag';
   const entityNamePlural = '_tags';
@@ -176,48 +179,59 @@ export function Sidebar(): JSX.Element {
       <div className="fk:flex fk:h-12 fk:items-center fk:border-b fk:border-b-border fk:px-4 fk:lg:px-6">
         <TagIcon className="fk:h-4 fk:w-4" />
         <span className="fk:px-4 fk:text-sm fk:font-semibold fk:tracking-tight">Tags</span>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="secondary" size="icon" className="fk:ml-auto fk:h-8 fk:w-8">
-                    <PlusIcon className="fk:h-4 fk:w-4" />
-                    <span className="fk:sr-only">Add tag</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>New tag</DialogTitle>
-                    <DialogDescription className="fk:sr-only">Create a new tag</DialogDescription>
-                  </DialogHeader>
-                  <div className="fk:flex fk:gap-2">
-                    <Input
-                      autoFocus
-                      value={newTagName}
-                      placeholder="New tag name"
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          void handleCreate();
-                        }
-                      }}
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button disabled={isSubmitting} onClick={handleCreate} variant="default">
-                      {isSubmitting ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
-                      Add
+        {canMutate ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="secondary" size="icon" className="fk:ml-auto fk:h-8 fk:w-8">
+                      <PlusIcon className="fk:h-4 fk:w-4" />
+                      <span className="fk:sr-only">Add tag</span>
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Add tag</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>New tag</DialogTitle>
+                      <DialogDescription className="fk:sr-only">Create a new tag</DialogDescription>
+                    </DialogHeader>
+                    <div className="fk:flex fk:gap-2">
+                      <Input
+                        autoFocus
+                        value={newTagName}
+                        placeholder="New tag name"
+                        onChange={(e) => setNewTagName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            void handleCreate();
+                          }
+                        }}
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button disabled={isSubmitting} onClick={handleCreate} variant="default">
+                        {isSubmitting ? <Loader2 className="fk:h-4 fk:w-4 fk:mr-2 fk:animate-spin" /> : null}
+                        Add
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Add tag</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <div className="fk:ml-auto">
+            <PermissionTooltip disabled>
+              <Button disabled variant="secondary" size="icon" className="fk:h-8 fk:w-8">
+                <PlusIcon className="fk:h-4 fk:w-4" />
+                <span className="fk:sr-only">Add tag</span>
+              </Button>
+            </PermissionTooltip>
+          </div>
+        )}
       </div>
 
       <ScrollArea className="fk:h-full">
@@ -234,17 +248,20 @@ export function Sidebar(): JSX.Element {
               >
                 <span className="fk:text-sm">{tag.name}</span>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      aria-label={`Actions for ${tag.name}`}
-                      title={`Actions for ${tag.name}`}
-                      variant="ghost"
-                      size="icon"
-                      className="fk:h-7 fk:w-7 fk:text-muted-foreground fk:hover:text-foreground"
-                    >
-                      <Ellipsis className="fk:h-4 fk:w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <PermissionTooltip disabled={!canMutate}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        aria-label={`Actions for ${tag.name}`}
+                        disabled={!canMutate}
+                        title={canMutate ? `Actions for ${tag.name}` : undefined}
+                        variant="ghost"
+                        size="icon"
+                        className="fk:h-7 fk:w-7 fk:text-muted-foreground fk:hover:text-foreground"
+                      >
+                        <Ellipsis className="fk:h-4 fk:w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </PermissionTooltip>
                   <DropdownMenuContent align="end" className="w-[160px]">
                     <DropdownMenuItem
                       onClick={() => {

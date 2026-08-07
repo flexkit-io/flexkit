@@ -262,6 +262,7 @@ async function startDeployJob(
   projectId: string,
   schema: unknown,
   scopes: unknown,
+  spaces: unknown,
   forceDeploy: boolean,
   allowBreakingChanges: boolean
 ): Promise<DeployProjectResult> {
@@ -274,6 +275,7 @@ async function startDeployJob(
       body: JSON.stringify({
         schema,
         scopes,
+        spaces,
         ...(allowBreakingChanges ? { allowBreakingChanges: true } : {}),
         ...(forceDeploy ? { forceDeploy: true } : {}),
       }),
@@ -596,6 +598,7 @@ export default async function main(client: Client): Promise<number> {
 
       const schema = project.schema ?? [];
       const scopes = project.scopes ?? [];
+      const spaces = project.spaces ?? [];
 
       try {
         const job = await startDeployJob(
@@ -603,6 +606,7 @@ export default async function main(client: Client): Promise<number> {
           project.projectId,
           schema,
           scopes,
+          spaces,
           argv.flags['--force'] ?? false,
           argv.flags['--allow-breaking-changes'] ?? false
         );

@@ -127,7 +127,7 @@ export function List(): JSX.Element {
   return (
     <div className="fk:flex fk:flex-col fk:h-full fk:pl-3">
       <SchemaError />
-      <div className="fk:mb-4 fk:flex fk:items-center fk:gap-2">
+      <div className="fk:mb-4 fk:flex fk:items-center fk:gap-2 fk:pr-3">
         <h2 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">Asset Manager</h2>
         {!isInitialLoading ? (
           <span className="fk:ml-auto fk:text-sm fk:font-normal fk:text-muted-foreground">

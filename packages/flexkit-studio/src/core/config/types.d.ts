@@ -1,5 +1,5 @@
 import type { ComponentType, JSX, ReactNode } from 'react';
-import type { AttributeOptions, Scopes } from '../types';
+import type { AttributeOptions, Scopes, Spaces } from '../types';
 import type { FormFieldParams } from '../../form/types';
 import type { Entity } from '../types';
 export interface LogoProps {
@@ -84,6 +84,12 @@ export interface ProjectOptions {
   }[];
   plugins?: PluginOptions[];
   scopes?: Scopes;
+  /**
+   * Permission spaces for this project. Spaces scope access to entities,
+   * attributes and app resources (automations, skills, agents). Membership is
+   * assigned to project members in the Flexkit Dashboard after deploy.
+   */
+  spaces?: Spaces;
   schema: Entity[];
 }
 

@@ -14,6 +14,8 @@ export { useGraphQLError } from './graphql-client/graphql-context';
 export { useSearch } from './core/use-search';
 export { defineConfig } from './core/config/define-config';
 export { defineEntity } from './core/config/define-entity';
+export { canAccessSpaces, filterAttributesForSpaces, filterEntitiesForSpaces } from './core/spaces';
+export { canMutateData, useCanMutate } from './core/permissions';
 
 // Core types
 export type { AppOptions, FormFieldProps, LogoProps, PluginOptions, SingleProject } from './core/config/types';

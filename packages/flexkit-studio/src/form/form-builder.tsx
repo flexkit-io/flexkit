@@ -10,6 +10,8 @@ import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
 import type { Attribute, Entity, Schema } from '../core/types';
 import type { FormEntityItem, FormFieldValue } from '../graphql-client/types';
+import { useAuth } from '../auth/auth-context';
+import { filterAttributesForSpaces } from '../core/spaces';
 import { useConfig } from '../core/config/config-context';
 import { Text as TextField } from './fields/text';
 import { Switch as SwitchField } from './fields/switch';
@@ -28,6 +30,11 @@ export type SubmitHandle = {
   hasErrors: () => void;
   hasDataChanged: () => boolean;
   markAsSaved: () => void;
+  /**
+   * Patches local-attribute _ids returned by an update mutation into the live
+   * form values without replacing the whole formData snapshot (avoids dirtying).
+   */
+  applyLocalAttributeIds: (ids: { [attributeName: string]: string }) => void;
 };
 
 type Props = {
@@ -57,7 +64,14 @@ function FormBuilder(
   ref: ForwardedRef<SubmitHandle>
 ): JSX.Element {
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
-  const formSchema = useMemo(() => entitySchema?.attributes ?? [], [entitySchema]);
+  const [, auth] = useAuth();
+  const userSpaces = auth.user?.spaces;
+  // Hide space-bound attributes from non-members; the server rejects writes
+  // and nulls reads for them regardless.
+  const formSchema = useMemo(
+    () => filterAttributesForSpaces(entitySchema?.attributes ?? [], userSpaces),
+    [entitySchema, userSpaces]
+  );
   const initialFormValues = useMemo(() => {
     if (formData) {
       return formData;
@@ -152,6 +166,41 @@ function FormBuilder(
     markAsSaved() {
       hasMarkedSavedRef.current = true;
       baselineRef.current = getValues() as FormEntityItem;
+      setIsDirty(false);
+    },
+    applyLocalAttributeIds(ids: { [attributeName: string]: string }) {
+      const values = getValues() as FormEntityItem;
+      const nextValues: FormEntityItem = { ...values };
+
+      for (const [attributeName, id] of Object.entries(ids)) {
+        const field = values[attributeName];
+
+        if (!field || field._id || !id) {
+          continue;
+        }
+
+        nextValues[attributeName] = {
+          ...field,
+          _id: id,
+        };
+      }
+
+      // Baseline first so any watch fired by setValue still compares clean.
+      hasMarkedSavedRef.current = true;
+      baselineRef.current = nextValues;
+
+      for (const [attributeName, field] of Object.entries(nextValues)) {
+        if (field === values[attributeName]) {
+          continue;
+        }
+
+        setValue(attributeName, field, {
+          shouldDirty: false,
+          shouldTouch: false,
+          shouldValidate: false,
+        });
+      }
+
       setIsDirty(false);
     },
   }));

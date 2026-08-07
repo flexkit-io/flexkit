@@ -4,6 +4,8 @@ export type User = {
   display_name: string;
   avatar_url: string;
   role: string;
+  /** Space codes the user belongs to (owners receive every project space). */
+  spaces: string[];
 };
 
 export type Credentials = {

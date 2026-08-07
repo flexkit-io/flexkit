@@ -101,6 +101,7 @@
     "@tiptap/html": "2.27.1",
     "@tiptap/pm": "2.27.1",
     "ai": "6.0.116",
+    "boring-avatars": "2.0.4",
     "bytes": "^3.1.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",

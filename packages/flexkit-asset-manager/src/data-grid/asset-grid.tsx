@@ -31,7 +31,15 @@ import type {
   Updater,
   VisibilityState,
 } from '@flexkit/studio';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Skeleton } from '@flexkit/studio/ui';
+import {
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Skeleton,
+} from '@flexkit/studio/ui';
 import { LoaderCircle } from 'lucide-react';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
 import { AssetRowActions } from './asset-row-actions';
@@ -224,7 +232,11 @@ export function AssetGrid<TData extends AttributeValue, TValue>({
             <div className="fk:animate-progress fk:h-full fk:w-full fk:bg-foreground" />
           </div>
         ) : null}
-        <div className="fk:h-full fk:overflow-auto fk:pt-px fk:pb-20 fk:pr-3" onScroll={handleScroll} ref={scrollRef}>
+        <div
+          className="fk:h-full fk:overflow-auto fk:pt-px fk:pb-20 fk:-ml-0.5 fk:pr-3"
+          onScroll={handleScroll}
+          ref={scrollRef}
+        >
           {isLoading ? (
             <div className="fk:grid fk:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] fk:gap-3">
               {Array.from({ length: pageSize ?? 50 }, (_, index) => (
@@ -242,7 +254,7 @@ export function AssetGrid<TData extends AttributeValue, TValue>({
             </div>
           ) : null}
           {!isLoading && rows.length > 0 ? (
-            <div className="fk:grid fk:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] fk:gap-3">
+            <div className="fk:grid fk:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] fk:pl-0.5 fk:gap-3">
               {rows.map((row) => (
                 <AssetGridCard key={row.id} row={row} />
               ))}
@@ -272,18 +284,19 @@ function AssetGridCard({ row }: { row: Row<AttributeValue> }): JSX.Element {
       }`}
       data-state={isSelected ? 'selected' : undefined}
     >
-      <div className="fk:absolute fk:left-3 fk:top-3 fk:z-10">
-        <input
+      <div className="fk:absolute fk:left-3 fk:top-3 fk:z-10 fk:mix-blend-difference">
+        <Checkbox
+          className="fk:border-white!"
           aria-label={`Select ${filename}`}
           checked={isSelected}
-          className="fk:size-4 fk:cursor-pointer fk:accent-primary"
-          onChange={row.getToggleSelectedHandler()}
+          onCheckedChange={(value) => {
+            row.toggleSelected(Boolean(value));
+          }}
           onClick={(event) => event.stopPropagation()}
-          type="checkbox"
         />
       </div>
-      <div className="fk:absolute fk:right-2 fk:top-2 fk:z-10">
-        <AssetRowActions row={row} />
+      <div className="fk:group fk:absolute fk:right-2 fk:top-2 fk:z-10 fk:mix-blend-difference">
+        <AssetRowActions overlay row={row} />
       </div>
       <AssetGridMedia filename={filename} path={path} />
       <div className="fk:mt-2 fk:truncate fk:text-xs fk:font-medium" title={filename}>

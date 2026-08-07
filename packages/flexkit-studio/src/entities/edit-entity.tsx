@@ -14,7 +14,7 @@ import { useConfig } from '../core/config/config-context';
 import { useEntityQuery } from '../graphql-client/use-entity-query';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityListQueryName, scheduleEntityListRefetch } from '../graphql-client/refetch-entity-lists';
-import { getEntityUpdateMutation } from '../graphql-client/queries';
+import { getEntityUpdateMutation, getLocalAttributeIdsFromUpdateResponse } from '../graphql-client/queries';
 import type { FormEntityItem } from '../graphql-client/types';
 import { ReadOnlyMode } from '../core/error/read-only-mode';
 import FormBuilder from '../form/form-builder';
@@ -135,6 +135,14 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope: nextScope } });
   }
 
+  const { isLoading, data: results } = useEntityQuery({
+    entityNamePlural,
+    schema,
+    scope: currentScope,
+    variables: { where: { _id: { eq: entityId } } },
+    isForm: true,
+  });
+
   const saveEntity = useCallback(
     (newData: FormEntityItem, previousData?: FormEntityItem) => {
       if (!previousData) {
@@ -148,8 +156,12 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       `);
       setOptions({
         variables: { where: { _id: { eq: entityId } } },
-        onCompleted: () => {
-          ref.current?.markAsSaved();
+        onCompleted: (response) => {
+          // Adopt _ids for any local nodes created on this save. A full form
+          // refetch rewrites `values:` and re-dirties the drawer.
+          ref.current?.applyLocalAttributeIds(
+            getLocalAttributeIdsFromUpdateResponse(response, entityNamePlural, schema)
+          );
           void scheduleEntityListRefetch(apolloClient, getEntityListQueryName(entityNamePlural, schema));
           toast.success('Your changes have been saved.');
         },
@@ -158,14 +170,6 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     },
     [apolloClient, currentScope, entityId, entityNamePlural, runMutation, schema, setMutation, setOptions]
   );
-
-  const { isLoading, data: results } = useEntityQuery({
-    entityNamePlural,
-    schema,
-    scope: currentScope,
-    variables: { where: { _id: { eq: entityId } } },
-    isForm: true,
-  });
   const data = results as FormEntityItem[];
   const hasData = data.length > 0;
   const isInitialLoading = isLoading && !hasData;
