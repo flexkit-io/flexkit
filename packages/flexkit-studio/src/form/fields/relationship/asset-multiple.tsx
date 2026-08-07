@@ -72,6 +72,11 @@ export default function AssetMultipleRelationship({
   const [loadedServerCount, setLoadedServerCount] = useState(
     () => Object.keys(defaultValue.knownAssetSortOrders ?? getKnownAssetSortOrders(initialRows)).length
   );
+  // Advertised connection total; clamped down when a page returns fewer edges than
+  // the aggregate claimed so Load more does not stay enabled forever.
+  const [serverTotalCount, setServerTotalCount] = useState(() =>
+    Math.max(defaultValue.count ?? 0, initialRows[0]?.totalCount ?? 0, initialRows.length)
+  );
   const assetConnectionQuery = useMemo(
     () =>
       getEntityAssetConnectionQuery({
@@ -99,6 +104,7 @@ export default function AssetMultipleRelationship({
 
     knownAssetSortOrdersRef.current = nextKnownSortOrders;
     setLoadedServerCount(Object.keys(nextKnownSortOrders).length);
+    setServerTotalCount(Math.max(defaultValue.count ?? 0, initialRows[0]?.totalCount ?? 0, initialRows.length));
 
     setRows((currentRows) => {
       const currentRowsSignature = getRowsSignature(currentRows);
@@ -119,7 +125,7 @@ export default function AssetMultipleRelationship({
 
       return initialRows;
     });
-  }, [defaultValue.knownAssetSortOrders, initialRows]);
+  }, [defaultValue.count, defaultValue.knownAssetSortOrders, initialRows]);
 
   useEffect(() => {
     const connections = relationships[relationshipId]?.connect as MultipleRelationshipConnection | undefined;
@@ -187,7 +193,7 @@ export default function AssetMultipleRelationship({
     });
   }, [appDispatch, defaultValue, name, relationshipId, rows, setValue]);
 
-  const totalCount = Math.max(defaultValue.count ?? 0, rows[0]?.totalCount ?? 0, loadedServerCount);
+  const totalCount = Math.max(serverTotalCount, loadedServerCount);
   const hasMore = Boolean(entityId) && totalCount > loadedServerCount;
 
   const handleLoadMore = useCallback(() => {
@@ -208,18 +214,34 @@ export default function AssetMultipleRelationship({
         const entity = Array.isArray(entityRows) ? entityRows[0] : undefined;
         const connection = entity?.[`${name}Connection`];
         const fetchedAssets = getOrderedAssetsFromConnection(connection);
+        const responseTotal = fetchedAssets[0]?.totalCount;
+
+        if (typeof responseTotal === 'number') {
+          setServerTotalCount(responseTotal);
+        }
 
         if (fetchedAssets.length === 0) {
+          // Aggregate overstated available edges; stop paging.
+          setServerTotalCount(loadedServerCount);
+
           return;
         }
 
+        const previousKnownCount = Object.keys(knownAssetSortOrdersRef.current).length;
         const nextKnownSortOrders = {
           ...knownAssetSortOrdersRef.current,
           ...getKnownAssetSortOrders(fetchedAssets),
         };
+        const nextLoadedCount = Object.keys(nextKnownSortOrders).length;
 
         knownAssetSortOrdersRef.current = nextKnownSortOrders;
-        setLoadedServerCount(Object.keys(nextKnownSortOrders).length);
+        setLoadedServerCount(nextLoadedCount);
+
+        // Fewer edges than requested, or the page added no new known ids —
+        // clamp the advertised total so hasMore clears instead of no-op looping.
+        if (fetchedAssets.length < nextFirst || nextLoadedCount <= previousKnownCount) {
+          setServerTotalCount(nextLoadedCount);
+        }
 
         for (const asset of fetchedAssets) {
           if (!originalAssetIdsRef.current.includes(asset._id)) {

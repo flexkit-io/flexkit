@@ -112,9 +112,24 @@ function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
   // aggregate total travels on each item as totalCount.
   const totalCount = Math.max(value[0]?.totalCount ?? 0, value.length);
 
+  // All fetched edges can lack `path` (still-processing uploads, incomplete
+  // nodes) while totalCount > 0 — especially likely now that list queries
+  // only fetch the first 3 edges. Show a count so the cell is not blank.
   if (assets.length === 0) {
+    if (totalCount > 0) {
+      return (
+        <div className="fk:flex fk:items-center">
+          <span className="fk:text-xs fk:text-muted-foreground">
+            {totalCount === 1 ? '1 asset' : `${totalCount} assets`}
+          </span>
+        </div>
+      );
+    }
+
     return null;
   }
+
+  const overflowCount = totalCount - assets.length;
 
   return (
     <div className="fk:flex fk:items-center">
@@ -129,8 +144,8 @@ function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
           />
         ))}
       </div>
-      {totalCount > 3 ? (
-        <span className="fk:ml-2 fk:text-xs fk:text-muted-foreground">+{totalCount - 3}</span>
+      {overflowCount > 0 ? (
+        <span className="fk:ml-2 fk:text-xs fk:text-muted-foreground">+{overflowCount}</span>
       ) : null}
     </div>
   );
