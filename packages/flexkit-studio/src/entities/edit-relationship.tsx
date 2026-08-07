@@ -152,6 +152,9 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       where: conditionalWhereClause,
       sort: [{ _updatedAt: 'DESC' }, { _id: 'DESC' }],
     },
+    // The picker grid only renders primary attributes; the deep `full`
+    // selection generated multi-second Cypher on relationship-heavy schemas.
+    selection: 'list',
   });
   const hasData = Boolean(data?.length);
   const isInitialLoading = isLoading && !hasData;

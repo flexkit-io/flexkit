@@ -22,6 +22,13 @@ type EntityQuery = {
   query: string;
 };
 
+/** Page size for asset connections in forms (galleries, ordered assets). */
+const FULL_ASSET_CONNECTION_LIMIT = 25;
+/** List grids render at most 3 stacked asset thumbnails (plus a "+N" badge). */
+const LIST_ASSET_CONNECTION_LIMIT = 3;
+/** Grids preview at most 3 nested relationship values (sliceFirstThreeItems). */
+const NESTED_RELATIONSHIP_LIMIT = 3;
+
 const stringTypes: DataType[] = ['id', 'string'];
 const temporalTypes: DataType[] = ['date', 'datetime', 'duration', 'time'];
 const assetFields = `_id
@@ -42,6 +49,11 @@ const assetFieldsWithoutLqip = `_id
       width`;
 
 type AssetRelationshipConnection = {
+  aggregate?: {
+    count?: {
+      nodes?: number;
+    };
+  };
   edges?: {
     properties?: {
       sortOrder?: number | null;
@@ -75,7 +87,11 @@ function isAssetAttribute(attribute: Attribute | undefined): boolean {
 }
 
 function getOrderedAssetsFromConnection(connection: unknown): OrderedAssetValue[] {
-  const edges = (connection as AssetRelationshipConnection | undefined)?.edges ?? [];
+  const typedConnection = connection as AssetRelationshipConnection | undefined;
+  const edges = typedConnection?.edges ?? [];
+  // Edges are bounded by `first`; the aggregate count carries the real total so
+  // consumers (e.g. the "+N" badge in list grids) do not undercount.
+  const totalCount = typedConnection?.aggregate?.count?.nodes ?? edges.length;
 
   return edges
     .reduce<OrderedAssetValue[]>((result, edge, index) => {
@@ -86,6 +102,7 @@ function getOrderedAssetsFromConnection(connection: unknown): OrderedAssetValue[
       result.push({
         ...edge.node,
         sortOrder: edge.properties?.sortOrder ?? index,
+        totalCount,
       });
 
       return result;
@@ -107,18 +124,29 @@ function unwrapNode(value: unknown): AttributeValue | null {
   return (value as AttributeValue | null) ?? null;
 }
 
+/**
+ * Asset connections must always be bounded: without `first` the generated
+ * Cypher expands every connected asset per row (tags with thousands of assets
+ * made list queries take seconds). The aggregate count is still selected, so
+ * consumers can show "+N more" from `totalCount`.
+ */
 function getAssetConnectionSelection(
   attributeName: string,
   includeProperties = true,
-  includeLqip = true
+  includeLqip = true,
+  first = FULL_ASSET_CONNECTION_LIMIT
 ): string {
   const propertiesSelection = includeProperties
     ? `        properties {\n` + `          sortOrder\n` + `        }\n`
     : '';
   const nodeFields = includeLqip ? assetFields : assetFieldsWithoutLqip;
+  // Edge sort input only exists when the relationship carries properties.
+  const connectionArguments = includeProperties
+    ? `(first: ${first}, sort: [{ edge: { sortOrder: ASC } }])`
+    : `(first: ${first})`;
 
   return (
-    `    ${attributeName}Connection {\n` +
+    `    ${attributeName}Connection${connectionArguments} {\n` +
     `      aggregate {\n` +
     `        count {\n` +
     `          nodes\n` +
@@ -216,8 +244,10 @@ function getFullRelatedEntityAttributesSelection(
     relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
+      // Related-entity assets only render as CDN-path thumbnails in grids; the
+      // base64 lqip payload is form-field-only and skipped at this depth.
       if (isAssetAttribute(relatedAttribute)) {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n    `;
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        ${assetFieldsWithoutLqip}\n    }\n    `;
       }
 
       if (getAttributeScope(relatedAttribute) === 'local') {
@@ -241,7 +271,7 @@ function getFullRelatedEntityAttributesSelection(
         }
 
         if (relatedAttribute.relationship?.field) {
-          return `${relatedAcc}\n      ${relatedAttribute.name} (limit: 25, offset: 0) {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
+          return `${relatedAcc}\n      ${relatedAttribute.name} (limit: ${NESTED_RELATIONSHIP_LIMIT}, offset: 0) {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
         }
       }
 
@@ -254,9 +284,18 @@ export function getEntityQuery(
   entityNamePlural: string,
   scope: string,
   schema: Schema,
-  options?: { selection?: 'list' | 'full' }
+  options?: {
+    selection?: 'list' | 'full';
+    /**
+     * The top-level aggregate count is a filtered label scan on the server.
+     * Pagination pages (fetchMore) skip it — the total from the first page
+     * still stands.
+     */
+    includeCount?: boolean;
+  }
 ): EntityQuery {
   const selection = options?.selection ?? 'full';
+  const includeCount = options?.includeCount ?? true;
   const filters = `(where: $where, limit: $limit, offset: $offset, sort: $sort)`;
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
@@ -311,7 +350,8 @@ export function getEntityQuery(
       return `${acc}\n${getAssetConnectionSelection(
         attribute.name,
         hasOrderedAssetConnectionProperties(attribute, entitySchema),
-        selection !== 'list'
+        selection !== 'list',
+        selection === 'list' ? LIST_ASSET_CONNECTION_LIMIT : FULL_ASSET_CONNECTION_LIMIT
       )}`;
     }
 
@@ -343,7 +383,7 @@ export function getEntityQuery(
     queryEntityName: entityNamePlural,
     query:
       `query ${operationName}(${heading}) {\n` +
-      getConnectionCountSelection(entityNamePlural, '(where: $where)') +
+      (includeCount ? getConnectionCountSelection(entityNamePlural, '(where: $where)') : '') +
       `  ${entityNamePlural}${filters} {\n` +
       `    _id\n` +
       `    _updatedAt\n` +
@@ -1144,12 +1184,13 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
           }
 
           if (attribute.relationship?.field) {
-            return `${str}  ${attribute.name} (limit: 25, offset: 0) {\n      ${attribute.relationship.field}  ${localAttributeQuery}}\n    `;
+            return `${str}  ${attribute.name} (limit: ${NESTED_RELATIONSHIP_LIMIT}, offset: 0) {\n      ${attribute.relationship.field}  ${localAttributeQuery}}\n    `;
           }
         }
 
+        // Display-only at this depth; lqip is a form-field concern.
         if (isAssetAttribute(attribute)) {
-          return `${str}  ${attribute.name} {\n    _id\n    originalFilename\n    mimeType\n    path\n    size\n    height\n    width\n    lqip\n  }\n`;
+          return `${str}  ${attribute.name} {\n    ${assetFieldsWithoutLqip}\n  }\n`;
         }
 
         return `${str}  ${attribute.name}\n  `;
@@ -1422,8 +1463,10 @@ export function getRelatedItemsQuery({
     const attributesNameList = relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
       const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
 
+      // Rows feed a data grid: thumbnails resolve from the CDN path, so the
+      // base64 lqip payload is skipped for related-entity assets.
       if (isAssetAttribute(relatedAttribute)) {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n    `;
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        ${assetFieldsWithoutLqip}\n    }\n    `;
       }
 
       if (getAttributeScope(relatedAttribute) === 'local') {
@@ -1447,14 +1490,14 @@ export function getRelatedItemsQuery({
         }
 
         if (relatedAttribute.relationship?.field) {
-          return `${relatedAcc}\n      ${relatedAttribute.name} (limit: 25, offset: 0) {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
+          return `${relatedAcc}\n      ${relatedAttribute.name} (limit: ${NESTED_RELATIONSHIP_LIMIT}, offset: 0) {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
         }
       }
 
       return `${relatedAcc}\n      ${relatedAttribute.name}\n  `;
     }, '');
 
-    return `${acc}\n    ${attribute.name} (limit: 25, offset: 0) {  _id ${attributesNameList ?? ''}}\n`;
+    return `${acc}\n    ${attribute.name} (limit: ${NESTED_RELATIONSHIP_LIMIT}, offset: 0) {  _id ${attributesNameList ?? ''}}\n`;
   }, '');
 
   return {

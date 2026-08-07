@@ -63,6 +63,8 @@ export type ImageValue = {
 
 export type OrderedAssetValue = ImageValue & {
   sortOrder?: number;
+  /** Aggregate count of all connected assets; edges are bounded by `first`. */
+  totalCount?: number;
 };
 
 export type MappedEntityQueryResults = {

@@ -7,6 +7,8 @@ import { useCachedImageSrc } from '../../ui/hooks/use-cached-image-src';
 export type Asset = {
   _id: string;
   path: string;
+  /** Total connected assets; the fetched array is bounded by the query's `first`. */
+  totalCount?: number;
 };
 
 const transparentImageBackground =
@@ -106,6 +108,9 @@ function SingleAsset({ value }: { value: Asset }) {
 
 function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
   const assets = value.filter((asset) => Boolean(asset.path)).slice(0, 3);
+  // Queries bound connection edges, so the array length undercounts; the
+  // aggregate total travels on each item as totalCount.
+  const totalCount = Math.max(value[0]?.totalCount ?? 0, value.length);
 
   if (assets.length === 0) {
     return null;
@@ -124,8 +129,8 @@ function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
           />
         ))}
       </div>
-      {value.length > 3 ? (
-        <span className="fk:ml-2 fk:text-xs fk:text-muted-foreground">+{value.length - 3}</span>
+      {totalCount > 3 ? (
+        <span className="fk:ml-2 fk:text-xs fk:text-muted-foreground">+{totalCount - 3}</span>
       ) : null}
     </div>
   );
