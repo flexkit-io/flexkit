@@ -48,7 +48,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import { useAuth, useCanMutate } from '@flexkit/studio';
-import { fetcher, getWebhookTriggerUrl, paths, type ApiClient } from './api';
+import { fetcher, FetcherError, getWebhookTriggerUrl, paths, type ApiClient } from './api';
 import type {
   Automation,
   AutomationEntityTrigger,
@@ -1001,8 +1001,16 @@ async function fetchSkillOrNull(projectId: string, skillId: string): Promise<Ski
     const data = await fetcher<{ skill: Skill }>(paths(projectId).skill(skillId));
 
     return data.skill;
-  } catch {
-    return null;
+  } catch (error) {
+    // Only a genuine 404 means the skill was deleted and is safe to prune.
+    // Transient failures (network/5xx) must rethrow so SWR surfaces an error
+    // and retries instead of us reporting the skill as "not found", which
+    // would silently detach a still-existing attachment on save.
+    if (error instanceof FetcherError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
   }
 }
 

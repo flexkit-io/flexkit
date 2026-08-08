@@ -209,11 +209,21 @@ export function createApiClient(projectId: string): ApiClient {
   };
 }
 
+export class FetcherError extends Error {
+  status: number;
+
+  constructor(status: number, message = 'Request failed') {
+    super(message);
+    this.name = 'FetcherError';
+    this.status = status;
+  }
+}
+
 export const fetcher = async <T>(url: string): Promise<T> => {
   const response = await fetch(url, { credentials: 'include' });
 
   if (!response.ok) {
-    throw new Error('Request failed');
+    throw new FetcherError(response.status);
   }
 
   return (await response.json()) as T;
