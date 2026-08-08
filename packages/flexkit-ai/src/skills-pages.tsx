@@ -676,7 +676,7 @@ export function CreateSkillPage(): JSX.Element {
 export function SkillDetailPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const { skillId } = useParams<{ skillId: string }>();
-  const { data, mutate } = useSWR<{ skill: Skill }>(
+  const { data, error, isLoading, mutate } = useSWR<{ skill: Skill }>(
     projectId && skillId ? paths(projectId).skill(skillId) : null,
     fetcher
   );
@@ -685,7 +685,11 @@ export function SkillDetailPage(): JSX.Element {
     return <PageMessage>Select a skill.</PageMessage>;
   }
 
-  if (!data?.skill) {
+  if (error) {
+    return <PageMessage>Failed to load skill.</PageMessage>;
+  }
+
+  if (isLoading || !data?.skill) {
     return <PageMessage>Loading skill...</PageMessage>;
   }
 

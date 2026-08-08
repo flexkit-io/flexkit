@@ -977,6 +977,35 @@ function TeamsIcon(): JSX.Element {
   );
 }
 
+// Mirrors the server-side attachment guard: project skills attach anywhere,
+// space skills only within the same space, personal skills only to personal
+// automations.
+function isSkillAttachable(
+  skill: Pick<Skill, 'spaceId' | 'visibility'>,
+  visibility: AutomationVisibility,
+  spaceId: string | null
+): boolean {
+  if (skill.visibility === 'space') {
+    return visibility === 'space' && spaceId !== null && skill.spaceId === spaceId;
+  }
+
+  if (skill.visibility === 'personal') {
+    return visibility === 'personal';
+  }
+
+  return true;
+}
+
+async function fetchSkillOrNull(projectId: string, skillId: string): Promise<Skill | null> {
+  try {
+    const data = await fetcher<{ skill: Skill }>(paths(projectId).skill(skillId));
+
+    return data.skill;
+  } catch {
+    return null;
+  }
+}
+
 export function AutomationForm({ api, automation, mode, onSaved, projectId }: AutomationFormProps): JSX.Element {
   const [name, setName] = useState(automation?.name ?? '');
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
@@ -997,6 +1026,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const { data: toolsData } = useSWR<ToolsResponse>(toolsUrl, fetcher);
   const { data: entitiesData } = useSWR<{ entities: string[] }>(paths(projectId).entities, fetcher);
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
+  // Catalog for the attach picker. The API caps a page at 100, so attached
+  // skills may be missing from this list — those are resolved separately.
   const { data: skillsData } = useSWR<SkillsList>(paths(projectId).skills({ limit: 100 }), fetcher);
   const [, auth] = useAuth();
   const canMutate = useCanMutate();
@@ -1009,38 +1040,91 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     [automation?.modelId, mode, modelId, toolsData?.tools.models]
   );
   const effectiveModelId = modelId || modelOptions[0]?.id || '';
-  // Mirrors the server-side attachment guard: project skills attach anywhere,
-  // space skills only within the same space, personal skills only to personal
-  // automations.
-  const attachableSkills = useMemo<Skill[]>(
-    () =>
-      (skillsData?.skills ?? []).filter((skill) => {
-        if (skill.visibility === 'space') {
-          return visibility === 'space' && spaceId !== null && skill.spaceId === spaceId;
-        }
-
-        if (skill.visibility === 'personal') {
-          return visibility === 'personal';
-        }
-
-        return true;
-      }),
-    [skillsData?.skills, spaceId, visibility]
+  const listedSkillIds = useMemo(
+    () => new Set((skillsData?.skills ?? []).map((skill) => skill.id)),
+    [skillsData?.skills]
   );
+  // Attached ids absent from the catalog page (pagination) — fetch by id so
+  // we can display them and prune on visibility changes without dropping
+  // unknown ids just because they were not on this page.
+  const unresolvedAttachedSkillIds = useMemo(() => {
+    if (!skillsData) {
+      return [];
+    }
+
+    return skillIds.filter((skillId) => !listedSkillIds.has(skillId)).sort();
+  }, [listedSkillIds, skillIds, skillsData]);
+  const attachedSkillsKey =
+    unresolvedAttachedSkillIds.length > 0
+      ? ([projectId, 'attached-skills', ...unresolvedAttachedSkillIds] as const)
+      : null;
+  const { data: resolvedAttachedSkills } = useSWR(attachedSkillsKey, () =>
+    Promise.all(unresolvedAttachedSkillIds.map((skillId) => fetchSkillOrNull(projectId, skillId)))
+  );
+  const skillsById = useMemo(() => {
+    const next: { [id: string]: Skill } = {};
+
+    for (const skill of skillsData?.skills ?? []) {
+      next[skill.id] = skill;
+    }
+
+    for (const skill of resolvedAttachedSkills ?? []) {
+      if (skill) {
+        next[skill.id] = skill;
+      }
+    }
+
+    return next;
+  }, [resolvedAttachedSkills, skillsData?.skills]);
+  const attachableSkills = useMemo<Skill[]>(() => {
+    const fromCatalog = (skillsData?.skills ?? []).filter((skill) => isSkillAttachable(skill, visibility, spaceId));
+    const catalogIds = new Set(fromCatalog.map((skill) => skill.id));
+    const attachedExtras = skillIds
+      .map((skillId) => skillsById[skillId])
+      .filter((skill): skill is Skill => {
+        if (!skill || catalogIds.has(skill.id)) {
+          return false;
+        }
+
+        return isSkillAttachable(skill, visibility, spaceId);
+      });
+
+    return [...attachedExtras, ...fromCatalog];
+  }, [skillIds, skillsById, skillsData?.skills, spaceId, visibility]);
 
   useEffect(() => {
     if (!skillsData) {
       return;
     }
 
-    const attachableIds = new Set(attachableSkills.map((skill) => skill.id));
+    const waitingOnAttachedResolve =
+      unresolvedAttachedSkillIds.length > 0 && resolvedAttachedSkills === undefined;
+    const notFoundAttachedIds = new Set(
+      waitingOnAttachedResolve
+        ? []
+        : unresolvedAttachedSkillIds.filter((skillId) => !skillsById[skillId])
+    );
 
     setSkillIds((current) => {
-      const next = current.filter((skillId) => attachableIds.has(skillId));
+      const next = current.filter((skillId) => {
+        if (notFoundAttachedIds.has(skillId)) {
+          return false;
+        }
+
+        const skill = skillsById[skillId];
+
+        // Keep off-page attachments until their detail resolve finishes; only
+        // drop ids we know are incompatible with the current visibility/space.
+        if (!skill) {
+          return true;
+        }
+
+        return isSkillAttachable(skill, visibility, spaceId);
+      });
 
       return next.length === current.length ? current : next;
     });
-  }, [attachableSkills, skillsData]);
+  }, [resolvedAttachedSkills, skillsById, skillsData, spaceId, unresolvedAttachedSkillIds, visibility]);
   const validation = useMemo<FormValidation>(() => {
     const triggerErrors: { [triggerKey: string]: string } = {};
 
@@ -1510,24 +1594,27 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                 No attachable skills yet. Create them in the Skills section.
               </p>
             ) : null}
+            {skillsData?.hasMore ? (
+              <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
+                Showing the {skillsData.skills.length} most recently updated skills. Attached skills outside this list
+                are kept when you save.
+              </p>
+            ) : null}
             {skillIds.length > 0 ? (
               <div className="fk:flex fk:flex-wrap fk:gap-1.5 fk:pl-7">
                 {skillIds.map((skillId) => {
-                  const skill = attachableSkills.find((entry) => entry.id === skillId);
-
-                  if (!skill) {
-                    return null;
-                  }
+                  const skill = skillsById[skillId];
+                  const label = skill?.name ?? 'Loading skill…';
 
                   return (
-                    <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={skill.id} variant="secondary">
-                      {skill.name}
+                    <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={skillId} variant="secondary">
+                      {label}
                       <button
-                        aria-label={`Detach ${skill.name}`}
+                        aria-label={skill ? `Detach ${skill.name}` : 'Detach skill'}
                         className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed"
                         disabled={!canMutate}
                         type="button"
-                        onClick={() => toggleSkill(skill.id, false)}
+                        onClick={() => toggleSkill(skillId, false)}
                       >
                         <XIcon className="fk:size-3" />
                       </button>
