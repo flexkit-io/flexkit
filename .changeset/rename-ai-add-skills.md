@@ -1,5 +1,5 @@
 ---
-'@flexkit/ai': minor
+'@flexkit/ai': patch
 ---
 
 Rename `@flexkit/automations` to `@flexkit/ai` and add Skills.
