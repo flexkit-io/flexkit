@@ -666,7 +666,7 @@ export function CreateSkillPage(): JSX.Element {
       </Button>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4">
-          <SkillForm api={api} mode="create" projectId={projectId} onSaved={() => navigate('../skills')} />
+          <SkillForm api={api} mode="create" projectId={projectId} onSaved={() => navigate('..')} />
         </div>
       </ScrollArea>
     </div>
