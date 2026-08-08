@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { BotIcon, HistoryIcon, InboxIcon } from 'lucide-react';
+import { BotIcon, GraduationCapIcon, HistoryIcon, InboxIcon } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import { useConfig } from '@flexkit/studio';
@@ -43,8 +43,10 @@ function PendingApprovalsBadge(): JSX.Element | null {
 
 export function AutomationsSidebar(): JSX.Element {
   const location = useLocation();
-  const isRunHistory = location.pathname.endsWith('/automations/runs');
-  const isApprovals = location.pathname.endsWith('/automations/approvals');
+  const isRunHistory = location.pathname.endsWith('/ai/runs');
+  const isApprovals = location.pathname.endsWith('/ai/approvals');
+  const isSkills = location.pathname.includes('/ai/skills');
+  const isAutomations = !isRunHistory && !isApprovals && !isSkills;
 
   return (
     <SidebarPanel collapsible="icon" variant="inset">
@@ -52,10 +54,18 @@ export function AutomationsSidebar(): JSX.Element {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={!isRunHistory && !isApprovals} tooltip="Automations">
-                <NavLinkCompat to=".">
+              <SidebarMenuButton asChild isActive={isAutomations} tooltip="Automations">
+                <NavLinkCompat to="automations">
                   <BotIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
                   <span>Automations</span>
+                </NavLinkCompat>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isSkills} tooltip="Skills">
+                <NavLinkCompat to="skills">
+                  <GraduationCapIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
+                  <span>Skills</span>
                 </NavLinkCompat>
               </SidebarMenuButton>
             </SidebarMenuItem>

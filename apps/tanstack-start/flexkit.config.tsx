@@ -1,6 +1,6 @@
 import { defineConfig } from '@flexkit/studio';
 import { AssetManager } from '@flexkit/asset-manager';
-import { Automations } from '@flexkit/automations';
+import { AI } from '@flexkit/ai';
 import { Desk } from '@flexkit/desk';
 import { Explorer } from '@flexkit/explorer';
 import { CustomTextField } from 'demo-schemas/components/custom-input-field';
@@ -298,7 +298,7 @@ export default defineConfig([
         label: 'Government',
       },
     ],
-    plugins: [Desk(), AssetManager(), Explorer(), Automations()],
+    plugins: [Desk(), AssetManager(), Explorer(), AI()],
     schema: [
       contacts,
       companies,

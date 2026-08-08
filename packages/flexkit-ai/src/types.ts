@@ -52,6 +52,34 @@ export interface ProjectSpace {
   label: string;
 }
 
+export interface Skill {
+  content: string;
+  createdAt: string;
+  createdBy: string;
+  description: string;
+  id: string;
+  name: string;
+  projectId: string;
+  spaceId: string | null;
+  updatedAt: string;
+  visibility: AutomationVisibility;
+}
+
+export interface SkillsList {
+  count: number;
+  hasMore: boolean;
+  skills: Skill[];
+}
+
+export interface SkillInput {
+  content: string;
+  description: string;
+  name: string;
+  /** Space id required when visibility is "space". */
+  spaceId?: string | null;
+  visibility: AutomationVisibility;
+}
+
 export interface Automation {
   createdAt: string | null;
   createdBy?: string;
@@ -64,6 +92,8 @@ export interface Automation {
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
   projectId: string;
+  /** Attached skill ids. Only populated by the detail endpoint. */
+  skillIds?: string[];
   /** Space the automation belongs to when visibility is "space". */
   spaceId?: string | null;
   totalRuns: number;
@@ -204,6 +234,8 @@ export interface AutomationInput {
   modelId: string;
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
+  /** Skills that are always loaded into the agent context on every run. */
+  skillIds: string[];
   /** Space id required when visibility is "space". */
   spaceId?: string | null;
   toolConfigs: AutomationToolConfigInput[];

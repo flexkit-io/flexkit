@@ -37,6 +37,7 @@ import {
   ClockIcon,
   CopyIcon,
   DatabaseZapIcon,
+  GraduationCapIcon,
   KeyRoundIcon,
   LoaderCircleIcon,
   PlusIcon,
@@ -47,7 +48,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import { useAuth, useCanMutate } from '@flexkit/studio';
-import { fetcher, getWebhookTriggerUrl, paths, type ApiClient } from './api';
+import { fetcher, FetcherError, getWebhookTriggerUrl, paths, type ApiClient } from './api';
 import type {
   Automation,
   AutomationEntityTrigger,
@@ -64,6 +65,8 @@ import type {
   AutomationVisibility,
   AutomationWebhookTrigger,
   ProjectSpace,
+  Skill,
+  SkillsList,
 } from './types';
 
 interface AutomationFormProps {
@@ -974,6 +977,43 @@ function TeamsIcon(): JSX.Element {
   );
 }
 
+// Mirrors the server-side attachment guard: project skills attach anywhere,
+// space skills only within the same space, personal skills only to personal
+// automations.
+function isSkillAttachable(
+  skill: Pick<Skill, 'spaceId' | 'visibility'>,
+  visibility: AutomationVisibility,
+  spaceId: string | null
+): boolean {
+  if (skill.visibility === 'space') {
+    return visibility === 'space' && spaceId !== null && skill.spaceId === spaceId;
+  }
+
+  if (skill.visibility === 'personal') {
+    return visibility === 'personal';
+  }
+
+  return true;
+}
+
+async function fetchSkillOrNull(projectId: string, skillId: string): Promise<Skill | null> {
+  try {
+    const data = await fetcher<{ skill: Skill }>(paths(projectId).skill(skillId));
+
+    return data.skill;
+  } catch (error) {
+    // Only a genuine 404 means the skill was deleted and is safe to prune.
+    // Transient failures (network/5xx) must rethrow so SWR surfaces an error
+    // and retries instead of us reporting the skill as "not found", which
+    // would silently detach a still-existing attachment on save.
+    if (error instanceof FetcherError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
 export function AutomationForm({ api, automation, mode, onSaved, projectId }: AutomationFormProps): JSX.Element {
   const [name, setName] = useState(automation?.name ?? '');
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
@@ -984,6 +1024,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   );
   const [visibility, setVisibility] = useState<AutomationVisibility>(automation?.visibility ?? 'project');
   const [spaceId, setSpaceId] = useState<string | null>(automation?.spaceId ?? null);
+  const [skillIds, setSkillIds] = useState<string[]>(automation?.skillIds ?? []);
   const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -993,6 +1034,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const { data: toolsData } = useSWR<ToolsResponse>(toolsUrl, fetcher);
   const { data: entitiesData } = useSWR<{ entities: string[] }>(paths(projectId).entities, fetcher);
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
+  // Catalog for the attach picker. The API caps a page at 100, so attached
+  // skills may be missing from this list — those are resolved separately.
+  const { data: skillsData } = useSWR<SkillsList>(paths(projectId).skills({ limit: 100 }), fetcher);
   const [, auth] = useAuth();
   const canMutate = useCanMutate();
   const userSpaceCodes = auth.user?.spaces ?? [];
@@ -1004,6 +1048,91 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     [automation?.modelId, mode, modelId, toolsData?.tools.models]
   );
   const effectiveModelId = modelId || modelOptions[0]?.id || '';
+  const listedSkillIds = useMemo(
+    () => new Set((skillsData?.skills ?? []).map((skill) => skill.id)),
+    [skillsData?.skills]
+  );
+  // Attached ids absent from the catalog page (pagination) — fetch by id so
+  // we can display them and prune on visibility changes without dropping
+  // unknown ids just because they were not on this page.
+  const unresolvedAttachedSkillIds = useMemo(() => {
+    if (!skillsData) {
+      return [];
+    }
+
+    return skillIds.filter((skillId) => !listedSkillIds.has(skillId)).sort();
+  }, [listedSkillIds, skillIds, skillsData]);
+  const attachedSkillsKey =
+    unresolvedAttachedSkillIds.length > 0
+      ? ([projectId, 'attached-skills', ...unresolvedAttachedSkillIds] as const)
+      : null;
+  const { data: resolvedAttachedSkills } = useSWR(attachedSkillsKey, () =>
+    Promise.all(unresolvedAttachedSkillIds.map((skillId) => fetchSkillOrNull(projectId, skillId)))
+  );
+  const skillsById = useMemo(() => {
+    const next: { [id: string]: Skill } = {};
+
+    for (const skill of skillsData?.skills ?? []) {
+      next[skill.id] = skill;
+    }
+
+    for (const skill of resolvedAttachedSkills ?? []) {
+      if (skill) {
+        next[skill.id] = skill;
+      }
+    }
+
+    return next;
+  }, [resolvedAttachedSkills, skillsData?.skills]);
+  const attachableSkills = useMemo<Skill[]>(() => {
+    const fromCatalog = (skillsData?.skills ?? []).filter((skill) => isSkillAttachable(skill, visibility, spaceId));
+    const catalogIds = new Set(fromCatalog.map((skill) => skill.id));
+    const attachedExtras = skillIds
+      .map((skillId) => skillsById[skillId])
+      .filter((skill): skill is Skill => {
+        if (!skill || catalogIds.has(skill.id)) {
+          return false;
+        }
+
+        return isSkillAttachable(skill, visibility, spaceId);
+      });
+
+    return [...attachedExtras, ...fromCatalog];
+  }, [skillIds, skillsById, skillsData?.skills, spaceId, visibility]);
+
+  useEffect(() => {
+    if (!skillsData) {
+      return;
+    }
+
+    const waitingOnAttachedResolve =
+      unresolvedAttachedSkillIds.length > 0 && resolvedAttachedSkills === undefined;
+    const notFoundAttachedIds = new Set(
+      waitingOnAttachedResolve
+        ? []
+        : unresolvedAttachedSkillIds.filter((skillId) => !skillsById[skillId])
+    );
+
+    setSkillIds((current) => {
+      const next = current.filter((skillId) => {
+        if (notFoundAttachedIds.has(skillId)) {
+          return false;
+        }
+
+        const skill = skillsById[skillId];
+
+        // Keep off-page attachments until their detail resolve finishes; only
+        // drop ids we know are incompatible with the current visibility/space.
+        if (!skill) {
+          return true;
+        }
+
+        return isSkillAttachable(skill, visibility, spaceId);
+      });
+
+      return next.length === current.length ? current : next;
+    });
+  }, [resolvedAttachedSkills, skillsById, skillsData, spaceId, unresolvedAttachedSkillIds, visibility]);
   const validation = useMemo<FormValidation>(() => {
     const triggerErrors: { [triggerKey: string]: string } = {};
 
@@ -1155,6 +1284,16 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     });
   }
 
+  function toggleSkill(skillId: string, attached: boolean): void {
+    setSkillIds((current) => {
+      if (attached) {
+        return current.includes(skillId) ? current : [...current, skillId];
+      }
+
+      return current.filter((id) => id !== skillId);
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
@@ -1186,6 +1325,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       modelId: effectiveModelId,
       mutationPolicy,
       name,
+      skillIds,
       spaceId: visibility === 'space' ? spaceId : null,
       toolConfigs,
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
@@ -1375,8 +1515,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           Mutations
         </Label>
         <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
-          How data changes proposed by the agent are handled. With approval required, runs pause until a project
-          member reviews a before/after preview in the Approvals inbox.
+          How data changes proposed by the agent are handled. With approval required, runs pause until a project member
+          reviews a before/after preview in the Approvals inbox.
         </p>
         <Select
           value={mutationPolicy}
@@ -1417,6 +1557,80 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                 Always on
               </Badge>
             </div>
+          </div>
+
+          <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted">
+            <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
+              <div className="fk:flex fk:gap-2.5">
+                <GraduationCapIcon className="fk:mt-px fk:size-5 fk:text-muted-foreground" />
+                <div>
+                  <div className="fk:text-sm fk:font-medium">Skills</div>
+                  <p className="fk:text-xs fk:text-muted-foreground">
+                    Attached skills are always loaded into the agent context. All other skills you can see stay
+                    discoverable by the agent when relevant.
+                  </p>
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={!canMutate || attachableSkills.length === 0}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Attach
+                    <ChevronDownIcon className="fk:ml-1 fk:size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="fk:max-h-72 fk:w-72 fk:overflow-y-auto">
+                  {attachableSkills.map((skill) => (
+                    <DropdownMenuCheckboxItem
+                      checked={skillIds.includes(skill.id)}
+                      key={skill.id}
+                      onCheckedChange={(checked) => toggleSkill(skill.id, checked === true)}
+                      onSelect={(event) => event.preventDefault()}
+                    >
+                      {skill.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            {skillsData && attachableSkills.length === 0 ? (
+              <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
+                No attachable skills yet. Create them in the Skills section.
+              </p>
+            ) : null}
+            {skillsData?.hasMore ? (
+              <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
+                Showing the {skillsData.skills.length} most recently updated skills. Attached skills outside this list
+                are kept when you save.
+              </p>
+            ) : null}
+            {skillIds.length > 0 ? (
+              <div className="fk:flex fk:flex-wrap fk:gap-1.5 fk:pl-7">
+                {skillIds.map((skillId) => {
+                  const skill = skillsById[skillId];
+                  const label = skill?.name ?? 'Loading skill…';
+
+                  return (
+                    <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={skillId} variant="secondary">
+                      {label}
+                      <button
+                        aria-label={skill ? `Detach ${skill.name}` : 'Detach skill'}
+                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed"
+                        disabled={!canMutate}
+                        type="button"
+                        onClick={() => toggleSkill(skillId, false)}
+                      >
+                        <XIcon className="fk:size-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
           {toolsFormData ? (

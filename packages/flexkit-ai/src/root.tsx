@@ -16,7 +16,7 @@ export function Root(): JSX.Element {
   if (!currentProjectId) {
     return (
       <main className="fk:flex fk:h-full fk:flex-1 fk:items-center fk:justify-center fk:p-8 fk:text-sm fk:text-muted-foreground">
-        Select a project to manage automations.
+        Select a project to manage automations and skills.
       </main>
     );
   }

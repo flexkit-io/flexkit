@@ -1,5 +1,5 @@
 ---
-'@flexkit/automations': patch
+'@flexkit/ai': patch
 '@flexkit/studio': patch
 '@flexkit/desk': patch
 '@flexkit/cli': patch
