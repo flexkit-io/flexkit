@@ -1,5 +1,15 @@
 # @flexkit/desk
 
+## 0.0.29
+
+### Patch Changes
+
+- 68e0fec: Spaces authorization layer: declare spaces in flexkit.config.tsx and bind them to entities and attributes to scope visibility and editability. The CLI includes space definitions in the deploy payload, the Studio exposes the user's space memberships and filters space-bound entities/attributes from the Desk sidebar, grids and forms, and Automations gain a visibility picker (Project / Space / Personal) with space badges in the list.
+- Updated dependencies [1c89ae9]
+- Updated dependencies [68e0fec]
+- Updated dependencies [ca6fb4b]
+  - @flexkit/studio@0.0.29
+
 ## 0.0.28
 
 ### Patch Changes
