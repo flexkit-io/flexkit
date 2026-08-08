@@ -1,5 +1,15 @@
 # @flexkit/asset-manager
 
+## 0.0.29
+
+### Patch Changes
+
+- 1c89ae9: GraphQL query performance: asset connections are now bounded (`first: 3` in list grids, `first: 25` in forms, server-sorted by `sortOrder`) instead of expanding every connected asset per row, nested relationship selections are capped at the 3 items grids actually preview, base64 `lqip` placeholders are no longer fetched for related-entity assets, the relationship picker uses the lightweight `list` selection, pagination pages skip the top-level aggregate count, and Asset Manager tag mutations refetch with the `list` selection. List grids keep accurate "+N" asset badges via the connection aggregate count. Entity edit forms with more than 25 linked assets can load additional pages in the asset-multiple field without treating paged-in edges as new connects.
+- Updated dependencies [1c89ae9]
+- Updated dependencies [68e0fec]
+- Updated dependencies [ca6fb4b]
+  - @flexkit/studio@0.0.29
+
 ## 0.0.28
 
 ### Patch Changes

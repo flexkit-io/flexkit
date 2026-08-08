@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/ai",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Flexkit Studio plugin for AI Automations and Skills: configure, monitor and extend AI agents.",
   "keywords": [
     "flexkit",
