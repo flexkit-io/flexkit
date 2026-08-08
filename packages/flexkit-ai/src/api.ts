@@ -8,6 +8,8 @@ import type {
   AutomationToolProvider,
   AutomationVisibility,
   MutationResult,
+  Skill,
+  SkillInput,
 } from './types';
 
 export interface DecideApprovalInput {
@@ -23,7 +25,9 @@ export interface ApiClient {
     _input: DecideApprovalInput
   ) => Promise<MutationResult & { approval?: AutomationApproval }>;
   createAutomation: (_input: AutomationInput) => Promise<MutationResult & { automation?: Automation }>;
+  createSkill: (_input: SkillInput) => Promise<MutationResult & { skill?: Skill }>;
   deleteAutomation: (_automationId: string) => Promise<MutationResult>;
+  deleteSkill: (_skillId: string) => Promise<MutationResult>;
   getArtifactUrl: (_artifactId: string, _options?: { download?: boolean }) => string;
   getIntegrationManageUrl: (_teamId: string) => string;
   getRunArtifacts: (_workflowRunId: string) => Promise<AutomationArtifact[]>;
@@ -38,6 +42,7 @@ export interface ApiClient {
     _automationId: string,
     _input: AutomationInput
   ) => Promise<MutationResult & { automation?: Automation }>;
+  updateSkill: (_skillId: string, _input: SkillInput) => Promise<MutationResult & { skill?: Skill }>;
 }
 
 function getDashboardOrigin(): string {
@@ -81,6 +86,7 @@ export function getWebhookTriggerUrl(projectId: string, token: string): string {
 export function createApiClient(projectId: string): ApiClient {
   const projectBasePath = `/api/flexkit/${projectId}`;
   const automationsBasePath = `${projectBasePath}/automations`;
+  const skillsBasePath = `${projectBasePath}/skills`;
 
   async function request<T>(url: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, {
@@ -129,8 +135,15 @@ export function createApiClient(projectId: string): ApiClient {
         body: JSON.stringify(input),
         method: 'POST',
       }),
+    createSkill: async (input) =>
+      request<MutationResult & { skill?: Skill }>(skillsBasePath, {
+        body: JSON.stringify(input),
+        method: 'POST',
+      }),
     deleteAutomation: async (automationId) =>
       request<MutationResult>(`${automationsBasePath}/${encodeURIComponent(automationId)}`, { method: 'DELETE' }),
+    deleteSkill: async (skillId) =>
+      request<MutationResult>(`${skillsBasePath}/${encodeURIComponent(skillId)}`, { method: 'DELETE' }),
     getArtifactUrl: (artifactId, options) => {
       const suffix = options?.download ? '?download=1' : '';
 
@@ -188,6 +201,11 @@ export function createApiClient(projectId: string): ApiClient {
           method: 'PATCH',
         }
       ),
+    updateSkill: async (skillId, input) =>
+      request<MutationResult & { skill?: Skill }>(`${skillsBasePath}/${encodeURIComponent(skillId)}`, {
+        body: JSON.stringify(input),
+        method: 'PATCH',
+      }),
   };
 }
 
@@ -223,10 +241,13 @@ export function paths(projectId: string): {
   entities: string;
   run: (_runId: string) => string;
   runHistory: (_scope: 'mine' | 'team', _offset?: number, _limit?: number) => string;
+  skill: (_skillId: string) => string;
+  skills: (_options?: { limit?: number; offset?: number; search?: string; visibility?: AutomationVisibility[] }) => string;
   spaces: string;
   tools: (_automationId?: string) => string;
 } {
   const basePath = `/api/flexkit/${projectId}/automations`;
+  const skillsBasePath = `/api/flexkit/${projectId}/skills`;
 
   return {
     approval: (approvalId) => `${basePath}/approvals/${encodeURIComponent(approvalId)}`,
@@ -279,6 +300,26 @@ export function paths(projectId: string): {
     run: (runId) => `${basePath}/runs/${encodeURIComponent(runId)}`,
     runHistory: (scope, offset = 0, limit = 25) =>
       `${basePath}/runs?scope=${scope}&offset=${offset.toString()}&limit=${limit.toString()}`,
+    skill: (skillId) => `${skillsBasePath}/${encodeURIComponent(skillId)}`,
+    skills: (options = {}) => {
+      const { limit = 25, offset = 0, search, visibility } = options;
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
+
+      if (visibility && visibility.length > 0) {
+        params.set('visibility', visibility.join(','));
+      }
+
+      const trimmedSearch = search?.trim();
+
+      if (trimmedSearch) {
+        params.set('q', trimmedSearch);
+      }
+
+      return `${skillsBasePath}?${params.toString()}`;
+    },
     spaces: `/api/flexkit/${projectId}/spaces`,
     tools: (automationId) =>
       automationId ? `${basePath}/${encodeURIComponent(automationId)}/tools` : `${basePath}/tools`,

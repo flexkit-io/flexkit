@@ -37,6 +37,7 @@ import {
   ClockIcon,
   CopyIcon,
   DatabaseZapIcon,
+  GraduationCapIcon,
   KeyRoundIcon,
   LoaderCircleIcon,
   PlusIcon,
@@ -64,6 +65,8 @@ import type {
   AutomationVisibility,
   AutomationWebhookTrigger,
   ProjectSpace,
+  Skill,
+  SkillsList,
 } from './types';
 
 interface AutomationFormProps {
@@ -984,6 +987,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   );
   const [visibility, setVisibility] = useState<AutomationVisibility>(automation?.visibility ?? 'project');
   const [spaceId, setSpaceId] = useState<string | null>(automation?.spaceId ?? null);
+  const [skillIds, setSkillIds] = useState<string[]>(automation?.skillIds ?? []);
   const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -993,6 +997,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const { data: toolsData } = useSWR<ToolsResponse>(toolsUrl, fetcher);
   const { data: entitiesData } = useSWR<{ entities: string[] }>(paths(projectId).entities, fetcher);
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
+  const { data: skillsData } = useSWR<SkillsList>(paths(projectId).skills({ limit: 100 }), fetcher);
   const [, auth] = useAuth();
   const canMutate = useCanMutate();
   const userSpaceCodes = auth.user?.spaces ?? [];
@@ -1004,6 +1009,38 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     [automation?.modelId, mode, modelId, toolsData?.tools.models]
   );
   const effectiveModelId = modelId || modelOptions[0]?.id || '';
+  // Mirrors the server-side attachment guard: project skills attach anywhere,
+  // space skills only within the same space, personal skills only to personal
+  // automations.
+  const attachableSkills = useMemo<Skill[]>(
+    () =>
+      (skillsData?.skills ?? []).filter((skill) => {
+        if (skill.visibility === 'space') {
+          return visibility === 'space' && spaceId !== null && skill.spaceId === spaceId;
+        }
+
+        if (skill.visibility === 'personal') {
+          return visibility === 'personal';
+        }
+
+        return true;
+      }),
+    [skillsData?.skills, spaceId, visibility]
+  );
+
+  useEffect(() => {
+    if (!skillsData) {
+      return;
+    }
+
+    const attachableIds = new Set(attachableSkills.map((skill) => skill.id));
+
+    setSkillIds((current) => {
+      const next = current.filter((skillId) => attachableIds.has(skillId));
+
+      return next.length === current.length ? current : next;
+    });
+  }, [attachableSkills, skillsData]);
   const validation = useMemo<FormValidation>(() => {
     const triggerErrors: { [triggerKey: string]: string } = {};
 
@@ -1155,6 +1192,16 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     });
   }
 
+  function toggleSkill(skillId: string, attached: boolean): void {
+    setSkillIds((current) => {
+      if (attached) {
+        return current.includes(skillId) ? current : [...current, skillId];
+      }
+
+      return current.filter((id) => id !== skillId);
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
@@ -1186,6 +1233,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       modelId: effectiveModelId,
       mutationPolicy,
       name,
+      skillIds,
       spaceId: visibility === 'space' ? spaceId : null,
       toolConfigs,
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
@@ -1375,8 +1423,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           Mutations
         </Label>
         <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
-          How data changes proposed by the agent are handled. With approval required, runs pause until a project
-          member reviews a before/after preview in the Approvals inbox.
+          How data changes proposed by the agent are handled. With approval required, runs pause until a project member
+          reviews a before/after preview in the Approvals inbox.
         </p>
         <Select
           value={mutationPolicy}
@@ -1417,6 +1465,77 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                 Always on
               </Badge>
             </div>
+          </div>
+
+          <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted">
+            <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
+              <div className="fk:flex fk:gap-2.5">
+                <GraduationCapIcon className="fk:mt-px fk:size-5 fk:text-muted-foreground" />
+                <div>
+                  <div className="fk:text-sm fk:font-medium">Skills</div>
+                  <p className="fk:text-xs fk:text-muted-foreground">
+                    Attached skills are always loaded into the agent context. All other skills you can see stay
+                    discoverable by the agent when relevant.
+                  </p>
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={!canMutate || attachableSkills.length === 0}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Attach
+                    <ChevronDownIcon className="fk:ml-1 fk:size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="fk:max-h-72 fk:w-72 fk:overflow-y-auto">
+                  {attachableSkills.map((skill) => (
+                    <DropdownMenuCheckboxItem
+                      checked={skillIds.includes(skill.id)}
+                      key={skill.id}
+                      onCheckedChange={(checked) => toggleSkill(skill.id, checked === true)}
+                      onSelect={(event) => event.preventDefault()}
+                    >
+                      {skill.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            {skillsData && attachableSkills.length === 0 ? (
+              <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
+                No attachable skills yet. Create them in the Skills section.
+              </p>
+            ) : null}
+            {skillIds.length > 0 ? (
+              <div className="fk:flex fk:flex-wrap fk:gap-1.5 fk:pl-7">
+                {skillIds.map((skillId) => {
+                  const skill = attachableSkills.find((entry) => entry.id === skillId);
+
+                  if (!skill) {
+                    return null;
+                  }
+
+                  return (
+                    <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={skill.id} variant="secondary">
+                      {skill.name}
+                      <button
+                        aria-label={`Detach ${skill.name}`}
+                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed"
+                        disabled={!canMutate}
+                        type="button"
+                        onClick={() => toggleSkill(skill.id, false)}
+                      >
+                        <XIcon className="fk:size-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
           {toolsFormData ? (

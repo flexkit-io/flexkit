@@ -22,6 +22,7 @@ interface AutomationsDataTableToolbarProps<TData> {
   isSearchLoading?: boolean;
   onSearchChange: (search: string) => void;
   search: string;
+  searchPlaceholder?: string;
   table: ReactTable<TData>;
 }
 
@@ -60,9 +61,14 @@ export function AutomationsDataTableToolbar<TData>({
   isSearchLoading = false,
   onSearchChange,
   search,
+  searchPlaceholder = 'Search automations...',
   table,
 }: AutomationsDataTableToolbarProps<TData>): JSX.Element {
   const isFiltered = table.getState().columnFilters.length > 0 || search.trim().length > 0;
+  // table.getColumn(id) logs a dev-mode error when the column is missing, so
+  // resolve optional filter columns by scanning instead.
+  const statusColumn = table.getAllColumns().find((column) => column.id === 'status');
+  const visibilityColumn = table.getAllColumns().find((column) => column.id === 'visibility');
   const [draftSearch, setDraftSearch] = useState(search);
   const trimmedDraft = draftSearch.trim();
   const trimmedSearch = search.trim();
@@ -110,7 +116,7 @@ export function AutomationsDataTableToolbar<TData>({
               <Input
                 className="fk:h-8 fk:w-37.5 fk:lg:w-62.5 fk:px-7"
                 name="search-automations"
-                placeholder="Search automations..."
+                placeholder={searchPlaceholder}
                 value={draftSearch}
                 onChange={(event) => {
                   const { value } = event.target;
@@ -137,15 +143,11 @@ export function AutomationsDataTableToolbar<TData>({
                 </button>
               ) : null}
             </div>
-            {table.getColumn('status') ? (
-              <DataTableFacetedFilter column={table.getColumn('status')} options={statusOptions} title="Status" />
+            {statusColumn ? (
+              <DataTableFacetedFilter column={statusColumn} options={statusOptions} title="Status" />
             ) : null}
-            {table.getColumn('visibility') ? (
-              <DataTableFacetedFilter
-                column={table.getColumn('visibility')}
-                options={visibilityOptions}
-                title="Visibility"
-              />
+            {visibilityColumn ? (
+              <DataTableFacetedFilter column={visibilityColumn} options={visibilityOptions} title="Visibility" />
             ) : null}
             {isFiltered ? (
               <Button className="fk:h-8 fk:px-2 fk:lg:px-3" onClick={handleReset} variant="ghost">

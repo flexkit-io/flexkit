@@ -3,7 +3,7 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [
-    ["@flexkit/studio", "@flexkit/desk", "@flexkit/explorer", "@flexkit/asset-manager", "@flexkit/automations"]
+    ["@flexkit/studio", "@flexkit/desk", "@flexkit/explorer", "@flexkit/asset-manager", "@flexkit/ai"]
   ],
   "linked": [],
   "access": "public",

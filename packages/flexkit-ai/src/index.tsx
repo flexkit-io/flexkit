@@ -1,4 +1,5 @@
 import { Bot as BotIcon } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 import type { PluginOptions } from '@flexkit/studio';
 import { Root } from './root';
 import {
@@ -10,20 +11,30 @@ import {
   RunHistoryPage,
   RunsPage,
 } from './pages';
+import { CreateSkillPage, SkillDetailPage, SkillsPage } from './skills-pages';
 
-export function Automations(): PluginOptions {
+const NavigateCompat = Navigate as unknown as React.ComponentType<{
+  replace?: boolean;
+  to: string;
+}>;
+
+export function AI(): PluginOptions {
   return {
-    name: 'flexkit.automations',
+    name: 'flexkit.ai',
     contributes: {
       apps: [
         {
           component: <Root />,
           icon: <BotIcon strokeWidth={1.5} />,
-          name: 'automations',
+          name: 'ai',
           routes: [
             {
-              component: <AutomationsPage />,
+              component: <NavigateCompat replace to="automations" />,
               path: '',
+            },
+            {
+              component: <AutomationsPage />,
+              path: 'automations',
             },
             {
               component: <RunHistoryPage />,
@@ -35,22 +46,34 @@ export function Automations(): PluginOptions {
             },
             {
               component: <CreateAutomationPage />,
-              path: 'new',
+              path: 'automations/new',
             },
             {
               component: <AutomationDetailPage />,
-              path: ':automationId',
+              path: 'automations/:automationId',
             },
             {
               component: <RunsPage />,
-              path: ':automationId/runs',
+              path: 'automations/:automationId/runs',
             },
             {
               component: <RunDetailPage />,
-              path: ':automationId/runs/:runId',
+              path: 'automations/:automationId/runs/:runId',
+            },
+            {
+              component: <SkillsPage />,
+              path: 'skills',
+            },
+            {
+              component: <CreateSkillPage />,
+              path: 'skills/new',
+            },
+            {
+              component: <SkillDetailPage />,
+              path: 'skills/:skillId',
             },
           ],
-          title: 'Automations',
+          title: 'AI',
         },
       ],
     },
@@ -72,4 +95,7 @@ export type {
   AutomationToolProvider,
   RunHistory,
   RunHistoryRun,
+  Skill,
+  SkillInput,
+  SkillsList,
 } from './types';

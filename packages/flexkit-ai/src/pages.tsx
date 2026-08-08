@@ -16,6 +16,7 @@ import {
   DownloadIcon,
   Ellipsis,
   FileTextIcon,
+  GraduationCapIcon,
   LoaderCircle,
   MessageSquareIcon,
   Pencil,
@@ -1084,7 +1085,7 @@ export function RunHistoryPage(): JSX.Element {
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4">
           <RunsTable
-            basePath=".."
+            basePath="../automations"
             isLoading={isLoading}
             runs={runs.map((run) => ({
               ...run,
@@ -1216,7 +1217,7 @@ export function ApprovalsPage(): JSX.Element {
                     <TableCell onClick={(event) => event.stopPropagation()}>
                       <Link
                         className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
-                        to={`../${approval.automationId}/runs/${approval.runId}`}
+                        to={`../automations/${approval.automationId}/runs/${approval.runId}`}
                       >
                         View run
                       </Link>
@@ -1307,6 +1308,12 @@ interface ReplayDataParts {
     status: 'generating' | 'uploading' | 'uploaded' | 'done' | 'error';
     error?: ReplayError;
   };
+  'load-skill': {
+    attached?: boolean;
+    skillName?: string;
+    status: 'loading' | 'done' | 'error';
+    error?: ReplayError;
+  };
   'run-artifact': {
     artifactId?: string;
     contentType?: string;
@@ -1374,6 +1381,7 @@ type ConsumeOnceResult = 'finished' | 'incomplete' | 'unavailable';
 
 const MAX_STREAM_ATTEMPTS = 5;
 const STREAM_RETRY_DELAY_MS = 2000;
+const REPLAY_RENDER_INTERVAL_MS = 120;
 const JSON_RENDER_SPEC_PART_TYPE = 'data-spec';
 
 interface RunReplayActions {
@@ -1669,13 +1677,42 @@ function useRunStream(
         stream: chunkStream,
       });
 
-      for await (const current of messageStream) {
-        if (abortController.signal.aborted) {
-          break;
+      // Rendering after every chunk makes long replays (thousands of chunks,
+      // e.g. large streamed tool inputs) re-render the whole message tree per
+      // chunk and freeze the page. Throttle to one trailing update per
+      // interval, with a guaranteed final flush after the stream ends.
+      let throttleTimer: number | null = null;
+
+      const flushLatestMessage = (): void => {
+        if (abortController.signal.aborted || !latestMessage) {
+          return;
         }
 
-        latestMessage = { ...current };
-        setMessage(latestMessage);
+        setMessage({ ...latestMessage });
+      };
+
+      try {
+        for await (const current of messageStream) {
+          if (abortController.signal.aborted) {
+            break;
+          }
+
+          latestMessage = current;
+
+          if (throttleTimer === null) {
+            throttleTimer = window.setTimeout(() => {
+              throttleTimer = null;
+              flushLatestMessage();
+            }, REPLAY_RENDER_INTERVAL_MS);
+          }
+        }
+      } finally {
+        if (throttleTimer !== null) {
+          window.clearTimeout(throttleTimer);
+          throttleTimer = null;
+        }
+
+        flushLatestMessage();
       }
 
       return sawFinish ? 'finished' : 'incomplete';
@@ -1813,9 +1850,9 @@ export function RunDetailPage(): JSX.Element {
   const runApi = api;
   const selectedRunId = runId;
   const run = data?.run;
-  // Keep Cancel available while awaiting approval; streamFinished only hides it
-  // for in-flight runs after the workflow stream reports completion.
-  const showCancel = run?.status === 'awaiting_approval' || (run?.status === 'running' && !streamFinished);
+  // Once a run is awaiting approval, rejecting the proposal is the way to stop
+  // it, so Cancel only shows for in-flight running runs.
+  const showCancel = run?.status === 'running' && !streamFinished;
 
   function handleCancel(): void {
     startCancelTransition(async () => {
@@ -1955,6 +1992,12 @@ function RunReplay({
   const replayActions = useMemo<RunReplayActions>(
     () => ({
       onApprovalDecided: (approvalId) => {
+        // The reconnect below remounts the approval card, which may re-report
+        // the same decision; reconnecting again would loop forever.
+        if (approvalId && lastDecidedApprovalIdRef.current === approvalId) {
+          return;
+        }
+
         if (approvalId) {
           lastDecidedApprovalIdRef.current = approvalId;
         }
@@ -2128,7 +2171,10 @@ function RunReplay({
             {fallbackApprovals.map((approval) => (
               <MutationApprovalPart api={api} key={approval.id} message={toMutationApprovalPartData(approval)} />
             ))}
-            {status === 'streaming' && !isAwaitingApproval ? (
+            {/* A run that died without closing its stream keeps the reader in
+                `streaming` forever; the run record is authoritative once it
+                reaches a terminal status. */}
+            {status === 'streaming' && !isAwaitingApproval && !isTerminalRunStatus(run.status) ? (
               <div className="fk:flex fk:items-center fk:shimmer fk:shimmer-duration-1000 fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
                 <LoaderCircle className="fk:size-4 fk:animate-spin" />
                 <span>Running...</span>
@@ -2323,6 +2369,30 @@ function MessagePart({
 
   if (part.type === 'data-bulk-graphql-action') {
     return <BulkGraphqlActionPart message={getPartData<ReplayDataParts['bulk-graphql-action']>(part)} />;
+  }
+
+  if (part.type === 'data-load-skill') {
+    const data = getPartData<ReplayDataParts['load-skill']>(part);
+    const skillLabel = data.skillName ? ` "${data.skillName}"` : '';
+    let message = 'Loading skill';
+
+    if (data.status === 'error') {
+      message = data.error?.message ?? 'Failed to load skill';
+    } else if (data.status === 'done' && data.attached) {
+      message = `Using attached skill${skillLabel}`;
+    } else if (data.status === 'done') {
+      message = `Loaded skill${skillLabel}`;
+    }
+
+    return (
+      <StatusToolPart
+        error={data.error?.message}
+        icon={<GraduationCapIcon className="fk:size-3.5" />}
+        loading={data.status === 'loading'}
+        message={message}
+        title={data.attached ? 'Skill' : 'Load skill'}
+      />
+    );
   }
 
   if (part.type === 'data-update-memory') {
@@ -2637,7 +2707,10 @@ function MutationApprovalPart({
   }, [message.status, mutate]);
 
   // When polling discovers an external decide while the replay part is still
-  // pending, reconnect the stream the same way a local decide does.
+  // pending, reconnect the stream the same way a local decide does. Only a
+  // pending -> decided transition observed while mounted counts: a card that
+  // mounts with an already-decided approval (e.g. right after a reconnect
+  // remounted it) must not trigger another reconnect, or it would loop.
   useEffect(() => {
     const previousStatus = previousApprovalStatusRef.current;
     previousApprovalStatusRef.current = approvalStatus;
@@ -2646,7 +2719,7 @@ function MutationApprovalPart({
       return;
     }
 
-    if (previousStatus !== undefined && previousStatus !== 'pending') {
+    if (previousStatus !== 'pending') {
       return;
     }
 
