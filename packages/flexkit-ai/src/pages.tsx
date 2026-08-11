@@ -43,10 +43,6 @@ import {
 import {
   Badge,
   Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -74,7 +70,7 @@ import {
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
-import { ApprovalCard, ApprovalStatusBadge } from './approval-card';
+import { ApprovalCard, ApprovalDrawer, ApprovalStatusBadge } from './approval-card';
 import { AutomationsDataTableToolbar } from './data-table-toolbar';
 import { AutomationForm } from './form';
 import { RunSpecPart } from './spec-renderer';
@@ -1141,9 +1137,9 @@ export function ApprovalsPage(): JSX.Element {
   const selectedApproval = approvals.find((approval) => approval.id === selectedApprovalId) ?? null;
 
   // Deciding while on Pending removes the row, so selectedApproval becomes null and
-  // the dialog closes — but selectedApprovalId would still be set. Clear it once the
+  // the drawer closes — but selectedApprovalId would still be set. Clear it once the
   // current filter's data has loaded without that id, otherwise switching to All
-  // would reopen the dialog without a click.
+  // would reopen the drawer without a click.
   useEffect(() => {
     if (selectedApprovalId === null || selectedApproval !== null || isLoading || approvalPages === undefined) {
       return;
@@ -1236,21 +1232,15 @@ export function ApprovalsPage(): JSX.Element {
           ) : null}
         </div>
       </ScrollArea>
-      <Dialog open={selectedApproval !== null} onOpenChange={(open) => !open && setSelectedApprovalId(null)}>
-        <DialogContent className="fk:max-h-[85vh] fk:overflow-y-auto fk:sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Mutation proposal</DialogTitle>
-          </DialogHeader>
-          {selectedApproval ? (
-            <ApprovalCard
-              api={api}
-              approval={selectedApproval}
-              key={`${selectedApproval.id}-${selectedApproval.status}`}
-              onDecided={() => void mutate()}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      {selectedApproval ? (
+        <ApprovalDrawer
+          api={api}
+          approval={selectedApproval}
+          key={`${selectedApproval.id}-${selectedApproval.status}`}
+          onClose={() => setSelectedApprovalId(null)}
+          onDecided={() => void mutate()}
+        />
+      ) : null}
     </div>
   );
 }

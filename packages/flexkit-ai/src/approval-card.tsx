@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DrawerModal,
   Table,
   TableBody,
   TableCell,
@@ -211,7 +212,7 @@ function isSameApprovalSnapshot(left: AutomationApproval, right: AutomationAppro
   );
 }
 
-export function ApprovalCard({
+function useApprovalDecision({
   api,
   approval: initialApproval,
   onDecided,
@@ -219,7 +220,18 @@ export function ApprovalCard({
   api: ApiClient;
   approval: AutomationApproval;
   onDecided?: (_approval: AutomationApproval) => void;
-}): JSX.Element {
+}): {
+  approval: AutomationApproval;
+  decide: (_options: { approved: boolean; force?: boolean; reason?: string }) => void;
+  errorMessage: string;
+  isDeciding: boolean;
+  isPending: boolean;
+  isRejectDialogOpen: boolean;
+  isStale: boolean;
+  rejectReason: string;
+  setIsRejectDialogOpen: (_open: boolean) => void;
+  setRejectReason: (_reason: string) => void;
+} {
   const [approval, setApproval] = useState(initialApproval);
   // Keep local state for decide() responses, but adopt fresher parent data when
   // list polling / SWR revalidation replaces the prop with meaningfully new
@@ -239,18 +251,13 @@ export function ApprovalCard({
 
     if (!isSameApprovalSnapshot(initialApproval, prevInitialApproval)) {
       const wouldRegressDecision =
-        approval.id === initialApproval.id &&
-        approval.status !== 'pending' &&
-        initialApproval.status === 'pending';
+        approval.id === initialApproval.id && approval.status !== 'pending' && initialApproval.status === 'pending';
 
       if (!wouldRegressDecision) {
         setApproval(initialApproval);
       }
     }
   }
-
-  const isPending = approval.status === 'pending';
-  const { preview } = approval;
 
   function applyResult(nextApproval: AutomationApproval): void {
     setApproval(nextApproval);
@@ -298,9 +305,7 @@ export function ApprovalCard({
         // Otherwise surface the server message (including already_decided
         // without a payload). errorMessage may be omitted on some 400 bodies.
         if (!result.success && (result.errorCode !== 'already_decided' || !result.approval)) {
-          const message = Array.isArray(result.errorMessage)
-            ? result.errorMessage.join(', ')
-            : result.errorMessage;
+          const message = Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage;
 
           setErrorMessage(message || 'Failed to submit the decision.');
         }
@@ -310,8 +315,122 @@ export function ApprovalCard({
     });
   }
 
+  return {
+    approval,
+    decide,
+    errorMessage,
+    isDeciding,
+    isPending: approval.status === 'pending',
+    isRejectDialogOpen,
+    isStale,
+    rejectReason,
+    setIsRejectDialogOpen,
+    setRejectReason,
+  };
+}
+
+function ApprovalDecisionActions({
+  decide,
+  isDeciding,
+  isRejectDialogOpen,
+  isStale,
+  rejectReason,
+  setIsRejectDialogOpen,
+  setRejectReason,
+  variant,
+}: {
+  decide: (_options: { approved: boolean; force?: boolean; reason?: string }) => void;
+  isDeciding: boolean;
+  isRejectDialogOpen: boolean;
+  isStale: boolean;
+  rejectReason: string;
+  setIsRejectDialogOpen: (_open: boolean) => void;
+  setRejectReason: (_reason: string) => void;
+  variant: 'header' | 'inline';
+}): JSX.Element {
+  const isHeader = variant === 'header';
+  const buttonClassName = isHeader ? 'fk:px-8 fk:min-w-32' : undefined;
+  const buttonSize = isHeader ? 'default' : 'sm';
+
   return (
-    // min-w-0 lets the card shrink inside flex/grid parents (e.g. DialogContent)
+    <>
+      <div className="fk:flex fk:flex-nowrap fk:items-center fk:gap-2">
+        <Button
+          className={buttonClassName}
+          disabled={isDeciding}
+          size={buttonSize}
+          onClick={() => decide({ approved: true, force: isStale })}
+        >
+          {isDeciding ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : <CheckIcon className="fk:size-4" />}
+          {isStale ? 'Approve anyway' : 'Approve'}
+        </Button>
+        <Button
+          className={buttonClassName}
+          disabled={isDeciding}
+          size={buttonSize}
+          variant="outline"
+          onClick={() => {
+            setRejectReason('');
+            setIsRejectDialogOpen(true);
+          }}
+        >
+          <XIcon className="fk:size-4" />
+          Reject
+        </Button>
+      </div>
+
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject this proposal?</DialogTitle>
+            <DialogDescription>
+              The mutation will not be executed. The agent receives your reason and can adapt its plan.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Optional reason for the agent..."
+            value={rejectReason}
+            onChange={(event) => setRejectReason(event.target.value)}
+          />
+          <DialogFooter>
+            <Button disabled={isDeciding} size="sm" variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={isDeciding}
+              size="sm"
+              variant="destructive"
+              onClick={() => decide({ approved: false, reason: rejectReason.trim() || undefined })}
+            >
+              {isDeciding ? (
+                <LoaderCircle className="fk:size-4 fk:animate-spin" />
+              ) : (
+                <ArrowRightIcon className="fk:size-4" />
+              )}
+              Reject proposal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function ApprovalCardBody({
+  approval,
+  errorMessage,
+  isPending,
+  isStale,
+}: {
+  approval: AutomationApproval;
+  errorMessage: string;
+  isPending: boolean;
+  isStale: boolean;
+}): JSX.Element {
+  const { preview } = approval;
+
+  return (
+    // min-w-0 lets the card shrink inside flex/grid parents (e.g. DrawerModal)
     // so wide preview tables scroll inside their own container instead of
     // stretching the layout.
     <div className="fk:min-w-0 fk:max-w-full fk:space-y-4">
@@ -381,61 +500,99 @@ export function ApprovalCard({
         </div>
       ) : null}
       {errorMessage ? <div className="fk:text-sm fk:text-destructive">{errorMessage}</div> : null}
+    </div>
+  );
+}
 
+export function ApprovalCard({
+  api,
+  approval: initialApproval,
+  onDecided,
+}: {
+  api: ApiClient;
+  approval: AutomationApproval;
+  onDecided?: (_approval: AutomationApproval) => void;
+}): JSX.Element {
+  const {
+    approval,
+    decide,
+    errorMessage,
+    isDeciding,
+    isPending,
+    isRejectDialogOpen,
+    isStale,
+    rejectReason,
+    setIsRejectDialogOpen,
+    setRejectReason,
+  } = useApprovalDecision({ api, approval: initialApproval, onDecided });
+
+  return (
+    <>
+      <ApprovalCardBody approval={approval} errorMessage={errorMessage} isPending={isPending} isStale={isStale} />
       {isPending ? (
-        <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
-          <Button disabled={isDeciding} size="sm" onClick={() => decide({ approved: true, force: isStale })}>
-            {isDeciding ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : <CheckIcon className="fk:size-4" />}
-            {isStale ? 'Approve anyway' : 'Approve'}
-          </Button>
-          <Button
-            disabled={isDeciding}
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setRejectReason('');
-              setIsRejectDialogOpen(true);
-            }}
-          >
-            <XIcon className="fk:size-4" />
-            Reject
-          </Button>
+        <div className="fk:mt-4">
+          <ApprovalDecisionActions
+            decide={decide}
+            isDeciding={isDeciding}
+            isRejectDialogOpen={isRejectDialogOpen}
+            isStale={isStale}
+            rejectReason={rejectReason}
+            setIsRejectDialogOpen={setIsRejectDialogOpen}
+            setRejectReason={setRejectReason}
+            variant="inline"
+          />
         </div>
       ) : null}
+    </>
+  );
+}
 
-      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject this proposal?</DialogTitle>
-            <DialogDescription>
-              The mutation will not be executed. The agent receives your reason and can adapt its plan.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            placeholder="Optional reason for the agent..."
-            value={rejectReason}
-            onChange={(event) => setRejectReason(event.target.value)}
+export function ApprovalDrawer({
+  api,
+  approval: initialApproval,
+  onClose,
+  onDecided,
+}: {
+  api: ApiClient;
+  approval: AutomationApproval;
+  onClose: () => void;
+  onDecided?: (_approval: AutomationApproval) => void;
+}): JSX.Element {
+  const {
+    approval,
+    decide,
+    errorMessage,
+    isDeciding,
+    isPending,
+    isRejectDialogOpen,
+    isStale,
+    rejectReason,
+    setIsRejectDialogOpen,
+    setRejectReason,
+  } = useApprovalDecision({ api, approval: initialApproval, onDecided });
+
+  return (
+    <DrawerModal
+      actions={
+        isPending ? (
+          <ApprovalDecisionActions
+            decide={decide}
+            isDeciding={isDeciding}
+            isRejectDialogOpen={isRejectDialogOpen}
+            isStale={isStale}
+            rejectReason={rejectReason}
+            setIsRejectDialogOpen={setIsRejectDialogOpen}
+            setRejectReason={setRejectReason}
+            variant="header"
           />
-          <DialogFooter>
-            <Button disabled={isDeciding} size="sm" variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={isDeciding}
-              size="sm"
-              variant="destructive"
-              onClick={() => decide({ approved: false, reason: rejectReason.trim() || undefined })}
-            >
-              {isDeciding ? (
-                <LoaderCircle className="fk:size-4 fk:animate-spin" />
-              ) : (
-                <ArrowRightIcon className="fk:size-4" />
-              )}
-              Reject proposal
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        ) : null
+      }
+      depth={0}
+      isFocused
+      onClose={onClose}
+      title="Mutation proposal"
+    >
+      <ApprovalCardBody approval={approval} errorMessage={errorMessage} isPending={isPending} isStale={isStale} />
+    </DrawerModal>
   );
 }

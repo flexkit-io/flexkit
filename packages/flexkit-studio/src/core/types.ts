@@ -202,18 +202,33 @@ type AttributeBase = {
     mode: 'single' | 'multiple';
     field: string;
   };
-  /**
-   * Space codes that can read/write this attribute. Members of any listed
-   * space have access; users outside all listed spaces cannot see the value.
-   */
-  spaces?: string[];
   validation?: (zod: ZodNamespace) => z.ZodType;
 };
+
+/**
+ * Space codes that can read/write this attribute. Members of any listed
+ * space have access; users outside all listed spaces cannot see the value.
+ *
+ * Not allowed on relationship attributes (`scope: 'relationship'`): bind the
+ * related entity to the space instead.
+ */
+type AttributeSpaces = {
+  spaces?: string[];
+};
+
+type AttributeScopeAndSpaces =
+  | {
+      scope: 'relationship';
+      spaces?: never;
+    }
+  | ({
+      scope: 'local' | 'global';
+    } & AttributeSpaces);
 
 type AttributeByDataType<T extends DataType> = AttributeBase & {
   dataType: T;
   defaultValue?: DefaultValueByDataType[T];
-} & (T extends 'asset' ? { scope?: 'global' } : { scope: ScopeType });
+} & (T extends 'asset' ? { scope?: 'global' } & AttributeSpaces : AttributeScopeAndSpaces);
 
 export type Attribute = {
   [T in DataType]: AttributeByDataType<T>;

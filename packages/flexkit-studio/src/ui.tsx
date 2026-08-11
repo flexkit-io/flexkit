@@ -116,4 +116,5 @@ export { ToggleGroup, ToggleGroupItem } from './ui/primitives/toggle-group';
 export { Toggle, toggleVariants } from './ui/primitives/toggle';
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipPortal, TooltipProvider } from './ui/primitives/tooltip';
 export { InsufficientPermissionsTooltipContent, PermissionTooltip } from './ui/components/permission-tooltip';
+export { default as DrawerModal } from './ui/components/drawer-modal';
 export { toast, Toaster } from './ui/primitives/sonner';
