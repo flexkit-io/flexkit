@@ -12,6 +12,7 @@ import {
   RunsPage,
 } from './pages';
 import { CreateSkillPage, SkillDetailPage, SkillsPage } from './skills-pages';
+import { AgentChatPage } from './agent/chat-page';
 
 const NavigateCompat = Navigate as unknown as React.ComponentType<{
   replace?: boolean;
@@ -29,8 +30,16 @@ export function AI(): PluginOptions {
           name: 'ai',
           routes: [
             {
-              component: <NavigateCompat replace to="automations" />,
+              component: <NavigateCompat replace to="agent" />,
               path: '',
+            },
+            {
+              component: <AgentChatPage />,
+              path: 'agent',
+            },
+            {
+              component: <AgentChatPage />,
+              path: 'agent/chats/:chatId',
             },
             {
               component: <AutomationsPage />,
@@ -81,6 +90,15 @@ export function AI(): PluginOptions {
 }
 
 export type {
+  AgentChat,
+  AgentChatDetail,
+  AgentChatMessage,
+  AgentChatMessageRole,
+  AgentChatMessageStatus,
+  AgentChatPart,
+  AgentChatSearchResult,
+  AgentChatTurn,
+  AgentChatsList,
   Automation,
   AutomationApproval,
   AutomationApprovalStatus,

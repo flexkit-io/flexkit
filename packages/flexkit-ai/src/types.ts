@@ -248,3 +248,64 @@ export interface MutationResult {
   errorMessage: string | string[];
   success: boolean;
 }
+
+export type AgentChatMessageRole = 'user' | 'assistant';
+export type AgentChatMessageStatus = 'pending' | 'streaming' | 'awaiting_approval' | 'complete' | 'failed';
+
+export interface AgentChat {
+  createdAt: string;
+  id: string;
+  lastMessageAt: string | null;
+  modelId: string | null;
+  title: string | null;
+  updatedAt: string;
+}
+
+export interface AgentChatsList {
+  chats: AgentChat[];
+  hasMore: boolean;
+}
+
+/** UIMessage-shaped part persisted for finished turns. */
+export interface AgentChatPart {
+  data?: unknown;
+  errorText?: string;
+  input?: unknown;
+  output?: unknown;
+  state?: string;
+  text?: string;
+  toolCallId?: string;
+  type: string;
+}
+
+export interface AgentChatMessage {
+  createdAt: string;
+  error: string | null;
+  id: string;
+  parts: AgentChatPart[] | null;
+  role: AgentChatMessageRole;
+  status: AgentChatMessageStatus;
+  textContent: string;
+  workflowRunId: string | null;
+}
+
+export interface AgentChatDetail {
+  chat: AgentChat;
+  messages: AgentChatMessage[];
+  pendingApproval: AutomationApproval | null;
+}
+
+export interface AgentChatSearchResult {
+  chatId: string;
+  chatTitle: string | null;
+  createdAt: string;
+  messageId: string;
+  score: number;
+  snippet: string;
+}
+
+export interface AgentChatTurn {
+  assistantMessage: AgentChatMessage;
+  userMessage: AgentChatMessage;
+  workflowRunId: string;
+}

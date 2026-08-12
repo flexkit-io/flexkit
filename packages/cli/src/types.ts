@@ -130,8 +130,6 @@ type PreviewType =
   | 'textarea'
   | (string & NonNullable<unknown>);
 
-type ScopeType = 'local' | 'global' | 'relationship';
-
 type SelectList = {
   label: string;
   value: string;
@@ -193,13 +191,29 @@ type AttributeBase = {
     mode: 'single' | 'multiple';
     field: string;
   };
+};
+
+/**
+ * Space codes that can read/write this attribute. Not allowed on relationship
+ * attributes (`scope: 'relationship'`): bind the related entity instead.
+ */
+type AttributeSpaces = {
   spaces?: string[];
 };
+
+type AttributeScopeAndSpaces =
+  | {
+      scope: 'relationship';
+      spaces?: never;
+    }
+  | ({
+      scope: 'local' | 'global';
+    } & AttributeSpaces);
 
 type AttributeByDataType<T extends DataType> = AttributeBase & {
   dataType: T;
   defaultValue?: DefaultValueByDataType[T];
-} & (T extends 'asset' ? { scope?: 'global' } : { scope: ScopeType });
+} & (T extends 'asset' ? { scope?: 'global' } & AttributeSpaces : AttributeScopeAndSpaces);
 
 export type Attribute = {
   [T in DataType]: AttributeByDataType<T>;

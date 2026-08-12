@@ -187,6 +187,7 @@ export const products = defineEntity({
         size: 130,
         comment: 'Precio de Venta Público Recomendado',
       },
+      spaces: ['mkt', 'gtm', 'finance', 'ops', 'cx', 'legal', 'data', 'it'],
       dataType: 'float',
       inputType: 'number',
       previewType: 'text',

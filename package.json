@@ -26,6 +26,11 @@
     "turbo": "latest"
   },
   "packageManager": "pnpm@10.33.2",
+  "pnpm": {
+    "overrides": {
+      "@streamdown/code>shiki": "4.4.3"
+    }
+  },
   "engines": {
     "node": ">=20.9.0"
   }
