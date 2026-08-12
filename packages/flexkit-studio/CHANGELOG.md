@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.30
+
+### Patch Changes
+
+- 306e794: Agent chat
+
 ## 0.0.29
 
 ### Patch Changes

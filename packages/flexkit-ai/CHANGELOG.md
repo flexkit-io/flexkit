@@ -1,5 +1,13 @@
 # @flexkit/ai
 
+## 0.0.2
+
+### Patch Changes
+
+- 306e794: Agent chat
+- Updated dependencies [306e794]
+  - @flexkit/studio@0.0.30
+
 ## 0.0.1
 
 ### Patch Changes
