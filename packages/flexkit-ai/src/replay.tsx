@@ -405,8 +405,14 @@ export function useRunStream(
   // healthy reconnect the way resetting resumeToken would.
   const suppressApprovalPauseRef = useRef(options?.suppressApprovalPause ?? false);
   suppressApprovalPauseRef.current = options?.suppressApprovalPause ?? false;
+  const streamApiRef = useRef(streamApi);
+  const messageRef = useRef(message);
+  messageRef.current = message;
 
   useEffect(() => {
+    const streamChanged = streamApiRef.current !== streamApi;
+    streamApiRef.current = streamApi;
+
     if (!streamApi) {
       setMessage(undefined);
       setStatus('unavailable');
@@ -415,8 +421,15 @@ export function useRunStream(
     }
 
     const abortController = new AbortController();
-    let latestMessage: ReplayMessage | undefined;
-    setMessage(undefined);
+    // Approval resume and record-status updates restart this effect (they bump
+    // resumeToken / recordStatus) but the stream identity is unchanged. Keep
+    // the in-memory replay while consumeOnce rebuilds from startIndex=0.
+    let latestMessage: ReplayMessage | undefined = streamChanged ? undefined : messageRef.current;
+
+    if (streamChanged) {
+      setMessage(undefined);
+    }
+
     setStatus('streaming');
 
     // The chat stream URL already carries a workflowRunId query parameter.

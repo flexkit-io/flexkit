@@ -33,22 +33,18 @@ import {
   usePromptInputController,
 } from '@flexkit/studio/ui';
 import { fetcher, paths, type ApiClient } from '../api';
-import { RunSpecPart, type SpecMessagePart } from '../spec-renderer';
 import {
   MessagePart,
   MutationApprovalPart,
-  ReasoningPart,
-  RunArtifactPart,
   RunReplayActionsContext,
   STREAM_RETRY_DELAY_MS,
   getMutationApprovalIds,
-  isCodeFenceOnlyText,
   messageHasPendingMutationApproval,
   toMutationApprovalPartData,
   useProjectApi,
   useRunStream,
   useSessionMessages,
-  type ReplayDataParts,
+  type ReplayMessagePart,
   type RunRecordStatus,
   type RunReplayActions,
 } from '../replay';
@@ -84,14 +80,6 @@ function getTurnRecordStatus(status: AgentChatMessageStatus): RunRecordStatus {
   }
 
   return 'running';
-}
-
-function AssistantText({ text }: { text: string }): JSX.Element {
-  return (
-    <div className="fk:min-w-0 fk:max-w-full fk:overflow-x-auto fk:whitespace-pre-wrap fk:rounded-xl fk:bg-muted fk:px-4 fk:py-3 fk:text-sm fk:font-light fk:leading-relaxed fk:text-secondary-foreground">
-      {text}
-    </div>
-  );
 }
 
 function UserBubble({ text }: { text: string }): JSX.Element {
@@ -141,8 +129,12 @@ function UserBubble({ text }: { text: string }): JSX.Element {
   );
 }
 
-const SPEC_PART_TYPE = 'data-spec';
-
+/**
+ * Finished turns are stored as UIMessage-shaped parts. Reuse the live replay
+ * renderer for `data-*` events (approvals, turn errors, tool status, artifacts,
+ * specs) so history matches the in-flight `MessagePart` tree. `tool-*` parts
+ * come from ModelMessage reconstruction and are ignored by `MessagePart`.
+ */
 function PersistedPart({
   api,
   part,
@@ -154,33 +146,6 @@ function PersistedPart({
   partIndex: number;
   parts: AgentChatPart[];
 }): JSX.Element | null {
-  if (part.type === 'data-run-artifact' && part.data) {
-    return <RunArtifactPart api={api} message={part.data as ReplayDataParts['run-artifact']} />;
-  }
-
-  if (part.type === 'text' && part.text?.trim()) {
-    // Chats persisted before the fence-stripping fix carry stray fence-only
-    // text parts around their spec parts.
-    const isStrayFence = isCodeFenceOnlyText(part.text) && parts.some((otherPart) => otherPart.type === SPEC_PART_TYPE);
-
-    return isStrayFence ? null : <AssistantText text={part.text} />;
-  }
-
-  if (part.type === 'reasoning' && part.text?.trim()) {
-    return <ReasoningPart streaming={false} text={part.text} />;
-  }
-
-  if (part.type === SPEC_PART_TYPE) {
-    // Render the assembled spec once, at the last spec part of the message.
-    const nextSpecPart = parts.slice(partIndex + 1).find((nextPart) => nextPart.type === SPEC_PART_TYPE);
-
-    if (nextSpecPart) {
-      return null;
-    }
-
-    return <RunSpecPart parts={parts as SpecMessagePart[]} />;
-  }
-
   if (part.type.startsWith('tool-')) {
     const state = (part.state === 'output-available' ? 'output-available' : 'input-available') as
       | 'output-available'
@@ -197,7 +162,14 @@ function PersistedPart({
     );
   }
 
-  return null;
+  return (
+    <MessagePart
+      api={api}
+      part={part as ReplayMessagePart}
+      partIndex={partIndex}
+      parts={parts as ReplayMessagePart[]}
+    />
+  );
 }
 
 function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMessage }): JSX.Element | null {
@@ -206,6 +178,7 @@ function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMe
   }
 
   const parts = Array.isArray(message.parts) ? message.parts : [];
+  const hasTurnErrorPart = parts.some((part) => part.type === 'data-turn-error');
 
   if (parts.length === 0 && !message.error) {
     return null;
@@ -222,7 +195,7 @@ function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMe
           parts={parts}
         />
       ))}
-      {message.error ? (
+      {message.error && !hasTurnErrorPart ? (
         <div className="fk:flex fk:items-start fk:gap-2 fk:rounded-xl fk:border fk:border-red-700/40 fk:bg-destructive/5 fk:px-3.5 fk:py-3 fk:text-sm">
           <XCircleIcon className="fk:mt-0.5 fk:size-3.5 fk:shrink-0 fk:text-red-700" />
           <span className="fk:whitespace-pre-wrap fk:text-xs">{message.error}</span>

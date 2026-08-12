@@ -1,31 +1,18 @@
-"use client";
+'use client';
 
-import { useControllableState } from "@radix-ui/react-use-controllable-state";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "../primitives/collapsible";
-import { cn } from "../lib/utils";
-import { cjk } from "@streamdown/cjk";
-import { code } from "@streamdown/code";
-import { math } from "@streamdown/math";
-import { mermaid } from "@streamdown/mermaid";
-import { BrainIcon, ChevronDownIcon } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
-import {
-  createContext,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { Streamdown } from "streamdown";
+import { useControllableState } from '@radix-ui/react-use-controllable-state';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../primitives/collapsible';
+import { cn } from '../lib/utils';
+import { cjk } from '@streamdown/cjk';
+import { code } from '@streamdown/code';
+import { math } from '@streamdown/math';
+import { mermaid } from '@streamdown/mermaid';
+import { BrainIcon, ChevronDownIcon } from 'lucide-react';
+import type { ComponentProps, ReactNode } from 'react';
+import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Streamdown } from 'streamdown';
 
-import { Shimmer } from "./shimmer";
+import { Shimmer } from './shimmer';
 
 interface ReasoningContextValue {
   isStreaming: boolean;
@@ -39,7 +26,7 @@ const ReasoningContext = createContext<ReasoningContextValue | null>(null);
 export const useReasoning = () => {
   const context = useContext(ReasoningContext);
   if (!context) {
-    throw new Error("Reasoning components must be used within Reasoning");
+    throw new Error('Reasoning components must be used within Reasoning');
   }
   return context;
 };
@@ -106,12 +93,7 @@ export const Reasoning = memo(
 
     // Auto-close when streaming ends (once only, and only if it ever streamed)
     useEffect(() => {
-      if (
-        hasEverStreamedRef.current &&
-        !isStreaming &&
-        isOpen &&
-        !hasAutoClosed
-      ) {
+      if (hasEverStreamedRef.current && !isStreaming && isOpen && !hasAutoClosed) {
         const timer = setTimeout(() => {
           setIsOpen(false);
           setHasAutoClosed(true);
@@ -136,7 +118,7 @@ export const Reasoning = memo(
     return (
       <ReasoningContext.Provider value={contextValue}>
         <Collapsible
-          className={cn("fk:not-prose fk:mb-4", className)}
+          className={cn('fk:not-prose fk:mb-4', className)}
           onOpenChange={handleOpenChange}
           open={isOpen}
           {...props}
@@ -148,9 +130,7 @@ export const Reasoning = memo(
   }
 );
 
-export type ReasoningTriggerProps = ComponentProps<
-  typeof CollapsibleTrigger
-> & {
+export type ReasoningTriggerProps = ComponentProps<typeof CollapsibleTrigger> & {
   getThinkingMessage?: (isStreaming: boolean, duration?: number) => ReactNode;
 };
 
@@ -165,18 +145,13 @@ const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
 };
 
 export const ReasoningTrigger = memo(
-  ({
-    className,
-    children,
-    getThinkingMessage = defaultGetThinkingMessage,
-    ...props
-  }: ReasoningTriggerProps) => {
+  ({ className, children, getThinkingMessage = defaultGetThinkingMessage, ...props }: ReasoningTriggerProps) => {
     const { isStreaming, isOpen, duration } = useReasoning();
 
     return (
       <CollapsibleTrigger
         className={cn(
-          "fk:flex fk:w-full fk:items-center fk:gap-2 fk:text-muted-foreground fk:text-sm fk:transition-colors fk:hover:text-foreground",
+          'fk:flex fk:w-full fk:items-center fk:gap-2 fk:text-muted-foreground fk:text-sm fk:transition-colors fk:hover:text-foreground',
           className
         )}
         {...props}
@@ -186,10 +161,7 @@ export const ReasoningTrigger = memo(
             <BrainIcon className="fk:size-4" />
             {getThinkingMessage(isStreaming, duration)}
             <ChevronDownIcon
-              className={cn(
-                "fk:size-4 fk:transition-transform",
-                isOpen ? "fk:rotate-180" : "fk:rotate-0"
-              )}
+              className={cn('fk:size-4 fk:transition-transform', isOpen ? 'fk:rotate-180' : 'fk:rotate-0')}
             />
           </>
         )}
@@ -198,29 +170,25 @@ export const ReasoningTrigger = memo(
   }
 );
 
-export type ReasoningContentProps = ComponentProps<
-  typeof CollapsibleContent
-> & {
+export type ReasoningContentProps = ComponentProps<typeof CollapsibleContent> & {
   children: string;
 };
 
 const streamdownPlugins = { cjk, code, math, mermaid };
 
-export const ReasoningContent = memo(
-  ({ className, children, ...props }: ReasoningContentProps) => (
-    <CollapsibleContent
-      className={cn(
-        "fk:mt-4 fk:text-sm",
-        "fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:slide-out-to-top-2 fk:data-[state=open]:slide-in-from-top-2 fk:text-muted-foreground fk:outline-none fk:data-[state=closed]:animate-out fk:data-[state=open]:animate-in",
-        className
-      )}
-      {...props}
-    >
-      <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
-    </CollapsibleContent>
-  )
-);
+export const ReasoningContent = memo(({ className, children, ...props }: ReasoningContentProps) => (
+  <CollapsibleContent
+    className={cn(
+      'fk:mt-4 fk:text-sm',
+      'fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:slide-out-to-top-2 fk:data-[state=open]:slide-in-from-top-2 fk:text-muted-foreground fk:outline-none fk:data-[state=closed]:animate-out fk:data-[state=open]:animate-in',
+      className
+    )}
+    {...props}
+  >
+    <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+  </CollapsibleContent>
+));
 
-Reasoning.displayName = "Reasoning";
-ReasoningTrigger.displayName = "ReasoningTrigger";
-ReasoningContent.displayName = "ReasoningContent";
+Reasoning.displayName = 'Reasoning';
+ReasoningTrigger.displayName = 'ReasoningTrigger';
+ReasoningContent.displayName = 'ReasoningContent';
