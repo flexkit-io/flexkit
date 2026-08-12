@@ -1,12 +1,24 @@
 import type { JSX } from 'react';
-import { BotIcon, GraduationCapIcon, HistoryIcon, InboxIcon } from 'lucide-react';
+import { useState } from 'react';
+import {
+  BotIcon,
+  GraduationCapIcon,
+  HistoryIcon,
+  InboxIcon,
+  SearchIcon,
+  SparklesIcon,
+  SquarePenIcon,
+} from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import { useConfig } from '@flexkit/studio';
 import {
   Badge,
+  Input,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -14,7 +26,10 @@ import {
   SidebarRail,
 } from '@flexkit/studio/ui';
 import { fetcher, paths } from './api';
+import { AgentChatsSection, useDebouncedValue } from './agent/chat-list';
 import type { AutomationApprovals } from './types';
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 const NavLinkCompat = NavLink as unknown as React.ComponentType<{
   children?: React.ReactNode;
@@ -43,16 +58,38 @@ function PendingApprovalsBadge(): JSX.Element | null {
 
 export function AutomationsSidebar(): JSX.Element {
   const location = useLocation();
+  const isAgent = location.pathname.includes('/ai/agent');
   const isRunHistory = location.pathname.endsWith('/ai/runs');
   const isApprovals = location.pathname.endsWith('/ai/approvals');
   const isSkills = location.pathname.includes('/ai/skills');
-  const isAutomations = !isRunHistory && !isApprovals && !isSkills;
+  const isAutomations = !isAgent && !isRunHistory && !isApprovals && !isSkills;
+  const [query, setQuery] = useState('');
+  const debouncedQuery = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS);
 
   return (
     <SidebarPanel collapsible="icon" variant="inset">
       <SidebarContent>
+        <SidebarGroup className="fk:pb-0 fk:group-data-[collapsible=icon]:hidden">
+          <SidebarGroupContent className="fk:relative">
+            <SearchIcon className="fk:absolute fk:left-2 fk:top-1/2 fk:size-3.5 fk:-translate-y-1/2 fk:text-muted-foreground" />
+            <Input
+              className="fk:h-8 fk:bg-background fk:pl-7 fk:text-sm"
+              placeholder="Search chats..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </SidebarGroupContent>
+        </SidebarGroup>
         <SidebarGroup>
           <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isAgent} tooltip="Agents">
+                <NavLinkCompat to="agent">
+                  <SquarePenIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
+                  <span>New chat</span>
+                </NavLinkCompat>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isAutomations} tooltip="Automations">
                 <NavLinkCompat to="automations">
@@ -87,6 +124,11 @@ export function AutomationsSidebar(): JSX.Element {
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup className="fk:mt-4 fk:group-data-[collapsible=icon]:hidden">
+          <SidebarGroupContent>
+            <AgentChatsSection query={debouncedQuery} />
+          </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
       <SidebarRail />

@@ -1,4 +1,7 @@
 import type {
+  AgentChat,
+  AgentChatMessage,
+  AgentChatTurn,
   Automation,
   AutomationApproval,
   AutomationApprovalStatus,
@@ -20,6 +23,12 @@ export interface DecideApprovalInput {
 
 export interface ApiClient {
   cancelRun: (_runId: string) => Promise<MutationResult>;
+  createAgentChat: (_input?: { modelId?: string | null }) => Promise<{ chat: AgentChat }>;
+  deleteAgentChat: (_chatId: string) => Promise<{ success: boolean }>;
+  getAgentChatStreamUrl: (_chatId: string, _workflowRunId: string) => string;
+  renameAgentChat: (_chatId: string, _title: string) => Promise<{ chat: AgentChat }>;
+  sendAgentChatMessage: (_chatId: string, _input: { content: string; modelId?: string | null }) => Promise<AgentChatTurn>;
+  stopAgentChat: (_chatId: string) => Promise<{ message: AgentChatMessage }>;
   decideApproval: (
     _approvalId: string,
     _input: DecideApprovalInput
@@ -87,6 +96,7 @@ export function createApiClient(projectId: string): ApiClient {
   const projectBasePath = `/api/flexkit/${projectId}`;
   const automationsBasePath = `${projectBasePath}/automations`;
   const skillsBasePath = `${projectBasePath}/skills`;
+  const agentChatsBasePath = `${projectBasePath}/agent/chats`;
 
   async function request<T>(url: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, {
@@ -111,6 +121,29 @@ export function createApiClient(projectId: string): ApiClient {
   return {
     cancelRun: async (runId) =>
       request<MutationResult>(`${automationsBasePath}/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' }),
+    createAgentChat: async (input) =>
+      request<{ chat: AgentChat }>(agentChatsBasePath, {
+        body: JSON.stringify({ modelId: input?.modelId ?? null }),
+        method: 'POST',
+      }),
+    deleteAgentChat: async (chatId) =>
+      request<{ success: boolean }>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}`, { method: 'DELETE' }),
+    getAgentChatStreamUrl: (chatId, workflowRunId) =>
+      `${agentChatsBasePath}/${encodeURIComponent(chatId)}/stream?workflowRunId=${encodeURIComponent(workflowRunId)}`,
+    renameAgentChat: async (chatId, title) =>
+      request<{ chat: AgentChat }>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}`, {
+        body: JSON.stringify({ title }),
+        method: 'PATCH',
+      }),
+    sendAgentChatMessage: async (chatId, input) =>
+      request<AgentChatTurn>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}/messages`, {
+        body: JSON.stringify(input),
+        method: 'POST',
+      }),
+    stopAgentChat: async (chatId) =>
+      request<{ message: AgentChatMessage }>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}/stop`, {
+        method: 'POST',
+      }),
     decideApproval: async (approvalId, input) => {
       const response = await fetch(`${automationsBasePath}/approvals/${encodeURIComponent(approvalId)}/decide`, {
         body: JSON.stringify(input),
@@ -230,6 +263,10 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 };
 
 export function paths(projectId: string): {
+  agentChat: (_chatId: string) => string;
+  agentChatSearch: (_query: string) => string;
+  agentChats: (_offset?: number) => string;
+  agentProfile: () => string;
   approval: (_approvalId: string) => string;
   approvals: (_options?: {
     limit?: number;
@@ -258,8 +295,13 @@ export function paths(projectId: string): {
 } {
   const basePath = `/api/flexkit/${projectId}/automations`;
   const skillsBasePath = `/api/flexkit/${projectId}/skills`;
+  const agentChatsBasePath = `/api/flexkit/${projectId}/agent/chats`;
 
   return {
+    agentChat: (chatId) => `${agentChatsBasePath}/${encodeURIComponent(chatId)}`,
+    agentChatSearch: (query) => `${agentChatsBasePath}/search?q=${encodeURIComponent(query)}`,
+    agentChats: (offset = 0) => `${agentChatsBasePath}?offset=${offset.toString()}`,
+    agentProfile: () => `/api/flexkit/${projectId}/agent/profile`,
     approval: (approvalId) => `${basePath}/approvals/${encodeURIComponent(approvalId)}`,
     approvals: (options = {}) => {
       const { limit = 25, offset = 0, runId, status } = options;

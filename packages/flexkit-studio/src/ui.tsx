@@ -89,6 +89,8 @@ export {
   Sidebar as SidebarPanel,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -118,3 +120,32 @@ export { Tooltip, TooltipTrigger, TooltipContent, TooltipPortal, TooltipProvider
 export { InsufficientPermissionsTooltipContent, PermissionTooltip } from './ui/components/permission-tooltip';
 export { default as DrawerModal } from './ui/components/drawer-modal';
 export { toast, Toaster } from './ui/primitives/sonner';
+export { HoverCard, HoverCardTrigger, HoverCardContent } from './ui/primitives/hover-card';
+export { Spinner } from './ui/primitives/spinner';
+export {
+  ButtonGroup,
+  ButtonGroupSeparator,
+  ButtonGroupText,
+  buttonGroupVariants,
+} from './ui/primitives/button-group';
+export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText,
+  InputGroupInput,
+  InputGroupTextarea,
+} from './ui/primitives/input-group';
+
+// AI Elements
+export * from './ui/ai-elements/attachments';
+export * from './ui/ai-elements/code-block';
+export * from './ui/ai-elements/conversation';
+export * from './ui/ai-elements/message';
+export * from './ui/ai-elements/model-selector';
+export * from './ui/ai-elements/prompt-input';
+export * from './ui/ai-elements/reasoning';
+export { Shimmer } from './ui/ai-elements/shimmer';
+export * from './ui/ai-elements/sources';
+export * from './ui/ai-elements/suggestion';
+export * from './ui/ai-elements/tool';
