@@ -316,6 +316,22 @@ export function messageHasPendingMutationApproval(message: ReplayMessage | undef
   });
 }
 
+function withoutPendingMutationApprovals(message: ReplayMessage): ReplayMessage {
+  const parts = message.parts.filter((part) => {
+    if (part.type !== 'data-mutation-approval') {
+      return true;
+    }
+
+    return getPartData<ReplayDataParts['mutation-approval']>(part).status !== 'pending';
+  });
+
+  if (parts.length === message.parts.length) {
+    return message;
+  }
+
+  return { ...message, parts };
+}
+
 export function isTerminalRunStatus(status: RunRecordStatus | null | undefined): boolean {
   return status === 'success' || status === 'failed' || status === 'cancelled' || status === 'skipped';
 }
@@ -428,6 +444,16 @@ export function useRunStream(
 
     if (streamChanged) {
       setMessage(undefined);
+    } else if (latestMessage && (recordStatus === 'running' || isTerminalRunStatus(recordStatus))) {
+      // Pending data-mutation-approval parts are stale once the run record
+      // says execution has resumed. Chat and run UIs treat those parts as
+      // still awaiting approval until consumeOnce rebuilds from startIndex=0.
+      const nextMessage = withoutPendingMutationApprovals(latestMessage);
+
+      if (nextMessage !== latestMessage) {
+        latestMessage = nextMessage;
+        setMessage(nextMessage);
+      }
     }
 
     setStatus('streaming');

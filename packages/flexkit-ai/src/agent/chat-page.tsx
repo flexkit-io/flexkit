@@ -274,8 +274,12 @@ function LiveTurn({
     }
   }, [status]);
 
+  // Prefer the turn record over a stale pending stream part once execution
+  // has resumed (`streaming`). Keeping the previous replay on reconnect can
+  // leave a pending data-mutation-approval part in memory until rebuild.
   const isAwaitingApproval =
     !suppressApprovalPause &&
+    message.status !== 'streaming' &&
     (message.status === 'awaiting_approval' || status === 'paused' || messageHasPendingMutationApproval(streamMessage));
   // When the stream replay has no data-mutation-approval part yet (e.g. right
   // after a reload), fall back to the pending approval from the chat detail.
