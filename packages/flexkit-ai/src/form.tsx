@@ -1105,12 +1105,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       return;
     }
 
-    const waitingOnAttachedResolve =
-      unresolvedAttachedSkillIds.length > 0 && resolvedAttachedSkills === undefined;
+    const waitingOnAttachedResolve = unresolvedAttachedSkillIds.length > 0 && resolvedAttachedSkills === undefined;
     const notFoundAttachedIds = new Set(
-      waitingOnAttachedResolve
-        ? []
-        : unresolvedAttachedSkillIds.filter((skillId) => !skillsById[skillId])
+      waitingOnAttachedResolve ? [] : unresolvedAttachedSkillIds.filter((skillId) => !skillsById[skillId])
     );
 
     setSkillIds((current) => {
@@ -1354,7 +1351,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   }
 
   return (
-    <form className="fk:max-w-3xl fk:space-y-8 fk:px-1 fk:mx-auto" onSubmit={(event) => void handleSubmit(event)}>
+    <form className="fk:max-w-4xl fk:space-y-8 fk:px-1 fk:mx-auto" onSubmit={(event) => void handleSubmit(event)}>
       {message ? (
         <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive">
           {message}

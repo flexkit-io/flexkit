@@ -109,7 +109,7 @@ export const products = defineEntity({
         field: 'name',
         entity: 'brand',
       },
-      // TODO: figure out how to validate relationship fields
+      // TODO: implement validation for relationship fields
       // validation: (z) => z.string().min(1, { error: 'Brand is required' }),
     },
     {
@@ -430,6 +430,23 @@ export const products = defineEntity({
       isSearchable: false,
       inputType: 'text',
       defaultValue: '',
+    },
+    {
+      name: 'reviews',
+      label: 'Reviews',
+      scope: 'relationship',
+      options: {
+        size: 260,
+        comment: 'Product reviews',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'customerName',
+        entity: 'review',
+      },
     },
     {
       name: 'contentFormat',

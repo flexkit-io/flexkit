@@ -6,7 +6,7 @@ import { Button } from '../../../ui/primitives/button';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
 import { Input } from '../../../ui/primitives/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../ui/primitives/tooltip';
-import type { ActionSetRelationship, Attribute, Entity } from '../../../core/types';
+import type { ActionSetRelationship, Attribute, Entity, SingleRelationshipConnection } from '../../../core/types';
 import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
 import type { FormFieldParams } from '../../types';
@@ -36,20 +36,28 @@ export default function SingleRelationship({
   const primaryAttributeName = primaryAttribute.name;
 
   useEffect(() => {
-    if (defaultValue.value === '') {
+    const connectValue = defaultValue.value;
+
+    if (connectValue === '' || typeof connectValue === 'boolean' || typeof connectValue === 'number') {
       return;
     }
 
-    // set the initial state of the relationship
-    appDispatch({
+    const connect: SingleRelationshipConnection = {
+      _id: String(defaultValue._id),
+      value: connectValue,
+    };
+    const action: ActionSetRelationship = {
       type: 'setRelationship',
       payload: {
         [relationshipId]: {
-          connect: { _id: String(defaultValue._id), value: defaultValue.value },
+          connect,
           disconnect: [],
         },
       },
-    });
+    };
+
+    // set the initial state of the relationship
+    appDispatch(action);
   }, [appDispatch, relationshipId, defaultValue, scope]);
 
   /**
@@ -133,7 +141,7 @@ export default function SingleRelationship({
                 }`}
               >
                 <Input
-                  className="fk:h-[2.375rem] fk:py-[0.4375rem] fk:caret-transparent fk:border-0 fk:focus-visible:ring-0 fk:focus-visible:ring-offset-0"
+                  className="fk:h-9.5 fk:py-1.75 fk:caret-transparent fk:border-0 fk:focus-visible:ring-0 fk:focus-visible:ring-offset-0"
                   id={fieldId}
                   onBlur={() => {
                     setHasFocus(false);
@@ -156,7 +164,7 @@ export default function SingleRelationship({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk:absolute fk:right-10 fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                          className="fk:absolute fk:right-10 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                           onClick={handleClearing}
                           size="icon"
                           variant="ghost"
@@ -174,7 +182,7 @@ export default function SingleRelationship({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                        className="fk:absolute fk:right-0.75 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
                         onClick={handleSelection}
                         size="icon"
                         variant="ghost"

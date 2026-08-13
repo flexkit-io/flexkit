@@ -19,7 +19,7 @@ import {
 } from '@flexkit/studio/ui';
 import { fetcher, paths, type ApiClient } from '../api';
 import { useProjectApi } from '../replay';
-import type { AgentChat, AgentChatSearchResult, AgentChatsList } from '../types';
+import type { AgentChat, AgentChatDetail, AgentChatSearchResult, AgentChatsList } from '../types';
 
 /** Returns the absolute route prefix of the agent app (`.../ai/agent`). */
 export function useAgentBasePath(): string {
@@ -264,7 +264,26 @@ export function AgentChatsSection({ query }: { query: string }): JSX.Element | n
     fetcher,
     { revalidateFirstPage: true }
   );
-  const chats = useMemo(() => (data ?? []).flatMap((page) => page.chats), [data]);
+  const { data: activeChatDetail } = useSWR<AgentChatDetail>(
+    projectId && activeChatId ? paths(projectId).agentChat(activeChatId) : null,
+    fetcher
+  );
+  const chats = useMemo(() => {
+    const listed = (data ?? []).flatMap((page) => page.chats);
+    const generatedTitle = activeChatDetail?.chat.title?.trim();
+
+    if (!activeChatId || !generatedTitle) {
+      return listed;
+    }
+
+    return listed.map((chat) => {
+      if (chat.id !== activeChatId || chat.title?.trim()) {
+        return chat;
+      }
+
+      return { ...chat, title: generatedTitle };
+    });
+  }, [activeChatDetail?.chat.title, activeChatId, data]);
   const hasMore = data?.[data.length - 1]?.hasMore ?? false;
   const groups = useMemo(() => groupChats(chats), [chats]);
 
