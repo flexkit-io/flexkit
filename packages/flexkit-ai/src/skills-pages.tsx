@@ -502,7 +502,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
   }
 
   return (
-    <form className="fk:max-w-3xl fk:space-y-8 fk:px-1 fk:mx-auto" onSubmit={(event) => void handleSubmit(event)}>
+    <form className="fk:max-w-4xl fk:space-y-8 fk:px-1 fk:mx-auto" onSubmit={(event) => void handleSubmit(event)}>
       {message ? (
         <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive">
           {message}
@@ -552,8 +552,8 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
           Visibility
         </Label>
         <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
-          Who can see and use this skill. Space skills are only visible to members of the selected space and only
-          usable by automations in that space; personal skills are private to you.
+          Who can see and use this skill. Space skills are only visible to members of the selected space and only usable
+          by automations in that space; personal skills are private to you.
         </p>
         <div className="fk:flex fk:items-center fk:gap-2">
           <Select

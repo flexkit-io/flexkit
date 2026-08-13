@@ -61,8 +61,43 @@ interface ToolsResponse {
   tools: AutomationTools;
 }
 
+/** Keep fetching an untitled chat after the first turn so the generated title can land. */
+const TITLE_POLL_TIMEOUT_MS = 60_000;
+
 function isActiveTurnStatus(status: AgentChatMessageStatus): boolean {
   return status === 'pending' || status === 'streaming' || status === 'awaiting_approval';
+}
+
+function getChatDetailRefreshInterval(latestData: AgentChatDetail | undefined): number {
+  if (!latestData) {
+    return 0;
+  }
+
+  const lastMessage = latestData.messages[latestData.messages.length - 1];
+
+  if (lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status)) {
+    return STREAM_RETRY_DELAY_MS;
+  }
+
+  if (latestData.chat.title?.trim()) {
+    return 0;
+  }
+
+  const hasCompletedAssistant = latestData.messages.some(
+    (message) => message.role === 'assistant' && message.status === 'complete'
+  );
+
+  if (!hasCompletedAssistant) {
+    return 0;
+  }
+
+  const lastActivity = new Date(latestData.chat.lastMessageAt ?? latestData.chat.updatedAt).getTime();
+
+  if (Date.now() - lastActivity < TITLE_POLL_TIMEOUT_MS) {
+    return STREAM_RETRY_DELAY_MS;
+  }
+
+  return 0;
 }
 
 /** Maps a chat turn status onto the record statuses the stream hook understands. */
@@ -347,7 +382,7 @@ function ChatComposer({
 
   return (
     <PromptInput
-      className="fk:mx-auto fk:max-w-3xl"
+      className="fk:mx-auto fk:max-w-4xl"
       onSubmit={async ({ text }) => {
         const trimmed = text?.trim();
 
@@ -394,15 +429,7 @@ function ChatConversation({
   projectId: string;
 }): JSX.Element {
   const { data, mutate } = useSWR<AgentChatDetail>(paths(projectId).agentChat(chatId), fetcher, {
-    refreshInterval: (latestData) => {
-      const lastMessage = latestData?.messages[latestData.messages.length - 1];
-
-      if (lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status)) {
-        return STREAM_RETRY_DELAY_MS;
-      }
-
-      return 0;
-    },
+    refreshInterval: getChatDetailRefreshInterval,
   });
 
   if (!data) {
@@ -422,7 +449,7 @@ function ChatConversation({
   return (
     <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
       <ConversationContent className="fk:gap-0 fk:p-0">
-        <div className="fk:mx-auto fk:w-full fk:max-w-3xl fk:space-y-5 fk:pb-6 fk:pr-4">
+        <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
           {historyMessages.map((message) => (
             <HistoryMessage api={api} key={message.id} message={message} />
           ))}
@@ -585,7 +612,7 @@ export function AgentChatPage(): JSX.Element {
             )}
             <div className="fk:shrink-0 fk:pb-3">
               {sendError ? (
-                <p className="fk:mx-auto fk:mb-2 fk:max-w-3xl fk:text-xs fk:text-destructive">{sendError}</p>
+                <p className="fk:mx-auto fk:mb-2 fk:max-w-4xl fk:text-xs fk:text-destructive">{sendError}</p>
               ) : null}
               <ChatComposer
                 modelId={modelId}

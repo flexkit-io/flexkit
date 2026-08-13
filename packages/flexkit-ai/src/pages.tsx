@@ -113,7 +113,6 @@ interface CreditResponse {
   creditBalance: AutomationCreditBalance;
 }
 
-
 function PageMessage({ children }: { children: string }): JSX.Element {
   return (
     <div className="fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:text-center fk:text-sm fk:text-muted-foreground">
@@ -1243,7 +1242,6 @@ function MetricCard({ title, value }: { title: string; value: number }): JSX.Ele
   );
 }
 
-
 export function RunDetailPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const { automationId, runId } = useParams<{ automationId: string; runId: string }>();
@@ -1333,7 +1331,7 @@ export function RunDetailPage(): JSX.Element {
       </div>
       <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
         <ConversationContent className="fk:gap-0 fk:p-0">
-          <div className="fk:mx-auto fk:max-w-5xl fk:pb-6 fk:pr-4">
+          <div className="fk:mx-auto fk:w-full fk:max-w-5xl fk:pb-6 fk:pr-4">
             {run ? (
               <RunReplay api={api} run={run} onRunUpdated={handleRunUpdated} onStreamFinished={handleStreamFinished} />
             ) : (
@@ -1650,4 +1648,3 @@ function ReplayMessageView({
     </div>
   );
 }
-

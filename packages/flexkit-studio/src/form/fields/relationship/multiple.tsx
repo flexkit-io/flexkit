@@ -245,10 +245,15 @@ export default function MultipleRelationship({
               <div className="fk:flex fk:w-full fk:min-w-0 fk:flex-col">
                 <div className="fk:flex fk:w-full fk:space-x-2">
                   {!isOpen ? (
-                    <span className="fk:flex fk:flex-wrap fk:grow fk:pb-1.5">
+                    <span className="fk:flex fk:min-w-0 fk:flex-wrap fk:grow fk:overflow-hidden fk:pb-1.5 fk:pr-10">
                       {previewItems.map((item) => (
-                        <Badge className="fk:mr-2 fk:mt-1.5 fk:rounded-xs" key={item} variant="secondary">
-                          {item}
+                        <Badge
+                          className="fk:mr-2 fk:mt-1.5 fk:max-w-60 fk:justify-start fk:rounded-xs"
+                          key={item}
+                          title={item}
+                          variant="secondary"
+                        >
+                          <span className="fk:min-w-0 fk:truncate">{item}</span>
                         </Badge>
                       ))}
                       {hasMorePreviewItems ? (
