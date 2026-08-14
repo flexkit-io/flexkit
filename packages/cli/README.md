@@ -38,7 +38,7 @@ For details on how to use Flexkit CLI, check out our [documentation](https://fle
 
 ## Contributing
 
-Contributions to Flexkit are welcome and highly appreciated. However, before you jump right into it, we would like you to review our [Contribution Guidelines](/contributing.md) to make sure you have a smooth experience contributing to Flexkit.
+Contributions to Flexkit are welcome and highly appreciated. However, before you jump right into it, we would like you to review our [Contribution Guidelines](/CONTRIBUTING.md) to make sure you have a smooth experience contributing to Flexkit.
 
 ## Reporting Issues
 
@@ -62,4 +62,4 @@ See [LICENSE](https://github.com/flexkit-io/flexkit/blob/main/LICENSE) for more 
 
 If you believe you have found a security vulnerability in Flexkit, we encourage you to **_responsibly disclose this and NOT open a public issue_**.
 
-Please email us at security@flexkit.io to report any security vulnerabilities.
+See [SECURITY.md](/SECURITY.md) for how to report.
