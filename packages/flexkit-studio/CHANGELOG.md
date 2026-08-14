@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.0.31
+
+### Patch Changes
+
+- 85ef07c: Minor style adjustments and fixes
+
 ## 0.0.30
 
 ### Patch Changes

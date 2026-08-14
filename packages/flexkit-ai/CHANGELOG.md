@@ -1,5 +1,13 @@
 # @flexkit/ai
 
+## 0.0.3
+
+### Patch Changes
+
+- 85ef07c: Minor style adjustments and fixes
+- Updated dependencies [85ef07c]
+  - @flexkit/studio@0.0.31
+
 ## 0.0.2
 
 ### Patch Changes

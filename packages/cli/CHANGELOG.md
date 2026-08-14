@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.0.10
+
+### Patch Changes
+
+- a9b8e8d: Security patches
+
 ## 0.0.9
 
 ### Patch Changes
