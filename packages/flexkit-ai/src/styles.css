@@ -2,6 +2,37 @@
 @import 'shadcn/tailwind.css';
 @config '../tailwind.config.ts';
 
+/* Rolling status line: the old label exits through the top while the new one
+   enters from the bottom of an overflow-hidden line. */
+@theme {
+  --animate-roll-up-in: roll-up-in 0.3s ease-out;
+  --animate-roll-up-out: roll-up-out 0.3s ease-out forwards;
+
+  @keyframes roll-up-in {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes roll-up-out {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    to {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+  }
+}
+
 html,
 body {
   height: 100%;

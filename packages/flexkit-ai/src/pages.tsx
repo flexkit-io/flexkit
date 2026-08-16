@@ -55,8 +55,10 @@ import { AutomationForm } from './form';
 import {
   MessagePart,
   MutationApprovalPart,
+  RollingStatusText,
   RunReplayActionsContext,
   STREAM_RETRY_DELAY_MS,
+  getActiveRollingStatusLabel,
   getMutationApprovalIds,
   getPendingMutationApprovalIds,
   isTerminalRunStatus,
@@ -1589,13 +1591,13 @@ function RunReplay({
                 `streaming` forever; the run record is authoritative once it
                 reaches a terminal status. */}
             {status === 'streaming' && !isAwaitingApproval && !isTerminalRunStatus(run.status) ? (
-              <div className="fk:flex fk:items-center fk:shimmer fk:shimmer-duration-1000 fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
+              <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
                 <LoaderCircle className="fk:size-4 fk:animate-spin" />
-                <span>Running...</span>
+                <RollingStatusText text={getActiveRollingStatusLabel(message) ?? 'Running...'} />
               </div>
             ) : null}
             {showAwaitingSpinner ? (
-              <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:font-mono fk:text-sm fk:text-muted-foreground">
+              <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
                 <LoaderCircle className="fk:size-4 fk:animate-spin" />
                 <span>Awaiting approval...</span>
               </div>
@@ -1640,7 +1642,7 @@ function ReplayMessageView({
           </>
         )}
       </div>
-      <div className="fk:space-y-3 fk:min-w-0">
+      <div className="fk:space-y-8 fk:min-w-0">
         {message.parts.map((part, index) => (
           <MessagePart api={api} key={index} part={part} partIndex={index} parts={message.parts} />
         ))}
