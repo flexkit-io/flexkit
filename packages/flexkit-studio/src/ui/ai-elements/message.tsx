@@ -266,6 +266,7 @@ export const MessageResponse = memo(
     <Streamdown
       className={cn('fk:size-full fk:[&>*:first-child]:mt-0 fk:[&>*:last-child]:mb-0', className)}
       plugins={streamdownPlugins}
+      prefix="fk"
       {...props}
     />
   ),

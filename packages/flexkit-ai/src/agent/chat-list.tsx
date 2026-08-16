@@ -126,7 +126,7 @@ function ChatListItem({
   return (
     <div
       className={`fk:group/chat fk:flex fk:items-center fk:gap-1 fk:rounded-md fk:pr-1 ${
-        active ? 'fk:bg-accent' : 'fk:hover:bg-accent/60'
+        active ? 'fk:bg-sidebar-accent' : 'fk:hover:bg-accent/60'
       }`}
     >
       <button
@@ -220,7 +220,7 @@ function SearchResults({
   }
 
   if (!data?.results.length) {
-    return <p className="fk:px-2 fk:py-3 fk:text-xs fk:text-muted-foreground">No matching messages.</p>;
+    return <p className="fk:px-2 fk:py-3 fk:text-xs fk:text-muted-foreground">No matching chats.</p>;
   }
 
   return (

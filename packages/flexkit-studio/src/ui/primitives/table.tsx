@@ -23,7 +23,13 @@ function Table({ className, containerClassName, onScroll, ref, ...props }: Table
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
-  return <thead data-slot="table-header" className={cn('fk:[&_tr]:border-b fk:bg-muted fk:dark:bg-muted', className)} {...props} />;
+  return (
+    <thead
+      data-slot="table-header"
+      className={cn('fk:[&_tr]:border-b fk:bg-muted fk:dark:bg-muted', className)}
+      {...props}
+    />
+  );
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
@@ -83,7 +89,7 @@ function TableCaption({ className, ...props }: React.ComponentProps<'caption'>) 
   return (
     <caption
       data-slot="table-caption"
-      className={cn('fk:mt-4 fk:text-sm fk:text-muted-foreground', className)}
+      className={cn('fk:mt-4 fk:pb-2 fk:text-sm fk:text-muted-foreground', className)}
       {...props}
     />
   );

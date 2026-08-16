@@ -1,14 +1,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
-import {
-  BotIcon,
-  GraduationCapIcon,
-  HistoryIcon,
-  InboxIcon,
-  SearchIcon,
-  SparklesIcon,
-  SquarePenIcon,
-} from 'lucide-react';
+import { BotIcon, GraduationCapIcon, HistoryIcon, InboxIcon, SearchIcon, SquarePenIcon, XIcon } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import { useConfig } from '@flexkit/studio';
@@ -18,7 +10,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -58,32 +49,43 @@ function PendingApprovalsBadge(): JSX.Element | null {
 
 export function AutomationsSidebar(): JSX.Element {
   const location = useLocation();
-  const isAgent = location.pathname.includes('/ai/agent');
-  const isRunHistory = location.pathname.endsWith('/ai/runs');
-  const isApprovals = location.pathname.endsWith('/ai/approvals');
-  const isSkills = location.pathname.includes('/ai/skills');
-  const isAutomations = !isAgent && !isRunHistory && !isApprovals && !isSkills;
+  const pathname = location.pathname.replace(/\/$/, '');
+  const isNewChat = pathname.endsWith('/ai/agent');
+  const isRunHistory = pathname.endsWith('/ai/runs');
+  const isApprovals = pathname.endsWith('/ai/approvals');
+  const isSkills = pathname.includes('/ai/skills');
+  const isAutomations = pathname.includes('/ai/automations');
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS);
 
   return (
     <SidebarPanel collapsible="icon" variant="inset">
+      <SidebarGroup className="fk:shrink-0 fk:pb-1.5 fk:group-data-[collapsible=icon]:hidden">
+        <SidebarGroupContent className="fk:relative">
+          <SearchIcon className="fk:absolute fk:left-2 fk:top-1/2 fk:size-3.5 fk:-translate-y-1/2 fk:text-muted-foreground" />
+          <Input
+            className="fk:h-8 fk:bg-background fk:pl-7 fk:pr-7 fk:text-sm"
+            placeholder="Search chats..."
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {query ? (
+            <button
+              aria-label="Clear search"
+              className="fk:absolute fk:right-2 fk:top-1/2 fk:-translate-y-1/2 fk:cursor-pointer fk:text-muted-foreground fk:hover:text-foreground"
+              type="button"
+              onClick={() => setQuery('')}
+            >
+              <XIcon className="fk:size-3.5" />
+            </button>
+          ) : null}
+        </SidebarGroupContent>
+      </SidebarGroup>
       <SidebarContent>
-        <SidebarGroup className="fk:pb-0 fk:group-data-[collapsible=icon]:hidden">
-          <SidebarGroupContent className="fk:relative">
-            <SearchIcon className="fk:absolute fk:left-2 fk:top-1/2 fk:size-3.5 fk:-translate-y-1/2 fk:text-muted-foreground" />
-            <Input
-              className="fk:h-8 fk:bg-background fk:pl-7 fk:text-sm"
-              placeholder="Search chats..."
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </SidebarGroupContent>
-        </SidebarGroup>
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isAgent} tooltip="Agents">
+              <SidebarMenuButton asChild isActive={isNewChat} tooltip="New chat">
                 <NavLinkCompat to="agent">
                   <SquarePenIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
                   <span>New chat</span>

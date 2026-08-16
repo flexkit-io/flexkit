@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatDistance } from 'date-fns';
 import { ArrowLeft, Ellipsis, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -228,14 +228,17 @@ export function SkillsPage(): JSX.Element {
   const searchRef = useRef(search);
   searchRef.current = search;
 
-  function handleSearchChange(nextSearch: string): void {
-    if (nextSearch === searchRef.current) {
-      return;
-    }
+  const handleSearchChange = useCallback(
+    (nextSearch: string) => {
+      if (nextSearch === searchRef.current) {
+        return;
+      }
 
-    void setSize(1);
-    setSearch(nextSearch);
-  }
+      void setSize(1);
+      setSearch(nextSearch);
+    },
+    [setSize]
+  );
 
   if (!projectId || !api) {
     return <PageMessage>Select a project to view skills.</PageMessage>;
@@ -394,7 +397,7 @@ export function SkillsPage(): JSX.Element {
         }
         isSearchLoading={isLoading && search.trim().length > 0}
         search={search}
-        searchPlaceholder="Search skills..."
+        searchPlaceholder="Search skills by name or meaning..."
         table={table}
         onSearchChange={handleSearchChange}
       />

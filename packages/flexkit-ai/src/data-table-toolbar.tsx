@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type JSX, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react';
 import { LoaderCircle, Search as SearchIcon, X as ResetIcon } from 'lucide-react';
 import type { ReactTable } from '@flexkit/studio';
 import { DataTableFacetedFilter } from '@flexkit/studio';
@@ -73,12 +73,14 @@ export function AutomationsDataTableToolbar<TData>({
   const trimmedDraft = draftSearch.trim();
   const trimmedSearch = search.trim();
   const isSearchPending = trimmedDraft.length > 0 && (isSearchLoading || trimmedDraft !== trimmedSearch);
+  const onSearchChangeRef = useRef(onSearchChange);
+  onSearchChangeRef.current = onSearchChange;
   const debouncedSearchChange = useMemo(
     () =>
       debounce((query: string) => {
-        onSearchChange(query);
+        onSearchChangeRef.current(query);
       }, 300),
-    [onSearchChange]
+    []
   );
 
   useEffect(() => {

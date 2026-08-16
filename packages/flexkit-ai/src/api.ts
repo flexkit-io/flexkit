@@ -1,3 +1,4 @@
+import { convertRecordedAudioToPcm } from './agent/dictation';
 import type {
   AgentChat,
   AgentChatMessage,
@@ -29,6 +30,7 @@ export interface ApiClient {
   renameAgentChat: (_chatId: string, _title: string) => Promise<{ chat: AgentChat }>;
   sendAgentChatMessage: (_chatId: string, _input: { content: string; modelId?: string | null }) => Promise<AgentChatTurn>;
   stopAgentChat: (_chatId: string) => Promise<{ message: AgentChatMessage }>;
+  transcribeAgentAudio: (_audio: Blob, _signal?: AbortSignal) => Promise<{ text: string }>;
   decideApproval: (
     _approvalId: string,
     _input: DecideApprovalInput
@@ -144,6 +146,32 @@ export function createApiClient(projectId: string): ApiClient {
       request<{ message: AgentChatMessage }>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}/stop`, {
         method: 'POST',
       }),
+    transcribeAgentAudio: async (audio, signal) => {
+      const { durationSeconds, pcm } = await convertRecordedAudioToPcm(audio);
+      const formData = new FormData();
+      formData.append('file', pcm, 'audio.pcm');
+      formData.append('durationSeconds', String(durationSeconds));
+
+      const response = await fetch(`${projectBasePath}/agent/transcribe`, {
+        body: formData,
+        credentials: 'include',
+        method: 'POST',
+        signal,
+      });
+      const data = (await response.json()) as { error?: string; text?: string };
+
+      if (!response.ok) {
+        const error = data && typeof data === 'object' && data.error ? String(data.error) : 'Request failed';
+
+        throw new Error(error);
+      }
+
+      if (!data.text?.trim()) {
+        throw new Error('No speech was recognized. Try again.');
+      }
+
+      return { text: data.text };
+    },
     decideApproval: async (approvalId, input) => {
       const response = await fetch(`${automationsBasePath}/approvals/${encodeURIComponent(approvalId)}/decide`, {
         body: JSON.stringify(input),

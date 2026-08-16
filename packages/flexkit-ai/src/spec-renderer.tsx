@@ -264,8 +264,8 @@ const Table: ComponentRenderer<TableProps> = ({ element }) => {
         {element.props.caption && <TableCaption>{element.props.caption}</TableCaption>}
         <TableHeader>
           <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column}>{column}</TableHead>
+            {columns.map((column, index) => (
+              <TableHead key={`${index.toString()}-${column}`}>{column}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -796,6 +796,32 @@ const fallback: ComponentRenderer = ({ element }) => (
   </div>
 );
 
+function getSanitizedChildren(childKeys: string[] | undefined, elements: Spec['elements']): string[] {
+  const seen = new Set<string>();
+  const children: string[] = [];
+
+  for (const childKey of childKeys ?? []) {
+    const normalizedKey = String(childKey);
+
+    if (seen.has(normalizedKey) || !elements[normalizedKey]) {
+      continue;
+    }
+
+    seen.add(normalizedKey);
+    children.push(normalizedKey);
+  }
+
+  return children;
+}
+
+function haveChildrenChanged(original: string[], sanitized: string[]): boolean {
+  if (original.length !== sanitized.length) {
+    return true;
+  }
+
+  return sanitized.some((childKey, index) => childKey !== original[index]);
+}
+
 function sanitizeSpec(spec: Spec): Spec | null {
   if (!spec.elements[spec.root]) {
     return null;
@@ -812,13 +838,14 @@ function sanitizeSpec(spec: Spec): Spec | null {
     }
 
     const elementChildren = element.children ?? [];
-    const children = elementChildren.filter((childKey) => Boolean(spec.elements[childKey]));
+    const children = getSanitizedChildren(elementChildren, spec.elements);
+    const hasChildrenChanged = haveChildrenChanged(elementChildren, children);
 
-    if (children.length !== elementChildren.length) {
+    if (hasChildrenChanged) {
       hasChanged = true;
     }
 
-    elements[elementKey] = children.length === elementChildren.length ? element : { ...element, children };
+    elements[elementKey] = hasChildrenChanged ? { ...element, children } : element;
   }
 
   if (!hasChanged) {

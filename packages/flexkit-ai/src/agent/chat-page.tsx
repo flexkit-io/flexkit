@@ -20,6 +20,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  SpeechInput,
   SidebarTrigger,
   Separator,
   Tool,
@@ -36,9 +37,12 @@ import { fetcher, paths, type ApiClient } from '../api';
 import {
   MessagePart,
   MutationApprovalPart,
+  RollingStatusText,
   RunReplayActionsContext,
   STREAM_RETRY_DELAY_MS,
+  getActiveRollingStatusLabel,
   getMutationApprovalIds,
+  isRollingStatusPartType,
   messageHasPendingMutationApproval,
   toMutationApprovalPartData,
   useProjectApi,
@@ -56,6 +60,7 @@ import type {
   AutomationTools,
 } from '../types';
 import { useAgentBasePath } from './chat-list';
+import { appendDictatedText } from './dictation';
 
 interface ToolsResponse {
   tools: AutomationTools;
@@ -129,7 +134,9 @@ function UserBubble({ text }: { text: string }): JSX.Element {
 
   return (
     <div className="fk:group fk:ml-auto fk:flex fk:w-fit fk:max-w-[70%] fk:flex-col fk:items-end fk:gap-1">
-      <div className="fk:whitespace-pre-wrap fk:rounded-xl fk:bg-secondary fk:px-4 fk:py-3 fk:text-sm">{text}</div>
+      <div className="fk:whitespace-pre-wrap fk:rounded-xl fk:bg-muted fk:dark:bg-white/20 fk:px-3.5 fk:py-2 fk:text-base">
+        {text}
+      </div>
       <div className="fk:flex fk:gap-0.5 fk:opacity-0 fk:transition-opacity fk:group-hover:opacity-100">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -212,7 +219,11 @@ function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMe
     return <UserBubble text={message.textContent} />;
   }
 
-  const parts = Array.isArray(message.parts) ? message.parts : [];
+  // Rolling-status tool parts are only meaningful while the call is in
+  // flight; drop them from finished turns entirely.
+  const parts = (Array.isArray(message.parts) ? message.parts : []).filter(
+    (part) => !isRollingStatusPartType(part.type)
+  );
   const hasTurnErrorPart = parts.some((part) => part.type === 'data-turn-error');
 
   if (parts.length === 0 && !message.error) {
@@ -220,7 +231,7 @@ function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMe
   }
 
   return (
-    <div className="fk:w-full fk:min-w-0 fk:space-y-3">
+    <div className="fk:w-full fk:min-w-0 fk:space-y-8">
       {parts.map((part, index) => (
         <PersistedPart
           api={api}
@@ -330,12 +341,15 @@ function LiveTurn({
     lastPart && (lastPart.type === 'reasoning' || lastPart.type === 'text') && lastPart.state === 'streaming'
   );
   const showRunningSpinner = status === 'streaming' && !isAwaitingApproval && !contentIsStreaming;
+  // While a tool call is in flight the indicator names the activity
+  // ("Searching schema", ...) and rolls back to "Thinking..." once it ends.
+  const activityLabel = getActiveRollingStatusLabel(streamMessage);
 
   return (
     <RunReplayActionsContext.Provider value={replayActions}>
-      <div className="fk:w-full fk:min-w-0 fk:space-y-3">
+      <div className="fk:w-full fk:min-w-0 fk:space-y-8">
         {sessionMessages.map((sessionMessage) => (
-          <div className="fk:space-y-3 fk:min-w-0" key={sessionMessage.id}>
+          <div className="fk:space-y-8 fk:min-w-0" key={sessionMessage.id}>
             {sessionMessage.parts.map((part, index) => (
               <MessagePart api={api} key={index} part={part} partIndex={index} parts={sessionMessage.parts} />
             ))}
@@ -345,12 +359,12 @@ function LiveTurn({
           <MutationApprovalPart api={api} message={toMutationApprovalPartData(fallbackApproval)} />
         ) : null}
         {showRunningSpinner ? (
-          <div className="fk:flex fk:items-center fk:shimmer fk:shimmer-duration-1000 fk:gap-2 fk:py-2 fk:font-mono fk:text-sm fk:text-muted-foreground">
-            Thinking...
+          <div className="fk:flex fk:items-center fk:gap-2 fk:py-2 fk:text-sm fk:text-muted-foreground">
+            <RollingStatusText text={activityLabel ?? 'Thinking'} />
           </div>
         ) : null}
         {isAwaitingApproval && status !== 'finished' && status !== 'error' ? (
-          <div className="fk:flex fk:items-center fk:gap-2 fk:py-2 fk:font-mono fk:text-sm fk:text-muted-foreground">
+          <div className="fk:flex fk:items-center fk:gap-2 fk:py-2 fk:text-sm fk:text-muted-foreground">
             <LoaderCircle className="fk:size-4 fk:animate-spin" />
             <span>Awaiting approval...</span>
           </div>
@@ -361,24 +375,30 @@ function LiveTurn({
 }
 
 function ChatComposer({
+  api,
   modelId,
   models,
+  onError,
   onModelChange,
   onSend,
   onStop,
   sending,
   streaming,
 }: {
+  api: ApiClient;
   modelId: string | null;
   models: AutomationTools['models'];
+  onError: (_message: string | null) => void;
   onModelChange: (_modelId: string) => void;
   onSend: (_text: string) => Promise<void>;
   onStop: () => Promise<void>;
   sending: boolean;
   streaming: boolean;
 }): JSX.Element {
+  const { textInput } = usePromptInputController();
   const selectableModels = models.filter((model) => !model.deprecated || model.id === modelId);
   const status = streaming ? ('streaming' as const) : sending ? ('submitted' as const) : undefined;
+  const isBusy = sending || streaming;
 
   return (
     <PromptInput
@@ -413,7 +433,22 @@ function ChatComposer({
             </PromptInputSelect>
           ) : null}
         </PromptInputTools>
-        <PromptInputSubmit status={status} onStop={() => void onStop()} />
+        <div className="fk:flex fk:items-center fk:gap-3">
+          <SpeechInput
+            disabled={isBusy}
+            onAudioRecorded={async (audioBlob, signal) => {
+              const { text } = await api.transcribeAgentAudio(audioBlob, signal);
+
+              return text;
+            }}
+            onError={(error) => onError(error.message)}
+            onTranscriptionChange={(transcript) => {
+              onError(null);
+              textInput.setInput(appendDictatedText(textInput.value, transcript));
+            }}
+          />
+          <PromptInputSubmit status={status} onStop={() => void onStop()} />
+        </div>
       </PromptInputFooter>
     </PromptInput>
   );
@@ -428,8 +463,15 @@ function ChatConversation({
   chatId: string;
   projectId: string;
 }): JSX.Element {
+  // SWR only re-arms its polling timer when the refreshInterval option (or
+  // the key) changes. A module-level function has a stable identity, so the
+  // timer was armed exactly once — at mount, with no data yet — where the
+  // interval resolves to 0 and polling stays off forever. The chat then never
+  // noticed a finished turn until a tab refocus revalidated it. The inline
+  // arrow changes identity on every render, re-arming the timer whenever new
+  // data (e.g. an active turn) arrives.
   const { data, mutate } = useSWR<AgentChatDetail>(paths(projectId).agentChat(chatId), fetcher, {
-    refreshInterval: getChatDetailRefreshInterval,
+    refreshInterval: (latestData) => getChatDetailRefreshInterval(latestData),
   });
 
   if (!data) {
@@ -615,10 +657,12 @@ export function AgentChatPage(): JSX.Element {
                 <p className="fk:mx-auto fk:mb-2 fk:max-w-4xl fk:text-xs fk:text-destructive">{sendError}</p>
               ) : null}
               <ChatComposer
+                api={chatApi}
                 modelId={modelId}
                 models={models}
                 sending={sending}
                 streaming={turnInProgress}
+                onError={setSendError}
                 onModelChange={setSelectedModelId}
                 onSend={handleSend}
                 onStop={handleStop}

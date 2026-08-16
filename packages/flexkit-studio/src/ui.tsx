@@ -147,5 +147,6 @@ export * from './ui/ai-elements/prompt-input';
 export * from './ui/ai-elements/reasoning';
 export { Shimmer } from './ui/ai-elements/shimmer';
 export * from './ui/ai-elements/sources';
+export * from './ui/ai-elements/speech-input';
 export * from './ui/ai-elements/suggestion';
 export * from './ui/ai-elements/tool';
