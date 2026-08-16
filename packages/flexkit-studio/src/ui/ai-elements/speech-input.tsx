@@ -88,10 +88,13 @@ export const SpeechInput = ({
   const audioChunksRef = useRef<Blob[]>([]);
   const maxDurationTimerRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const discardNextStopRef = useRef(false);
+  const disabledRef = useRef(Boolean(disabled));
   const onAudioRecordedRef = useRef(onAudioRecorded);
   const onErrorRef = useRef(onError);
   const onTranscriptionChangeRef = useRef(onTranscriptionChange);
 
+  disabledRef.current = Boolean(disabled);
   onAudioRecordedRef.current = onAudioRecorded;
   onErrorRef.current = onError;
   onTranscriptionChangeRef.current = onTranscriptionChange;
@@ -137,7 +140,26 @@ export const SpeechInput = ({
     setIsProcessing(false);
   }, []);
 
+  const cancelCapture = useCallback(() => {
+    abortProcessing();
+    clearMaxDurationTimer();
+
+    const recorder = mediaRecorderRef.current;
+
+    if (recorder?.state === 'recording') {
+      discardNextStopRef.current = true;
+      recorder.stop();
+    }
+
+    setIsListening(false);
+    releaseStream();
+  }, [abortProcessing, clearMaxDurationTimer, releaseStream]);
+
   const startMediaRecorder = useCallback(async () => {
+    if (disabledRef.current) {
+      return;
+    }
+
     if (!onAudioRecordedRef.current) {
       onErrorRef.current?.(new Error('Dictation is not configured.'));
 
@@ -146,6 +168,15 @@ export const SpeechInput = ({
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      if (disabledRef.current) {
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
+
+        return;
+      }
+
       streamRef.current = stream;
       const mimeType = getSupportedRecorderMimeType();
       const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
@@ -161,6 +192,13 @@ export const SpeechInput = ({
         releaseStream();
         clearMaxDurationTimer();
         setIsListening(false);
+
+        if (discardNextStopRef.current) {
+          discardNextStopRef.current = false;
+          audioChunksRef.current = [];
+
+          return;
+        }
 
         const audioBlob = new Blob(audioChunksRef.current, {
           type: mediaRecorder.mimeType || 'audio/webm',
@@ -193,8 +231,12 @@ export const SpeechInput = ({
 
           onErrorRef.current?.(toSpeechInputError(error, 'Transcription failed.'));
         } finally {
-          abortControllerRef.current = null;
-          setIsProcessing(false);
+          // Cancel already nulls the shared ref so the UI can re-record.
+          // Only this attempt may clear its own controller and flag.
+          if (abortControllerRef.current === abortController) {
+            abortControllerRef.current = null;
+            setIsProcessing(false);
+          }
         }
       };
 
@@ -218,18 +260,22 @@ export const SpeechInput = ({
     }
   }, [clearMaxDurationTimer, releaseStream, stopMediaRecorder]);
 
+  // `disabled` must tear down capture, not only grey out the button. In the
+  // chat composer, submit/stream sets this true and would otherwise freeze
+  // the mic in the listening state.
+  useEffect(() => {
+    if (!disabled) {
+      return;
+    }
+
+    cancelCapture();
+  }, [cancelCapture, disabled]);
+
   useEffect(() => {
     return () => {
-      clearMaxDurationTimer();
-      abortControllerRef.current?.abort();
-
-      if (mediaRecorderRef.current?.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
-
-      releaseStream();
+      cancelCapture();
     };
-  }, [clearMaxDurationTimer, releaseStream]);
+  }, [cancelCapture]);
 
   const handleClick = useCallback(() => {
     if (isProcessing) {

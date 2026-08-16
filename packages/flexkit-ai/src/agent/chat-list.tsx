@@ -228,7 +228,7 @@ function SearchResults({
       {data.results.map((result) => (
         <button
           className="fk:block fk:w-full fk:rounded-md fk:px-2 fk:py-1.5 fk:text-left fk:hover:bg-accent/60"
-          key={result.chatId}
+          key={result.messageId}
           type="button"
           onClick={() => onOpen(result.chatId)}
         >
