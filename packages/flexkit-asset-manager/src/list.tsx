@@ -22,7 +22,7 @@ import { getStoredViewMode, setStoredViewMode, type AssetViewMode } from './data
 
 type WhereClause = { [key: string]: unknown };
 
-const pageSize = 50;
+const pageSize = 25;
 const defaultSort = [{ _updatedAt: 'DESC' }, { _id: 'DESC' }];
 
 export function List(): JSX.Element {
