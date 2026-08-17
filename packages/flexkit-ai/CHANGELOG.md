@@ -1,5 +1,14 @@
 # @flexkit/ai
 
+## 0.0.4
+
+### Patch Changes
+
+- 0b115f8: Chat dictation, rolling thinking states"
+- Updated dependencies [8976298]
+- Updated dependencies [0b115f8]
+  - @flexkit/studio@0.0.32
+
 ## 0.0.3
 
 ### Patch Changes

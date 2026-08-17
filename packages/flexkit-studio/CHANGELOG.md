@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.0.32
+
+### Patch Changes
+
+- 8976298: GraphQL queries performance improvements
+- 0b115f8: Chat dictation, rolling thinking states"
+
 ## 0.0.31
 
 ### Patch Changes
