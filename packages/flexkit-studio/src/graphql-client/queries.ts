@@ -334,7 +334,7 @@ function shouldSelectAttributeInList(attribute: Attribute | undefined): boolean 
     return false;
   }
 
-  if (attribute.isHidden || attribute.name === 'lqip' || attribute.inputType === 'editor') {
+  if (attribute.isHidden || attribute.name === 'lqip') {
     return false;
   }
 
