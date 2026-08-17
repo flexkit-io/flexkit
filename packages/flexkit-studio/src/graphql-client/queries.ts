@@ -47,6 +47,9 @@ const assetFieldsWithoutLqip = `_id
       size
       height
       width`;
+/** List grids resolve thumbnails from the CDN path; extra asset metadata is unused. */
+const listAssetPreviewFields = `_id
+          path`;
 
 type AssetRelationshipConnection = {
   aggregate?: {
@@ -144,16 +147,29 @@ function unwrapNode(value: unknown): AttributeValue | null {
  * made list queries take seconds). The aggregate count is still selected, so
  * consumers can show "+N more" from `totalCount`.
  */
+function getAssetConnectionNodeFields(includeLqip: boolean, previewOnly: boolean): string {
+  if (previewOnly) {
+    return listAssetPreviewFields;
+  }
+
+  if (includeLqip) {
+    return assetFields;
+  }
+
+  return assetFieldsWithoutLqip;
+}
+
 function getAssetConnectionSelection(
   attributeName: string,
   includeProperties = true,
   includeLqip = true,
-  first = FULL_ASSET_CONNECTION_LIMIT
+  first = FULL_ASSET_CONNECTION_LIMIT,
+  previewOnly = false
 ): string {
   const propertiesSelection = includeProperties
     ? `        properties {\n` + `          sortOrder\n` + `        }\n`
     : '';
-  const nodeFields = includeLqip ? assetFields : assetFieldsWithoutLqip;
+  const nodeFields = getAssetConnectionNodeFields(includeLqip, previewOnly);
   // Edge sort input only exists when the relationship carries properties.
   const connectionArguments = includeProperties
     ? `(first: ${first}, sort: [{ edge: { sortOrder: ASC } }])`
@@ -210,7 +226,12 @@ function getPrimaryAttribute(schemaAttributes: Attribute[]): Attribute | undefin
  * Selection set for a related entity's primary attribute only — enough for list-grid
  * relationship columns (mapQueryResult / sliceFirstThreeItems).
  */
-function getPrimaryAttributeSelection(primaryAttribute: Attribute | undefined, scope: string, schema: Schema): string {
+function getPrimaryAttributeSelection(
+  primaryAttribute: Attribute | undefined,
+  scope: string,
+  schema: Schema,
+  forList = false
+): string {
   if (!primaryAttribute) {
     return '';
   }
@@ -218,6 +239,10 @@ function getPrimaryAttributeSelection(primaryAttribute: Attribute | undefined, s
   const additionalScope = scope === 'default' ? '' : `${scope}\n        `;
 
   if (isAssetAttribute(primaryAttribute)) {
+    if (forList) {
+      return `      ${primaryAttribute.name} {\n        _id\n        path\n      }\n`;
+    }
+
     return `      ${primaryAttribute.name} {\n        ${assetFields}\n      }\n`;
   }
 
@@ -294,6 +319,28 @@ function getFullRelatedEntityAttributesSelection(
   );
 }
 
+function getAttributesByName(attributes: Attribute[]): { [name: string]: Attribute | undefined } {
+  const attributesByName: { [name: string]: Attribute | undefined } = {};
+
+  for (const attribute of attributes) {
+    attributesByName[attribute.name] = attribute;
+  }
+
+  return attributesByName;
+}
+
+function shouldSelectAttributeInList(attribute: Attribute | undefined): boolean {
+  if (!attribute) {
+    return false;
+  }
+
+  if (attribute.isHidden || attribute.name === 'lqip' || attribute.inputType === 'editor') {
+    return false;
+  }
+
+  return true;
+}
+
 export function getEntityQuery(
   entityNamePlural: string,
   scope: string,
@@ -306,6 +353,7 @@ export function getEntityQuery(
      * still stands.
      */
     includeCount?: boolean;
+    operationName?: string;
   }
 ): EntityQuery {
   const selection = options?.selection ?? 'full';
@@ -314,8 +362,9 @@ export function getEntityQuery(
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
   const attributes = entitySchema?.attributes ?? [];
+  const attributesByName = getAttributesByName(attributes);
   const heading = `$where: ${entityName}Where, $limit: Int, $offset: Int, $sort: [${entityName}Sort!]`;
-  const operationName = `Get${getOperationEntityName(entityNamePlural)}`;
+  const operationName = options?.operationName ?? `Get${getOperationEntityName(entityNamePlural)}`;
 
   if (!entitySchema) {
     throw new Error(`Entity '${entityName}' not found in the schema`);
@@ -331,16 +380,21 @@ export function getEntityQuery(
         return false;
       }
 
-      // List grids resolve previews from path/CDN; base64 lqip × page size is costly.
-      if (selection === 'list' && attributeName === 'lqip') {
-        return false;
+      if (selection === 'list') {
+        return shouldSelectAttributeInList(attributesByName[attributeName]);
       }
 
       return true;
     })
     .join('\n  ');
   const imageAttributes: string[] = getImageAttributes(attributes);
-  const localAttributes: readonly string[] = getAttributeListByScope(['local'], attributes);
+  const localAttributes: readonly string[] = getAttributeListByScope(['local'], attributes).filter((attributeName) => {
+    if (selection !== 'list') {
+      return true;
+    }
+
+    return shouldSelectAttributeInList(attributesByName[attributeName]);
+  });
   const defaultScopedAttr = localAttributes.reduce(
     (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n    }\n  `,
     ''
@@ -350,22 +404,30 @@ export function getEntityQuery(
     ''
   );
   const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
-  const imageFieldsSelection =
-    selection === 'list'
-      ? `_id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width`
-      : `_id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip`;
+  let imageFieldsSelection = `_id\n      path`;
+
+  if (selection !== 'list') {
+    imageFieldsSelection =
+      `_id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip`;
+  }
+
   const imageAttributesList: string = imageAttributes.reduce((acc, attribute) => {
     return `${acc}\n    ${attribute} {\n      ${imageFieldsSelection}\n    }\n  `;
   }, '');
 
   const relationshipAttributes = attributes.filter((attribute) => getAttributeScope(attribute) === 'relationship');
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
+    if (selection === 'list' && attribute.isHidden) {
+      return acc;
+    }
+
     if (isAssetRelationshipAttribute(attribute)) {
       return `${acc}\n${getAssetConnectionSelection(
         attribute.name,
         hasOrderedAssetConnectionProperties(attribute, entitySchema),
         selection !== 'list',
-        selection === 'list' ? LIST_ASSET_CONNECTION_LIMIT : FULL_ASSET_CONNECTION_LIMIT
+        selection === 'list' ? LIST_ASSET_CONNECTION_LIMIT : FULL_ASSET_CONNECTION_LIMIT,
+        selection === 'list'
       )}`;
     }
 
@@ -373,7 +435,7 @@ export function getEntityQuery(
 
     if (selection === 'list') {
       const primaryAttribute = getPrimaryAttribute(relatedEntity?.attributes ?? []);
-      const primarySelection = getPrimaryAttributeSelection(primaryAttribute, scope, schema);
+      const primarySelection = getPrimaryAttributeSelection(primaryAttribute, scope, schema, true);
       const relatedLimit = attribute.relationship?.mode === 'single' ? 1 : 3;
 
       return (
@@ -1440,7 +1502,6 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
 }
 
 export function getRelatedItemsQuery({
-  attributeName,
   relatedEntityName,
   scope,
   schema,
@@ -1450,104 +1511,20 @@ export function getRelatedItemsQuery({
   scope: string;
   schema: Schema;
 }): EntityQuery {
-  const filters = `(where: $where, limit: $limit, offset: $offset, sort: $sort)`;
   const entitySchema = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
-  const attributes = entitySchema?.attributes ?? [];
-  const heading = `$where: ${relatedEntityName}Where, $limit: Int, $offset: Int, $sort: [${relatedEntityName}Sort!]`;
   const queryEntityName = entitySchema?.plural ?? '';
-  const operationName = `GetRelated${getOperationEntityName(queryEntityName || relatedEntityName)}`;
 
-  if (attributes.length === 0) {
+  if (!queryEntityName) {
     return {
       queryEntityName: '',
       query: '',
     };
   }
 
-  const globalAttributesList: string = getAttributeListByScope('global', attributes)
-    .filter((attributeName) => attributeName !== '_updatedAt')
-    .join('\n  ');
-  const localAttributes: readonly string[] = getAttributeListByScope(['local'], attributes);
-  const defaultScopedAttr = localAttributes.reduce(
-    (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n    }\n  `,
-    ''
-  );
-  const scopedAttribute = localAttributes.reduce(
-    (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n      ${scope}\n    }\n  `,
-    ''
-  );
-  const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
-
-  const imageAttributes: string[] = getImageAttributes(attributes);
-  const imageAttributesList: string = imageAttributes.reduce((acc, attribute) => {
-    return `${acc}\n    ${attribute} {\n      _id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip\n    }\n  `;
-  }, '');
-
-  const relationshipAttributes = attributes.filter((attribute) => getAttributeScope(attribute) === 'relationship');
-  const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
-    if (isAssetRelationshipAttribute(attribute)) {
-      return `${acc}\n${getAssetConnectionSelection(
-        attribute.name,
-        hasOrderedAssetConnectionProperties(attribute, entitySchema)
-      )}`;
-    }
-
-    const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
-    const attributesNameList = relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
-      const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
-
-      // Rows feed a data grid: thumbnails resolve from the CDN path, so the
-      // base64 lqip payload is skipped for related-entity assets.
-      if (isAssetAttribute(relatedAttribute)) {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        ${assetFieldsWithoutLqip}\n    }\n    `;
-      }
-
-      if (getAttributeScope(relatedAttribute) === 'local') {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        default\n      ${additionalScope}}\n    `;
-      }
-
-      if (getAttributeScope(relatedAttribute) === 'relationship') {
-        const relationshipEntity = find(propEq(relatedAttribute.relationship?.entity, 'name'))(schema) as
-          | Entity
-          | undefined;
-        const relationshipAttribute = find(propEq(relatedAttribute.relationship?.field, 'name'))(
-          relationshipEntity?.attributes ?? []
-        ) as Attribute;
-        const localAttributeQuery =
-          getAttributeScope(relationshipAttribute) === 'local'
-            ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
-            : '';
-
-        if (relatedAttribute.relationship?.mode === 'single') {
-          return `${relatedAcc}\n      ${relatedAttribute.name} {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
-        }
-
-        if (relatedAttribute.relationship?.field) {
-          return `${relatedAcc}\n      ${relatedAttribute.name} (limit: ${NESTED_RELATIONSHIP_LIMIT}, offset: 0) {\n      ${relatedAttribute.relationship.field}  ${localAttributeQuery}}\n    `;
-        }
-      }
-
-      return `${relatedAcc}\n      ${relatedAttribute.name}\n  `;
-    }, '');
-
-    return `${acc}\n    ${attribute.name} (limit: ${NESTED_RELATIONSHIP_LIMIT}, offset: 0) {  _id ${attributesNameList ?? ''}}\n`;
-  }, '');
-
-  return {
-    queryEntityName,
-    query:
-      `query ${operationName}(${heading}) {\n` +
-      getConnectionCountSelection(attributeName, '(where: $where)') +
-      `  ${queryEntityName}${filters} {\n` +
-      `    _id\n` +
-      `    _updatedAt\n` +
-      `    ${globalAttributesList}` +
-      `    ${localAttributesList}` +
-      `    ${imageAttributesList}` +
-      `    ${relationshipAttributesList}` +
-      `  }\n` +
-      `}\n`,
-  };
+  return getEntityQuery(queryEntityName, scope, schema, {
+    selection: 'list',
+    operationName: `GetRelated${getOperationEntityName(queryEntityName)}`,
+  });
 }
 
 /**
