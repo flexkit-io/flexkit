@@ -132,6 +132,10 @@ function getStatusBadgeClass(status: string): string {
     return 'fk:bg-amber-500/20 fk:text-amber-600';
   }
 
+  if (status === 'skipped') {
+    return 'fk:bg-orange-500/20 fk:text-orange-700';
+  }
+
   return 'fk:bg-secondary fk:text-secondary-foreground';
 }
 
