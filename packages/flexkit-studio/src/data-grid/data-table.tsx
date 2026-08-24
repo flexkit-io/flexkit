@@ -70,8 +70,8 @@ interface ExtendedDataTable extends TableMeta<unknown> {
 // Matches default `fk:h-9` rows (text-sm / 28px assets + cell padding + border).
 const DEFAULT_ROW_HEIGHT_PX = 36;
 const ROW_OVERSCAN = 15;
-// Matches `fk:h-10` on TableHead so the first rows are not treated as visible
-// while sitting under the sticky header.
+// Matches `fk:h-10` on TableHead. The header lives in the same scroll
+// container as the rows, so item measurements must start after it.
 const STICKY_HEADER_HEIGHT_PX = 40;
 
 function inferRowHeightEstimate(rowClassName?: string): number | undefined {
@@ -207,15 +207,15 @@ export function DataTable<TData extends AttributeValue, TValue>({
     getItemKey: (index) => rows[index]?.id ?? index,
     getScrollElement: () => scrollRef.current,
     overscan: ROW_OVERSCAN,
-    scrollPaddingStart: STICKY_HEADER_HEIGHT_PX,
+    scrollMargin: STICKY_HEADER_HEIGHT_PX,
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
-  const totalSize = rowVirtualizer.getTotalSize();
-  const paddingTop = virtualItems[0]?.start ?? 0;
-  const paddingBottom = virtualItems.length
-    ? totalSize - (virtualItems[virtualItems.length - 1]?.end ?? 0)
-    : 0;
+  const { paddingTop, paddingBottom } = getVirtualBodySpacers(
+    virtualItems,
+    rowVirtualizer.getTotalSize(),
+    STICKY_HEADER_HEIGHT_PX
+  );
 
   // Keep load-more inputs in refs so callback identity churn from parents
   // (e.g. Apollo fetchMore) cannot re-trigger the effect every render.
@@ -361,6 +361,26 @@ export function DataTable<TData extends AttributeValue, TValue>({
       </div>
     </div>
   );
+}
+
+function getVirtualBodySpacers(
+  virtualItems: { start: number; end: number }[],
+  totalSize: number,
+  scrollMargin: number
+): { paddingTop: number; paddingBottom: number } {
+  if (virtualItems.length === 0) {
+    return { paddingTop: 0, paddingBottom: 0 };
+  }
+
+  const firstStart = virtualItems[0]?.start ?? 0;
+  const lastEnd = virtualItems[virtualItems.length - 1]?.end ?? 0;
+
+  // Measurements include scrollMargin so range math sees the header; tbody
+  // spacers must not, because the header is already in thead.
+  return {
+    paddingTop: Math.max(0, firstStart - scrollMargin),
+    paddingBottom: Math.max(0, totalSize - (lastEnd - scrollMargin)),
+  };
 }
 
 function VirtualRowSpacer({ height }: { height: number }): JSX.Element {
