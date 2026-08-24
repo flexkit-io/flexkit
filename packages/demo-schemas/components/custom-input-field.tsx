@@ -12,8 +12,8 @@ import {
 } from '@flexkit/studio/ui';
 import { DefaultValueSwitch } from '@flexkit/studio';
 
-export function CustomTextField({ control, fieldSchema, setValue }: FormFieldParams<'text'>): JSX.Element {
-  const { name, label, isEditable, options } = fieldSchema;
+export function CustomTextField({ control, fieldSchema, readOnly, setValue }: FormFieldParams<'text'>): JSX.Element {
+  const { name, label, options } = fieldSchema;
   const fieldId = useId();
 
   function handleInput(
@@ -53,7 +53,7 @@ export function CustomTextField({ control, fieldSchema, setValue }: FormFieldPar
               className={`mt-[0.1875rem] w-full ${
                 !field.value?.scope || field.value.scope === 'default' ? 'mb-3' : ''
               }`}
-              disabled={isEditable === false || field.value?.disabled}
+              disabled={readOnly || field.value?.disabled}
               id={fieldId}
               onChange={(event) => {
                 handleInput(event, field.value);
@@ -63,6 +63,7 @@ export function CustomTextField({ control, fieldSchema, setValue }: FormFieldPar
           </FormControl>
           <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
+            disabled={readOnly}
             onChange={(checked) => {
               handleCheckbox(checked, field.value);
             }}

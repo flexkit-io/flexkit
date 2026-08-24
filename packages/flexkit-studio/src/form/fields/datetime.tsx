@@ -12,8 +12,14 @@ import { cn } from '../../ui/lib/utils';
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
-export function DateTime({ control, fieldSchema, getValues, setValue }: FormFieldParams<'datetime'>): JSX.Element {
-  const { name, label, isEditable, options } = fieldSchema;
+export function DateTime({
+  control,
+  fieldSchema,
+  getValues,
+  readOnly,
+  setValue,
+}: FormFieldParams<'datetime'>): JSX.Element {
+  const { name, label, options } = fieldSchema;
   const id = useId();
 
   function handleSelect(date: Date | undefined, previousValue: FormFieldValue | undefined): void {
@@ -59,7 +65,7 @@ export function DateTime({ control, fieldSchema, getValues, setValue }: FormFiel
                     !field.value?.value && 'fk:text-muted-foreground',
                     !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
                   )}
-                  disabled={isEditable === false || field.value?.disabled}
+                  disabled={readOnly || field.value?.disabled}
                   id={id}
                   variant="outline"
                 >
@@ -126,6 +132,7 @@ export function DateTime({ control, fieldSchema, getValues, setValue }: FormFiel
           </FormControl>
           <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
+            disabled={readOnly}
             onChange={(checked) => {
               handleCheckbox(checked, field.value);
             }}

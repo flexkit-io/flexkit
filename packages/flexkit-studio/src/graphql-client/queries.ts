@@ -3,7 +3,9 @@ import { getAttributeScope } from '../core/attribute-scope';
 import { getDisplayAttribute } from '../core/get-display-attribute';
 import { assetSchema } from '../entities/assets-schema';
 import { tagSchema } from '../entities/tags-schema';
+import type { User } from '../auth/types';
 import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
+import { isStaticallyHidden, resolveConditionalFlag, unwrapFormRecord } from '../form/resolve-conditional-flag';
 import type {
   AttributeValue,
   EntityItem,
@@ -327,7 +329,7 @@ function shouldSelectAttributeInList(attribute: Attribute | undefined): boolean 
     return false;
   }
 
-  if (attribute.isHidden || attribute.name === 'lqip') {
+  if (isStaticallyHidden(attribute.hidden) || attribute.name === 'lqip') {
     return false;
   }
 
@@ -410,7 +412,7 @@ export function getEntityQuery(
 
   const relationshipAttributes = attributes.filter((attribute) => getAttributeScope(attribute) === 'relationship');
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
-    if (selection === 'list' && attribute.isHidden) {
+    if (selection === 'list' && isStaticallyHidden(attribute.hidden)) {
       return acc;
     }
 
@@ -744,7 +746,7 @@ export function getEntityUpdateMutation(
   schema: Schema,
   originalData: FormEntityItem,
   dataToMutate: FormEntityItem,
-  options?: { responseFields?: string }
+  options?: { currentUser?: User; responseFields?: string }
 ): string {
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
@@ -755,7 +757,7 @@ export function getEntityUpdateMutation(
     return '';
   }
 
-  const data = filterOutInvalidAttributes(attributes, dataToMutate);
+  const data = filterOutInvalidAttributes(attributes, dataToMutate, options?.currentUser);
   const globalAttributes = globalAttributesUpdate(attributes, data);
   const localAttributes = localAttributesUpdate(entityId, attributes, data, scope);
   const imageAttributes = imageAttributesUpdate(attributes, originalData, data);
@@ -783,10 +785,21 @@ export function getEntityUpdateMutation(
 /**
  * Filter out any attribute received from the form that does not exist in the schema.
  */
-function filterOutInvalidAttributes(attributes: Attribute[], dataToMutate: FormEntityItem): FormEntityItem {
+function filterOutInvalidAttributes(
+  attributes: Attribute[],
+  dataToMutate: FormEntityItem,
+  currentUser?: User
+): FormEntityItem {
+  const record = unwrapFormRecord(dataToMutate);
   const nonUpdatableAttributes: readonly string[] = attributes
     .map((attribute) => {
-      if (attribute.isEditable === false) {
+      const readOnly = resolveConditionalFlag(attribute.readOnly, {
+        record,
+        value: record[attribute.name],
+        currentUser,
+      });
+
+      if (readOnly) {
         return attribute.name;
       }
 
@@ -1372,7 +1385,8 @@ export function getEntityCreateMutation(
   entityNamePlural: string,
   schema: Schema,
   entityData: FormEntityItem,
-  _id: string
+  _id: string,
+  options?: { currentUser?: User }
 ): string {
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const attributes = entitySchema?.attributes ?? [];
@@ -1382,7 +1396,7 @@ export function getEntityCreateMutation(
     return '';
   }
 
-  const data = filterOutInvalidAttributes(attributes, entityData);
+  const data = filterOutInvalidAttributes(attributes, entityData, options?.currentUser);
   const globalAttributes = globalAttributesUpdate(attributes, data, 'create');
   const localAttributes = localAttributesCreate(attributes, data, 'default', _id);
   const imageAttributes = imageAttributesCreate(attributes, data);

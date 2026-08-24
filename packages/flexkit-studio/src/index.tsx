@@ -21,6 +21,8 @@ export { canMutateData, useCanMutate } from './core/permissions';
 export type { AppOptions, FormFieldProps, LogoProps, PluginOptions, SingleProject } from './core/config/types';
 export type {
   Attribute,
+  ConditionalFieldContext,
+  ConditionalFlag,
   DefaultValue,
   DefaultValueByDataType,
   Entity,

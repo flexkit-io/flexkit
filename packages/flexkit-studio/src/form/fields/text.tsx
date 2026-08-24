@@ -6,8 +6,8 @@ import { Input } from '../../ui/primitives/input';
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
-export function Text({ control, fieldSchema, setValue }: FormFieldParams<'text'>): JSX.Element {
-  const { name, label, isEditable, options } = fieldSchema;
+export function Text({ control, fieldSchema, readOnly, setValue }: FormFieldParams<'text'>): JSX.Element {
+  const { name, label, options } = fieldSchema;
   const id = useId();
 
   function handleInput(
@@ -40,7 +40,7 @@ export function Text({ control, fieldSchema, setValue }: FormFieldParams<'text'>
               className={`fk:w-full fk:mt-0.75 ${
                 !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
               }`}
-              disabled={isEditable === false || field.value?.disabled}
+              disabled={readOnly || field.value?.disabled}
               id={id}
               {...field}
               onChange={(event) => {
@@ -52,6 +52,7 @@ export function Text({ control, fieldSchema, setValue }: FormFieldParams<'text'>
 
           <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
+            disabled={readOnly}
             onChange={(checked) => {
               handleCheckbox(checked, field.value);
             }}

@@ -37,7 +37,7 @@ export interface SearchProps {
 
 const getBaseSearchRequest = (schema: Entity[]): SearchRequestProps => {
   const collections = schema
-    .filter((entity) => entity.attributes.some((attr) => attr.isSearchable))
+    .filter((entity) => entity.attributes.some((attr) => attr.searchable))
     .map((entity) => entity.plural);
 
   return {

@@ -24,6 +24,7 @@ import RelationshipField from './fields/relationship';
 import { Select as SelectField } from './fields/select';
 import UndefinedFieldTypeError from './fields/undefined-field-type-error';
 import type { FormFieldParams } from './types';
+import { resolveConditionalFlag, unwrapFormRecord } from './resolve-conditional-flag';
 
 export type SubmitHandle = {
   submit: () => void;
@@ -85,11 +86,22 @@ function FormBuilder(
       {}
     );
   }, [defaultScope, formData, formSchema]);
-  const validationSchema = useMemo(() => {
+  const resolver: Resolver<FormEntityItem> = async (values, context, options) => {
+    const record = unwrapFormRecord(values);
     const shape: { [fieldName: string]: z.ZodType } = {};
 
     for (const fieldSchema of formSchema) {
       if (typeof fieldSchema.validation === 'undefined') {
+        continue;
+      }
+
+      const hidden = resolveConditionalFlag(fieldSchema.hidden, {
+        record,
+        value: record[fieldSchema.name],
+        currentUser: auth.user,
+      });
+
+      if (hidden) {
         continue;
       }
 
@@ -102,18 +114,22 @@ function FormBuilder(
       });
     }
 
-    return z.object(shape);
-  }, [formSchema]);
+    const validate = zodResolver(z.object(shape)) as Resolver<FormEntityItem>;
+
+    return validate(values, context, options);
+  };
 
   const form = useForm<FormEntityItem>({
     defaultValues: initialFormValues,
-    resolver: zodResolver(validationSchema) as Resolver<FormEntityItem>,
+    resolver,
     values: formData,
     mode: 'onBlur',
     criteriaMode: 'all',
   });
 
   const { control, getValues, handleSubmit, setValue, watch, trigger } = form;
+  const formValues = watch();
+  const record = unwrapFormRecord(formValues);
   const { getContributionPointConfig } = useConfig();
   // Baseline for dirty checks. Updated on successful save so relationship-field
   // noise / stale formData props cannot keep reporting dirty after Save.
@@ -237,6 +253,17 @@ function FormBuilder(
             return null;
           }
 
+          const fieldContext = {
+            record,
+            value: record[field.name],
+            currentUser: auth.user,
+          };
+
+          if (resolveConditionalFlag(field.hidden, fieldContext)) {
+            return null;
+          }
+
+          const readOnly = resolveConditionalFlag(field.readOnly, fieldContext);
           const fieldComponent =
             (getContributionPointConfig('formFields', [field.inputType])?.[0]?.component as unknown as
               | ComponentType<FormFieldParams<typeof field.inputType>>
@@ -255,6 +282,7 @@ function FormBuilder(
                 entityNamePlural,
                 fieldSchema: field,
                 getValues,
+                readOnly,
                 schema,
                 scope: currentScope,
                 setValue,

@@ -24,6 +24,7 @@ import { Button } from '../ui/primitives/button';
 import { PermissionTooltip } from '../ui/components/permission-tooltip';
 import { useCanMutate } from '../core/permissions';
 import { useDispatch } from './actions-context';
+import { useAuth } from '../auth/auth-context';
 import { type Action, type ActionAddEntity } from './types';
 
 type Props = {
@@ -36,6 +37,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const { entityName } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const canMutate = useCanMutate();
+  const [, auth] = useAuth();
   const { projects, currentProjectId } = useConfig();
   const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
@@ -95,7 +97,9 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const saveEntity = useCallback(
     (newData: FormEntityItem) => {
       const _id = uuidv4();
-      const mutation = getEntityCreateMutation(entityNamePlural, schema, newData, _id);
+      const mutation = getEntityCreateMutation(entityNamePlural, schema, newData, _id, {
+        currentUser: auth.user,
+      });
 
       setMutation(gql`
         ${mutation}
@@ -109,7 +113,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       });
       runMutation(true);
     },
-    [action._id, apolloClient, entityNamePlural, handleClose, runMutation, schema, setMutation, setOptions]
+    [action._id, apolloClient, auth.user, entityNamePlural, handleClose, runMutation, schema, setMutation, setOptions]
   );
 
   return (

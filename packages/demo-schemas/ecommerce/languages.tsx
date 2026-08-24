@@ -34,7 +34,7 @@ export const languages = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: false,
+      searchable: false,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },

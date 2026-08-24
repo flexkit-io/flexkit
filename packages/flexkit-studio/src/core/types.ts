@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import type { z } from 'zod';
+import type { User } from '../auth/types';
 import type {
   AttributeValue,
   EntityItem,
@@ -186,13 +187,43 @@ export type AttributeOptions = {
   [key: string]: CommonOptions;
 };
 
+/**
+ * Context passed to `hidden` and `readOnly` callbacks. `record` is the current
+ * form values unwrapped from `FormFieldValue` wrappers (use `record.status`,
+ * not `record.status.value`). Attributes are flat, so there is no `parent` or
+ * `path` — unlike Sanity nested objects.
+ */
+export type ConditionalFieldContext = {
+  record: { [attributeName: string]: unknown };
+  value: unknown;
+  currentUser: User | undefined;
+};
+
+export type ConditionalFlag = boolean | ((context: ConditionalFieldContext) => boolean);
+
 type AttributeBase = {
   inputType: InputType;
   previewType?: PreviewType;
-  isEditable?: boolean;
-  isHidden?: boolean;
-  isUnique?: boolean;
-  isSearchable?: boolean;
+  /**
+   * Hide the field in the form. A static `true` also hides the list column.
+   * Callbacks are form-only and re-evaluate as `record` / `currentUser` change.
+   * Distinct from `entity.menu.hidden`.
+   */
+  hidden?: ConditionalFlag;
+  /**
+   * Make the field read-only in the form. Callbacks re-evaluate as `record` /
+   * `currentUser` change. Currently-read-only attributes are omitted from
+   * create/update mutations.
+   */
+  readOnly?: ConditionalFlag;
+  /**
+   * Marks uniqueness intent. Enforced at deploy for global non-asset attributes.
+   */
+  unique?: boolean;
+  /**
+   * Include this attribute in search indexing and the global search UI.
+   */
+  searchable?: boolean;
   label: string;
   name: string;
   options?: AttributeOptions[InputType];

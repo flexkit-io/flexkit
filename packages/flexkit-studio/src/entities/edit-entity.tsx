@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useDispatch } from './actions-context';
 import SaveButton from './save-button';
 import Loading from './loading';
+import { useAuth } from '../auth/auth-context';
 import { type Action, type ActionEditEntity } from './types';
 
 type Props = {
@@ -51,6 +52,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const apolloClient = useApolloClient();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
   const { isDirty, setIsDirty } = useDrawerModalContext();
+  const [, auth] = useAuth();
 
   const setFormIsDirty = useCallback(
     (nextIsDirty: boolean) => {
@@ -150,14 +152,24 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
         return;
       }
 
-      const mutation = getEntityUpdateMutation(entityNamePlural, entityId, currentScope, schema, previousData, newData);
+      const mutation = getEntityUpdateMutation(
+        entityNamePlural,
+        entityId,
+        currentScope,
+        schema,
+        previousData,
+        newData,
+        {
+          currentUser: auth.user,
+        }
+      );
 
       setMutation(gql`
         ${mutation}
       `);
       setOptions({
         variables: { where: { _id: { eq: entityId } } },
-        onCompleted: (response) => {
+        onCompleted: (response: unknown) => {
           // Adopt _ids for any local nodes created on this save. A full form
           // refetch rewrites `values:` and re-dirties the drawer.
           ref.current?.applyLocalAttributeIds(
@@ -169,7 +181,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       });
       runMutation(true);
     },
-    [apolloClient, currentScope, entityId, entityNamePlural, runMutation, schema, setMutation, setOptions]
+    [apolloClient, auth.user, currentScope, entityId, entityNamePlural, runMutation, schema, setMutation, setOptions]
   );
   const data = results as FormEntityItem[];
   const hasData = data.length > 0;

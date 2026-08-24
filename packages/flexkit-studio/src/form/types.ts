@@ -11,6 +11,7 @@ export type FormFieldParams<T extends keyof AttributeOptions> = {
   entityNamePlural: string;
   fieldSchema: Omit<Attribute, 'options'> & { options: AttributeOptions[T] };
   getValues: (_payload?: string | string[]) => FormFieldValue | undefined;
+  readOnly: boolean;
   relationshipEntityName?: string;
   schema: Schema;
   scope: string;

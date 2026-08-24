@@ -82,9 +82,10 @@ export default function Editor({
   control,
   defaultValue,
   fieldSchema,
+  readOnly,
   setValue,
 }: FormFieldParams<'editor'>): JSX.Element {
-  const { name, label, isEditable, options } = fieldSchema;
+  const { name, label, options } = fieldSchema;
   const [openAI, setOpenAI] = useState(false);
   const [openNode, setOpenNode] = useState(false);
   const [openLink, setOpenLink] = useState(false);
@@ -128,7 +129,7 @@ export default function Editor({
               <EditorContent
                 key={`${name}:${field.value?.scope ?? defaultValue.scope}:${String(field.value?.disabled ?? defaultValue.disabled)}`}
                 className="fk:relative fk:w-full fk:max-w-screen-lg fk:rounded-md fk:border fk:border-input fk:ring-offset-background fk:focus-within:outline-hidden fk:focus-within:ring-2 fk:focus-within:ring-ring fk:focus-within:ring-offset-2"
-                editable={isEditable !== false && !field.value?.disabled}
+                editable={!readOnly && !field.value?.disabled}
                 editorProps={{
                   handleDOMEvents: {
                     keydown: (_view, event) => handleCommandNavigation(event),
@@ -187,6 +188,7 @@ export default function Editor({
           </FormControl>
           <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
+            disabled={readOnly}
             onChange={(checked) => {
               handleCheckbox(checked, field.value);
             }}

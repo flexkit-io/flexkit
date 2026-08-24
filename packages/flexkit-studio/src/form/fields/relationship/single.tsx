@@ -20,6 +20,7 @@ export default function SingleRelationship({
   entityId,
   fieldSchema,
   getValues,
+  readOnly,
   schema,
   scope,
   setValue,
@@ -70,6 +71,11 @@ export default function SingleRelationship({
 
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
+
+    if (readOnly) {
+      return;
+    }
+
     actionDispatch({
       type: 'EditRelationship',
       payload: {
@@ -83,6 +89,10 @@ export default function SingleRelationship({
   }
 
   function handleClearing(event: SyntheticEvent): void {
+    if (readOnly) {
+      return;
+    }
+
     const action: ActionSetRelationship = {
       type: 'setRelationship',
       payload: {
@@ -148,6 +158,7 @@ export default function SingleRelationship({
               >
                 <Input
                   className="fk:h-9.5 fk:py-1.75 fk:caret-transparent fk:border-0 fk:focus-visible:ring-0 fk:focus-visible:ring-offset-0"
+                  disabled={readOnly}
                   id={fieldId}
                   onBlur={() => {
                     setHasFocus(false);
@@ -171,6 +182,7 @@ export default function SingleRelationship({
                       <TooltipTrigger asChild>
                         <Button
                           className="fk:absolute fk:right-10 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                          disabled={readOnly}
                           onClick={handleClearing}
                           size="icon"
                           variant="ghost"
@@ -189,6 +201,7 @@ export default function SingleRelationship({
                     <TooltipTrigger asChild>
                       <Button
                         className="fk:absolute fk:right-0.75 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                        disabled={readOnly}
                         onClick={handleSelection}
                         size="icon"
                         variant="ghost"

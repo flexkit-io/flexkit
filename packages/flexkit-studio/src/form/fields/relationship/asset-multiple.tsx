@@ -49,6 +49,7 @@ export default function AssetMultipleRelationship({
   entityName,
   entityNamePlural,
   fieldSchema,
+  readOnly,
   schema,
   setValue,
 }: FormFieldParams<'relationship'>): JSX.Element {
@@ -277,6 +278,10 @@ export default function AssetMultipleRelationship({
     event.preventDefault();
     event.stopPropagation();
 
+    if (readOnly) {
+      return;
+    }
+
     actionDispatch({
       type: 'EditRelationship',
       payload: {
@@ -293,6 +298,10 @@ export default function AssetMultipleRelationship({
   async function handleUpload(event: SyntheticEvent): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
+
+    if (readOnly) {
+      return;
+    }
 
     const uploadedAssets = await uploadAssets({
       projectId,
@@ -440,11 +449,16 @@ export default function AssetMultipleRelationship({
                       id={`asset-relationship-dropdown-${name}`}
                     >
                       <div className="fk:flex fk:gap-2">
-                        <Button className="fk:h-8" onClick={handleSelection} variant="outline">
+                        <Button className="fk:h-8" disabled={readOnly} onClick={handleSelection} variant="outline">
                           <Link className="fk:h-4 fk:w-4 fk:mr-2" />
                           Select assets
                         </Button>
-                        <Button className="fk:h-8" onClick={(event) => void handleUpload(event)} variant="outline">
+                        <Button
+                          className="fk:h-8"
+                          disabled={readOnly}
+                          onClick={(event) => void handleUpload(event)}
+                          variant="outline"
+                        >
                           <UploadIcon className="fk:h-4 fk:w-4 fk:mr-2" />
                           Upload assets
                         </Button>
@@ -460,6 +474,7 @@ export default function AssetMultipleRelationship({
                                 isLast={index === rows.length - 1}
                                 key={asset._id}
                                 moveAsset={moveAsset}
+                                readOnly={readOnly}
                                 removeAsset={removeAsset}
                               />
                             ))}
@@ -524,6 +539,7 @@ function SelectedAssetCard({
   isFirst,
   isLast,
   moveAsset,
+  readOnly,
   removeAsset,
 }: {
   asset: OrderedAssetValue;
@@ -531,6 +547,7 @@ function SelectedAssetCard({
   isFirst: boolean;
   isLast: boolean;
   moveAsset: (assetId: string, direction: -1 | 1) => void;
+  readOnly: boolean;
   removeAsset: (assetId: string) => void;
 }): JSX.Element {
   return (
@@ -554,7 +571,7 @@ function SelectedAssetCard({
       <div className="fk:mt-2 fk:flex fk:gap-1">
         <Button
           className="fk:h-7 fk:w-7"
-          disabled={isFirst}
+          disabled={readOnly || isFirst}
           onClick={() => moveAsset(asset._id, -1)}
           size="icon"
           type="button"
@@ -564,7 +581,7 @@ function SelectedAssetCard({
         </Button>
         <Button
           className="fk:h-7 fk:w-7"
-          disabled={isLast}
+          disabled={readOnly || isLast}
           onClick={() => moveAsset(asset._id, 1)}
           size="icon"
           type="button"
@@ -574,6 +591,7 @@ function SelectedAssetCard({
         </Button>
         <Button
           className="fk:ml-auto fk:h-7 fk:w-7"
+          disabled={readOnly}
           onClick={() => removeAsset(asset._id)}
           size="icon"
           type="button"

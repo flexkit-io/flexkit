@@ -179,9 +179,10 @@ export type AttributeOptions = {
 type AttributeBase = {
   inputType: InputType;
   previewType?: PreviewType;
-  isEditable?: boolean;
-  isUnique?: boolean;
-  isSearchable?: boolean;
+  hidden?: boolean;
+  readOnly?: boolean;
+  unique?: boolean;
+  searchable?: boolean;
   label: string;
   name: string;
   options?: AttributeOptions[InputType];

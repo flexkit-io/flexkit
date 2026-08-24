@@ -33,7 +33,7 @@ export const salesOrders = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'single',
@@ -51,7 +51,7 @@ export const salesOrders = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'single',
@@ -167,7 +167,7 @@ export const salesOrders = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'multiple',

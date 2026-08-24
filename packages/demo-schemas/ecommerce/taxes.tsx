@@ -21,7 +21,7 @@ export const taxes = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       validation: (z) => z.string().min(1, { error: 'Admin Ref is required' }),
       defaultValue: '',
     },

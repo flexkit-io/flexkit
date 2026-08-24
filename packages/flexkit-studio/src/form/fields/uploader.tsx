@@ -42,6 +42,7 @@ export function Uploader({
   entityId,
   fieldSchema,
   getValues,
+  readOnly,
   setValue,
 }: FormFieldParams<'asset'>): JSX.Element {
   const { name, label, options } = fieldSchema;
@@ -151,7 +152,7 @@ export function Uploader({
   }
 
   async function handleInput(file: File | null, previousValue: FormFieldValue | undefined): Promise<void> {
-    if (!file) {
+    if (readOnly || !file) {
       return;
     }
 
@@ -204,6 +205,10 @@ export function Uploader({
   }
 
   function handleClearing(event: SyntheticEvent): void {
+    if (readOnly) {
+      return;
+    }
+
     event.stopPropagation();
     selectedAssetIdRef.current = null;
     setValue(name, {
@@ -226,12 +231,21 @@ export function Uploader({
   function handleUpload(event: SyntheticEvent): void {
     event.preventDefault();
     event.stopPropagation();
+
+    if (readOnly) {
+      return;
+    }
+
     inputFile.current?.click();
   }
 
   function handleSelectAsset(event: SyntheticEvent): void {
     event.preventDefault();
     event.stopPropagation();
+
+    if (readOnly) {
+      return;
+    }
     setIsOpen(false);
 
     const currentAsset = getValues(name)?.value as ImageValue | undefined;
@@ -313,16 +327,28 @@ export function Uploader({
                 }
               }}
               onDragOver={(e) => {
+                if (readOnly) {
+                  return;
+                }
+
                 e.preventDefault();
                 e.stopPropagation();
                 setDragActive(true);
               }}
               onDragEnter={(e) => {
+                if (readOnly) {
+                  return;
+                }
+
                 e.preventDefault();
                 e.stopPropagation();
                 setDragActive(true);
               }}
               onDragLeave={(e) => {
+                if (readOnly) {
+                  return;
+                }
+
                 e.preventDefault();
                 e.stopPropagation();
                 setDragActive(false);
@@ -331,6 +357,10 @@ export function Uploader({
                 e.preventDefault();
                 e.stopPropagation();
                 setDragActive(false);
+
+                if (readOnly) {
+                  return;
+                }
 
                 const file = e.dataTransfer.files && e.dataTransfer.files[0];
 
@@ -349,6 +379,7 @@ export function Uploader({
                     </div>
                     <Button
                       className="fk:ml-auto fk:h-7 fk:rounded-sm fk:text-muted-foreground"
+                      disabled={readOnly}
                       id={id}
                       onClick={handleUpload}
                       variant="ghost"
@@ -358,6 +389,7 @@ export function Uploader({
                     </Button>
                     <Button
                       className="fk:ml-2 fk:h-7 fk:rounded-sm fk:text-muted-foreground"
+                      disabled={readOnly}
                       onClick={handleSelectAsset}
                       variant="ghost"
                     >
@@ -457,11 +489,11 @@ export function Uploader({
                       </TooltipProvider>
                       <DropdownMenuContent className="fk:w-48">
                         <DropdownMenuGroup>
-                          <DropdownMenuItem onClick={handleUpload}>
+                          <DropdownMenuItem disabled={readOnly} onClick={handleUpload}>
                             <UploadIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                             <span>Upload</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={handleSelectAsset}>
+                          <DropdownMenuItem disabled={readOnly} onClick={handleSelectAsset}>
                             <ImageIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                             <span>Select asset</span>
                           </DropdownMenuItem>
@@ -478,7 +510,7 @@ export function Uploader({
                           </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleClearing}>
+                        <DropdownMenuItem disabled={readOnly} onClick={handleClearing}>
                           <ClearFieldIcon className="fk:mr-2 fk:h-4 fk:w-4" />
                           <span>Clear field</span>
                         </DropdownMenuItem>
@@ -602,6 +634,7 @@ export function Uploader({
           <input
             accept={options?.accept ? options.accept : 'image/*'}
             className="fk:hidden"
+            disabled={readOnly}
             id={`file-upload-${name}`}
             onChange={(e) => {
               const file = e.currentTarget.files && e.currentTarget.files[0];

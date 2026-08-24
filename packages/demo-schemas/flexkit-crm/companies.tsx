@@ -21,7 +21,7 @@ export const companies = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       validation: (z) => z.string().min(1, { error: 'Company name is required' }),
       defaultValue: '',
     },

@@ -21,7 +21,7 @@ export const addresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
     },
     {
@@ -59,7 +59,7 @@ export const addresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       validation: (z) => z.string().min(1, { error: 'City is required' }),
       defaultValue: '',
     },
@@ -98,7 +98,7 @@ export const addresses = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'single',

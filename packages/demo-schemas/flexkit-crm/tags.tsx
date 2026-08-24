@@ -21,7 +21,7 @@ export const crmTags = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       validation: (z) => z.string().min(1, { error: 'Tag name is required' }),
       defaultValue: '',
     },

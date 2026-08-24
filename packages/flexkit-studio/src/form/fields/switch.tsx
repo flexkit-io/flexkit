@@ -5,8 +5,8 @@ import { Switch as SwitchPrimitive } from '../../ui/primitives/switch';
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
-export function Switch({ control, fieldSchema, setValue }: FormFieldParams<'switch'>): JSX.Element {
-  const { name, label, isEditable, options } = fieldSchema;
+export function Switch({ control, fieldSchema, readOnly, setValue }: FormFieldParams<'switch'>): JSX.Element {
+  const { name, label, options } = fieldSchema;
 
   function handleInput(checked: boolean, previousValue: FormFieldValue | undefined): void {
     setValue(name, {
@@ -36,7 +36,7 @@ export function Switch({ control, fieldSchema, setValue }: FormFieldParams<'swit
             <FormControl>
               <SwitchPrimitive
                 checked={field.value?.value ? Boolean(field.value.value) : false}
-                disabled={isEditable === false || field.value?.disabled}
+                disabled={readOnly || field.value?.disabled}
                 onCheckedChange={(checked) => {
                   handleInput(checked, field.value);
                 }}
@@ -45,6 +45,7 @@ export function Switch({ control, fieldSchema, setValue }: FormFieldParams<'swit
           </div>
           <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
+            disabled={readOnly}
             onChange={(checked) => {
               handleCheckbox(checked, field.value);
             }}
