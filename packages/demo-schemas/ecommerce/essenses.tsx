@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const essenses = defineEntity({
   name: 'essence',
   plural: 'essenses',
+  display: 'name',
   menu: {
     label: 'Essenses',
     group: 'catalog',
@@ -21,7 +22,6 @@ export const essenses = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },

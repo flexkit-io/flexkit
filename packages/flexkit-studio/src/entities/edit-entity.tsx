@@ -19,6 +19,7 @@ import type { FormEntityItem } from '../graphql-client/types';
 import { ReadOnlyMode } from '../core/error/read-only-mode';
 import FormBuilder from '../form/form-builder';
 import type { SubmitHandle } from '../form/form-builder';
+import { getDisplayAttribute } from '../core/get-display-attribute';
 import type { Entity } from '../core/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { useDispatch } from './actions-context';
@@ -175,20 +176,20 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const isInitialLoading = isLoading && !hasData;
 
   function getEntityIdentifier(entitySchema: Entity, data: FormEntityItem[]): string {
-    const primaryAttribute = entitySchema?.attributes.find((attr) => attr.isPrimary) ?? entitySchema?.attributes[0];
-    const primaryAttributeName = primaryAttribute.name;
-    const isRelationship = primaryAttribute?.relationship?.field !== undefined;
+    const displayAttribute = getDisplayAttribute(entitySchema);
+    const displayAttributeName = displayAttribute?.name;
+    const isRelationship = displayAttribute?.relationship?.field !== undefined;
 
-    if (!data.length) {
+    if (!data.length || !displayAttributeName) {
       return '';
     }
 
-    if (!isRelationship || !primaryAttribute?.relationship?.field) {
-      return data[0][primaryAttributeName]?.value as string;
+    if (!isRelationship || !displayAttribute?.relationship?.field) {
+      return data[0][displayAttributeName]?.value as string;
     }
 
-    const relatedValue = (data[0][primaryAttributeName]?.value as Record<string, unknown> | undefined)?.[
-      primaryAttribute.relationship.field
+    const relatedValue = (data[0][displayAttributeName]?.value as Record<string, unknown> | undefined)?.[
+      displayAttribute.relationship.field
     ];
     // The related entity's display field may be a local attribute, which is a
     // list relationship field holding 0..1 scoped nodes

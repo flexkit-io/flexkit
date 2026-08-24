@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const brands = defineEntity({
   name: 'brand',
   plural: 'brands',
+  display: 'name',
   menu: {
     label: 'Brands',
     group: 'catalog',
@@ -20,7 +21,6 @@ export const brands = defineEntity({
         comment: 'The name of the brand',
       },
       dataType: 'string',
-      isPrimary: true,
       isUnique: true,
       isSearchable: true,
       inputType: 'text',

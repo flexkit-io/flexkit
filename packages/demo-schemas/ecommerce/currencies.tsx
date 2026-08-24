@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const currencies = defineEntity({
   name: 'currency',
   plural: 'currencies',
+  display: 'name',
   menu: {
     label: 'Currencies',
     group: 'config',
@@ -21,7 +22,6 @@ export const currencies = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },

@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const taxes = defineEntity({
   name: 'tax',
   plural: 'taxes',
+  display: 'adminRef',
   menu: {
     label: 'Taxes',
     group: 'finance',
@@ -21,7 +22,6 @@ export const taxes = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Admin Ref is required' }),
       defaultValue: '',
     },

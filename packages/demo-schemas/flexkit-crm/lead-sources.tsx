@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const leadSources = defineEntity({
   name: 'leadSource',
   plural: 'leadSources',
+  display: 'name',
   menu: {
     label: 'Lead Sources',
     group: 'marketing',
@@ -21,7 +22,6 @@ export const leadSources = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Source name is required' }),
       defaultValue: '',
     },

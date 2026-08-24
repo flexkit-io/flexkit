@@ -21,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../
 import { Badge } from '../../../ui/primitives/badge';
 import { Collapsible, CollapsibleContent } from '../../../ui/primitives/collapsible';
 import { useOuterClick } from '../../../ui/hooks/use-outer-click';
+import { getDisplayAttribute } from '../../../core/get-display-attribute';
 import type {
   ActionSetRelationship,
   Attribute,
@@ -78,13 +79,19 @@ export default function MultipleRelationship({
     connectionName = relationshipAttribute.name;
   }
 
-  const primaryAttributeName = getPrimaryAttributeName(relationshipEntityAttributesSchema);
+  const displayAttributeName = getDisplayAttribute(relationshipEntitySchema)?.name ?? '';
   const initialRows = useMemo(
     () =>
       defaultValue.value
-        ? dataAdapter({ data: defaultValue.value, defaultScope, primaryAttributeName, relationshipEntitySchema, scope })
+        ? dataAdapter({
+            data: defaultValue.value,
+            defaultScope,
+            primaryAttributeName: displayAttributeName,
+            relationshipEntitySchema,
+            scope,
+          })
         : [],
-    [defaultScope, defaultValue, primaryAttributeName, relationshipEntitySchema, scope]
+    [defaultScope, defaultValue, displayAttributeName, relationshipEntitySchema, scope]
   );
   const entityQuery = getRelatedItemsQuery({
     attributeName: name,
@@ -93,7 +100,7 @@ export default function MultipleRelationship({
     schema,
   });
   const previewLimit = 12;
-  const previewItems = rows.length ? rows.slice(0, previewLimit).map((row) => row[primaryAttributeName] as string) : [];
+  const previewItems = rows.length ? rows.slice(0, previewLimit).map((row) => row[displayAttributeName] as string) : [];
   const hasMorePreviewItems = Math.max(rows.length, defaultValue.count ?? 0) > previewItems.length;
   const [getData, { loading, data }] = useLazyQuery<EntityQueryResults & EntityQueryAggregate>(gql`
     ${entityQuery.query}
@@ -397,14 +404,6 @@ function dataRowActions({ appDispatch, relationshipId, relationships, row, setRo
   }
 
   return <DataTableRowActions action={disconnectEntity} row={row} />;
-}
-
-/**
- * Find the name of the attribute of an entity with isPrimary === true.
- * The value of that attribute is returned as the value for the relationship attribute
- */
-function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
-  return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes[0]?.name;
 }
 
 type DataAdapter = {

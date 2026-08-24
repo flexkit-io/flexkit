@@ -1,5 +1,6 @@
 import { find, omit, pick, propEq, toPairs, uniq } from 'ramda';
 import { getAttributeScope } from '../core/attribute-scope';
+import { getDisplayAttribute } from '../core/get-display-attribute';
 import { assetSchema } from '../entities/assets-schema';
 import { tagSchema } from '../entities/tags-schema';
 import type { Attribute, Entity, DataType, Schema, ScopeType, MultipleRelationshipConnection } from '../core/types';
@@ -215,18 +216,10 @@ function getConnectionCountSelection(fieldName: string, whereArgument = ''): str
 }
 
 /**
- * Find the attribute of an entity with isPrimary === true.
- * if none is found, return the first attribute.
- */
-function getPrimaryAttribute(schemaAttributes: Attribute[]): Attribute | undefined {
-  return schemaAttributes.find((attr) => attr.isPrimary) ?? schemaAttributes[0];
-}
-
-/**
- * Selection set for a related entity's primary attribute only — enough for list-grid
+ * Selection set for a related entity's display attribute only — enough for list-grid
  * relationship columns (mapQueryResult / sliceFirstThreeItems).
  */
-function getPrimaryAttributeSelection(
+function getDisplayAttributeSelection(
   primaryAttribute: Attribute | undefined,
   scope: string,
   schema: Schema,
@@ -434,8 +427,8 @@ export function getEntityQuery(
     const relatedEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
 
     if (selection === 'list') {
-      const primaryAttribute = getPrimaryAttribute(relatedEntity?.attributes ?? []);
-      const primarySelection = getPrimaryAttributeSelection(primaryAttribute, scope, schema, true);
+      const displayAttribute = getDisplayAttribute(relatedEntity);
+      const primarySelection = getDisplayAttributeSelection(displayAttribute, scope, schema, true);
       const relatedLimit = attribute.relationship?.mode === 'single' ? 1 : 3;
 
       return (
@@ -532,7 +525,7 @@ export function mapQueryResult(
         const relationshipAttribute = find(propEq(attributeName, 'name'))(attributes) as Attribute;
         const relatedEntityName = relationshipAttribute.relationship?.entity ?? '';
         const relatedEntity = find(propEq(relatedEntityName, 'name'))(schema) as Entity | undefined;
-        const primaryAttribute = getPrimaryAttribute(relatedEntity?.attributes ?? []);
+        const primaryAttribute = getDisplayAttribute(relatedEntity);
         const localValue = entity[attributeName];
 
         if (isAssetRelationshipAttribute(relationshipAttribute)) {

@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const languages = defineEntity({
   name: 'language',
   plural: 'languages',
+  display: 'name',
   menu: {
     label: 'Languages',
     group: 'config',
@@ -34,7 +35,6 @@ export const languages = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: false,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },

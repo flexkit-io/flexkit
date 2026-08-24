@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const companies = defineEntity({
   name: 'company',
   plural: 'companies',
+  display: 'name',
   menu: {
     label: 'Companies',
     group: 'contacts',
@@ -21,7 +22,6 @@ export const companies = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Company name is required' }),
       defaultValue: '',
     },

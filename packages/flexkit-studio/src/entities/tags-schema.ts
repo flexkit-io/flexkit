@@ -3,6 +3,7 @@ import type { Entity } from '../core/types';
 export const tagSchema: Entity = {
   name: '_tag',
   plural: '_tags',
+  display: 'name',
   menu: {
     hidden: true,
   },
@@ -18,7 +19,6 @@ export const tagSchema: Entity = {
       dataType: 'string',
       inputType: 'text',
       previewType: 'text',
-      isPrimary: true,
       defaultValue: '',
     },
     {

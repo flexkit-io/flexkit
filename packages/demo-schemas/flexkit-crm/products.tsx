@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const crmProducts = defineEntity({
   name: 'product',
   plural: 'products',
+  display: 'name',
   menu: {
     label: 'Products',
     group: 'sales',
@@ -21,7 +22,6 @@ export const crmProducts = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Product name is required' }),
       defaultValue: '',
     },

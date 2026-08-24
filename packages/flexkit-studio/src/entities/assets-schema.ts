@@ -3,6 +3,7 @@ import type { Entity } from '../core/types';
 export const assetSchema: Entity = {
   name: '_asset',
   plural: '_assets',
+  display: 'originalFilename',
   menu: {
     hidden: true,
   },
@@ -31,7 +32,6 @@ export const assetSchema: Entity = {
       dataType: 'string',
       inputType: 'text',
       previewType: 'text',
-      isPrimary: true,
       defaultValue: '',
     },
     {

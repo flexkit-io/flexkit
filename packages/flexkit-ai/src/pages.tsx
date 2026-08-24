@@ -675,14 +675,19 @@ export function CreateAutomationPage(): JSX.Element {
         </div>
       </div>
       <Button asChild className="fk:shrink-0 fk:w-fit" size="sm" variant="ghost">
-        <Link to="..">
+        <Link relative="path" to="..">
           <ArrowLeft className="fk:mr-2 fk:size-4" />
           Automations
         </Link>
       </Button>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4">
-          <AutomationForm api={api} mode="create" projectId={projectId} onSaved={() => navigate('..')} />
+          <AutomationForm
+            api={api}
+            mode="create"
+            projectId={projectId}
+            onSaved={() => navigate('..', { relative: 'path' })}
+          />
         </div>
       </ScrollArea>
     </div>
@@ -746,7 +751,7 @@ export function AutomationDetailPage(): JSX.Element {
       </div>
       <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3">
         <Button asChild size="sm" variant="ghost">
-          <Link to="..">
+          <Link to="../automations">
             <ArrowLeft className="fk:mr-2 fk:size-4" />
             Automations
           </Link>
@@ -871,7 +876,7 @@ export function RunsPage(): JSX.Element {
       </div>
       <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3">
         <Button asChild size="sm" variant="ghost">
-          <Link to="..">
+          <Link to="../automations">
             <ArrowLeft className="fk:mr-2 fk:size-4" />
             Automations
           </Link>

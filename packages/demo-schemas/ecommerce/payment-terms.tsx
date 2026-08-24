@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const paymentTerms = defineEntity({
   name: 'paymentTerm',
   plural: 'paymentTerms',
+  display: 'name',
   menu: {
     label: 'Payment Terms',
     group: 'finance',
@@ -21,7 +22,6 @@ export const paymentTerms = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
