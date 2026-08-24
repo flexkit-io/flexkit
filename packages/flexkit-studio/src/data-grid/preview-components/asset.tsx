@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { Tooltip, TooltipContent, TooltipPortal, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
+import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from '../../ui/primitives/tooltip';
 import { IMAGES_BASE_URL } from '../../core/api-paths';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
 import { useCachedImageSrc } from '../../ui/hooks/use-cached-image-src';
@@ -58,50 +58,48 @@ function SingleAsset({ value }: { value: Asset }) {
 
   return (
     <div className="fk:z-10">
-      <TooltipProvider>
-        {isImage ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
+      {isImage ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <img
+              alt="asset"
+              className={`fk:w-7 fk:h-7 fk:cursor-zoom-in fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
+              decoding="async"
+              src={cachedThumbnailSrc ?? undefined}
+            />
+          </TooltipTrigger>
+          <TooltipPortal>
+            <TooltipContent>
               <img
                 alt="asset"
-                className={`fk:w-7 fk:h-7 fk:cursor-zoom-in fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
+                className={`fk:w-52 fk:h-52 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
                 decoding="async"
-                src={cachedThumbnailSrc ?? undefined}
+                src={fullUrl}
               />
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent>
-                <img
-                  alt="asset"
-                  className={`fk:w-52 fk:h-52 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
-                  decoding="async"
-                  src={fullUrl}
-                />
-              </TooltipContent>
-            </TooltipPortal>
-          </Tooltip>
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="fk:w-7 fk:h-7 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
-                {(() => {
-                  const ext = getExtensionFromPath(path);
-                  const style = (
-                    defaultStyles as Record<string, Record<string, string | number | boolean | undefined>>
-                  )[ext];
+            </TooltipContent>
+          </TooltipPortal>
+        </Tooltip>
+      ) : (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="fk:w-7 fk:h-7 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
+              {(() => {
+                const ext = getExtensionFromPath(path);
+                const style = (
+                  defaultStyles as Record<string, Record<string, string | number | boolean | undefined>>
+                )[ext];
 
-                  return <FileTypeIcon extension={ext} {...(style || {})} />;
-                })()}
-              </div>
-            </TooltipTrigger>
-            <TooltipPortal>
-              <TooltipContent>
-                <div className="fk:text-sm fk:text-muted-foreground">Preview not available</div>
-              </TooltipContent>
-            </TooltipPortal>
-          </Tooltip>
-        )}
-      </TooltipProvider>
+                return <FileTypeIcon extension={ext} {...(style || {})} />;
+              })()}
+            </div>
+          </TooltipTrigger>
+          <TooltipPortal>
+            <TooltipContent>
+              <div className="fk:text-sm fk:text-muted-foreground">Preview not available</div>
+            </TooltipContent>
+          </TooltipPortal>
+        </Tooltip>
+      )}
     </div>
   );
 }
