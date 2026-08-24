@@ -19,7 +19,7 @@ import {
 import { Skeleton, SidebarTrigger, Separator, Tooltip, TooltipContent, TooltipTrigger } from '@flexkit/studio/ui';
 import type { AttributeValue, ColumnDef, SingleProject, Row, SortingState, Updater } from '@flexkit/studio';
 
-const pageSize = 25;
+const pageSize = 36;
 const defaultSort = [{ _updatedAt: 'DESC' }, { _id: 'DESC' }];
 
 export function List(): JSX.Element {

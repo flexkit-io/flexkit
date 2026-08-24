@@ -32,6 +32,7 @@ import {
   TableRow,
 } from '../ui/primitives/table';
 import { cn } from '../ui/lib/utils';
+import { TooltipProvider } from '../ui/primitives/tooltip';
 import type { AttributeValue } from '../graphql-client/types';
 import type { MultipleRelationshipConnection } from '../core/types';
 import { useGraphQLError } from '../graphql-client/graphql-context';
@@ -68,6 +69,10 @@ interface ExtendedDataTable extends TableMeta<unknown> {
 
 // Matches default `fk:h-9` rows (text-sm / 28px assets + cell padding + border).
 const DEFAULT_ROW_HEIGHT_PX = 36;
+const ROW_OVERSCAN = 15;
+// Matches `fk:h-10` on TableHead. The header lives in the same scroll
+// container as the rows, so item measurements must start after it.
+const STICKY_HEADER_HEIGHT_PX = 40;
 
 function inferRowHeightEstimate(rowClassName?: string): number | undefined {
   if (!rowClassName) {
@@ -199,12 +204,18 @@ export function DataTable<TData extends AttributeValue, TValue>({
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     estimateSize: () => rowHeightPx,
+    getItemKey: (index) => rows[index]?.id ?? index,
     getScrollElement: () => scrollRef.current,
-    overscan: 5,
+    overscan: ROW_OVERSCAN,
+    scrollMargin: STICKY_HEADER_HEIGHT_PX,
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
-  const totalSize = rowVirtualizer.getTotalSize();
+  const { paddingTop, paddingBottom } = getVirtualBodySpacers(
+    virtualItems,
+    rowVirtualizer.getTotalSize(),
+    STICKY_HEADER_HEIGHT_PX
+  );
 
   // Keep load-more inputs in refs so callback identity churn from parents
   // (e.g. Apollo fetchMore) cannot re-trigger the effect every render.
@@ -263,92 +274,124 @@ export function DataTable<TData extends AttributeValue, TValue>({
     <div className={cn('fk:flex fk:h-full fk:min-h-0 fk:w-full fk:min-w-0 fk:flex-col fk:gap-4', classNames?.wrapper)}>
       {toolbarComponent && toolbarComponent(table)}
       <div className="fk:relative fk:min-h-0 fk:min-w-0 fk:flex-1 fk:-mb-px">
-        <TablePrimitive
-          className={cn('fk:grid fk:pb-20', classNames?.table)}
-          containerClassName={classNames?.tableContainer}
-          onScroll={handleScroll}
-          ref={scrollRef}
-        >
-          <TableHeader className="fk:sticky fk:top-0 fk:z-10 fk:grid">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow className="fk:flex fk:w-full" key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead
-                      className={cn('fk:flex fk:items-center', header.column.id === 'actions' && 'fk:pl-0')}
-                      colSpan={header.colSpan}
-                      key={header.id}
-                      style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                      {isLoadingMore ? (
-                        <div
-                          aria-hidden
-                          className="fk:pointer-events-none fk:absolute fk:top-10.25 fk:right-px fk:left-px fk:z-20 fk:h-0.5 fk:overflow-hidden fk:opacity-4"
-                        >
-                          <div className="fk:animate-progress fk:h-full fk:w-full fk:bg-foreground" />
-                        </div>
-                      ) : null}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody
-            className="fk:grid fk:relative"
-            style={{
-              height: `${totalSize.toString()}px`, //tells scrollbar how big the table is
-            }}
+        <TooltipProvider delayDuration={400}>
+          <TablePrimitive
+            className={cn('fk:grid fk:pb-20', classNames?.table)}
+            containerClassName={classNames?.tableContainer}
+            onScroll={handleScroll}
+            ref={scrollRef}
           >
-            {virtualItems.length ? (
-              virtualItems.map((virtualRow) => {
-                const row = rows[virtualRow.index];
+            <TableHeader className="fk:sticky fk:top-0 fk:z-10 fk:grid">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow className="fk:flex fk:w-full" key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead
+                        className={cn('fk:flex fk:items-center', header.column.id === 'actions' && 'fk:pl-0')}
+                        colSpan={header.colSpan}
+                        key={header.id}
+                        style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
+                      >
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                        {isLoadingMore ? (
+                          <div
+                            aria-hidden
+                            className="fk:pointer-events-none fk:absolute fk:top-10.25 fk:right-px fk:left-px fk:z-20 fk:h-0.5 fk:overflow-hidden fk:opacity-4"
+                          >
+                            <div className="fk:animate-progress fk:h-full fk:w-full fk:bg-foreground" />
+                          </div>
+                        ) : null}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody className="fk:grid fk:relative">
+              {rows.length === 0 ? (
+                <TableRow>
+                  <TableCell className="fk:h-24 fk:text-center" colSpan={columns.length}>
+                    No results.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <>
+                  {paddingTop > 0 ? <VirtualRowSpacer height={paddingTop} /> : null}
+                  {virtualItems.map((virtualRow) => {
+                    const row = rows[virtualRow.index];
 
-                return (
-                  <TableRow
-                    className={cn(
-                      (table.options.meta as ExtendedDataTable).getRowBackground(row),
-                      'fk:flex fk:absolute fk:w-full fk:overflow-hidden',
-                      !hasExplicitRowHeightClass && rowHeightEstimate == null && 'fk:h-9',
-                      classNames?.row
-                    )}
-                    data-index={virtualRow.index}
-                    data-state={row.getIsSelected() && 'selected'}
-                    key={virtualRow.key}
-                    style={{
-                      height: `${rowHeightPx.toString()}px`,
-                      transform: `translateY(${virtualRow.start.toString()}px)`,
-                    }}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
+                    return (
+                      <TableRow
                         className={cn(
-                          'fk:flex fk:items-center fk:truncate',
-                          cell.column.id === 'actions' && 'fk:pl-1!'
+                          (table.options.meta as ExtendedDataTable).getRowBackground(row),
+                          'fk:flex fk:w-full fk:overflow-hidden fk:transition-none',
+                          !hasExplicitRowHeightClass && rowHeightEstimate == null && 'fk:h-9',
+                          classNames?.row
                         )}
-                        key={cell.id}
+                        data-index={virtualRow.index}
+                        data-state={row.getIsSelected() && 'selected'}
+                        key={virtualRow.key}
                         style={{
-                          width: cell.column.getSize(),
+                          height: `${rowHeightPx.toString()}px`,
                         }}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-                <TableCell className="fk:h-24 fk:text-center" colSpan={columns.length}>
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </TablePrimitive>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            className={cn(
+                              'fk:flex fk:items-center fk:truncate',
+                              cell.column.id === 'actions' && 'fk:pl-1!'
+                            )}
+                            key={cell.id}
+                            style={{
+                              width: cell.column.getSize(),
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })}
+                  {paddingBottom > 0 ? <VirtualRowSpacer height={paddingBottom} /> : null}
+                </>
+              )}
+            </TableBody>
+          </TablePrimitive>
+        </TooltipProvider>
       </div>
     </div>
+  );
+}
+
+function getVirtualBodySpacers(
+  virtualItems: { start: number; end: number }[],
+  totalSize: number,
+  scrollMargin: number
+): { paddingTop: number; paddingBottom: number } {
+  if (virtualItems.length === 0) {
+    return { paddingTop: 0, paddingBottom: 0 };
+  }
+
+  const firstStart = virtualItems[0]?.start ?? 0;
+  const lastEnd = virtualItems[virtualItems.length - 1]?.end ?? 0;
+
+  // Measurements include scrollMargin so range math sees the header; tbody
+  // spacers must not, because the header is already in thead.
+  return {
+    paddingTop: Math.max(0, firstStart - scrollMargin),
+    paddingBottom: Math.max(0, totalSize - (lastEnd - scrollMargin)),
+  };
+}
+
+function VirtualRowSpacer({ height }: { height: number }): JSX.Element {
+  return (
+    <tr
+      aria-hidden
+      className="fk:pointer-events-none fk:border-0"
+      style={{ display: 'block', height: `${height.toString()}px` }}
+    >
+      <td className="fk:p-0 fk:border-0" />
+    </tr>
   );
 }
 
