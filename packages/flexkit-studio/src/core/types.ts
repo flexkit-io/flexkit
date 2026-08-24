@@ -239,7 +239,8 @@ export type Entity = {
   /**
    * Attribute name used as the human-readable label in relationship previews,
    * search hits, and edit-drawer titles. Must match an attribute `name`.
-   * Falls back to the first attribute when omitted.
+   * Falls back to the first attribute when omitted. The effective display
+   * attribute cannot be space-bound.
    */
   display?: string;
   menu?:

@@ -24,17 +24,23 @@ function normalizeAttributeScope(attribute: Attribute): Attribute {
 }
 
 function assertDisplayAttribute(entity: Entity): void {
-  if (!entity.display) {
-    return;
-  }
+  const displayAttribute = entity.display
+    ? entity.attributes.find((attribute) => attribute.name === entity.display)
+    : entity.attributes[0];
 
-  const displayAttribute = entity.attributes.find((attribute) => attribute.name === entity.display);
-
-  if (!displayAttribute) {
+  if (entity.display && !displayAttribute) {
     throw new Error(
       `Entity "${entity.name}" sets display to "${entity.display}", but no attribute has that name.`
     );
   }
+
+  if (!displayAttribute || (displayAttribute.spaces ?? []).length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `Entity "${entity.name}" cannot use space-bound attribute "${displayAttribute.name}" as its display field.`
+  );
 }
 
 export function normalizeEntity(entity: Entity): Entity {
