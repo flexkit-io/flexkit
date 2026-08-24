@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const salesOrders = defineEntity({
   name: 'salesOrder',
   plural: 'salesOrders',
+  display: 'customer',
   menu: {
     label: 'Sales Orders',
     group: 'operations',
@@ -50,7 +51,6 @@ export const salesOrders = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isPrimary: true,
       isSearchable: true,
       defaultValue: '',
       relationship: {

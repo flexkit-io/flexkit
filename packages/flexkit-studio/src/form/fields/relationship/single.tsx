@@ -6,7 +6,8 @@ import { Button } from '../../../ui/primitives/button';
 import { FormControl, FormDescription, FormField, FormLabel, FormMessage, FormItem } from '../../../ui/primitives/form';
 import { Input } from '../../../ui/primitives/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../../ui/primitives/tooltip';
-import type { ActionSetRelationship, Attribute, Entity, SingleRelationshipConnection } from '../../../core/types';
+import { getDisplayAttribute } from '../../../core/get-display-attribute';
+import type { ActionSetRelationship, Entity, SingleRelationshipConnection } from '../../../core/types';
 import { useDispatch } from '../../../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../../../core/app-context';
 import type { FormFieldParams } from '../../types';
@@ -32,8 +33,7 @@ export default function SingleRelationship({
   const { relationships } = useAppContext();
   const relationshipId = useId();
   const relationshipEntitySchema = find(propEq(relationshipEntity, 'name'))(schema) as Entity | undefined;
-  const primaryAttribute = getPrimaryAttribute(relationshipEntitySchema?.attributes ?? []);
-  const primaryAttributeName = primaryAttribute.name;
+  const displayAttributeName = getDisplayAttribute(relationshipEntitySchema)?.name;
 
   useEffect(() => {
     const connectValue = defaultValue.value;
@@ -115,9 +115,15 @@ export default function SingleRelationship({
         const value = field.value?.value;
         let displayValue = '';
 
-        if (value && typeof value === 'object' && !Array.isArray(value) && value[primaryAttributeName]) {
-          const rawPrimary = value[primaryAttributeName];
-          // Local primary attributes are list relationship fields with 0..1 scoped nodes
+        if (
+          displayAttributeName &&
+          value &&
+          typeof value === 'object' &&
+          !Array.isArray(value) &&
+          value[displayAttributeName]
+        ) {
+          const rawPrimary = value[displayAttributeName];
+          // Local display attributes are list relationship fields with 0..1 scoped nodes
           const primaryValue = (Array.isArray(rawPrimary) ? rawPrimary[0] : rawPrimary) as
             | AttributeValue
             | string
@@ -203,12 +209,4 @@ export default function SingleRelationship({
       }}
     />
   );
-}
-
-/**
- * Find the attribute of an entity with isPrimary === true.
- * if none is found, return the first attribute.
- */
-function getPrimaryAttribute(schemaAttributes: Attribute[]): Attribute {
-  return schemaAttributes.find((attr) => attr.isPrimary) ?? schemaAttributes[0];
 }

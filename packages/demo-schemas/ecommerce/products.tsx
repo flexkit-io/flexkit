@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const products = defineEntity({
   name: 'product',
   plural: 'products',
+  display: 'name',
   menu: {
     label: 'Products',
     group: 'catalog',
@@ -22,7 +23,6 @@ export const products = defineEntity({
       inputType: 'text', // <-- This affects how the data is displayed in the form (text input, select, WYSIWYG editor, textarea, etc)
       previewType: 'text', // <-- This affects how the data is displayed in the list view (text, image, boolean, WYSIWYG preview, etc)
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },

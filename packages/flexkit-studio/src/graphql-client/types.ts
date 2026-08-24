@@ -90,7 +90,7 @@ export type UseEntityQueryParams = {
   variables?: OperationVariables;
   isForm?: boolean;
   /**
-   * `list` only selects each related entity's primary attribute (desk/list grids).
+   * `list` only selects each related entity's display attribute (desk/list grids).
    * `full` keeps nested relationship fields (forms, relationship pickers). Default: `full`.
    */
   selection?: EntityQuerySelection;

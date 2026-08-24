@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const pipelineStages = defineEntity({
   name: 'pipelineStage',
   plural: 'pipelineStages',
+  display: 'name',
   menu: {
     label: 'Pipeline Stages',
     group: 'config',
@@ -21,7 +22,6 @@ export const pipelineStages = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Stage name is required' }),
       defaultValue: '',
     },

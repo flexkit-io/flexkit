@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const reviews = defineEntity({
   name: 'review',
   plural: 'reviews',
+  display: 'content',
   menu: {
     label: 'Reviews',
     group: 'ugc',
@@ -82,7 +83,6 @@ export const reviews = defineEntity({
       },
       dataType: 'string',
       inputType: 'textarea',
-      isPrimary: true,
       isSearchable: true,
       defaultValue: '',
     },

@@ -3,6 +3,7 @@ import { defineEntity } from '@flexkit/studio';
 export const salesOrderItems = defineEntity({
   name: 'salesOrderItem',
   plural: 'salesOrderItems',
+  display: 'name',
   menu: {
     label: 'Sales Order Items',
     hidden: true,
@@ -31,7 +32,6 @@ export const salesOrderItems = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },

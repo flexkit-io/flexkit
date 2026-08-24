@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const contentFormats = defineEntity({
   name: 'contentFormat',
   plural: 'contentFormats',
+  display: 'name',
   menu: {
     label: 'Content Formats',
     group: 'catalog',
@@ -21,7 +22,6 @@ export const contentFormats = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },

@@ -7,14 +7,8 @@ import { apiPaths } from './api-paths';
 import { useAppContext } from './app-context';
 import { useConfig } from './config/config-context';
 import type { SingleProject } from './config/types';
-import type {
-  Attribute,
-  Entity,
-  RawResultItem,
-  RawSearchResultItems,
-  SearchRequestProps,
-  SearchResultItem,
-} from './types';
+import { getDisplayAttribute } from './get-display-attribute';
+import type { Entity, RawResultItem, RawSearchResultItems, SearchRequestProps, SearchResultItem } from './types';
 
 export function useSearch(
   projectId: string,
@@ -41,14 +35,6 @@ export function useSearch(
   return { results, error, isLoading };
 }
 
-/**
- * Find the name of the attribute of an entity with isPrimary === true.
- * The value of that attribute is returned as the value for the relationship attribute
- */
-function getPrimaryAttributeName(schemaAttributes: Attribute[]): string {
-  return schemaAttributes.find((attr) => attr.isPrimary)?.name ?? schemaAttributes[0]?.name;
-}
-
 function mapResults(
   results: RawSearchResultItems | undefined,
   projectId: string,
@@ -67,7 +53,7 @@ function mapResults(
         return [];
       }
 
-      const primaryAttributeName = getPrimaryAttributeName(entitySchema?.attributes ?? []);
+      const primaryAttributeName = getDisplayAttribute(entitySchema)?.name ?? '';
       const entityName = entitySchema?.name ?? entityNamePlural;
 
       // iterate over the hits and return an object with the primary attribute value first and then the rest of the attributes.

@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const addresses = defineEntity({
   name: 'address',
   plural: 'addresses',
+  display: 'name',
   menu: {
     label: 'Addresses',
     group: 'contacts',
@@ -21,7 +22,6 @@ export const addresses = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       defaultValue: '',
     },
     {

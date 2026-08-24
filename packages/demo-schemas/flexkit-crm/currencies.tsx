@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const crmCurrencies = defineEntity({
   name: 'currency',
   plural: 'currencies',
+  display: 'code',
   menu: {
     label: 'Currencies',
     group: 'config',
@@ -35,7 +36,6 @@ export const crmCurrencies = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(3, { error: 'Currency code is required' }),
       defaultValue: '',
     },

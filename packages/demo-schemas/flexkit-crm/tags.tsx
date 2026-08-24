@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const crmTags = defineEntity({
   name: 'tag',
   plural: 'tags',
+  display: 'name',
   menu: {
     label: 'Tags',
     group: 'config',
@@ -21,7 +22,6 @@ export const crmTags = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.string().min(1, { error: 'Tag name is required' }),
       defaultValue: '',
     },

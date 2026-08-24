@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const countries = defineEntity({
   name: 'country',
   plural: 'countries',
+  display: 'name',
   menu: {
     label: 'Countries',
     group: 'config',
@@ -20,7 +21,6 @@ export const countries = defineEntity({
       },
       dataType: 'string',
       isSearchable: true,
-      isPrimary: true,
       isUnique: true,
       inputType: 'text',
       validation: (z) => z.string().min(1, { error: 'Channel name is required' }),

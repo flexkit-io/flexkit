@@ -191,7 +191,6 @@ type AttributeBase = {
   previewType?: PreviewType;
   isEditable?: boolean;
   isHidden?: boolean;
-  isPrimary?: boolean;
   isUnique?: boolean;
   isSearchable?: boolean;
   label: string;
@@ -237,6 +236,12 @@ export type Attribute = {
 export type Entity = {
   name: string;
   plural: string;
+  /**
+   * Attribute name used as the human-readable label in relationship previews,
+   * search hits, and edit-drawer titles. Must match an attribute `name`.
+   * Falls back to the first attribute when omitted.
+   */
+  display?: string;
   menu?:
     | { hidden: true; label?: string }
     | {

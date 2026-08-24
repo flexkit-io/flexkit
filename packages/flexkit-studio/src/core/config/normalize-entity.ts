@@ -23,10 +23,26 @@ function normalizeAttributeScope(attribute: Attribute): Attribute {
   };
 }
 
+function assertDisplayAttribute(entity: Entity): void {
+  if (!entity.display) {
+    return;
+  }
+
+  const displayAttribute = entity.attributes.find((attribute) => attribute.name === entity.display);
+
+  if (!displayAttribute) {
+    throw new Error(
+      `Entity "${entity.name}" sets display to "${entity.display}", but no attribute has that name.`
+    );
+  }
+}
+
 export function normalizeEntity(entity: Entity): Entity {
   entity.attributes.forEach((attribute) => {
     assertAssetScope(attribute, entity.name);
   });
+
+  assertDisplayAttribute(entity);
 
   return {
     ...entity,

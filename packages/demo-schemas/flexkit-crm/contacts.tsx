@@ -4,6 +4,7 @@ import { defineEntity } from '@flexkit/studio';
 export const contacts = defineEntity({
   name: 'contact',
   plural: 'contacts',
+  display: 'email',
   menu: {
     label: 'Contacts',
     group: 'contacts',
@@ -49,7 +50,6 @@ export const contacts = defineEntity({
       dataType: 'string',
       inputType: 'text',
       isSearchable: true,
-      isPrimary: true,
       validation: (z) => z.email({ error: 'Invalid email address' }),
       defaultValue: '',
     },

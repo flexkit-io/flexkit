@@ -180,7 +180,6 @@ type AttributeBase = {
   inputType: InputType;
   previewType?: PreviewType;
   isEditable?: boolean;
-  isPrimary?: boolean;
   isUnique?: boolean;
   isSearchable?: boolean;
   label: string;
@@ -232,6 +231,7 @@ export interface ProjectOptions {
   schema: {
     name: string;
     plural: string;
+    display?: string;
     menu?:
       | { hidden: true; label?: string }
       | {
@@ -260,6 +260,7 @@ export interface FlexkitConfig {
     schema?: {
       name: string;
       plural: string;
+      display?: string;
       spaces?: string[];
       attributes: Attribute[];
     }[];
