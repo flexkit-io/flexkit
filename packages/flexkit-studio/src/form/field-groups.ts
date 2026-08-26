@@ -22,6 +22,14 @@ export function attributeBelongsToGroup(attribute: Attribute, groupName: string)
   return getAttributeGroupNames(attribute).includes(groupName);
 }
 
+export function isAttributeVisibleInGroups(attribute: Attribute, groups: FieldGroup[]): boolean {
+  if (groups.length === 0) {
+    return true;
+  }
+
+  return groups.some((group) => attributeBelongsToGroup(attribute, group.name));
+}
+
 export function resolveVisibleFieldGroups(
   groups: FieldGroup[] | undefined,
   context: ConditionalFieldContext

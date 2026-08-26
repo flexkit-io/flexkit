@@ -212,7 +212,7 @@ type AttributeBase = {
   /**
    * Make the field read-only in the form. Callbacks re-evaluate as `record` /
    * `currentUser` change. Currently-read-only attributes are omitted from
-   * create/update mutations.
+   * create/update mutations and skipped during form validation.
    */
   readOnly?: ConditionalFlag;
   /**

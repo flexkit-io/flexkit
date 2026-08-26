@@ -26,7 +26,12 @@ import RelationshipField from './fields/relationship';
 import { Select as SelectField } from './fields/select';
 import UndefinedFieldTypeError from './fields/undefined-field-type-error';
 import type { FormFieldParams } from './types';
-import { attributeBelongsToGroup, getDefaultFieldGroupName, resolveVisibleFieldGroups } from './field-groups';
+import {
+  attributeBelongsToGroup,
+  getDefaultFieldGroupName,
+  isAttributeVisibleInGroups,
+  resolveVisibleFieldGroups,
+} from './field-groups';
 import { resolveConditionalFlag, unwrapFormRecord } from './resolve-conditional-flag';
 
 export type SubmitHandle = {
@@ -91,6 +96,11 @@ function FormBuilder(
   }, [defaultScope, formData, formSchema]);
   const resolver: Resolver<FormEntityItem> = async (values, context, options) => {
     const record = unwrapFormRecord(values);
+    const visibleGroupsForValidation = resolveVisibleFieldGroups(entitySchema?.groups, {
+      record,
+      value: record,
+      currentUser: auth.user,
+    });
     const shape: { [fieldName: string]: z.ZodType } = {};
 
     for (const fieldSchema of formSchema) {
@@ -98,13 +108,21 @@ function FormBuilder(
         continue;
       }
 
-      const hidden = resolveConditionalFlag(fieldSchema.hidden, {
+      const fieldContext = {
         record,
         value: record[fieldSchema.name],
         currentUser: auth.user,
-      });
+      };
 
-      if (hidden) {
+      if (resolveConditionalFlag(fieldSchema.hidden, fieldContext)) {
+        continue;
+      }
+
+      if (resolveConditionalFlag(fieldSchema.readOnly, fieldContext)) {
+        continue;
+      }
+
+      if (!isAttributeVisibleInGroups(fieldSchema, visibleGroupsForValidation)) {
         continue;
       }
 
@@ -344,6 +362,10 @@ function FormBuilder(
             </div>
             <TabsContent className="fk:gap-8" value={activeGroup}>
               {formSchema.map((field) => {
+                if (!isAttributeVisibleInGroups(field, visibleGroups)) {
+                  return null;
+                }
+
                 const isVisible = attributeBelongsToGroup(field, activeGroup);
                 const fieldElement = renderField(field);
 
