@@ -28,7 +28,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
   }
 
   return (
-    <div className="fk:flex fk:basis-14 fk:min-h-[3.5rem] fk:px-3 fk:gap-x-4 fk:border-b fk:border-border fk:z-20">
+    <div className="fk:flex fk:basis-14 fk:min-h-14 fk:px-3 fk:gap-x-4 fk:border-b fk:border-border fk:z-30">
       <Suspense fallback={null}>
         <Logo theme={resolvedTheme} title="Flexkit Studio" />
       </Suspense>
@@ -37,7 +37,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
           <ProjectSelector projectId={projectId} projects={projects} />
         </Suspense>
         <Suspense fallback={null}>
-          <Search onSelect={handleSearchSelection} projectId={projectId} schema={schema} />
+          <Search key={projectId} onSelect={handleSearchSelection} projectId={projectId} schema={schema} />
         </Suspense>
       </div>
       <div className="fk:flex fk:items-center">
