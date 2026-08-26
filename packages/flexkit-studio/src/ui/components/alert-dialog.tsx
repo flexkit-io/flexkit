@@ -50,16 +50,20 @@ export default function AlertDialog({ options }: Props): JSX.Element {
 
   async function handleAction(): Promise<void> {
     setIsSubmitting(true);
+    setIsClosingFromSubmit(true);
+    setIsOpen(false);
+
+    await new Promise<void>((resolve) => {
+      globalThis.setTimeout(resolve, 150);
+    });
 
     try {
       const maybePromise = options.dialogActionSubmit?.();
 
       if (maybePromise && typeof (maybePromise as Promise<void>).then === 'function') {
-        await (maybePromise as Promise<void>);
+        await maybePromise;
       }
     } finally {
-      setIsClosingFromSubmit(true);
-      setIsOpen(false);
       setIsSubmitting(false);
     }
   }

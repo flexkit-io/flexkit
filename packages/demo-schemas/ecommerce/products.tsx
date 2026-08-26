@@ -10,9 +10,19 @@ export const products = defineEntity({
     group: 'catalog',
     icon: <TagIcon />,
   },
+  groups: [
+    { name: 'details', title: 'Details', default: true },
+    { name: 'media', title: 'Media' },
+    { name: 'pricing', title: 'Pricing' },
+    { name: 'catalog', title: 'Catalog' },
+    { name: 'inventory', title: 'Inventory' },
+    { name: 'content', title: 'Content' },
+    { name: 'seo', title: 'SEO' },
+  ],
   attributes: [
     {
       name: 'name',
+      group: 'details',
       label: 'Name',
       scope: 'local',
       options: {
@@ -22,12 +32,13 @@ export const products = defineEntity({
       dataType: 'string', // <-- This is the data type of the attribute, it directly affects how the data is saved in the database
       inputType: 'text', // <-- This affects how the data is displayed in the form (text input, select, WYSIWYG editor, textarea, etc)
       previewType: 'text', // <-- This affects how the data is displayed in the list view (text, image, boolean, WYSIWYG preview, etc)
-      isSearchable: true,
+      searchable: true,
       validation: (z) => z.string().min(1, { error: 'Name is required' }),
       defaultValue: '',
     },
     {
       name: 'sku',
+      group: 'details',
       label: 'SKU',
       scope: 'global',
       options: {
@@ -35,14 +46,16 @@ export const products = defineEntity({
         comment: 'Unique SKU identifier',
       },
       dataType: 'string',
-      isSearchable: true,
-      isUnique: true,
+      searchable: true,
+      unique: true,
       inputType: 'text',
+      readOnly: ({ currentUser }) => currentUser?.role === 'viewer',
       validation: (z) => z.string().min(1, { error: 'SKU is required' }),
       defaultValue: '',
     },
     {
       name: 'urlPath',
+      group: 'details',
       label: 'URL Path',
       scope: 'local',
       options: {
@@ -50,12 +63,14 @@ export const products = defineEntity({
         comment: 'Product URL path',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'text',
+      hidden: ({ record }) => !record.name,
       defaultValue: '',
     },
     {
       name: 'categoriesPath',
+      group: 'details',
       label: 'Categories Path',
       scope: 'local',
       options: {
@@ -63,12 +78,13 @@ export const products = defineEntity({
         comment: 'Full categories path for the product',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'text',
       defaultValue: '',
     },
     {
       name: 'presentation',
+      group: 'details',
       label: 'Presentation',
       scope: 'local',
       options: {
@@ -76,12 +92,13 @@ export const products = defineEntity({
         comment: 'Product presentation format',
       },
       dataType: 'string',
-      isSearchable: true,
+      searchable: true,
       inputType: 'text',
       defaultValue: '',
     },
     {
       name: 'description',
+      group: 'details',
       label: 'Description',
       scope: 'local',
       options: {
@@ -94,6 +111,7 @@ export const products = defineEntity({
     },
     {
       name: 'brand',
+      group: 'details',
       label: 'Brand',
       scope: 'relationship',
       options: {
@@ -102,7 +120,7 @@ export const products = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'single',
@@ -114,6 +132,7 @@ export const products = defineEntity({
     },
     {
       name: 'flags',
+      group: 'details',
       label: 'Flags',
       scope: 'relationship',
       options: {
@@ -131,6 +150,7 @@ export const products = defineEntity({
     },
     {
       name: 'category',
+      group: 'details',
       label: 'Category',
       scope: 'relationship',
       options: {
@@ -139,7 +159,7 @@ export const products = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'single',
@@ -149,6 +169,7 @@ export const products = defineEntity({
     },
     {
       name: 'images',
+      group: ['media', 'seo'],
       label: 'Images',
       scope: 'relationship',
       options: {
@@ -167,6 +188,7 @@ export const products = defineEntity({
     },
     {
       name: 'price',
+      group: 'pricing',
       label: 'Price',
       scope: 'local',
       options: {
@@ -181,6 +203,7 @@ export const products = defineEntity({
     },
     {
       name: 'pvpr',
+      group: 'pricing',
       label: 'PVPR',
       scope: 'local',
       options: {
@@ -196,6 +219,7 @@ export const products = defineEntity({
     },
     {
       name: 'specialPrice',
+      group: 'pricing',
       label: 'Special Price',
       scope: 'local',
       options: {
@@ -208,6 +232,7 @@ export const products = defineEntity({
     },
     {
       name: 'specialPriceFrom',
+      group: 'pricing',
       label: 'Special Price From',
       scope: 'local',
       options: {
@@ -220,6 +245,7 @@ export const products = defineEntity({
     },
     {
       name: 'specialPriceTo',
+      group: 'pricing',
       label: 'Special Price To',
       scope: 'local',
       options: {
@@ -232,6 +258,7 @@ export const products = defineEntity({
     },
     {
       name: 'metaTitle',
+      group: 'seo',
       label: 'Meta Title',
       scope: 'local',
       options: {
@@ -244,6 +271,7 @@ export const products = defineEntity({
     },
     {
       name: 'metaDescription',
+      group: 'seo',
       label: 'Meta Description',
       scope: 'local',
       options: {
@@ -256,6 +284,7 @@ export const products = defineEntity({
     },
     {
       name: 'nutritionFactTable',
+      group: 'content',
       label: 'Nutrition Fact Table',
       scope: 'local',
       options: {
@@ -268,6 +297,7 @@ export const products = defineEntity({
     },
     {
       name: 'flavours',
+      group: 'catalog',
       label: 'Flavours',
       scope: 'relationship',
       options: {
@@ -285,6 +315,7 @@ export const products = defineEntity({
     },
     {
       name: 'essences',
+      group: 'catalog',
       label: 'Essences',
       scope: 'relationship',
       options: {
@@ -292,7 +323,7 @@ export const products = defineEntity({
         comment: 'Product essences',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'relationship',
       defaultValue: '',
       relationship: {
@@ -303,6 +334,7 @@ export const products = defineEntity({
     },
     {
       name: 'mainComponents',
+      group: 'catalog',
       label: 'Main Components',
       scope: 'local',
       options: {
@@ -315,6 +347,7 @@ export const products = defineEntity({
     },
     {
       name: 'size',
+      group: 'details',
       label: 'Size',
       scope: 'global',
       options: {
@@ -322,12 +355,13 @@ export const products = defineEntity({
         comment: 'Product size',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'text',
       defaultValue: '',
     },
     {
       name: 'uses',
+      group: 'catalog',
       label: 'Uses',
       scope: 'relationship',
       options: {
@@ -335,7 +369,7 @@ export const products = defineEntity({
         comment: 'Product uses',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'relationship',
       relationship: {
         mode: 'multiple',
@@ -346,6 +380,7 @@ export const products = defineEntity({
     },
     {
       name: 'promoTags',
+      group: 'catalog',
       label: 'Promo Tags',
       scope: 'relationship',
       options: {
@@ -353,7 +388,7 @@ export const products = defineEntity({
         comment: 'Promotional tags used to group products',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'relationship',
       defaultValue: '',
       relationship: {
@@ -364,6 +399,7 @@ export const products = defineEntity({
     },
     {
       name: 'promoCode',
+      group: 'catalog',
       label: 'Promo Code',
       scope: 'relationship',
       options: {
@@ -371,7 +407,7 @@ export const products = defineEntity({
         comment: 'Promotional code used to apply discounts',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'relationship',
       defaultValue: '',
       relationship: {
@@ -382,6 +418,7 @@ export const products = defineEntity({
     },
     {
       name: 'unitsInStock',
+      group: 'inventory',
       label: 'Units In Stock',
       scope: 'global',
       options: {
@@ -394,6 +431,7 @@ export const products = defineEntity({
     },
     {
       name: 'popularity',
+      group: 'inventory',
       label: 'Popularity',
       scope: 'global',
       options: {
@@ -401,12 +439,13 @@ export const products = defineEntity({
         comment: 'Product popularity score',
       },
       dataType: 'float',
-      isSearchable: false,
+      searchable: false,
       inputType: 'number',
       defaultValue: '',
     },
     {
       name: 'avgRating',
+      group: 'inventory',
       label: 'Average Rating',
       scope: 'global',
       options: {
@@ -414,12 +453,13 @@ export const products = defineEntity({
         comment: 'Average customer rating',
       },
       dataType: 'float',
-      isSearchable: false,
+      searchable: false,
       inputType: 'number',
       defaultValue: '',
     },
     {
       name: 'ratingRange',
+      group: 'inventory',
       label: 'Rating Range',
       scope: 'global',
       options: {
@@ -427,12 +467,13 @@ export const products = defineEntity({
         comment: 'Rating range bucket',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'text',
       defaultValue: '',
     },
     {
       name: 'reviews',
+      group: 'inventory',
       label: 'Reviews',
       scope: 'relationship',
       options: {
@@ -450,6 +491,7 @@ export const products = defineEntity({
     },
     {
       name: 'contentFormat',
+      group: 'details',
       label: 'Content Format',
       scope: 'relationship',
       options: {
@@ -467,6 +509,7 @@ export const products = defineEntity({
     },
     {
       name: 'storageConditions',
+      group: 'content',
       label: 'Storage Conditions',
       scope: 'local',
       options: {
@@ -479,6 +522,7 @@ export const products = defineEntity({
     },
     {
       name: 'composition',
+      group: 'content',
       label: 'Composition',
       scope: 'local',
       options: {
@@ -491,6 +535,7 @@ export const products = defineEntity({
     },
     {
       name: 'certificate',
+      group: 'content',
       label: 'Certificate',
       scope: 'local',
       options: {
@@ -503,6 +548,7 @@ export const products = defineEntity({
     },
     {
       name: 'buyBoxState',
+      group: 'pricing',
       label: 'Buy Box State',
       scope: 'global',
       options: {
@@ -521,13 +567,14 @@ export const products = defineEntity({
         placeholder: 'Select a state',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'select',
       defaultValue: '',
       validation: (z) => z.string().min(1, { error: 'State is required' }),
     },
     {
       name: 'discountGroup',
+      group: 'pricing',
       label: 'Discount Group',
       scope: 'global',
       options: {
@@ -544,12 +591,13 @@ export const products = defineEntity({
         placeholder: 'Select a discount group',
       },
       dataType: 'string',
-      isSearchable: false,
+      searchable: false,
       inputType: 'select',
       defaultValue: '',
     },
     {
       name: 'searchName',
+      group: 'seo',
       label: 'Search Name',
       scope: 'local',
       options: {
@@ -557,24 +605,26 @@ export const products = defineEntity({
         comment: 'Search-optimized product name',
       },
       dataType: 'string',
-      isSearchable: true,
+      searchable: true,
       inputType: 'text',
       defaultValue: '',
     },
     {
       name: 'searchSynonyms',
+      group: 'seo',
       label: 'Search Synonyms',
       scope: 'local',
       options: {
         size: 260,
       },
       dataType: 'string',
-      isSearchable: true,
+      searchable: true,
       inputType: 'textarea',
       defaultValue: '',
     },
     {
       name: 'searchBenefits',
+      group: 'seo',
       label: 'Search Benefits',
       scope: 'local',
       options: {
@@ -582,12 +632,13 @@ export const products = defineEntity({
         comment: 'Useful in semantic search',
       },
       dataType: 'string',
-      isSearchable: true,
+      searchable: true,
       inputType: 'textarea',
       defaultValue: '',
     },
     {
       name: 'searchPlurals',
+      group: 'seo',
       label: 'Search Plurals',
       scope: 'local',
       options: {
@@ -595,7 +646,7 @@ export const products = defineEntity({
         comment: 'Search plural forms',
       },
       dataType: 'string',
-      isSearchable: true,
+      searchable: true,
       inputType: 'textarea',
       defaultValue: '',
     },

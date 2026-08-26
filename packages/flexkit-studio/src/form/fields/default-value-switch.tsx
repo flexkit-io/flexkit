@@ -5,10 +5,11 @@ import { Checkbox } from '../../ui/primitives/checkbox';
 type Props = {
   scope: string | undefined;
   checked: boolean;
+  disabled?: boolean;
   onChange: (checked: boolean) => void;
 };
 
-export function DefaultValueSwitch({ scope, checked, onChange }: Props): JSX.Element | null {
+export function DefaultValueSwitch({ scope, checked, disabled, onChange }: Props): JSX.Element | null {
   const elementId = useId();
 
   if (!scope || scope === 'default') {
@@ -16,8 +17,8 @@ export function DefaultValueSwitch({ scope, checked, onChange }: Props): JSX.Ele
   }
 
   return (
-    <div className="fk:flex fk:items-center fk:space-x-2 fk:mb-2">
-      <Checkbox checked={checked} id={elementId} onCheckedChange={onChange as () => void} />
+    <div className="fk:flex fk:items-center fk:space-x-2">
+      <Checkbox checked={checked} disabled={disabled} id={elementId} onCheckedChange={onChange as () => void} />
       <label
         className="fk:text-xs fk:font-normal fk:leading-none fk:peer-disabled:cursor-not-allowed fk:peer-disabled:opacity-70"
         htmlFor={elementId}

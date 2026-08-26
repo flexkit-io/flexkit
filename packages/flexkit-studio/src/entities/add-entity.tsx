@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { find, propEq } from 'ramda';
@@ -24,6 +24,7 @@ import { Button } from '../ui/primitives/button';
 import { PermissionTooltip } from '../ui/components/permission-tooltip';
 import { useCanMutate } from '../core/permissions';
 import { useDispatch } from './actions-context';
+import { useAuth } from '../auth/auth-context';
 import { type Action, type ActionAddEntity } from './types';
 
 type Props = {
@@ -36,6 +37,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const { entityName } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const canMutate = useCanMutate();
+  const [, auth] = useAuth();
   const { projects, currentProjectId } = useConfig();
   const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
@@ -46,6 +48,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const apolloClient = useApolloClient();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
   const { isDirty, setIsDirty } = useDrawerModalContext();
+  const [forceClose, setForceClose] = useState(false);
 
   useEffect(() => {
     if (mutationData.error) {
@@ -72,7 +75,9 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
             dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
           },
           dialogActionSubmit: () => {
-            dispatch({ type: 'Dismiss', _id: action._id, payload: {} });
+            setIsDirty(false);
+            dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
+            setForceClose(true);
           },
         },
       },
@@ -95,7 +100,9 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const saveEntity = useCallback(
     (newData: FormEntityItem) => {
       const _id = uuidv4();
-      const mutation = getEntityCreateMutation(entityNamePlural, schema, newData, _id);
+      const mutation = getEntityCreateMutation(entityNamePlural, schema, newData, _id, {
+        currentUser: auth.user,
+      });
 
       setMutation(gql`
         ${mutation}
@@ -109,7 +116,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       });
       runMutation(true);
     },
-    [action._id, apolloClient, entityNamePlural, handleClose, runMutation, schema, setMutation, setOptions]
+    [action._id, apolloClient, auth.user, entityNamePlural, handleClose, runMutation, schema, setMutation, setOptions]
   );
 
   return (
@@ -131,6 +138,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       }
       beforeClose={handleBeforeClose}
       depth={depth}
+      forceClose={forceClose}
       isFocused={isFocused}
       onClose={() => {
         handleClose(action._id);

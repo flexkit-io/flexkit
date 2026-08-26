@@ -15,7 +15,6 @@ export const assetSchema: Entity = {
       options: {
         size: 140,
       },
-      isEditable: true,
       dataType: 'string',
       inputType: 'text',
       previewType: 'assetPreviewField',
@@ -28,7 +27,6 @@ export const assetSchema: Entity = {
       options: {
         size: 320,
       },
-      isEditable: true,
       dataType: 'string',
       inputType: 'text',
       previewType: 'text',
@@ -41,7 +39,6 @@ export const assetSchema: Entity = {
       options: {
         size: 120,
       },
-      isEditable: true,
       dataType: 'int',
       inputType: 'text',
       previewType: 'text',
@@ -54,7 +51,6 @@ export const assetSchema: Entity = {
       options: {
         size: 90,
       },
-      isEditable: true,
       dataType: 'int',
       inputType: 'text',
       previewType: 'text',
@@ -67,7 +63,6 @@ export const assetSchema: Entity = {
       options: {
         size: 100,
       },
-      isEditable: true,
       dataType: 'int',
       inputType: 'text',
       previewType: 'text',
@@ -80,7 +75,6 @@ export const assetSchema: Entity = {
       options: {
         size: 160,
       },
-      isEditable: true,
       dataType: 'string',
       inputType: 'text',
       previewType: 'text',
@@ -90,8 +84,7 @@ export const assetSchema: Entity = {
       name: 'lqip',
       label: 'lqip',
       scope: 'global',
-      isHidden: true,
-      isEditable: true,
+      hidden: true,
       dataType: 'string',
       inputType: 'text',
       previewType: 'text',
@@ -104,8 +97,8 @@ export const assetSchema: Entity = {
       options: {
         size: 220,
       },
-      isEditable: false,
-      isHidden: true,
+      readOnly: true,
+      hidden: true,
       dataType: 'datetime',
       inputType: 'datetime',
       previewType: 'datetime',

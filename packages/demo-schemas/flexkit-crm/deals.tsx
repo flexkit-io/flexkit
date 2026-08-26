@@ -21,7 +21,7 @@ export const deals = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       validation: (z) => z.string().min(1, { error: 'Deal name is required' }),
       defaultValue: '',
     },
@@ -35,7 +35,7 @@ export const deals = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'single',

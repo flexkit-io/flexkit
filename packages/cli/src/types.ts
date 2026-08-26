@@ -179,9 +179,11 @@ export type AttributeOptions = {
 type AttributeBase = {
   inputType: InputType;
   previewType?: PreviewType;
-  isEditable?: boolean;
-  isUnique?: boolean;
-  isSearchable?: boolean;
+  hidden?: boolean;
+  readOnly?: boolean;
+  unique?: boolean;
+  searchable?: boolean;
+  group?: string | string[];
   label: string;
   name: string;
   options?: AttributeOptions[InputType];
@@ -239,6 +241,12 @@ export interface ProjectOptions {
           group?: string;
         };
     spaces?: string[];
+    groups?: {
+      name: string;
+      title?: string;
+      default?: boolean;
+      hidden?: boolean;
+    }[];
     attributes: Attribute[];
   }[];
 }
@@ -262,6 +270,12 @@ export interface FlexkitConfig {
       plural: string;
       display?: string;
       spaces?: string[];
+      groups?: {
+        name: string;
+        title?: string;
+        default?: boolean;
+        hidden?: boolean;
+      }[];
       attributes: Attribute[];
     }[];
     scopes?: Scopes;

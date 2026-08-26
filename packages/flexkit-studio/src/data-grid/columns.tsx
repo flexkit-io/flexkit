@@ -90,7 +90,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
         previewFieldComponentsMap[previewType as keyof typeof previewFieldComponentsMap] ??
         previewFieldComponentsMap['text'];
 
-      if (attribute.isHidden) {
+      if (attribute.hidden === true) {
         return null;
       }
 

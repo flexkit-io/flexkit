@@ -281,7 +281,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
             onScroll={handleScroll}
             ref={scrollRef}
           >
-            <TableHeader className="fk:sticky fk:top-0 fk:z-10 fk:grid">
+            <TableHeader className="fk:sticky fk:top-0 fk:z-20 fk:grid">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow className="fk:flex fk:w-full" key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {

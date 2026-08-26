@@ -42,8 +42,8 @@ export default function MultipleRelationship({
   defaultValue,
   entityId,
   entityName,
-  entityNamePlural,
   fieldSchema,
+  readOnly,
   schema,
   scope,
   setValue,
@@ -108,7 +108,9 @@ export default function MultipleRelationship({
 
   const columns = useGridColumnsDefinition<AttributeValue, unknown>({
     attributesSchema: relationshipEntitySchema?.attributes ?? [],
-    actionsComponent: (row) => dataRowActions({ appDispatch, relationshipId, relationships, row, setRows }),
+    actionsComponent: readOnly
+      ? undefined
+      : (row) => dataRowActions({ appDispatch, relationshipId, relationships, row, setRows }),
   });
 
   useEffect(() => {
@@ -197,6 +199,11 @@ export default function MultipleRelationship({
 
   function handleSelection(event: SyntheticEvent): void {
     event.preventDefault();
+
+    if (readOnly) {
+      return;
+    }
+
     actionDispatch({
       type: 'EditRelationship',
       payload: {
@@ -270,7 +277,12 @@ export default function MultipleRelationship({
                       ) : null}
                     </span>
                   ) : (
-                    <Button className="fk:h-8 fk:mr-auto fk:mt-2" onClick={handleSelection} variant="outline">
+                    <Button
+                      className="fk:h-8 fk:mr-auto fk:mt-2"
+                      disabled={readOnly}
+                      onClick={handleSelection}
+                      variant="outline"
+                    >
                       <Link className="fk:h-4 fk:w-4 fk:mr-2" /> Link to a record from{' '}
                       {relationshipEntitySchema?.menu?.label ?? relationshipEntitySchema?.plural}
                     </Button>

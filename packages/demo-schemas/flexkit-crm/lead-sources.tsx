@@ -21,7 +21,7 @@ export const leadSources = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       validation: (z) => z.string().min(1, { error: 'Source name is required' }),
       defaultValue: '',
     },

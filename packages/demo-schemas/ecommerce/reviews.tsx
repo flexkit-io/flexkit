@@ -22,8 +22,8 @@ export const reviews = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isUnique: true,
-      isSearchable: true,
+      unique: true,
+      searchable: true,
       validation: (z) => z.string().min(1, { error: 'Review ID is required' }),
       defaultValue: '',
     },
@@ -56,7 +56,7 @@ export const reviews = defineEntity({
       dataType: 'string',
       inputType: 'select',
       previewType: 'reviewStatusPreviewField',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
     },
     {
@@ -83,7 +83,7 @@ export const reviews = defineEntity({
       },
       dataType: 'string',
       inputType: 'textarea',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
     },
     {
@@ -96,7 +96,7 @@ export const reviews = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
     },
     {
@@ -109,7 +109,7 @@ export const reviews = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
     },
     {
@@ -122,7 +122,7 @@ export const reviews = defineEntity({
       },
       dataType: 'string',
       inputType: 'text',
-      isSearchable: true,
+      searchable: true,
       validation: (z) => z.email({ error: 'Invalid email address' }),
       defaultValue: '',
     },
@@ -136,7 +136,7 @@ export const reviews = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'single',
@@ -154,7 +154,7 @@ export const reviews = defineEntity({
       },
       dataType: 'string',
       inputType: 'relationship',
-      isSearchable: true,
+      searchable: true,
       defaultValue: '',
       relationship: {
         mode: 'single',

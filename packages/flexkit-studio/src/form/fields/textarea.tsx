@@ -5,8 +5,8 @@ import { Textarea as TextareaPrimitive } from '../../ui/primitives/textarea';
 import type { FormFieldParams } from '../types';
 import { DefaultValueSwitch } from './default-value-switch';
 
-export function Textarea({ control, fieldSchema, setValue }: FormFieldParams<'textarea'>): JSX.Element {
-  const { name, label, isEditable, options } = fieldSchema;
+export function Textarea({ control, fieldSchema, readOnly, setValue }: FormFieldParams<'textarea'>): JSX.Element {
+  const { name, label, options } = fieldSchema;
 
   function handleInput(
     event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>,
@@ -42,10 +42,8 @@ export function Textarea({ control, fieldSchema, setValue }: FormFieldParams<'te
           </div>
           <FormControl>
             <TextareaPrimitive
-              className={`fk:w-full fk:mt-0.75 ${
-                !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
-              }`}
-              disabled={isEditable === false || field.value?.disabled}
+              className="fk:w-full fk:mt-0.75"
+              disabled={readOnly || field.value?.disabled}
               {...field}
               onChange={(event) => {
                 handleInput(event, field.value);
@@ -55,6 +53,7 @@ export function Textarea({ control, fieldSchema, setValue }: FormFieldParams<'te
           </FormControl>
           <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
+            disabled={readOnly}
             onChange={(checked) => {
               handleCheckbox(checked, field.value);
             }}

@@ -47,10 +47,15 @@ function TabsList({
   );
 }
 
-function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
+function TabsTrigger({
+  className,
+  type = 'button',
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
+      type={type}
       className={cn(
         "fk:relative fk:inline-flex fk:h-[calc(100%-1px)] fk:flex-1 fk:items-center fk:justify-center fk:gap-1.5 fk:rounded-md fk:border fk:border-transparent! fk:px-4 fk:py-1 fk:text-sm fk:font-medium fk:whitespace-nowrap fk:text-foreground/60 fk:transition-all fk:group-data-[orientation=vertical]/tabs:w-full fk:group-data-[orientation=vertical]/tabs:justify-start fk:hover:text-foreground fk:focus-visible:border-ring! fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:focus-visible:outline-1 fk:focus-visible:outline-ring fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:group-data-[variant=default]/tabs-list:data-[state=active]:shadow-sm fk:group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none fk:dark:text-muted-foreground fk:dark:hover:text-foreground fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4",
         'fk:group-data-[variant=line]/tabs-list:bg-transparent fk:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent fk:dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent! fk:dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent',
@@ -67,7 +72,7 @@ function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPr
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn('fk:flex-1 fk:outline-none fk:gap-2 fk:flex fk:flex-col', className)}
+      className={cn('fk:flex-1 fk:outline-none fk:flex fk:flex-col', className)}
       {...props}
     />
   );

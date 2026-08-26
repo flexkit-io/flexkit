@@ -14,6 +14,11 @@ type Props = {
   beforeClose?: () => boolean;
   children: ReactNode;
   depth: number; // how many drawers are open, to control the width of the drawers
+  /**
+   * Close the drawer without running `beforeClose` (used after confirming discard).
+   * Lets Vaul release its body lock instead of hard-unmounting an open drawer.
+   */
+  forceClose?: boolean;
   isFocused: boolean; // whether the drawer is the last one open
   onFormChange?: Dispatch<SetStateAction<boolean>>; // a callback executed everyt time the form changes its state
   onClose: () => void;
@@ -25,6 +30,7 @@ export default function DrawerModal({
   beforeClose,
   children,
   depth,
+  forceClose = false,
   isFocused,
   onFormChange: _onFormChange,
   onClose,
@@ -33,16 +39,34 @@ export default function DrawerModal({
   const [isOpen, setIsOpen] = useState(false);
   const gutter = depth * (50 / depth);
 
-  const handleClose = useCallback(() => {
-    const shouldClose = beforeClose ? beforeClose() : true;
-
-    if (!shouldClose) return;
-
+  const closeDrawer = useCallback(() => {
     setIsOpen(false);
-    setTimeout(() => {
+    globalThis.setTimeout(() => {
       onClose();
     }, 150);
-  }, [beforeClose, onClose, setIsOpen]);
+  }, [onClose]);
+
+  const handleClose = useCallback(() => {
+    if (forceClose) {
+      return;
+    }
+
+    const shouldClose = beforeClose ? beforeClose() : true;
+
+    if (!shouldClose) {
+      return;
+    }
+
+    closeDrawer();
+  }, [beforeClose, closeDrawer, forceClose]);
+
+  useEffect(() => {
+    if (!forceClose) {
+      return;
+    }
+
+    closeDrawer();
+  }, [closeDrawer, forceClose]);
 
   const onEscapeKeyPressed = useCallback(
     (event: KeyboardEvent): void => {
@@ -57,6 +81,10 @@ export default function DrawerModal({
     setIsOpen(true);
     // overwrite "background: black" set by Vaul in the body, and add missing bottom: 0 style
     globalThis.document.body.classList.add('fk-drawer-fix');
+
+    return () => {
+      globalThis.document.body.classList.remove('fk-drawer-fix');
+    };
   }, []);
 
   useEffect(() => {

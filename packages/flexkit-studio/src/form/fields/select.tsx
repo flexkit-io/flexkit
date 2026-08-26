@@ -23,8 +23,8 @@ function decodeOptionValue(value: string): string {
   return decodeURIComponent(value.slice(SELECT_OPTION_PREFIX.length));
 }
 
-export function Select({ control, fieldSchema, setValue }: FormFieldParams<'select'>): JSX.Element {
-  const { name, label, isEditable, options } = fieldSchema;
+export function Select({ control, fieldSchema, readOnly, setValue }: FormFieldParams<'select'>): JSX.Element {
+  const { name, label, options } = fieldSchema;
 
   function handleInput(value: string, previousValue: FormFieldValue | undefined): void {
     const shouldCastToNumber = fieldSchema.dataType === 'int' && !isNaN(Number(value));
@@ -57,7 +57,7 @@ export function Select({ control, fieldSchema, setValue }: FormFieldParams<'sele
                 ? undefined
                 : encodeOptionValue(String(field.value.value))
             }
-            disabled={isEditable === false || field.value?.disabled}
+            disabled={readOnly || field.value?.disabled}
             onValueChange={(value) => {
               handleInput(decodeOptionValue(value), field.value);
             }}
@@ -94,6 +94,7 @@ export function Select({ control, fieldSchema, setValue }: FormFieldParams<'sele
           </SelectPrimitive>
           <DefaultValueSwitch
             checked={field.value?.disabled ?? false}
+            disabled={readOnly}
             onChange={(checked) => {
               handleCheckbox(checked, field.value);
             }}

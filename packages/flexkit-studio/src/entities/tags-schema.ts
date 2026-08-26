@@ -15,7 +15,6 @@ export const tagSchema: Entity = {
       options: {
         size: 220,
       },
-      isEditable: true,
       dataType: 'string',
       inputType: 'text',
       previewType: 'text',
@@ -28,8 +27,8 @@ export const tagSchema: Entity = {
       options: {
         size: 220,
       },
-      isEditable: false,
-      isHidden: true,
+      readOnly: true,
+      hidden: true,
       dataType: 'datetime',
       inputType: 'datetime',
       previewType: 'datetime',

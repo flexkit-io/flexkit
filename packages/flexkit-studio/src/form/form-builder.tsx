@@ -1,4 +1,4 @@
-import { createElement, forwardRef, memo, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { createElement, forwardRef, memo, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { ComponentType, ForwardedRef, JSX } from 'react';
 import { useForm } from 'react-hook-form';
 import type { Resolver } from 'react-hook-form';
@@ -8,6 +8,8 @@ import { equals, find, propEq } from 'ramda';
 import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
+import { ScrollArea, ScrollBar } from '../ui/primitives/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/primitives/tabs';
 import type { Attribute, Entity, Schema } from '../core/types';
 import type { FormEntityItem, FormFieldValue } from '../graphql-client/types';
 import { useAuth } from '../auth/auth-context';
@@ -24,6 +26,13 @@ import RelationshipField from './fields/relationship';
 import { Select as SelectField } from './fields/select';
 import UndefinedFieldTypeError from './fields/undefined-field-type-error';
 import type { FormFieldParams } from './types';
+import {
+  attributeBelongsToGroup,
+  getDefaultFieldGroupName,
+  isAttributeVisibleInGroups,
+  resolveVisibleFieldGroups,
+} from './field-groups';
+import { resolveConditionalFlag, unwrapFormRecord } from './resolve-conditional-flag';
 
 export type SubmitHandle = {
   submit: () => void;
@@ -85,11 +94,35 @@ function FormBuilder(
       {}
     );
   }, [defaultScope, formData, formSchema]);
-  const validationSchema = useMemo(() => {
+  const resolver: Resolver<FormEntityItem> = async (values, context, options) => {
+    const record = unwrapFormRecord(values);
+    const visibleGroupsForValidation = resolveVisibleFieldGroups(entitySchema?.groups, {
+      record,
+      value: record,
+      currentUser: auth.user,
+    });
     const shape: { [fieldName: string]: z.ZodType } = {};
 
     for (const fieldSchema of formSchema) {
       if (typeof fieldSchema.validation === 'undefined') {
+        continue;
+      }
+
+      const fieldContext = {
+        record,
+        value: record[fieldSchema.name],
+        currentUser: auth.user,
+      };
+
+      if (resolveConditionalFlag(fieldSchema.hidden, fieldContext)) {
+        continue;
+      }
+
+      if (resolveConditionalFlag(fieldSchema.readOnly, fieldContext)) {
+        continue;
+      }
+
+      if (!isAttributeVisibleInGroups(fieldSchema, visibleGroupsForValidation)) {
         continue;
       }
 
@@ -102,18 +135,32 @@ function FormBuilder(
       });
     }
 
-    return z.object(shape);
-  }, [formSchema]);
+    const validate = zodResolver(z.object(shape)) as Resolver<FormEntityItem>;
+
+    return validate(values, context, options);
+  };
 
   const form = useForm<FormEntityItem>({
     defaultValues: initialFormValues,
-    resolver: zodResolver(validationSchema) as Resolver<FormEntityItem>,
+    resolver,
     values: formData,
     mode: 'onBlur',
     criteriaMode: 'all',
   });
 
   const { control, getValues, handleSubmit, setValue, watch, trigger } = form;
+  const formValues = watch();
+  const record = unwrapFormRecord(formValues);
+  const visibleGroups = useMemo(
+    () =>
+      resolveVisibleFieldGroups(entitySchema?.groups, {
+        record,
+        value: record,
+        currentUser: auth.user,
+      }),
+    [auth.user, entitySchema?.groups, record]
+  );
+  const [activeGroup, setActiveGroup] = useState(() => getDefaultFieldGroupName(visibleGroups));
   const { getContributionPointConfig } = useConfig();
   // Baseline for dirty checks. Updated on successful save so relationship-field
   // noise / stale formData props cannot keep reporting dirty after Save.
@@ -217,6 +264,18 @@ function FormBuilder(
     };
   }, [formData, getValues, setIsDirty, watch]);
 
+  useEffect(() => {
+    if (visibleGroups.length === 0) {
+      return;
+    }
+
+    if (visibleGroups.some((group) => group.name === activeGroup)) {
+      return;
+    }
+
+    setActiveGroup(getDefaultFieldGroupName(visibleGroups));
+  }, [activeGroup, visibleGroups]);
+
   if (!entitySchema || entitySchema.attributes.length === 0) {
     return (
       <Alert variant="destructive">
@@ -229,41 +288,102 @@ function FormBuilder(
     );
   }
 
+  const renderField = (field: Attribute) => {
+    if (field.name === '_id') {
+      return null;
+    }
+
+    const fieldContext = {
+      record,
+      value: record[field.name],
+      currentUser: auth.user,
+    };
+
+    if (resolveConditionalFlag(field.hidden, fieldContext)) {
+      return null;
+    }
+
+    const readOnly = resolveConditionalFlag(field.readOnly, fieldContext);
+    const fieldComponent =
+      (getContributionPointConfig('formFields', [field.inputType])?.[0]?.component as unknown as
+        | ComponentType<FormFieldParams<typeof field.inputType>>
+        | undefined) ?? formFieldComponentsMap[field.inputType as keyof typeof formFieldComponentsMap];
+
+    return fieldComponent ? (
+      createElement(
+        fieldComponent as ComponentType<FormFieldParams<typeof field.inputType>>,
+        {
+          key: field.name,
+          control,
+          defaultScope,
+          defaultValue: initialFormValues[field.name],
+          entityId,
+          entityName,
+          entityNamePlural,
+          fieldSchema: field,
+          getValues,
+          readOnly,
+          schema,
+          scope: currentScope,
+          setValue,
+        } as FormFieldParams<typeof field.inputType>
+      )
+    ) : (
+      <UndefinedFieldTypeError inputType={field.inputType} key={field.name} label={field.label} />
+    );
+  };
+
   return (
     <Form {...form}>
-      <form className="fk:flex fk:flex-col fk:gap-y-5">
-        {formSchema.map((field) => {
-          if (field.name === '_id') {
-            return null;
-          }
+      <form
+        className="fk:flex fk:flex-col fk:gap-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+        }}
+      >
+        {visibleGroups.length > 0 ? (
+          <Tabs onValueChange={setActiveGroup} value={activeGroup}>
+            <div className="fk:sticky fk:top-0 fk:z-10 fk:bg-background fk:py-1 fk:mb-6">
+              <ScrollArea className="fk:w-full fk:**:data-[slot=scroll-area-viewport]:h-auto fk:[&_[data-slot=scroll-area-scrollbar][data-orientation=vertical]]:hidden">
+                <TabsList className="fk:h-9 fk:w-max fk:flex-nowrap fk:justify-start fk:border fk:border-border">
+                  {visibleGroups.map((group) => (
+                    <TabsTrigger
+                      className="fk:shrink-0 fk:px-4 fk:dark:data-[state=active]:border-transparent! fk:dark:data-[state=active]:bg-background"
+                      key={group.name}
+                      value={group.name}
+                    >
+                      {group.icon}
+                      {group.title}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                <ScrollBar orientation="horizontal" />
+              </ScrollArea>
+            </div>
+            <TabsContent className="fk:gap-8" value={activeGroup}>
+              {formSchema.map((field) => {
+                if (!isAttributeVisibleInGroups(field, visibleGroups)) {
+                  return null;
+                }
 
-          const fieldComponent =
-            (getContributionPointConfig('formFields', [field.inputType])?.[0]?.component as unknown as
-              | ComponentType<FormFieldParams<typeof field.inputType>>
-              | undefined) ?? formFieldComponentsMap[field.inputType as keyof typeof formFieldComponentsMap];
+                const isVisible = attributeBelongsToGroup(field, activeGroup);
+                const fieldElement = renderField(field);
 
-          return fieldComponent ? (
-            createElement(
-              fieldComponent as ComponentType<FormFieldParams<typeof field.inputType>>,
-              {
-                key: field.name,
-                control,
-                defaultScope,
-                defaultValue: initialFormValues[field.name],
-                entityId,
-                entityName,
-                entityNamePlural,
-                fieldSchema: field,
-                getValues,
-                schema,
-                scope: currentScope,
-                setValue,
-              } as FormFieldParams<typeof field.inputType>
-            )
-          ) : (
-            <UndefinedFieldTypeError inputType={field.inputType} key={field.name} label={field.label} />
-          );
-        })}
+                if (!fieldElement) {
+                  return null;
+                }
+
+                return (
+                  <div className={isVisible ? undefined : 'fk:hidden'} key={field.name}>
+                    {fieldElement}
+                  </div>
+                );
+              })}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          formSchema.map((field) => renderField(field))
+        )}
       </form>
     </Form>
   );
