@@ -53,9 +53,7 @@ export function Number({ control, fieldSchema, readOnly, setValue }: FormFieldPa
           {options?.comment ? <FormDescription>{options.comment}</FormDescription> : null}
           <FormControl>
             <Input
-              className={`fk:w-full fk:mt-[0.1875rem] ${
-                !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
-              }`}
+              className="fk:w-full fk:mt-0.75"
               disabled={readOnly || field.value?.disabled}
               id={id}
               {...field}

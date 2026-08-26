@@ -10,9 +10,19 @@ export const products = defineEntity({
     group: 'catalog',
     icon: <TagIcon />,
   },
+  groups: [
+    { name: 'details', title: 'Details', default: true },
+    { name: 'media', title: 'Media' },
+    { name: 'pricing', title: 'Pricing' },
+    { name: 'catalog', title: 'Catalog' },
+    { name: 'inventory', title: 'Inventory' },
+    { name: 'content', title: 'Content' },
+    { name: 'seo', title: 'SEO' },
+  ],
   attributes: [
     {
       name: 'name',
+      group: 'details',
       label: 'Name',
       scope: 'local',
       options: {
@@ -28,6 +38,7 @@ export const products = defineEntity({
     },
     {
       name: 'sku',
+      group: 'details',
       label: 'SKU',
       scope: 'global',
       options: {
@@ -44,6 +55,7 @@ export const products = defineEntity({
     },
     {
       name: 'urlPath',
+      group: 'details',
       label: 'URL Path',
       scope: 'local',
       options: {
@@ -58,6 +70,7 @@ export const products = defineEntity({
     },
     {
       name: 'categoriesPath',
+      group: 'details',
       label: 'Categories Path',
       scope: 'local',
       options: {
@@ -71,6 +84,7 @@ export const products = defineEntity({
     },
     {
       name: 'presentation',
+      group: 'details',
       label: 'Presentation',
       scope: 'local',
       options: {
@@ -84,6 +98,7 @@ export const products = defineEntity({
     },
     {
       name: 'description',
+      group: 'details',
       label: 'Description',
       scope: 'local',
       options: {
@@ -96,6 +111,7 @@ export const products = defineEntity({
     },
     {
       name: 'brand',
+      group: 'details',
       label: 'Brand',
       scope: 'relationship',
       options: {
@@ -116,6 +132,7 @@ export const products = defineEntity({
     },
     {
       name: 'flags',
+      group: 'details',
       label: 'Flags',
       scope: 'relationship',
       options: {
@@ -133,6 +150,7 @@ export const products = defineEntity({
     },
     {
       name: 'category',
+      group: 'details',
       label: 'Category',
       scope: 'relationship',
       options: {
@@ -151,6 +169,7 @@ export const products = defineEntity({
     },
     {
       name: 'images',
+      group: ['media', 'seo'],
       label: 'Images',
       scope: 'relationship',
       options: {
@@ -169,6 +188,7 @@ export const products = defineEntity({
     },
     {
       name: 'price',
+      group: 'pricing',
       label: 'Price',
       scope: 'local',
       options: {
@@ -183,6 +203,7 @@ export const products = defineEntity({
     },
     {
       name: 'pvpr',
+      group: 'pricing',
       label: 'PVPR',
       scope: 'local',
       options: {
@@ -198,6 +219,7 @@ export const products = defineEntity({
     },
     {
       name: 'specialPrice',
+      group: 'pricing',
       label: 'Special Price',
       scope: 'local',
       options: {
@@ -210,6 +232,7 @@ export const products = defineEntity({
     },
     {
       name: 'specialPriceFrom',
+      group: 'pricing',
       label: 'Special Price From',
       scope: 'local',
       options: {
@@ -222,6 +245,7 @@ export const products = defineEntity({
     },
     {
       name: 'specialPriceTo',
+      group: 'pricing',
       label: 'Special Price To',
       scope: 'local',
       options: {
@@ -234,6 +258,7 @@ export const products = defineEntity({
     },
     {
       name: 'metaTitle',
+      group: 'seo',
       label: 'Meta Title',
       scope: 'local',
       options: {
@@ -246,6 +271,7 @@ export const products = defineEntity({
     },
     {
       name: 'metaDescription',
+      group: 'seo',
       label: 'Meta Description',
       scope: 'local',
       options: {
@@ -258,6 +284,7 @@ export const products = defineEntity({
     },
     {
       name: 'nutritionFactTable',
+      group: 'content',
       label: 'Nutrition Fact Table',
       scope: 'local',
       options: {
@@ -270,6 +297,7 @@ export const products = defineEntity({
     },
     {
       name: 'flavours',
+      group: 'catalog',
       label: 'Flavours',
       scope: 'relationship',
       options: {
@@ -287,6 +315,7 @@ export const products = defineEntity({
     },
     {
       name: 'essences',
+      group: 'catalog',
       label: 'Essences',
       scope: 'relationship',
       options: {
@@ -305,6 +334,7 @@ export const products = defineEntity({
     },
     {
       name: 'mainComponents',
+      group: 'catalog',
       label: 'Main Components',
       scope: 'local',
       options: {
@@ -317,6 +347,7 @@ export const products = defineEntity({
     },
     {
       name: 'size',
+      group: 'details',
       label: 'Size',
       scope: 'global',
       options: {
@@ -330,6 +361,7 @@ export const products = defineEntity({
     },
     {
       name: 'uses',
+      group: 'catalog',
       label: 'Uses',
       scope: 'relationship',
       options: {
@@ -348,6 +380,7 @@ export const products = defineEntity({
     },
     {
       name: 'promoTags',
+      group: 'catalog',
       label: 'Promo Tags',
       scope: 'relationship',
       options: {
@@ -366,6 +399,7 @@ export const products = defineEntity({
     },
     {
       name: 'promoCode',
+      group: 'catalog',
       label: 'Promo Code',
       scope: 'relationship',
       options: {
@@ -384,6 +418,7 @@ export const products = defineEntity({
     },
     {
       name: 'unitsInStock',
+      group: 'inventory',
       label: 'Units In Stock',
       scope: 'global',
       options: {
@@ -396,6 +431,7 @@ export const products = defineEntity({
     },
     {
       name: 'popularity',
+      group: 'inventory',
       label: 'Popularity',
       scope: 'global',
       options: {
@@ -409,6 +445,7 @@ export const products = defineEntity({
     },
     {
       name: 'avgRating',
+      group: 'inventory',
       label: 'Average Rating',
       scope: 'global',
       options: {
@@ -422,6 +459,7 @@ export const products = defineEntity({
     },
     {
       name: 'ratingRange',
+      group: 'inventory',
       label: 'Rating Range',
       scope: 'global',
       options: {
@@ -435,6 +473,7 @@ export const products = defineEntity({
     },
     {
       name: 'reviews',
+      group: 'inventory',
       label: 'Reviews',
       scope: 'relationship',
       options: {
@@ -452,6 +491,7 @@ export const products = defineEntity({
     },
     {
       name: 'contentFormat',
+      group: 'details',
       label: 'Content Format',
       scope: 'relationship',
       options: {
@@ -469,6 +509,7 @@ export const products = defineEntity({
     },
     {
       name: 'storageConditions',
+      group: 'content',
       label: 'Storage Conditions',
       scope: 'local',
       options: {
@@ -481,6 +522,7 @@ export const products = defineEntity({
     },
     {
       name: 'composition',
+      group: 'content',
       label: 'Composition',
       scope: 'local',
       options: {
@@ -493,6 +535,7 @@ export const products = defineEntity({
     },
     {
       name: 'certificate',
+      group: 'content',
       label: 'Certificate',
       scope: 'local',
       options: {
@@ -505,6 +548,7 @@ export const products = defineEntity({
     },
     {
       name: 'buyBoxState',
+      group: 'pricing',
       label: 'Buy Box State',
       scope: 'global',
       options: {
@@ -530,6 +574,7 @@ export const products = defineEntity({
     },
     {
       name: 'discountGroup',
+      group: 'pricing',
       label: 'Discount Group',
       scope: 'global',
       options: {
@@ -552,6 +597,7 @@ export const products = defineEntity({
     },
     {
       name: 'searchName',
+      group: 'seo',
       label: 'Search Name',
       scope: 'local',
       options: {
@@ -565,6 +611,7 @@ export const products = defineEntity({
     },
     {
       name: 'searchSynonyms',
+      group: 'seo',
       label: 'Search Synonyms',
       scope: 'local',
       options: {
@@ -577,6 +624,7 @@ export const products = defineEntity({
     },
     {
       name: 'searchBenefits',
+      group: 'seo',
       label: 'Search Benefits',
       scope: 'local',
       options: {
@@ -590,6 +638,7 @@ export const products = defineEntity({
     },
     {
       name: 'searchPlurals',
+      group: 'seo',
       label: 'Search Plurals',
       scope: 'local',
       options: {

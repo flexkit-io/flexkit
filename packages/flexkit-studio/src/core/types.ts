@@ -190,8 +190,7 @@ export type AttributeOptions = {
 /**
  * Context passed to `hidden` and `readOnly` callbacks. `record` is the current
  * form values unwrapped from `FormFieldValue` wrappers (use `record.status`,
- * not `record.status.value`). Attributes are flat, so there is no `parent` or
- * `path` — unlike Sanity nested objects.
+ * not `record.status.value`).
  */
 export type ConditionalFieldContext = {
   record: { [attributeName: string]: unknown };
@@ -224,6 +223,11 @@ type AttributeBase = {
    * Include this attribute in search indexing and the global search UI.
    */
   searchable?: boolean;
+  /**
+   * Field group name(s) this attribute belongs to. Distinct from
+   * `entity.menu.group`, which is the sidebar section.
+   */
+  group?: string | string[];
   label: string;
   name: string;
   options?: AttributeOptions[InputType];
@@ -264,6 +268,22 @@ export type Attribute = {
   [T in DataType]: AttributeByDataType<T>;
 }[DataType];
 
+/**
+ * Form-only tab that groups attributes in the edit/add drawer.
+ * Distinct from `entity.menu.group` (sidebar section).
+ */
+export type FieldGroup = {
+  name: string;
+  /**
+   * Tab label. Required for custom groups. Optional for the reserved
+   * `all` tab; Studio uses `All fields` when it is omitted.
+   */
+  title?: string;
+  icon?: JSX.Element;
+  default?: boolean;
+  hidden?: ConditionalFlag;
+};
+
 export type Entity = {
   name: string;
   plural: string;
@@ -286,6 +306,11 @@ export type Entity = {
    * access; users outside all listed spaces cannot see the entity at all.
    */
   spaces?: string[];
+  /**
+   * Form field groups rendered as tabs. Does not change storage.
+   * Distinct from `menu.group` (sidebar section).
+   */
+  groups?: FieldGroup[];
   attributes: Attribute[];
 };
 

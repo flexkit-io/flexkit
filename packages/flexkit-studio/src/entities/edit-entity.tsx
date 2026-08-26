@@ -52,6 +52,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
   const apolloClient = useApolloClient();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
   const { isDirty, setIsDirty } = useDrawerModalContext();
+  const [forceClose, setForceClose] = useState(false);
   const [, auth] = useAuth();
 
   const setFormIsDirty = useCallback(
@@ -88,14 +89,16 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
             dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
           },
           dialogActionSubmit: () => {
-            dispatch({ type: 'Dismiss', _id: action._id, payload: {} });
+            setIsDirty(false);
+            dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
+            setForceClose(true);
           },
         },
       },
     });
 
     return false;
-  }, [action._id, dispatch, isDirty]);
+  }, [dispatch, isDirty, setIsDirty]);
 
   const handleClose = useCallback(
     (_id: Action['_id']) => {
@@ -124,6 +127,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
               dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
             },
             dialogActionSubmit: () => {
+              dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
               setCurrentScope(nextScope);
               appDispatch({ type: 'setScope', payload: { projectId: currentProjectId, scope: nextScope } });
             },
@@ -249,6 +253,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       }
       beforeClose={handleBeforeClose}
       depth={depth}
+      forceClose={forceClose}
       isFocused={isFocused}
       onClose={() => {
         handleClose(action._id);

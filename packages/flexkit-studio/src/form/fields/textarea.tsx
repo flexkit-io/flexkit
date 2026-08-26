@@ -42,9 +42,7 @@ export function Textarea({ control, fieldSchema, readOnly, setValue }: FormField
           </div>
           <FormControl>
             <TextareaPrimitive
-              className={`fk:w-full fk:mt-0.75 ${
-                !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
-              }`}
+              className="fk:w-full fk:mt-0.75"
               disabled={readOnly || field.value?.disabled}
               {...field}
               onChange={(event) => {

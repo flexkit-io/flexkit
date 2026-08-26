@@ -17,7 +17,7 @@ export function DefaultValueSwitch({ scope, checked, disabled, onChange }: Props
   }
 
   return (
-    <div className="fk:flex fk:items-center fk:space-x-2 fk:mb-2">
+    <div className="fk:flex fk:items-center fk:space-x-2">
       <Checkbox checked={checked} disabled={disabled} id={elementId} onCheckedChange={onChange as () => void} />
       <label
         className="fk:text-xs fk:font-normal fk:leading-none fk:peer-disabled:cursor-not-allowed fk:peer-disabled:opacity-70"

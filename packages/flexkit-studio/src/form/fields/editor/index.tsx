@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import {
   EditorCommand,
   EditorCommandEmpty,
@@ -128,7 +128,7 @@ export default function Editor({
             <EditorRoot>
               <EditorContent
                 key={`${name}:${field.value?.scope ?? defaultValue.scope}:${String(field.value?.disabled ?? defaultValue.disabled)}`}
-                className="fk:relative fk:w-full fk:max-w-screen-lg fk:rounded-md fk:border fk:border-input fk:ring-offset-background fk:focus-within:outline-hidden fk:focus-within:ring-2 fk:focus-within:ring-ring fk:focus-within:ring-offset-2"
+                className="fk:relative fk:w-full fk:max-w-5xl fk:rounded-md fk:border fk:border-input fk:ring-offset-background fk:focus-within:outline-hidden fk:focus-within:ring-2 fk:focus-within:ring-ring fk:focus-within:ring-offset-2"
                 editable={!readOnly && !field.value?.disabled}
                 editorProps={{
                   handleDOMEvents: {

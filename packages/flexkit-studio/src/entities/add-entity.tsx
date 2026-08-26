@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { find, propEq } from 'ramda';
@@ -48,6 +48,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const apolloClient = useApolloClient();
   const [runMutation, setMutation, setOptions, mutationData] = useEntityMutation();
   const { isDirty, setIsDirty } = useDrawerModalContext();
+  const [forceClose, setForceClose] = useState(false);
 
   useEffect(() => {
     if (mutationData.error) {
@@ -74,7 +75,9 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
             dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
           },
           dialogActionSubmit: () => {
-            dispatch({ type: 'Dismiss', _id: action._id, payload: {} });
+            setIsDirty(false);
+            dispatch({ type: 'Dismiss', _id: 'unsavedChanges', payload: {} });
+            setForceClose(true);
           },
         },
       },
@@ -135,6 +138,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       }
       beforeClose={handleBeforeClose}
       depth={depth}
+      forceClose={forceClose}
       isFocused={isFocused}
       onClose={() => {
         handleClose(action._id);

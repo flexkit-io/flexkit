@@ -62,8 +62,7 @@ export function DateTime({
                 <Button
                   className={cn(
                     'fk:w-full fk:justify-start fk:h-10 fk:text-left fk:font-normal fk:hover:bg-transparent fk:relative',
-                    !field.value?.value && 'fk:text-muted-foreground',
-                    !field.value?.scope || field.value.scope === 'default' ? 'fk:mb-3' : ''
+                    !field.value?.value && 'fk:text-muted-foreground'
                   )}
                   disabled={readOnly || field.value?.disabled}
                   id={id}
