@@ -37,7 +37,7 @@ export function Navbar({ projectId, projects }: Props): JSX.Element {
           <ProjectSelector projectId={projectId} projects={projects} />
         </Suspense>
         <Suspense fallback={null}>
-          <Search onSelect={handleSearchSelection} projectId={projectId} schema={schema} />
+          <Search key={projectId} onSelect={handleSearchSelection} projectId={projectId} schema={schema} />
         </Suspense>
       </div>
       <div className="fk:flex fk:items-center">

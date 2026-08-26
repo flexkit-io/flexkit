@@ -57,6 +57,18 @@ function getCollections(entities: Entity[], selectedCollection: string): string[
   return entities.filter((entity) => entity.plural === selectedCollection).map((entity) => entity.plural);
 }
 
+function resolveCollection(entities: Entity[], selectedCollection: string): string {
+  if (selectedCollection === ALL_COLLECTIONS) {
+    return ALL_COLLECTIONS;
+  }
+
+  if (entities.some((entity) => entity.plural === selectedCollection)) {
+    return selectedCollection;
+  }
+
+  return ALL_COLLECTIONS;
+}
+
 function buildSearchRequest(collections: string[], q: string): SearchRequestProps {
   return {
     searchRequests: {
@@ -71,7 +83,7 @@ function buildSearchRequest(collections: string[], q: string): SearchRequestProp
 }
 
 function entityLabel(entity: Entity): string {
-  return capitalize(entity.menu?.label ?? entity.plural);
+  return entity.menu?.label ?? capitalize(entity.plural);
 }
 
 export function Search({
@@ -87,15 +99,14 @@ export function Search({
   const [inputValue, setInputValue] = useState('');
   const [selectedCollection, setSelectedCollection] = useState(ALL_COLLECTIONS);
   const searchableEntities = useMemo(() => getSearchableEntities(schema), [schema]);
+  const resolvedCollection = resolveCollection(searchableEntities, selectedCollection);
   const collections = useMemo(
-    () => getCollections(searchableEntities, selectedCollection),
-    [searchableEntities, selectedCollection]
+    () => getCollections(searchableEntities, resolvedCollection),
+    [searchableEntities, resolvedCollection]
   );
-  const [searchQuery, setSearchQuery] = useState(() =>
-    buildSearchRequest(
-      getCollections(getSearchableEntities(schema), ALL_COLLECTIONS),
-      ''
-    )
+  const searchQuery = useMemo(
+    () => buildSearchRequest(collections, inputValue),
+    [collections, inputValue]
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const { results, isLoading } = useSearch(projectId, searchQuery);
@@ -107,10 +118,11 @@ export function Search({
     // TODO: Add debounce
     if (q.length > 0) {
       setIsOpen(true);
-      setSearchQuery(buildSearchRequest(collections, q));
     }
 
-    if (q.length === 0) setIsOpen(false);
+    if (q.length === 0) {
+      setIsOpen(false);
+    }
 
     if (onSearchChange) {
       onSearchChange(q);
@@ -120,22 +132,14 @@ export function Search({
   function handleEntityChange(value: string): void {
     setSelectedCollection(value);
 
-    const nextCollections = getCollections(searchableEntities, value);
-
-    if (inputValue.length === 0) {
-      setSearchQuery(buildSearchRequest(nextCollections, ''));
-
-      return;
+    if (inputValue.length > 0) {
+      setIsOpen(true);
     }
-
-    setIsOpen(true);
-    setSearchQuery(buildSearchRequest(nextCollections, inputValue));
   }
 
   function handleClear(): void {
     setInputValue('');
     setIsOpen(false);
-    setSearchQuery(buildSearchRequest(collections, ''));
 
     if (inputRef.current) {
       inputRef.current.value = '';
@@ -154,7 +158,7 @@ export function Search({
 
   return (
     <ButtonGroup>
-      <Select onValueChange={handleEntityChange} value={selectedCollection}>
+      <Select onValueChange={handleEntityChange} value={resolvedCollection}>
         <SelectTrigger
           aria-label="Filter search by entity"
           className="fk:w-36 fk:h-9 fk:py-1 fk:rounded-r-none fk:border-border fk:shadow-none"
