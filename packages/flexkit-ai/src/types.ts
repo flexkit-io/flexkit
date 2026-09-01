@@ -83,6 +83,8 @@ export interface SkillInput {
 export interface Automation {
   createdAt: string | null;
   createdBy?: string;
+  /** Customer tool names attached to this automation. */
+  customToolNames?: string[];
   enabled: boolean;
   id: string;
   instructions: string;
@@ -194,7 +196,20 @@ export interface AutomationProviderTools {
   workspaceName: string | null;
 }
 
+export interface AutomationCustomTool {
+  description: string;
+  name: string;
+}
+
+export interface AutomationCustomTools {
+  connected: boolean;
+  connectionLabel: string | null;
+  origin: string | null;
+  tools: AutomationCustomTool[];
+}
+
 export interface AutomationTools {
+  customTools?: AutomationCustomTools;
   models: AutomationModel[];
   providers: {
     slack: AutomationProviderTools;
@@ -229,6 +244,8 @@ export interface AutomationToolConfigInput {
 }
 
 export interface AutomationInput {
+  /** Customer tool names this automation may call. */
+  customToolNames: string[];
   enabled: boolean;
   instructions: string;
   modelId: string;
