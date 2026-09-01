@@ -253,7 +253,9 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     forwardHeaders.set('Cookie', `sessionToken=${effectiveSessionToken}`);
   }
 
-  if (shouldHandleDevConnectTick()) {
+  // Only a Studio session may advertise the local runtime. API tokens map to
+  // the creator's userId and must not opt that user into localhost tool routing.
+  if (shouldHandleDevConnectTick() && effectiveSessionToken && !effectiveSessionToken.startsWith('flk-')) {
     forwardHeaders.set(FLEXKIT_STUDIO_RUNTIME_HEADER, FLEXKIT_STUDIO_RUNTIME_LOCAL);
   }
 
