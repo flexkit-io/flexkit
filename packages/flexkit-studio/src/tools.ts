@@ -20,6 +20,7 @@ export {
   FLEXKIT_STUDIO_RUNTIME_LOCAL,
   getCustomerToolsTickPath,
   isCustomerToolsTickPath,
+  isDevConnectRole,
   shouldHandleDevConnectTick,
 } from './tools/dev-connect';
 export type {

@@ -49,7 +49,9 @@ export function parseCustomerToolActor(value: unknown): CustomerToolActor | null
       return null;
     }
 
-    if (record.spaceId !== null && typeof record.spaceId !== 'string') {
+    const spaceId = record.spaceId ?? null;
+
+    if (spaceId !== null && typeof spaceId !== 'string') {
       return null;
     }
 
@@ -61,7 +63,7 @@ export function parseCustomerToolActor(value: unknown): CustomerToolActor | null
       automationId: record.automationId,
       kind: 'automation',
       spaceCodes: record.spaceCodes,
-      spaceId: record.spaceId ?? null,
+      spaceId,
     };
   }
 

@@ -117,6 +117,10 @@ function sanitizeForwardHeaders(headers: Headers): Headers {
       return;
     }
 
+    if (normalizedKey === FLEXKIT_STUDIO_RUNTIME_HEADER.toLowerCase()) {
+      return;
+    }
+
     sanitized.set(key, value);
   });
 
@@ -238,6 +242,8 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
   const effectiveSessionToken = sessionToken || bearerToken;
 
   forwardHeaders.delete('Authorization');
+  // Never forward a client-supplied runtime signal. Only this handler may stamp it.
+  forwardHeaders.delete(FLEXKIT_STUDIO_RUNTIME_HEADER);
 
   if (!effectiveSessionToken) {
     forwardHeaders.delete('Cookie');

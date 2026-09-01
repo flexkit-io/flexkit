@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, type JSX } from 'react';
-import { getCustomerToolsTickPath } from './dev-connect';
+import { getCustomerToolsTickPath, isDevConnectRole } from './dev-connect';
 
 const TICK_INTERVAL_MS = 2000;
+
+let tickInFlight = false;
 
 export function ToolsDevConnectTick({
   projectId,
@@ -13,7 +15,7 @@ export function ToolsDevConnectTick({
   role: string;
 }): JSX.Element | null {
   useEffect(() => {
-    if (role !== 'owner' && role !== 'developer') {
+    if (!isDevConnectRole(role)) {
       return;
     }
 
@@ -25,10 +27,18 @@ export function ToolsDevConnectTick({
     const path = getCustomerToolsTickPath(projectId);
 
     async function tick(): Promise<void> {
+      if (tickInFlight) {
+        return;
+      }
+
+      tickInFlight = true;
+
       try {
         await fetch(path, { credentials: 'same-origin', method: 'POST' });
       } catch {
         // The next interval retries.
+      } finally {
+        tickInFlight = false;
       }
     }
 

@@ -6,8 +6,14 @@ import { CUSTOMER_TOOLS_HELLO_PATH, CUSTOMER_TOOLS_POLL_PATH, CUSTOMER_TOOLS_RES
 import type { FlexkitTool } from './types';
 
 export const CUSTOMER_TOOLS_TICK_PATH_SUFFIX = '/tools/dev-connect/tick';
+export const CUSTOMER_TOOLS_ME_PATH = '/users/me';
 export const FLEXKIT_STUDIO_RUNTIME_HEADER = 'Flexkit-Studio-Runtime';
 export const FLEXKIT_STUDIO_RUNTIME_LOCAL = 'local';
+
+const DEV_CONNECT_ROLES: { [role: string]: true } = {
+  developer: true,
+  owner: true,
+};
 
 interface PendingJob {
   actor: CustomerToolActor;
@@ -33,6 +39,10 @@ export function shouldHandleDevConnectTick(): boolean {
   }
 
   return env.NODE_ENV !== 'production';
+}
+
+export function isDevConnectRole(role: string | null | undefined): boolean {
+  return Boolean(role && DEV_CONNECT_ROLES[role]);
 }
 
 function getProjectApiOrigin(projectId: string): string {
@@ -80,6 +90,78 @@ async function sessionFetch({
     headers,
     method,
   });
+}
+
+let tickInFlight = false;
+let verifiedSessionAllowed = false;
+let verifiedSessionToken = '';
+
+function deniedDevConnectResult(status: number): FlexkitHandlerResult {
+  if (status === 401) {
+    return jsonResult(401, { error: 'Sign in to Studio to connect local tools.' });
+  }
+
+  return jsonResult(403, { error: 'Only owners and developers can connect local tools.' });
+}
+
+async function getDevConnectDenial({
+  projectId,
+  sessionToken,
+}: {
+  projectId: string;
+  sessionToken: string;
+}): Promise<FlexkitHandlerResult | null> {
+  if (verifiedSessionToken === sessionToken && verifiedSessionAllowed) {
+    return null;
+  }
+
+  if (verifiedSessionToken === sessionToken) {
+    return deniedDevConnectResult(403);
+  }
+
+  let meResponse: Response;
+
+  try {
+    meResponse = await sessionFetch({
+      method: 'GET',
+      path: CUSTOMER_TOOLS_ME_PATH,
+      projectId,
+      sessionToken,
+    });
+  } catch {
+    return jsonResult(503, { error: 'Unable to verify Studio session for local tools.' });
+  }
+
+  if (meResponse.status === 401 || meResponse.status === 403) {
+    verifiedSessionToken = sessionToken;
+    verifiedSessionAllowed = false;
+
+    return deniedDevConnectResult(meResponse.status);
+  }
+
+  if (!meResponse.ok) {
+    return jsonResult(503, { error: 'Unable to verify Studio session for local tools.' });
+  }
+
+  let payload: { role?: unknown } = {};
+
+  try {
+    payload = (await meResponse.json()) as { role?: unknown };
+  } catch {
+    return jsonResult(503, { error: 'Unable to verify Studio session for local tools.' });
+  }
+
+  const role = typeof payload.role === 'string' ? payload.role : '';
+  const allowed = isDevConnectRole(role);
+
+  verifiedSessionToken = sessionToken;
+  verifiedSessionAllowed = allowed;
+
+  if (allowed) {
+    return null;
+  }
+
+  return deniedDevConnectResult(403);
 }
 
 async function executeJob({
@@ -151,6 +233,18 @@ export async function handleDevConnectTick({
     return jsonResult(204, { ok: true });
   }
 
+  const denial = await getDevConnectDenial({ projectId, sessionToken });
+
+  if (denial) {
+    return denial;
+  }
+
+  if (tickInFlight) {
+    return jsonResult(204, { ok: true });
+  }
+
+  tickInFlight = true;
+
   const helloBody = JSON.stringify({
     clientLabel: guessClientLabel(projectId),
     tools: tools.map((tool) => toolToManifest(tool)),
@@ -165,6 +259,13 @@ export async function handleDevConnectTick({
       sessionToken,
     });
 
+    if (helloResponse.status === 401 || helloResponse.status === 403) {
+      verifiedSessionToken = sessionToken;
+      verifiedSessionAllowed = false;
+
+      return jsonResult(helloResponse.status, { error: 'Unable to register the local tools runtime.' });
+    }
+
     if (!helloResponse.ok) {
       return jsonResult(helloResponse.status, { error: 'Unable to register the local tools runtime.' });
     }
@@ -175,6 +276,13 @@ export async function handleDevConnectTick({
       projectId,
       sessionToken,
     });
+
+    if (pollResponse.status === 401 || pollResponse.status === 403) {
+      verifiedSessionToken = sessionToken;
+      verifiedSessionAllowed = false;
+
+      return jsonResult(pollResponse.status, { error: 'Unable to poll for local tool jobs.' });
+    }
 
     if (pollResponse.status !== 200) {
       return jsonResult(pollResponse.status, { error: 'Unable to poll for local tool jobs.' });
@@ -205,5 +313,7 @@ export async function handleDevConnectTick({
     return jsonResult(200, { job: job.id });
   } catch {
     return jsonResult(503, { error: 'Flexkit is not reachable from this local runtime.' });
+  } finally {
+    tickInFlight = false;
   }
 }
