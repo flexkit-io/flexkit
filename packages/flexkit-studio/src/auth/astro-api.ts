@@ -1,4 +1,4 @@
-import { handleFlexkitRequest, type FlexkitHandlerResult } from './core-handler';
+import { handleFlexkitRequest, type FlexkitHandlerOptions, type FlexkitHandlerResult } from './core-handler';
 
 /**
  * Types for Astro API context
@@ -72,7 +72,7 @@ function resultToResponse(result: FlexkitHandlerResult): Response {
  * export const ALL = handler;
  * ```
  */
-export function createFlexkitAstroHandler(): AstroAPIRoute {
+export function createFlexkitAstroHandler(options?: FlexkitHandlerOptions): AstroAPIRoute {
   return async (context: AstroAPIContext): Promise<Response> => {
     const { request, cookies } = context;
     const url = new URL(request.url);
@@ -83,6 +83,7 @@ export function createFlexkitAstroHandler(): AstroAPIRoute {
       search: url.search,
       sessionToken: cookies.get('sessionToken')?.value ?? '',
       contentType: request.headers.get('content-type'),
+      options,
     });
 
     return resultToResponse(result);

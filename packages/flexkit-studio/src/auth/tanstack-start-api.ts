@@ -1,4 +1,4 @@
-import { handleFlexkitRequest, type FlexkitHandlerResult } from './core-handler';
+import { handleFlexkitRequest, type FlexkitHandlerOptions, type FlexkitHandlerResult } from './core-handler';
 
 /**
  * Types for TanStack Start / Nitro / Vinxi event handling
@@ -50,7 +50,7 @@ function getCookieValue(cookieHeader: string | string[] | undefined, name: strin
  * Readable stream interface for Node.js request
  */
 interface NodeReadableStream {
-  on(event: 'data', listener: (chunk: Buffer) => void): void;
+  on(event: 'data', listener: (chunk: Uint8Array) => void): void;
   on(event: 'end', listener: () => void): void;
   on(event: 'error', listener: (err: Error) => void): void;
 }
@@ -62,18 +62,16 @@ async function readBody(event: H3Event): Promise<string | undefined> {
   const req = event.node.req as unknown as NodeReadableStream;
 
   return new Promise((resolve) => {
-    const chunks: Buffer[] = [];
+    const decoder = new TextDecoder();
+    let body = '';
 
-    req.on('data', (chunk: Buffer) => {
-      chunks.push(chunk);
+    req.on('data', (chunk: Uint8Array) => {
+      body += decoder.decode(chunk, { stream: true });
     });
 
     req.on('end', () => {
-      if (chunks.length === 0) {
-        resolve(undefined);
-      } else {
-        resolve(Buffer.concat(chunks).toString('utf-8'));
-      }
+      body += decoder.decode();
+      resolve(body.length === 0 ? undefined : body);
     });
 
     req.on('error', () => {
@@ -169,7 +167,7 @@ function applyResultToResponse(result: FlexkitHandlerResult, event: H3Event): st
  * export default eventHandler(createFlexkitTanStackHandler());
  * ```
  */
-export function createFlexkitTanStackHandler(): EventHandler {
+export function createFlexkitTanStackHandler(options?: FlexkitHandlerOptions): EventHandler {
   return async (event: H3Event): Promise<unknown> => {
     const { req } = event.node;
     const method = event.method || req.method || 'GET';
@@ -213,6 +211,7 @@ export function createFlexkitTanStackHandler(): EventHandler {
       search: url.search,
       sessionToken,
       contentType,
+      options,
     });
 
     if (result.type === 'response') {
@@ -246,7 +245,9 @@ export function createFlexkitTanStackHandler(): EventHandler {
  * }
  * ```
  */
-export function createFlexkitFetchHandler(): (request: Request) => Promise<Response> {
+export function createFlexkitFetchHandler(
+  options?: FlexkitHandlerOptions
+): (request: Request) => Promise<Response> {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     const cookieHeader = request.headers.get('cookie');
@@ -272,6 +273,7 @@ export function createFlexkitFetchHandler(): (request: Request) => Promise<Respo
       search: url.search,
       sessionToken,
       contentType: request.headers.get('content-type'),
+      options,
     });
 
     const headers = new Headers(result.headers);

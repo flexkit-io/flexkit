@@ -192,8 +192,8 @@ export function Search({
       >
         <div
           className={cn(
-            'fk:flex fk:items-center fk:border-y fk:border-r fk:border-border fk:rounded-r-md fk:bg-background fk:px-3 fk:h-9 fk:md:w-25 fk:lg:w-75 fk:ring-offset-background',
-            'fk:focus-within:outline-hidden fk:focus-within:ring-2 fk:focus-within:ring-ring fk:focus-within:ring-offset-2'
+            'fk:flex fk:items-center fk:border-y fk:border-r fk:border-border fk:rounded-r-md fk:bg-background fk:px-3 fk:h-9 fk:md:w-25 fk:lg:w-75',
+            'fk:outline-none fk:transition-[color,box-shadow] fk:has-[input:focus-visible]:border-ring fk:has-[input:focus-visible]:ring-[3px] fk:has-[input:focus-visible]:ring-ring/50'
           )}
         >
           {isLoading ? (

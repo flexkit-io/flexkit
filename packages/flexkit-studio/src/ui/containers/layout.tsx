@@ -7,6 +7,7 @@ import { useConfig } from '../../core/config/config-context';
 import { SCOPE_STORAGE_KEY, useAppDispatch } from '../../core/app-context';
 import type { SingleProject } from '../../core/config/types';
 import { FlexkitError } from '../../core/error/errors';
+import { ToolsDevConnectTick } from '../../tools/dev-connect-tick';
 import { Loading } from '../components/loading';
 import { Toaster } from '../primitives/sonner';
 import { AppBar } from './appbar';
@@ -68,6 +69,7 @@ export function Layout({ version }: Props): JSX.Element {
         </div>
       </div>
       <Toaster />
+      <ToolsDevConnectTick projectId={projectId ?? ''} role={auth.user.role} />
     </>
   );
 }

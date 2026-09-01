@@ -40,11 +40,13 @@ import {
   GraduationCapIcon,
   KeyRoundIcon,
   LoaderCircleIcon,
+  LockIcon,
   PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
   TriangleAlertIcon,
   WebhookIcon,
+  WrenchIcon,
   XIcon,
 } from 'lucide-react';
 import { useAuth, useCanMutate } from '@flexkit/studio';
@@ -55,6 +57,7 @@ import type {
   AutomationInput,
   AutomationMutationPolicy,
   AutomationScheduleTrigger,
+  AutomationCustomTools,
   AutomationTools,
   AutomationToolChannel,
   AutomationToolConfigInput,
@@ -177,6 +180,26 @@ function createTriggerKey(): string {
 
 function getInitialTriggers(automation?: Automation): FormTrigger[] {
   return (automation?.triggers ?? []).map((trigger) => ({ ...trigger, key: trigger.id ?? createTriggerKey() }));
+}
+
+function getCustomToolsStatus(customTools: AutomationCustomTools): string {
+  if (customTools.connected && customTools.connectionLabel) {
+    return `Manually running this automation on localhost uses custom tools from your local runtime (${customTools.connectionLabel}) so you can test them.`;
+  }
+
+  if (customTools.connected) {
+    return 'Manually running this automation on localhost uses custom tools from your local runtime so you can test them.';
+  }
+
+  if (customTools.origin) {
+    return `Using ${customTools.origin}`;
+  }
+
+  if (customTools.tools.length === 0) {
+    return '';
+  }
+
+  return 'Registered in this project';
 }
 
 function getLocalTimezone(): string {
@@ -996,6 +1019,24 @@ function isSkillAttachable(
   return true;
 }
 
+function isSpaceSkillLocked(
+  skill: Pick<Skill, 'spaceId' | 'visibility'>,
+  visibility: AutomationVisibility,
+  spaceId: string | null
+): boolean {
+  return skill.visibility === 'space' && !isSkillAttachable(skill, visibility, spaceId);
+}
+
+function getLockedSpaceSkillHint(skill: Pick<Skill, 'spaceId'>, spaceLabelById: { [id: string]: string }): string {
+  const spaceLabel = skill.spaceId ? spaceLabelById[skill.spaceId] : undefined;
+
+  if (spaceLabel) {
+    return `Only available on ${spaceLabel} automations`;
+  }
+
+  return 'Only available on space automations';
+}
+
 async function fetchSkillOrNull(projectId: string, skillId: string): Promise<Skill | null> {
   try {
     const data = await fetcher<{ skill: Skill }>(paths(projectId).skill(skillId));
@@ -1025,6 +1066,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [visibility, setVisibility] = useState<AutomationVisibility>(automation?.visibility ?? 'project');
   const [spaceId, setSpaceId] = useState<string | null>(automation?.spaceId ?? null);
   const [skillIds, setSkillIds] = useState<string[]>(automation?.skillIds ?? []);
+  const [customToolNames, setCustomToolNames] = useState<string[]>(automation?.customToolNames ?? []);
   const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -1099,6 +1141,41 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
 
     return [...attachedExtras, ...fromCatalog];
   }, [skillIds, skillsById, skillsData?.skills, spaceId, visibility]);
+  const spaceLabelById = useMemo(() => {
+    const next: { [id: string]: string } = {};
+
+    for (const space of spacesData?.spaces ?? []) {
+      next[space.id] = space.label;
+    }
+
+    return next;
+  }, [spacesData?.spaces]);
+  const lockedSpaceSkills = useMemo(
+    () => (skillsData?.skills ?? []).filter((skill) => isSpaceSkillLocked(skill, visibility, spaceId)),
+    [skillsData?.skills, spaceId, visibility]
+  );
+  const customToolsCatalog = toolsData?.tools.customTools;
+  const customToolsByName = useMemo(() => {
+    const next: { [name: string]: { description: string; name: string } } = {};
+
+    for (const tool of customToolsCatalog?.tools ?? []) {
+      next[tool.name] = tool;
+    }
+
+    return next;
+  }, [customToolsCatalog?.tools]);
+  const attachableCustomTools = useMemo(() => {
+    const fromCatalog = customToolsCatalog?.tools ?? [];
+    const catalogNames = new Set(fromCatalog.map((tool) => tool.name));
+    const extras = customToolNames
+      .filter((name) => !catalogNames.has(name))
+      .map((name) => customToolsByName[name] ?? { description: '', name });
+
+    return [...extras, ...fromCatalog];
+  }, [customToolNames, customToolsByName, customToolsCatalog?.tools]);
+  const customToolsStatus = customToolsCatalog
+    ? getCustomToolsStatus(customToolsCatalog)
+    : '';
 
   useEffect(() => {
     if (!skillsData) {
@@ -1291,6 +1368,16 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     });
   }
 
+  function toggleCustomTool(toolName: string, attached: boolean): void {
+    setCustomToolNames((current) => {
+      if (attached) {
+        return current.includes(toolName) ? current : [...current, toolName];
+      }
+
+      return current.filter((name) => name !== toolName);
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
@@ -1317,6 +1404,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       };
     });
     const input: AutomationInput = {
+      customToolNames,
       enabled,
       instructions,
       modelId: effectiveModelId,
@@ -1571,7 +1659,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    disabled={!canMutate || attachableSkills.length === 0}
+                    disabled={!canMutate || (attachableSkills.length === 0 && lockedSpaceSkills.length === 0)}
                     size="sm"
                     type="button"
                     variant="outline"
@@ -1580,21 +1668,37 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                     <ChevronDownIcon className="fk:ml-1 fk:size-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="fk:max-h-72 fk:w-72 fk:overflow-y-auto">
-                  {attachableSkills.map((skill) => (
-                    <DropdownMenuCheckboxItem
-                      checked={skillIds.includes(skill.id)}
+                <DropdownMenuContent align="end" className="fk:max-h-72 fk:min-w-40 fk:overflow-y-auto">
+                  {attachableSkills.map((skill) => {
+                    const attached = skillIds.includes(skill.id);
+
+                    return (
+                      <DropdownMenuItem
+                        key={skill.id}
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          toggleSkill(skill.id, !attached);
+                        }}
+                      >
+                        <CheckIcon className={attached ? 'fk:size-4' : 'fk:size-4 fk:opacity-0'} />
+                        {skill.name}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  {lockedSpaceSkills.map((skill) => (
+                    <DropdownMenuItem
+                      disabled
                       key={skill.id}
-                      onCheckedChange={(checked) => toggleSkill(skill.id, checked === true)}
-                      onSelect={(event) => event.preventDefault()}
+                      title={getLockedSpaceSkillHint(skill, spaceLabelById)}
                     >
+                      <LockIcon className="fk:size-4" />
                       {skill.name}
-                    </DropdownMenuCheckboxItem>
+                    </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            {skillsData && attachableSkills.length === 0 ? (
+            {skillsData && attachableSkills.length === 0 && lockedSpaceSkills.length === 0 ? (
               <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
                 No attachable skills yet. Create them in the Skills section.
               </p>
@@ -1620,6 +1724,92 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                         disabled={!canMutate}
                         type="button"
                         onClick={() => toggleSkill(skillId, false)}
+                      >
+                        <XIcon className="fk:size-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted">
+            <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
+              <div className="fk:flex fk:gap-2.5">
+                <WrenchIcon className="fk:mt-px fk:size-5 fk:text-muted-foreground" />
+                <div>
+                  <div className="fk:text-sm fk:font-medium">Custom tools</div>
+                  <p className="fk:text-xs fk:text-muted-foreground">
+                    Attached custom tools can be called during a run. Tools you do not attach stay unavailable to this
+                    automation.
+                  </p>
+                  {customToolsStatus ? (
+                    <p
+                      className={
+                        customToolsCatalog?.connected
+                          ? 'fk:mt-1 fk:text-xs fk:text-warning'
+                          : 'fk:mt-1 fk:text-xs fk:text-muted-foreground'
+                      }
+                    >
+                      {customToolsStatus}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    disabled={!canMutate || attachableCustomTools.length === 0}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Attach
+                    <ChevronDownIcon className="fk:ml-1 fk:size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="fk:max-h-72 fk:min-w-40 fk:overflow-y-auto">
+                  {attachableCustomTools.map((tool) => {
+                    const attached = customToolNames.includes(tool.name);
+
+                    return (
+                      <DropdownMenuItem
+                        key={tool.name}
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          toggleCustomTool(tool.name, !attached);
+                        }}
+                      >
+                        <CheckIcon className={attached ? 'fk:size-4' : 'fk:size-4 fk:opacity-0'} />
+                        {tool.name}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            {customToolsCatalog && attachableCustomTools.length === 0 ? (
+              <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
+                No custom tools registered yet. Add them in your app with defineTool, then attach the ones this
+                automation needs.
+              </p>
+            ) : null}
+            {customToolNames.length > 0 ? (
+              <div className="fk:flex fk:flex-wrap fk:gap-1.5 fk:pl-7">
+                {customToolNames.map((toolName) => {
+                  const tool = customToolsByName[toolName];
+                  const label = tool?.name ?? toolName;
+
+                  return (
+                    <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={toolName} variant="secondary">
+                      {label}
+                      <button
+                        aria-label={`Detach ${label}`}
+                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed"
+                        disabled={!canMutate}
+                        type="button"
+                        onClick={() => toggleCustomTool(toolName, false)}
                       >
                         <XIcon className="fk:size-3" />
                       </button>
