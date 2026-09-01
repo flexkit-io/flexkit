@@ -93,8 +93,36 @@ async function sessionFetch({
 }
 
 let tickInFlight = false;
-let verifiedSessionAllowed = false;
-let verifiedSessionToken = '';
+
+type CachedConnectDecision = 'allow' | 401 | 403;
+
+const connectDecisions: { [key: string]: CachedConnectDecision } = {};
+
+function connectDecisionKey(projectId: string, sessionToken: string): string {
+  return `${sessionToken}\0${projectId}`;
+}
+
+function forgetConnectDecision({
+  projectId,
+  sessionToken,
+}: {
+  projectId: string;
+  sessionToken: string;
+}): void {
+  delete connectDecisions[connectDecisionKey(projectId, sessionToken)];
+}
+
+function rememberConnectDecision({
+  decision,
+  projectId,
+  sessionToken,
+}: {
+  decision: CachedConnectDecision;
+  projectId: string;
+  sessionToken: string;
+}): void {
+  connectDecisions[connectDecisionKey(projectId, sessionToken)] = decision;
+}
 
 function deniedDevConnectResult(status: number): FlexkitHandlerResult {
   if (status === 401) {
@@ -111,12 +139,14 @@ async function getDevConnectDenial({
   projectId: string;
   sessionToken: string;
 }): Promise<FlexkitHandlerResult | null> {
-  if (verifiedSessionToken === sessionToken && verifiedSessionAllowed) {
+  const cached = connectDecisions[connectDecisionKey(projectId, sessionToken)];
+
+  if (cached === 'allow') {
     return null;
   }
 
-  if (verifiedSessionToken === sessionToken) {
-    return deniedDevConnectResult(403);
+  if (cached === 401 || cached === 403) {
+    return deniedDevConnectResult(cached);
   }
 
   let meResponse: Response;
@@ -133,8 +163,7 @@ async function getDevConnectDenial({
   }
 
   if (meResponse.status === 401 || meResponse.status === 403) {
-    verifiedSessionToken = sessionToken;
-    verifiedSessionAllowed = false;
+    rememberConnectDecision({ decision: meResponse.status, projectId, sessionToken });
 
     return deniedDevConnectResult(meResponse.status);
   }
@@ -152,14 +181,14 @@ async function getDevConnectDenial({
   }
 
   const role = typeof payload.role === 'string' ? payload.role : '';
-  const allowed = isDevConnectRole(role);
 
-  verifiedSessionToken = sessionToken;
-  verifiedSessionAllowed = allowed;
+  if (isDevConnectRole(role)) {
+    rememberConnectDecision({ decision: 'allow', projectId, sessionToken });
 
-  if (allowed) {
     return null;
   }
+
+  rememberConnectDecision({ decision: 403, projectId, sessionToken });
 
   return deniedDevConnectResult(403);
 }
@@ -260,8 +289,7 @@ export async function handleDevConnectTick({
     });
 
     if (helloResponse.status === 401 || helloResponse.status === 403) {
-      verifiedSessionToken = sessionToken;
-      verifiedSessionAllowed = false;
+      forgetConnectDecision({ projectId, sessionToken });
 
       return jsonResult(helloResponse.status, { error: 'Unable to register the local tools runtime.' });
     }
@@ -278,8 +306,7 @@ export async function handleDevConnectTick({
     });
 
     if (pollResponse.status === 401 || pollResponse.status === 403) {
-      verifiedSessionToken = sessionToken;
-      verifiedSessionAllowed = false;
+      forgetConnectDecision({ projectId, sessionToken });
 
       return jsonResult(pollResponse.status, { error: 'Unable to poll for local tool jobs.' });
     }
