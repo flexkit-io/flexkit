@@ -9,7 +9,7 @@ import {
   getHeader,
   verifySignedHeaders,
 } from './hmac';
-import type { CustomerToolsExecuteRequest, FlexkitTool } from './types';
+import type { CustomerToolsExecuteRequest, FlexkitSkill, FlexkitTool } from './types';
 
 function jsonResult(status: number, body: unknown): FlexkitHandlerResult {
   return {
@@ -45,9 +45,11 @@ async function readRequestBody(request: Request): Promise<string> {
 
 export async function handleCustomerToolsRequest({
   request,
+  skills,
   tools,
 }: {
   request: Request;
+  skills?: FlexkitSkill[];
   tools: FlexkitTool[];
 }): Promise<FlexkitHandlerResult> {
   const secrets = getToolsSecrets();
@@ -82,6 +84,7 @@ export async function handleCustomerToolsRequest({
 
   if (method === 'GET') {
     return jsonResult(200, {
+      ...(skills === undefined ? {} : { skills }),
       tools: tools.map((tool) => toolToManifest(tool)),
     });
   }

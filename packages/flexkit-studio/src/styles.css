@@ -18,6 +18,30 @@ body {
   height: 100%;
 }
 
+@layer components {
+  .flexkit-sidebar-desktop-block,
+  .flexkit-sidebar-desktop-flex,
+  .flexkit-sidebar-sm-flex {
+    display: none;
+  }
+
+  @media (width >= 40rem) {
+    .flexkit-sidebar-sm-flex {
+      display: flex;
+    }
+  }
+
+  @media (width >= 48rem) {
+    .flexkit-sidebar-desktop-block {
+      display: block;
+    }
+
+    .flexkit-sidebar-desktop-flex {
+      display: flex;
+    }
+  }
+}
+
 @layer base {
   :root {
     --font-geist-sans:

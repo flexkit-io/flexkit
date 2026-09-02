@@ -7,6 +7,13 @@ export interface FlexkitToolManifest {
   name: string;
 }
 
+export interface FlexkitSkill {
+  content: string;
+  description: string;
+  name: string;
+  space?: string;
+}
+
 export interface FlexkitTool {
   description: string;
   execute: (_input: unknown, _actor: CustomerToolActor) => Promise<unknown> | unknown;
@@ -17,10 +24,12 @@ export interface FlexkitTool {
 export interface FlexkitHandlerOptions {
   /** Project id used by the localhost dev connect poller. */
   projectId?: string;
+  skills?: FlexkitSkill[];
   tools?: FlexkitTool[];
 }
 
 export interface CustomerToolsIntrospectResponse {
+  skills?: FlexkitSkill[];
   tools: FlexkitToolManifest[];
 }
 

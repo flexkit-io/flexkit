@@ -1682,6 +1682,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                       >
                         <CheckIcon className={attached ? 'fk:size-4' : 'fk:size-4 fk:opacity-0'} />
                         {skill.name}
+                        {skill.source === 'code' ? (
+                          <Badge className="fk:ml-auto fk:py-0 fk:text-[10px]" variant="secondary">
+                            Code
+                          </Badge>
+                        ) : null}
                       </DropdownMenuItem>
                     );
                   })}
@@ -1693,6 +1698,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                     >
                       <LockIcon className="fk:size-4" />
                       {skill.name}
+                      {skill.source === 'code' ? (
+                        <Badge className="fk:ml-auto fk:py-0 fk:text-[10px]" variant="secondary">
+                          Code
+                        </Badge>
+                      ) : null}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -1718,6 +1728,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                   return (
                     <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={skillId} variant="secondary">
                       {label}
+                      {skill?.source === 'code' ? <span className="fk:text-[10px] fk:uppercase">Code</span> : null}
                       <button
                         aria-label={skill ? `Detach ${skill.name}` : 'Detach skill'}
                         className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed"

@@ -346,17 +346,17 @@ export function DataTableToolbar<TData>({
 
               debouncedSetSearchQuery(value.trim());
             }}
-            className="fk:h-8 fk:w-37.5 fk:lg:w-62.5 fk:px-7"
+            className="fk:h-8 fk:w-37.5 fk:lg:w-70 fk:px-7"
           />
           {search ? (
-            <button
+            <Button
               aria-label="Clear search"
-              className="fk:absolute fk:right-2 fk:top-2 fk:text-muted-foreground fk:hover:text-foreground fk:cursor-pointer"
+              className="fk:absolute fk:right-1 fk:top-1 fk:h-6 fk:w-6 fk:text-muted-foreground fk:hover:text-foreground fk:hover:bg-foreground/10 fk:cursor-pointer fk:rounded-full fk:bg-transparent"
               onClick={clearSearch}
               type="button"
             >
               <ResetIcon className="fk:h-4 fk:w-4" />
-            </button>
+            </Button>
           ) : null}
         </div>
         {table.getColumn('mimeType') && (

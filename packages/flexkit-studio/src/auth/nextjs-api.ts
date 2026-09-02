@@ -1,4 +1,5 @@
 import { handleFlexkitRequest, type FlexkitHandlerOptions, type FlexkitHandlerResult } from './core-handler';
+import { assertUniqueSkillNames } from '../tools/define-skill';
 
 /**
  * Types for Next.js dependencies
@@ -104,10 +105,9 @@ function resultToNextResponse(result: FlexkitHandlerResultWithResponse, NextResp
  * export const { GET, POST, PUT, PATCH, DELETE } = flexkitHandler;
  * ```
  */
-export function createFlexkitApiHandler(
-  dependencies: FlexkitNextDependencies,
-  options?: FlexkitHandlerOptions
-) {
+export function createFlexkitApiHandler(dependencies: FlexkitNextDependencies, options?: FlexkitHandlerOptions) {
+  assertUniqueSkillNames(options?.skills ?? []);
+
   const { NextResponse, cookies, headers } = dependencies;
 
   const handleRequest = async (request: NextRequest): Promise<Response> => {

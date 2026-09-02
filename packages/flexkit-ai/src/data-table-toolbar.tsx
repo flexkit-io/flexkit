@@ -116,7 +116,7 @@ export function AutomationsDataTableToolbar<TData>({
                 <SearchIcon className="fk:absolute fk:left-2 fk:top-2 fk:h-4 fk:w-4 fk:shrink-0 fk:opacity-50" />
               )}
               <Input
-                className="fk:h-8 fk:w-37.5 fk:lg:w-62.5 fk:px-7"
+                className="fk:h-8 fk:w-37.5 fk:lg:w-70 fk:px-7 fk:text-sm"
                 name="search-automations"
                 placeholder={searchPlaceholder}
                 value={draftSearch}
@@ -135,14 +135,14 @@ export function AutomationsDataTableToolbar<TData>({
                 }}
               />
               {draftSearch ? (
-                <button
+                <Button
                   aria-label="Clear search"
-                  className="fk:absolute fk:right-2 fk:top-2 fk:text-muted-foreground fk:hover:text-foreground fk:cursor-pointer"
-                  type="button"
+                  className="fk:absolute fk:right-1 fk:top-1 fk:h-6 fk:w-6 fk:text-muted-foreground fk:hover:text-foreground fk:hover:bg-foreground/10 fk:cursor-pointer fk:rounded-full fk:bg-transparent"
                   onClick={clearSearch}
+                  type="button"
                 >
                   <ResetIcon className="fk:h-4 fk:w-4" />
-                </button>
+                </Button>
               ) : null}
             </div>
             {statusColumn ? (

@@ -60,6 +60,7 @@ export interface Skill {
   id: string;
   name: string;
   projectId: string;
+  source: 'code' | 'studio';
   spaceId: string | null;
   updatedAt: string;
   visibility: AutomationVisibility;

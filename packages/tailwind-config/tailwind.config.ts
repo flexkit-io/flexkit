@@ -113,6 +113,26 @@ const config: Config = {
             '--tw-prose-code': 'hsl(var(--foreground))',
             '--tw-prose-quotes': 'hsl(var(--accent-foreground))',
             '--tw-prose-headings': 'hsl(var(--muted-foreground))',
+            code: {
+              backgroundColor: 'hsl(var(--muted))',
+              borderRadius: '0.25rem',
+              fontSize: '0.875em',
+              fontWeight: '500',
+              padding: '0.15em 0.4em',
+            },
+            'code::before': {
+              content: '""',
+            },
+            'code::after': {
+              content: '""',
+            },
+            'pre code': {
+              backgroundColor: 'transparent',
+              borderRadius: '0',
+              fontSize: 'inherit',
+              fontWeight: 'inherit',
+              padding: '0',
+            },
             p: {
               fontSize: '0.875rem',
               lineHeight: '1.25rem',
