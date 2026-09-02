@@ -1,4 +1,5 @@
 import { handleFlexkitRequest, type FlexkitHandlerOptions, type FlexkitHandlerResult } from './core-handler';
+import { assertUniqueSkillNames } from '../tools/define-skill';
 
 /**
  * Types for Astro API context
@@ -73,6 +74,8 @@ function resultToResponse(result: FlexkitHandlerResult): Response {
  * ```
  */
 export function createFlexkitAstroHandler(options?: FlexkitHandlerOptions): AstroAPIRoute {
+  assertUniqueSkillNames(options?.skills ?? []);
+
   return async (context: AstroAPIContext): Promise<Response> => {
     const { request, cookies } = context;
     const url = new URL(request.url);

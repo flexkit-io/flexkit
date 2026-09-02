@@ -1,7 +1,8 @@
 import type { FormEvent, JSX } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatDistance } from 'date-fns';
-import { ArrowLeft, Ellipsis, LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Ellipsis, Eye, Info, LoaderCircle, Pencil, PenLine, Plus, Trash2 } from 'lucide-react';
+import Markdown, { type Components } from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   getCoreRowModel,
@@ -12,6 +13,7 @@ import {
   type ColumnDef,
   type ColumnFiltersState,
 } from '@flexkit/studio';
+import { MAX_SKILL_CONTENT_LENGTH } from '@flexkit/studio/tools';
 import {
   Badge,
   Button,
@@ -39,7 +41,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Textarea,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   toast,
   Tooltip,
   TooltipContent,
@@ -49,9 +53,33 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths, type ApiClient } from './api';
 import { AutomationsDataTableToolbar } from './data-table-toolbar';
+import { MarkdownEditor } from './markdown-editor';
 import type { AutomationVisibility, ProjectSpace, Skill, SkillInput, SkillsList } from './types';
 
 const SKILLS_PAGE_SIZE = 25;
+
+const skillMarkdownComponents: Components = {
+  code({ children, className, node: _node, ...props }) {
+    const isFenced = typeof className === 'string' && className.split(' ').some((part) => part.startsWith('language-'));
+
+    if (isFenced) {
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    }
+
+    return (
+      <code
+        className="fk:rounded fk:bg-muted fk:px-1.5 fk:py-0.5 fk:font-mono fk:text-[0.875em] fk:font-medium fk:before:content-none fk:after:content-none"
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+};
 
 function useProjectApi(): { api: ApiClient | null; projectId: string | undefined } {
   const { currentProjectId } = useConfig();
@@ -303,44 +331,63 @@ export function SkillsPage(): JSX.Element {
                 {formatDistance(new Date(skill.updatedAt), new Date(), { addSuffix: true })}
               </TableCell>
               <TableCell className="fk:text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      aria-label={`Actions for ${skill.name}`}
-                      size="icon"
-                      type="button"
-                      variant="ghost"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                      }}
-                    >
-                      <Ellipsis className="fk:size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="fk:w-40">
-                    <DropdownMenuItem
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigate(skill.id);
-                      }}
-                    >
-                      <Pencil />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      disabled={!canMutate}
-                      variant="destructive"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void handleDelete(skill);
-                      }}
-                    >
-                      <Trash2 />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {skill.source !== 'code' ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        aria-label={`Actions for ${skill.name}`}
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                        }}
+                      >
+                        <Ellipsis className="fk:size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="fk:w-40">
+                      <DropdownMenuItem
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(skill.id);
+                        }}
+                      >
+                        <Pencil />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        disabled={!canMutate}
+                        variant="destructive"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleDelete(skill);
+                        }}
+                      >
+                        <Trash2 />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        aria-label={`About ${skill.name}`}
+                        size="icon"
+                        type="button"
+                        variant="ghost"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                        }}
+                      >
+                        <Info className="fk:size-4 fk:text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>This skill can only be modified via code.</TooltipContent>
+                  </Tooltip>
+                )}
               </TableCell>
             </TableRow>
           ))}
@@ -397,7 +444,7 @@ export function SkillsPage(): JSX.Element {
         }
         isSearchLoading={isLoading && search.trim().length > 0}
         search={search}
-        searchPlaceholder="Search skills by name or meaning..."
+        searchPlaceholder="Search skills..."
         table={table}
         onSearchChange={handleSearchChange}
       />
@@ -418,11 +465,182 @@ export function SkillsPage(): JSX.Element {
   );
 }
 
-function FieldError({ id, message }: { id?: string; message: string }): JSX.Element {
+function FieldError({ className, id, message }: { className?: string; id?: string; message: string }): JSX.Element {
   return (
-    <p className="fk:text-sm fk:text-destructive" id={id}>
+    <p className={`fk:text-sm fk:text-destructive ${className ?? ''}`} id={id}>
       {message}
     </p>
+  );
+}
+
+function FieldHintLabel({
+  children,
+  hint,
+  htmlFor,
+  id,
+}: {
+  children: string;
+  hint: string;
+  htmlFor?: string;
+  id?: string;
+}): JSX.Element {
+  return (
+    <div className="fk:mb-1.5 fk:pl-2.5 fk:flex fk:items-center fk:gap-1">
+      <Label htmlFor={htmlFor} id={id}>
+        {children}
+      </Label>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            aria-label={`About ${children.toLowerCase()}`}
+            className="fk:rounded-sm fk:text-muted-foreground hover:fk:text-foreground"
+            type="button"
+          >
+            <Info className="fk:size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="fk:max-w-xs">{hint}</TooltipContent>
+      </Tooltip>
+    </div>
+  );
+}
+
+function SkillPageHeader({ actions, title }: { actions?: JSX.Element; title: string }): JSX.Element {
+  return (
+    <>
+      <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Separator orientation="vertical" className="fk:h-4" />
+        <h1 className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">
+          {title}
+        </h1>
+        {actions}
+      </div>
+      <Button asChild className="fk:shrink-0 fk:w-fit" size="sm" variant="ghost">
+        <Link relative="path" to="..">
+          <ArrowLeft className="fk:mr-2 fk:size-4" />
+          Skills
+        </Link>
+      </Button>
+    </>
+  );
+}
+
+function SkillContentPane({
+  content,
+  onBlur,
+  onChange,
+  onSave,
+  readOnly = false,
+  showContentError,
+  validationMessage,
+}: {
+  content: string;
+  onBlur?: () => void;
+  onChange?: (_value: string) => void;
+  onSave?: () => void;
+  readOnly?: boolean;
+  showContentError?: boolean;
+  validationMessage?: string;
+}): JSX.Element {
+  const [viewMode, setViewMode] = useState<'preview' | 'write'>('write');
+  const isOverLimit = content.length > MAX_SKILL_CONTENT_LENGTH;
+  let preview: JSX.Element;
+
+  if (content.trim()) {
+    preview = <Markdown components={skillMarkdownComponents}>{content}</Markdown>;
+  } else {
+    preview = <p className="fk:text-muted-foreground">Nothing to preview.</p>;
+  }
+
+  return (
+    <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-1.5">
+      <div className="fk:pl-3.25 fk:flex fk:shrink-0 fk:items-center fk:gap-1">
+        <Label htmlFor="skill-content" id="skill-content-label">
+          Content
+        </Label>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              aria-label="About skill content"
+              className="fk:rounded-sm fk:text-muted-foreground hover:fk:text-foreground"
+              type="button"
+            >
+              <Info className="fk:size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="fk:max-w-sm">
+            The skill itself, in Markdown. Write it like instructions for a capable colleague: procedures, rules,
+            examples, and edge cases. Attached skills are always loaded; other visible skills are loaded on demand.
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <div
+        className={`fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:ml-0.75 fk:overflow-hidden fk:rounded-md fk:border ${showContentError ? 'fk:border-destructive' : ''}`}
+      >
+        <div className="fk:flex fk:shrink-0 fk:items-center fk:justify-between fk:gap-2 fk:border-b fk:px-2.5 fk:py-1">
+          <Tabs
+            value={viewMode}
+            onValueChange={(value) => {
+              setViewMode(value === 'preview' ? 'preview' : 'write');
+            }}
+          >
+            <TabsList>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="fk:inline-flex">
+                    <TabsTrigger aria-label="Write" className="fk:px-2.5" value="write">
+                      <PenLine className="fk:size-3.5" />
+                    </TabsTrigger>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Write</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="fk:inline-flex">
+                    <TabsTrigger aria-label="Preview" className="fk:px-2.5" value="preview">
+                      <Eye className="fk:size-3.5" />
+                    </TabsTrigger>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Preview</TooltipContent>
+              </Tooltip>
+            </TabsList>
+          </Tabs>
+          <span className={isOverLimit ? 'fk:text-xs fk:text-destructive' : 'fk:text-xs fk:text-muted-foreground'}>
+            {content.length.toLocaleString()} / {MAX_SKILL_CONTENT_LENGTH.toLocaleString()}
+          </span>
+        </div>
+        <div className="fk:min-h-0 fk:min-w-0 fk:flex-1 fk:overflow-hidden" hidden={viewMode !== 'write'}>
+          <MarkdownEditor
+            ariaDescribedBy={showContentError ? 'skill-content-error' : undefined}
+            ariaInvalid={showContentError}
+            ariaLabelledBy="skill-content-label"
+            className="fk:h-full fk:min-h-0 fk:min-w-0 fk:w-full fk:overflow-hidden"
+            placeholder={'# Product description guidelines\n\n## Tone\n\n- ...\n\n## Structure\n\n1. ...'}
+            readOnly={readOnly}
+            value={content}
+            onBlur={onBlur}
+            onChange={onChange}
+            onSave={onSave}
+          />
+        </div>
+        {viewMode === 'preview' ? (
+          <ScrollArea className="fk:min-h-0 fk:flex-1">
+            <div className="fk:prose fk:prose-sm fk:dark:prose-invert fk:max-w-none fk:px-4 fk:py-3">{preview}</div>
+          </ScrollArea>
+        ) : null}
+        {showContentError && validationMessage ? (
+          <FieldError className="fk:border-t fk:px-3 fk:py-2" id="skill-content-error" message={validationMessage} />
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -450,8 +668,16 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
   // Only spaces the caller belongs to are offered; the server rejects
   // bindings to spaces outside the caller's membership anyway.
   const selectableSpaces = (spacesData?.spaces ?? []).filter((space) => userSpaceCodes.includes(space.code));
+  let contentError = '';
+
+  if (!content.trim()) {
+    contentError = 'Content is required';
+  } else if (content.length > MAX_SKILL_CONTENT_LENGTH) {
+    contentError = `Content must be at most ${String(MAX_SKILL_CONTENT_LENGTH)} characters`;
+  }
+
   const validation = {
-    content: content.trim() ? '' : 'Content is required',
+    content: contentError,
     description: description.trim() ? '' : 'Description is required',
     name: name.trim() ? '' : 'Name is required',
     space: visibility === 'space' && !spaceId ? 'Select a space' : '',
@@ -460,10 +686,16 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
   const showNameError = touched.name && Boolean(validation.name);
   const showDescriptionError = touched.description && Boolean(validation.description);
   const showContentError = touched.content && Boolean(validation.content);
+  const title = mode === 'create' ? 'New Skill' : (skill?.name ?? 'Skill');
+  let saveLabel = 'Update skill';
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
+  if (isSaving) {
+    saveLabel = 'Saving...';
+  } else if (mode === 'create') {
+    saveLabel = 'Create skill';
+  }
 
+  async function save(): Promise<void> {
     if (!canMutate) {
       return;
     }
@@ -504,138 +736,179 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
     }
   }
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    await save();
+  }
+
   return (
-    <form className="fk:max-w-4xl fk:space-y-8 fk:px-1 fk:mx-auto" onSubmit={(event) => void handleSubmit(event)}>
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:overflow-hidden fk:gap-3 fk:pb-3">
+      <SkillPageHeader
+        actions={
+          <div className="fk:flex fk:items-center fk:gap-3">
+            {!isValid ? (
+              <span className="fk:text-xs fk:text-muted-foreground">Complete the required fields to save</span>
+            ) : null}
+            <PermissionTooltip disabled={!canMutate}>
+              <Button disabled={isSaving || !isValid || !canMutate} form="skill-editor-form" size="sm" type="submit">
+                {saveLabel}
+              </Button>
+            </PermissionTooltip>
+          </div>
+        }
+        title={title}
+      />
       {message ? (
-        <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive">
+        <div className="fk:shrink-0 fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive">
           {message}
         </div>
       ) : null}
-
-      <div className="fk:space-y-3">
-        <Label className="fk:mb-1" htmlFor="skill-name">
-          Name
-        </Label>
-        <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">Identifying label for this skill</p>
-        <Input
-          aria-describedby={showNameError ? 'skill-name-error' : undefined}
-          aria-invalid={showNameError}
-          className={showNameError ? 'fk:border-destructive focus-visible:fk:ring-destructive' : ''}
-          id="skill-name"
-          value={name}
-          onBlur={() => setTouched((current) => ({ ...current, name: true }))}
-          onChange={(event) => setName(event.target.value)}
-        />
-        {showNameError ? <FieldError id="skill-name-error" message={validation.name} /> : null}
-      </div>
-
-      <div className="fk:space-y-3">
-        <Label className="fk:mb-1" htmlFor="skill-description">
-          Description
-        </Label>
-        <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
-          One or two sentences describing when to use this skill. Agents rely on it to decide whether the skill applies
-          to their current task.
-        </p>
-        <Input
-          aria-describedby={showDescriptionError ? 'skill-description-error' : undefined}
-          aria-invalid={showDescriptionError}
-          className={showDescriptionError ? 'fk:border-destructive focus-visible:fk:ring-destructive' : ''}
-          id="skill-description"
-          placeholder="e.g. Rules for writing product descriptions in our brand voice"
-          value={description}
-          onBlur={() => setTouched((current) => ({ ...current, description: true }))}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-        {showDescriptionError ? <FieldError id="skill-description-error" message={validation.description} /> : null}
-      </div>
-
-      <div className="fk:space-y-3">
-        <Label className="fk:mb-1" htmlFor="skill-visibility">
-          Visibility
-        </Label>
-        <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
-          Who can see and use this skill. Space skills are only visible to members of the selected space and only usable
-          by automations in that space; personal skills are private to you.
-        </p>
-        <div className="fk:flex fk:items-center fk:gap-2">
-          <Select
-            value={visibility}
-            onValueChange={(value) => {
-              setVisibility(value === 'space' || value === 'personal' ? value : 'project');
-
-              if (value !== 'space') {
-                setSpaceId(null);
-              }
-            }}
-          >
-            <SelectTrigger aria-label="Visibility" className="fk:w-fit" id="skill-visibility">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="start">
-              <SelectItem value="project">Project</SelectItem>
-              <SelectItem disabled={selectableSpaces.length === 0} value="space">
-                Space
-              </SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-            </SelectContent>
-          </Select>
-          {visibility === 'space' ? (
-            <Select
-              value={spaceId ?? ''}
-              onValueChange={(value) => {
-                setSpaceId(value || null);
-              }}
+      <form
+        className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-6"
+        id="skill-editor-form"
+        onSubmit={(event) => void handleSubmit(event)}
+      >
+        <div className="fk:grid fk:min-w-0 fk:shrink-0 fk:gap-3 fk:px-0.75 fk:lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
+          <div>
+            <FieldHintLabel hint="Identifying label for this skill" htmlFor="skill-name">
+              Name
+            </FieldHintLabel>
+            <Input
+              aria-describedby={showNameError ? 'skill-name-error' : undefined}
+              aria-invalid={showNameError}
+              className={showNameError ? 'fk:border-destructive focus-visible:fk:ring-destructive' : ''}
+              id="skill-name"
+              value={name}
+              onBlur={() => setTouched((current) => ({ ...current, name: true }))}
+              onChange={(event) => setName(event.target.value)}
+            />
+            {showNameError ? <FieldError id="skill-name-error" message={validation.name} /> : null}
+          </div>
+          <div>
+            <FieldHintLabel
+              hint="One or two sentences describing when to use this skill. Agents rely on it to decide whether the skill applies to their current task."
+              htmlFor="skill-description"
             >
-              <SelectTrigger aria-label="Space" className="fk:w-fit">
-                <SelectValue placeholder="Select a space" />
-              </SelectTrigger>
-              <SelectContent align="start">
-                {selectableSpaces.map((space) => (
-                  <SelectItem key={space.id} value={space.id}>
-                    {space.label}
+              Description
+            </FieldHintLabel>
+            <Input
+              aria-describedby={showDescriptionError ? 'skill-description-error' : undefined}
+              aria-invalid={showDescriptionError}
+              className={showDescriptionError ? 'fk:border-destructive focus-visible:fk:ring-destructive' : ''}
+              id="skill-description"
+              placeholder="e.g. Rules for writing product descriptions in our brand voice"
+              value={description}
+              onBlur={() => setTouched((current) => ({ ...current, description: true }))}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+            {showDescriptionError ? <FieldError id="skill-description-error" message={validation.description} /> : null}
+          </div>
+          <div>
+            <FieldHintLabel
+              hint="Who can see and use this skill. Space skills are only visible to members of the selected space and only usable by automations in that space; personal skills are private to you."
+              htmlFor="skill-visibility"
+            >
+              Visibility
+            </FieldHintLabel>
+            <div className="fk:flex fk:items-center fk:gap-2">
+              <Select
+                value={visibility}
+                onValueChange={(value) => {
+                  setVisibility(value === 'space' || value === 'personal' ? value : 'project');
+
+                  if (value !== 'space') {
+                    setSpaceId(null);
+                  }
+                }}
+              >
+                <SelectTrigger aria-label="Visibility" className="fk:w-fit fk:min-w-26" id="skill-visibility">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="project">Project</SelectItem>
+                  <SelectItem disabled={selectableSpaces.length === 0} value="space">
+                    Space
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
+                  <SelectItem value="personal">Personal</SelectItem>
+                </SelectContent>
+              </Select>
+              {visibility === 'space' ? (
+                <Select
+                  value={spaceId ?? ''}
+                  onValueChange={(value) => {
+                    setSpaceId(value || null);
+                  }}
+                >
+                  <SelectTrigger aria-label="Space" className="fk:w-fit fk:min-w-34">
+                    <SelectValue placeholder="Select a space" />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    {selectableSpaces.map((space) => (
+                      <SelectItem key={space.id} value={space.id}>
+                        {space.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+            </div>
+            {visibility === 'space' && validation.space ? <FieldError message={validation.space} /> : null}
+          </div>
         </div>
-        {visibility === 'space' && validation.space ? <FieldError message={validation.space} /> : null}
-      </div>
-
-      <div className="fk:space-y-3">
-        <Label className="fk:mb-1" htmlFor="skill-content">
-          Content
-        </Label>
-        <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
-          The skill itself, in Markdown. Write it like instructions for a capable colleague: procedures, rules,
-          examples, and edge cases. Attached skills are always loaded; other visible skills are loaded on demand.
-        </p>
-        <Textarea
-          aria-describedby={showContentError ? 'skill-content-error' : undefined}
-          aria-invalid={showContentError}
-          className={`fk:min-h-80 fk:font-mono fk:text-xs ${showContentError ? 'fk:border-destructive focus-visible:fk:ring-destructive' : ''}`}
-          id="skill-content"
-          placeholder={'# Product description guidelines\n\n## Tone\n\n- ...\n\n## Structure\n\n1. ...'}
-          rows={16}
-          value={content}
+        <SkillContentPane
+          content={content}
+          showContentError={showContentError}
+          validationMessage={validation.content}
           onBlur={() => setTouched((current) => ({ ...current, content: true }))}
-          onChange={(event) => setContent(event.target.value)}
+          onChange={setContent}
+          onSave={() => {
+            void save();
+          }}
         />
-        {showContentError ? <FieldError id="skill-content-error" message={validation.content} /> : null}
-      </div>
+      </form>
+    </div>
+  );
+}
 
-      <div className="fk:flex fk:items-center fk:justify-end fk:gap-3">
-        {!isValid ? (
-          <span className="fk:text-xs fk:text-muted-foreground">Complete the required fields to save</span>
-        ) : null}
-        <PermissionTooltip disabled={!canMutate}>
-          <Button disabled={isSaving || !isValid || !canMutate} type="submit">
-            {isSaving ? 'Saving...' : mode === 'create' ? 'Create skill' : 'Update skill'}
-          </Button>
-        </PermissionTooltip>
+function ReadOnlyCodeSkill({
+  skill,
+  spaceLabelById,
+}: {
+  skill: Skill;
+  spaceLabelById: Map<string, string>;
+}): JSX.Element {
+  return (
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:overflow-hidden fk:gap-3 fk:pb-3">
+      <SkillPageHeader
+        actions={
+          <div className="fk:flex fk:items-center fk:gap-2">
+            <Badge variant="secondary">Code</Badge>
+          </div>
+        }
+        title={skill.name}
+      />
+      <div className="fk:shrink-0 fk:rounded-md fk:border fk:bg-muted/30 fk:px-3 fk:py-2">
+        <p className="fk:text-sm fk:font-medium">Version-controlled skill</p>
+        <p className="fk:text-sm fk:text-muted-foreground">
+          Edit this skill in your repository and re-sync it from the Custom Tools settings.
+        </p>
       </div>
-    </form>
+      <div className="fk:grid fk:min-w-0 fk:shrink-0 fk:gap-3 fk:lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
+        <div>
+          <Label className="fk:mb-1">Name</Label>
+          <p className="fk:truncate fk:text-sm">{skill.name}</p>
+        </div>
+        <div>
+          <Label className="fk:mb-1">Description</Label>
+          <p className="fk:line-clamp-2 fk:text-sm fk:text-muted-foreground">{skill.description}</p>
+        </div>
+        <div>
+          <Label className="fk:mb-1">Visibility</Label>
+          <Badge variant="outline">{getSkillVisibilityLabel(skill, spaceLabelById)}</Badge>
+        </div>
+      </div>
+      <SkillContentPane content={skill.content} readOnly />
+    </div>
   );
 }
 
@@ -648,36 +921,7 @@ export function CreateSkillPage(): JSX.Element {
   }
 
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
-      <div className="fk:mb-4 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
-          </TooltipTrigger>
-          <TooltipContent>Toggle Sidebar</TooltipContent>
-        </Tooltip>
-        <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
-        <div className="fk:flex-1">
-          <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">New Skill</h1>
-        </div>
-      </div>
-      <Button asChild className="fk:shrink-0 fk:w-fit" size="sm" variant="ghost">
-        <Link relative="path" to="..">
-          <ArrowLeft className="fk:mr-2 fk:size-4" />
-          Skills
-        </Link>
-      </Button>
-      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
-        <div className="fk:pb-6 fk:pr-4">
-          <SkillForm
-            api={api}
-            mode="create"
-            projectId={projectId}
-            onSaved={() => navigate('..', { relative: 'path' })}
-          />
-        </div>
-      </ScrollArea>
-    </div>
+    <SkillForm api={api} mode="create" projectId={projectId} onSaved={() => navigate('..', { relative: 'path' })} />
   );
 }
 
@@ -688,6 +932,7 @@ export function SkillDetailPage(): JSX.Element {
     projectId && skillId ? paths(projectId).skill(skillId) : null,
     fetcher
   );
+  const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(projectId ? paths(projectId).spaces : null, fetcher);
 
   if (!projectId || !api || !skillId) {
     return <PageMessage>Select a skill.</PageMessage>;
@@ -701,43 +946,25 @@ export function SkillDetailPage(): JSX.Element {
     return <PageMessage>Loading skill...</PageMessage>;
   }
 
+  const spaceLabelById = new Map((spacesData?.spaces ?? []).map((space) => [space.id, space.label]));
+
+  if (data.skill.source === 'code') {
+    return <ReadOnlyCodeSkill skill={data.skill} spaceLabelById={spaceLabelById} />;
+  }
+
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
-      <div className="fk:mb-4 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
-          </TooltipTrigger>
-          <TooltipContent>Toggle Sidebar</TooltipContent>
-        </Tooltip>
-        <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
-        <div className="fk:flex-1">
-          <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">{data.skill.name}</h1>
-        </div>
-      </div>
-      <Button asChild className="fk:shrink-0 fk:w-fit" size="sm" variant="ghost">
-        <Link relative="path" to="..">
-          <ArrowLeft className="fk:mr-2 fk:size-4" />
-          Skills
-        </Link>
-      </Button>
-      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
-        <div className="fk:pb-6 fk:pr-4">
-          <SkillForm
-            api={api}
-            mode="edit"
-            projectId={projectId}
-            skill={data.skill}
-            onSaved={(skill) => {
-              if (skill) {
-                void mutate({ skill }, { revalidate: false });
-              } else {
-                void mutate();
-              }
-            }}
-          />
-        </div>
-      </ScrollArea>
-    </div>
+    <SkillForm
+      api={api}
+      mode="edit"
+      projectId={projectId}
+      skill={data.skill}
+      onSaved={(skill) => {
+        if (skill) {
+          void mutate({ skill }, { revalidate: false });
+        } else {
+          void mutate();
+        }
+      }}
+    />
   );
 }

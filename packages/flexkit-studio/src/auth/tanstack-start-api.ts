@@ -1,4 +1,5 @@
 import { handleFlexkitRequest, type FlexkitHandlerOptions, type FlexkitHandlerResult } from './core-handler';
+import { assertUniqueSkillNames } from '../tools/define-skill';
 
 /**
  * Types for TanStack Start / Nitro / Vinxi event handling
@@ -168,6 +169,8 @@ function applyResultToResponse(result: FlexkitHandlerResult, event: H3Event): st
  * ```
  */
 export function createFlexkitTanStackHandler(options?: FlexkitHandlerOptions): EventHandler {
+  assertUniqueSkillNames(options?.skills ?? []);
+
   return async (event: H3Event): Promise<unknown> => {
     const { req } = event.node;
     const method = event.method || req.method || 'GET';
@@ -245,9 +248,9 @@ export function createFlexkitTanStackHandler(options?: FlexkitHandlerOptions): E
  * }
  * ```
  */
-export function createFlexkitFetchHandler(
-  options?: FlexkitHandlerOptions
-): (request: Request) => Promise<Response> {
+export function createFlexkitFetchHandler(options?: FlexkitHandlerOptions): (request: Request) => Promise<Response> {
+  assertUniqueSkillNames(options?.skills ?? []);
+
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     const cookieHeader = request.headers.get('cookie');

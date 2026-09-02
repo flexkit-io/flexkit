@@ -1,5 +1,13 @@
 export { parseCustomerToolActor } from './tools/actor';
 export type { CustomerToolActor } from './tools/actor';
+export {
+  assertUniqueSkillNames,
+  defineSkill,
+  MAX_SKILL_CONTENT_LENGTH,
+  MAX_SKILL_DESCRIPTION_LENGTH,
+  MAX_SKILL_NAME_LENGTH,
+} from './tools/define-skill';
+export type { FlexkitSkill } from './tools/define-skill';
 export { defineTool, toolToManifest } from './tools/define-tool';
 export {
   CUSTOMER_TOOLS_HELLO_PATH,

@@ -144,6 +144,7 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
   if (isCustomerToolsPath(pathname)) {
     return handleCustomerToolsRequest({
       request,
+      skills: options?.skills,
       tools: options?.tools ?? [],
     });
   }
@@ -154,6 +155,7 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     return handleDevConnectTick({
       projectId: tickProjectId ?? '',
       sessionToken,
+      skills: options?.skills,
       tools: options?.tools ?? [],
     });
   }

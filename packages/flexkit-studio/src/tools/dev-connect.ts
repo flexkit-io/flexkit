@@ -3,7 +3,7 @@ import { flexkitApiDomain } from '../core/domains';
 import { parseCustomerToolActor, type CustomerToolActor } from './actor';
 import { toolToManifest } from './define-tool';
 import { CUSTOMER_TOOLS_HELLO_PATH, CUSTOMER_TOOLS_POLL_PATH, CUSTOMER_TOOLS_RESPOND_PATH } from './hmac';
-import type { FlexkitTool } from './types';
+import type { FlexkitSkill, FlexkitTool } from './types';
 
 export const CUSTOMER_TOOLS_TICK_PATH_SUFFIX = '/tools/dev-connect/tick';
 export const CUSTOMER_TOOLS_ME_PATH = '/users/me';
@@ -102,13 +102,7 @@ function connectDecisionKey(projectId: string, sessionToken: string): string {
   return `${sessionToken}\0${projectId}`;
 }
 
-function forgetConnectDecision({
-  projectId,
-  sessionToken,
-}: {
-  projectId: string;
-  sessionToken: string;
-}): void {
+function forgetConnectDecision({ projectId, sessionToken }: { projectId: string; sessionToken: string }): void {
   delete connectDecisions[connectDecisionKey(projectId, sessionToken)];
 }
 
@@ -244,10 +238,12 @@ async function executeJob({
 export async function handleDevConnectTick({
   projectId,
   sessionToken,
+  skills,
   tools,
 }: {
   projectId: string;
   sessionToken: string;
+  skills?: FlexkitSkill[];
   tools: FlexkitTool[];
 }): Promise<FlexkitHandlerResult> {
   if (!shouldHandleDevConnectTick()) {
@@ -258,7 +254,7 @@ export async function handleDevConnectTick({
     return jsonResult(401, { error: 'Sign in to Studio to connect local tools.' });
   }
 
-  if (!projectId || tools.length === 0) {
+  if (!projectId || (tools.length === 0 && skills === undefined)) {
     return jsonResult(204, { ok: true });
   }
 
@@ -276,6 +272,7 @@ export async function handleDevConnectTick({
 
   const helloBody = JSON.stringify({
     clientLabel: guessClientLabel(projectId),
+    ...(skills === undefined ? {} : { skills }),
     tools: tools.map((tool) => toolToManifest(tool)),
   });
 

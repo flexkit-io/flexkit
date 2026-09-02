@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSearch } from '../../core/use-search';
 import { cn } from '../lib/utils';
 import { Badge } from '../primitives/badge';
+import { Button } from '../primitives/button';
 import { ButtonGroup } from '../primitives/button-group';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '../primitives/command';
 import { ScrollArea } from '../primitives/scroll-area';
@@ -104,10 +105,7 @@ export function Search({
     () => getCollections(searchableEntities, resolvedCollection),
     [searchableEntities, resolvedCollection]
   );
-  const searchQuery = useMemo(
-    () => buildSearchRequest(collections, inputValue),
-    [collections, inputValue]
-  );
+  const searchQuery = useMemo(() => buildSearchRequest(collections, inputValue), [collections, inputValue]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { results, isLoading } = useSearch(projectId, searchQuery);
   const showDropdown = isOpen && (results.length > 0 || !isLoading);
@@ -192,7 +190,7 @@ export function Search({
       >
         <div
           className={cn(
-            'fk:flex fk:items-center fk:border-y fk:border-r fk:border-border fk:rounded-r-md fk:bg-background fk:px-3 fk:h-9 fk:md:w-25 fk:lg:w-75',
+            'fk:flex fk:items-center fk:border-y fk:border-r fk:border-border fk:rounded-r-md fk:bg-background fk:pl-3 fk:pr-2 fk:h-9 fk:md:w-25 fk:lg:w-75',
             'fk:outline-none fk:transition-[color,box-shadow] fk:has-[input:focus-visible]:border-ring fk:has-[input:focus-visible]:ring-[3px] fk:has-[input:focus-visible]:ring-ring/50'
           )}
         >
@@ -215,13 +213,14 @@ export function Search({
             value={inputValue}
           />
           {inputValue && (
-            <button
-              className="fk:flex fk:items-center fk:justify-center fk:ml-2 fk:text-muted-foreground fk:hover:text-foreground"
+            <Button
+              aria-label="Clear search"
+              className="fk:flex fk:items-center fk:justify-center fk:ml-2 fk:h-6 fk:w-6 fk:text-muted-foreground fk:hover:text-foreground fk:hover:bg-foreground/10 fk:cursor-pointer fk:rounded-full fk:bg-transparent"
               onClick={handleClear}
               type="button"
             >
               <XIcon className="fk:h-4 fk:w-4" />
-            </button>
+            </Button>
           )}
         </div>
         <div className="fk:relative fk:max-w-150">

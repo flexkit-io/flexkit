@@ -34,7 +34,7 @@
   ],
   "scripts": {
     "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup src/index.tsx --format esm --dts --external react",
-    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch=always & tsup src/index.tsx --format esm --watch --dts --external react",
+    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch=always & tsup src/index.tsx --format esm --watch src --dts --external react",
     "lint": "eslint \"src/**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },
@@ -55,13 +55,23 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@codemirror/commands": "6.11.0",
+    "@codemirror/lang-markdown": "6.5.2",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/language-data": "6.5.2",
+    "@codemirror/search": "6.7.2",
+    "@codemirror/state": "6.7.2",
+    "@codemirror/view": "6.43.10",
     "@json-render/core": "0.19.0",
     "@json-render/react": "0.19.0",
+    "@lezer/highlight": "1.2.3",
+    "@uiw/codemirror-themes": "4.25.11",
     "ai": "^6.0.116",
     "cron-parser": "5.5.0",
     "date-fns": "4.1.0",
     "lucide-react": "0.577.0",
     "mermaid": "11.14.0",
+    "react-markdown": "9.0.1",
     "react-router-dom": "^6.21.0",
     "recharts": "2.15.3",
     "shadcn": "4.16.1",

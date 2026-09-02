@@ -192,7 +192,7 @@ function Sidebar({
 
   return (
     <div
-      className="fk:group fk:peer fk:hidden fk:text-sidebar-foreground fk:md:block"
+      className="fk:group fk:peer flexkit-sidebar-desktop-block fk:text-sidebar-foreground"
       data-state={state}
       data-collapsible={state === 'collapsed' ? collapsible : ''}
       data-variant={variant}
@@ -214,7 +214,7 @@ function Sidebar({
       <div
         data-slot="sidebar-container"
         className={cn(
-          'fk:relative fk:inset-y-0 fk:z-10 fk:hidden fk:h-[calc(100svh-3.5rem)] fk:w-(--sidebar-width) fk:transition-[left,right,width] fk:duration-200 fk:ease-linear fk:md:flex',
+          'fk:relative fk:inset-y-0 fk:z-10 flexkit-sidebar-desktop-flex fk:h-[calc(100svh-3.5rem)] fk:w-(--sidebar-width) fk:transition-[left,right,width] fk:duration-200 fk:ease-linear',
           side === 'left'
             ? 'fk:left-0 fk:group-data-[collapsible=offcanvas]:-left-(--sidebar-width)'
             : 'fk:right-0 k:group-data-[collapsible=offcanvas]:-right-(--sidebar-width)',
@@ -272,7 +272,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-        'fk:absolute fk:inset-y-0 fk:z-20 fk:hidden fk:w-4 fk:-translate-x-1/2 fk:transition-all fk:ease-linear fk:group-data-[side=left]:-right-4 fk:group-data-[side=right]:left-0 fk:after:absolute fk:after:inset-y-0 fk:after:left-1/2 fk:after:w-[2px] fk:hover:after:bg-sidebar-border fk:sm:flex',
+        'fk:absolute fk:inset-y-0 fk:z-20 flexkit-sidebar-sm-flex fk:w-4 fk:-translate-x-1/2 fk:transition-all fk:ease-linear fk:group-data-[side=left]:-right-4 fk:group-data-[side=right]:left-0 fk:after:absolute fk:after:inset-y-0 fk:after:left-1/2 fk:after:w-[2px] fk:hover:after:bg-sidebar-border',
         'fk:in-data-[side=left]:cursor-w-resize fk:in-data-[side=right]:cursor-e-resize',
         'fk:[[data-side=left][data-state=collapsed]_&]:cursor-e-resize fk:[[data-side=right][data-state=collapsed]_&]:cursor-w-resize',
         'fk:group-data-[collapsible=offcanvas]:translate-x-0 fk:group-data-[collapsible=offcanvas]:after:left-full fk:hover:group-data-[collapsible=offcanvas]:bg-sidebar',
