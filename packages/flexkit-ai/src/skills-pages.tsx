@@ -659,6 +659,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
   const [visibility, setVisibility] = useState<AutomationVisibility>(skill?.visibility ?? 'project');
   const [spaceId, setSpaceId] = useState<string | null>(skill?.spaceId ?? null);
   const [isSaving, setIsSaving] = useState(false);
+  const isSavingRef = useRef(false);
   const [message, setMessage] = useState('');
   const [touched, setTouched] = useState({ content: false, description: false, name: false });
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
@@ -696,7 +697,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
   }
 
   async function save(): Promise<void> {
-    if (!canMutate) {
+    if (!canMutate || isSavingRef.current) {
       return;
     }
 
@@ -706,6 +707,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
       return;
     }
 
+    isSavingRef.current = true;
     setIsSaving(true);
     setMessage('');
 
@@ -732,6 +734,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to save skill.');
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   }
