@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { CustomerToolActor } from './actor';
 import { stripJsonSchemaMeta } from './json-schema';
-import { isValidToolName } from './reserved-names';
+import { isValidToolName } from './tool-names';
 import type { FlexkitTool } from './types';
 
 export function defineTool<TSchema extends z.ZodType>(options: {
@@ -12,7 +12,7 @@ export function defineTool<TSchema extends z.ZodType>(options: {
 }): FlexkitTool {
   if (!isValidToolName(options.name)) {
     throw new Error(
-      `Invalid custom tool name "${options.name}". Use a camelCase identifier that does not collide with a Flexkit platform tool.`
+      `Invalid custom tool name "${options.name}". Use a camelCase identifier that does not start with \`custom_\`.`
     );
   }
 

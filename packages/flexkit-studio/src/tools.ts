@@ -22,7 +22,7 @@ export {
   signPayload,
   verifySignedHeaders,
 } from './tools/hmac';
-export { CUSTOM_TOOL_NAME_PREFIX, isReservedToolName, isValidToolName, toAgentToolName } from './tools/reserved-names';
+export { CUSTOM_TOOL_NAME_PREFIX, isValidToolName, toAgentToolName } from './tools/tool-names';
 export {
   FLEXKIT_STUDIO_RUNTIME_HEADER,
   FLEXKIT_STUDIO_RUNTIME_LOCAL,
