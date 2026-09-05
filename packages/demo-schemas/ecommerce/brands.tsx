@@ -10,7 +10,7 @@ export const brands = defineEntity({
     group: 'catalog',
     icon: <StoreIcon />,
   },
-  spaces: ['mkt'],
+  // spaces: ['mkt'],
   attributes: [
     {
       name: 'name',

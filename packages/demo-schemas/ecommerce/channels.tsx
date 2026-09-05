@@ -15,7 +15,7 @@ export const channels = defineEntity({
       label: 'Name',
       scope: 'global',
       options: {
-        size: 130,
+        size: 250,
         comment: 'Name of the channel (i.e. Spain, United States, Germany)',
       },
       dataType: 'string',
