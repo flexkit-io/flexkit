@@ -25,6 +25,15 @@ type EntityQuery = {
   query: string;
 };
 
+export type EntityQueryCountMode = 'aggregate' | 'total';
+export type SortNotNullWhere = {
+  NOT: {
+    [attributeName: string]: {
+      eq: null;
+    };
+  };
+};
+
 /** Page size for asset connections in forms (galleries, ordered assets). */
 export const FULL_ASSET_CONNECTION_LIMIT = 25;
 /** List grids render at most 3 stacked asset thumbnails (plus a "+N" badge). */
@@ -205,6 +214,16 @@ function getConnectionCount(value: unknown): number {
   return aggregate?.count?.nodes ?? 0;
 }
 
+function getEntityCount(results: EntityQueryResults, entityNamePlural: string): number {
+  const total = results[`${entityNamePlural}Total`];
+
+  if (typeof total === 'number') {
+    return total;
+  }
+
+  return getConnectionCount(results[`${entityNamePlural}Connection`]);
+}
+
 function getConnectionCountSelection(fieldName: string, whereArgument = ''): string {
   return (
     `    ${fieldName}Connection${whereArgument} {\n` +
@@ -215,6 +234,22 @@ function getConnectionCountSelection(fieldName: string, whereArgument = ''): str
     `      }\n` +
     `    }\n`
   );
+}
+
+function getTopLevelCountSelection(
+  entityNamePlural: string,
+  includeCount: boolean,
+  countMode: EntityQueryCountMode
+): string {
+  if (!includeCount) {
+    return '';
+  }
+
+  if (countMode === 'total') {
+    return `  ${entityNamePlural}Total\n`;
+  }
+
+  return getConnectionCountSelection(entityNamePlural, '(where: $where)');
 }
 
 /**
@@ -336,6 +371,42 @@ function shouldSelectAttributeInList(attribute: Attribute | undefined): boolean 
   return true;
 }
 
+export function getSortNotNullWhere(sort: unknown, entity: Entity | undefined): SortNotNullWhere | undefined {
+  if (!Array.isArray(sort) || sort.length === 0) {
+    return undefined;
+  }
+
+  const [primarySort] = sort;
+
+  if (!primarySort || typeof primarySort !== 'object') {
+    return undefined;
+  }
+
+  const [sortAttributeName] = Object.keys(primarySort);
+
+  if (!sortAttributeName || ['_id', '_createdAt', '_updatedAt'].includes(sortAttributeName)) {
+    return undefined;
+  }
+
+  const sortAttribute = entity?.attributes.find((attribute) => attribute.name === sortAttributeName);
+
+  if (
+    !sortAttribute ||
+    getAttributeScope(sortAttribute) !== 'global' ||
+    sortAttribute.dataType === 'asset'
+  ) {
+    return undefined;
+  }
+
+  return {
+    NOT: {
+      [sortAttributeName]: {
+        eq: null,
+      },
+    },
+  };
+}
+
 export function getEntityQuery(
   entityNamePlural: string,
   scope: string,
@@ -348,11 +419,13 @@ export function getEntityQuery(
      * still stands.
      */
     includeCount?: boolean;
+    countMode?: EntityQueryCountMode;
     operationName?: string;
   }
 ): EntityQuery {
   const selection = options?.selection ?? 'full';
   const includeCount = options?.includeCount ?? true;
+  const countMode = options?.countMode ?? 'aggregate';
   const filters = `(where: $where, limit: $limit, offset: $offset, sort: $sort)`;
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
@@ -454,7 +527,7 @@ export function getEntityQuery(
     queryEntityName: entityNamePlural,
     query:
       `query ${operationName}(${heading}) {\n` +
-      (includeCount ? getConnectionCountSelection(entityNamePlural, '(where: $where)') : '') +
+      getTopLevelCountSelection(entityNamePlural, includeCount, countMode) +
       `  ${entityNamePlural}${filters} {\n` +
       `    _id\n` +
       `    _updatedAt\n` +
@@ -486,7 +559,7 @@ export function mapQueryResult(
     };
   }
 
-  const count = getConnectionCount(results[`${entityNamePlural}Connection`]);
+  const count = getEntityCount(results, entityNamePlural);
   const items = results[entityNamePlural] as EntityQueryResult[];
   const sliceFirstThreeItems = (values: EntityItem[], primaryAttribute: Attribute): string => {
     const primaryAttributeName = primaryAttribute.name;
@@ -612,7 +685,7 @@ export function mapQueryResultForFormFields(
     };
   }
 
-  const count = getConnectionCount(results[`${entityNamePlural}Connection`]);
+  const count = getEntityCount(results, entityNamePlural);
   const items = results[entityNamePlural] as EntityQueryResult[];
   const mappedQueryResult = items.map((entity) => {
     const globalAttributes = getAttributeListByScope('global', attributes).reduce(

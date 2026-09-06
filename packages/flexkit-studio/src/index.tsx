@@ -63,6 +63,7 @@ export {
   getEntityDeleteWhere,
   getEntityCreateMutation,
   getEntityQuery,
+  getSortNotNullWhere,
   getEntityUpdateMutation,
 } from './graphql-client/queries';
 export { gql } from '@apollo/client';

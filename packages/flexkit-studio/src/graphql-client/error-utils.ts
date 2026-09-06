@@ -75,7 +75,7 @@ export function getGraphQLSchemaMismatchMessage(error?: ErrorLike): string | nul
     return null;
   }
 
-  const messages = getGraphQLValidationMessages(error);
+  const messages = getGraphQLValidationMessages(error).filter((message) => !isMissingCountStoreFieldMessage(message));
 
   if (messages.length === 0) {
     return null;
@@ -86,6 +86,16 @@ export function getGraphQLSchemaMismatchMessage(error?: ErrorLike): string | nul
     'Run `flexkit deploy` using the CLI to apply your latest schema changes.',
     ...messages.map((message) => `- ${message}`),
   ].join('\n');
+}
+
+export function isMissingGraphQLFieldError(error: ErrorLike | undefined, fieldName: string): boolean {
+  if (!error) {
+    return false;
+  }
+
+  return getGraphQLValidationMessages(error).some((message) => {
+    return message.includes(`Cannot query field "${fieldName}"`);
+  });
 }
 
 function getGraphQLValidationMessages(error: ErrorLike): string[] {
@@ -186,4 +196,8 @@ function isSchemaValidationMessage(message: string): boolean {
     message.startsWith('Cannot query field "') ||
     message.includes('GRAPHQL_VALIDATION_FAILED')
   );
+}
+
+function isMissingCountStoreFieldMessage(message: string): boolean {
+  return /Cannot query field "[_A-Za-z][_0-9A-Za-z]*Total" on type "Query"/.test(message);
 }

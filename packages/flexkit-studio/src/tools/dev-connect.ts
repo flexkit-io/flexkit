@@ -95,15 +95,23 @@ async function sessionFetch({
 let tickInFlight = false;
 
 type CachedConnectDecision = 'allow' | 401 | 403;
+type HelloState = {
+  manifestHash: string;
+  sentAt: number;
+};
 
+const HELLO_INTERVAL_MS = 30_000;
 const connectDecisions: { [key: string]: CachedConnectDecision } = {};
+const helloStates: { [key: string]: HelloState | undefined } = {};
 
 function connectDecisionKey(projectId: string, sessionToken: string): string {
   return `${sessionToken}\0${projectId}`;
 }
 
 function forgetConnectDecision({ projectId, sessionToken }: { projectId: string; sessionToken: string }): void {
-  delete connectDecisions[connectDecisionKey(projectId, sessionToken)];
+  const key = connectDecisionKey(projectId, sessionToken);
+  delete connectDecisions[key];
+  delete helloStates[key];
 }
 
 function rememberConnectDecision({
@@ -116,6 +124,42 @@ function rememberConnectDecision({
   sessionToken: string;
 }): void {
   connectDecisions[connectDecisionKey(projectId, sessionToken)] = decision;
+}
+
+function hashManifest(manifest: string): string {
+  let hash = 2166136261;
+
+  for (let index = 0; index < manifest.length; index += 1) {
+    hash ^= manifest.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0).toString(36);
+}
+
+function shouldSendHello(input: {
+  manifestHash: string;
+  projectId: string;
+  sessionToken: string;
+}): boolean {
+  const state = helloStates[connectDecisionKey(input.projectId, input.sessionToken)];
+
+  if (!state || state.manifestHash !== input.manifestHash) {
+    return true;
+  }
+
+  return Date.now() - state.sentAt >= HELLO_INTERVAL_MS;
+}
+
+function rememberHello(input: {
+  manifestHash: string;
+  projectId: string;
+  sessionToken: string;
+}): void {
+  helloStates[connectDecisionKey(input.projectId, input.sessionToken)] = {
+    manifestHash: input.manifestHash,
+    sentAt: Date.now(),
+  };
 }
 
 function deniedDevConnectResult(status: number): FlexkitHandlerResult {
@@ -275,24 +319,29 @@ export async function handleDevConnectTick({
     ...(skills === undefined ? {} : { skills }),
     tools: tools.map((tool) => toolToManifest(tool)),
   });
+  const manifestHash = hashManifest(helloBody);
 
   try {
-    const helloResponse = await sessionFetch({
-      body: helloBody,
-      method: 'POST',
-      path: CUSTOMER_TOOLS_HELLO_PATH,
-      projectId,
-      sessionToken,
-    });
+    if (shouldSendHello({ manifestHash, projectId, sessionToken })) {
+      const helloResponse = await sessionFetch({
+        body: helloBody,
+        method: 'POST',
+        path: CUSTOMER_TOOLS_HELLO_PATH,
+        projectId,
+        sessionToken,
+      });
 
-    if (helloResponse.status === 401 || helloResponse.status === 403) {
-      forgetConnectDecision({ projectId, sessionToken });
+      if (helloResponse.status === 401 || helloResponse.status === 403) {
+        forgetConnectDecision({ projectId, sessionToken });
 
-      return jsonResult(helloResponse.status, { error: 'Unable to register the local tools runtime.' });
-    }
+        return jsonResult(helloResponse.status, { error: 'Unable to register the local tools runtime.' });
+      }
 
-    if (!helloResponse.ok) {
-      return jsonResult(helloResponse.status, { error: 'Unable to register the local tools runtime.' });
+      if (!helloResponse.ok) {
+        return jsonResult(helloResponse.status, { error: 'Unable to register the local tools runtime.' });
+      }
+
+      rememberHello({ manifestHash, projectId, sessionToken });
     }
 
     const pollResponse = await sessionFetch({

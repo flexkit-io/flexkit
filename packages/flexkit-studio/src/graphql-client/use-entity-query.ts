@@ -3,8 +3,19 @@ import { prop, uniqBy } from 'ramda';
 import { gql, NetworkStatus } from '@apollo/client';
 import type { OperationVariables } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
-import { getGraphQLSchemaMismatchMessage, getServerError, parseErrorBody } from './error-utils';
-import { getEntityQuery, getOperationEntityName, mapQueryResult, mapQueryResultForFormFields } from './queries';
+import {
+  getGraphQLSchemaMismatchMessage,
+  getServerError,
+  isMissingGraphQLFieldError,
+  parseErrorBody,
+} from './error-utils';
+import {
+  getEntityQuery,
+  getEntitySchema,
+  getOperationEntityName,
+  mapQueryResult,
+  mapQueryResultForFormFields,
+} from './queries';
 import {
   subscribeEntityListPatch,
   subscribeEntityListRefetch,
@@ -25,6 +36,7 @@ import type {
 
 type FetchMoreOptions = {
   // `offset` is accepted for call-site compatibility but overridden by nextOffsetRef.
+  // `where`/`sort` are inherited from the active query unless overridden here.
   variables: OperationVariables & { offset: number; limit: number };
 };
 type Results = (MappedEntityQueryResults | MappedFormEntityQueryResults) | { count: 0; results: [] };
@@ -53,6 +65,10 @@ export function useEntityQuery({
   });
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isReloading, setIsReloading] = useState(false);
+  const [unsupportedTotalCount, setUnsupportedTotalCount] = useState<{
+    field: string;
+    schema: UseEntityQueryParams['schema'];
+  } | null>(null);
   const isLoadingMoreRef = useRef(false);
   const isReloadingRef = useRef(false);
   // Next offset for fetchMore — advanced by each requested page window, not by the
@@ -65,7 +81,14 @@ export function useEntityQuery({
   // Must include entity/scope — variables alone collide across entity navigations.
   const syncedQueryKeyRef = useRef<string | null>(null);
   const pendingQueryKeyRef = useRef<string | null>(null);
-  const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection });
+  const totalCountField = `${entityNamePlural}Total`;
+  const entitySchema = getEntitySchema(schema, entityNamePlural);
+  const canUseTotalCount =
+    variables?.where === undefined &&
+    (entitySchema?.spaces?.length ?? 0) === 0 &&
+    (unsupportedTotalCount?.field !== totalCountField || unsupportedTotalCount.schema !== schema);
+  const countMode = canUseTotalCount ? 'total' : 'aggregate';
+  const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection, countMode });
   const queryDocument = useMemo(
     () =>
       gql`
@@ -99,13 +122,19 @@ export function useEntityQuery({
   const refetchRef = useRef(refetch);
   const fetchMoreDocumentRef = useRef(fetchMoreDocument);
   const previousNetworkStatusRef = useRef(networkStatus);
+  const variablesRef = useRef(variables);
   fetchNextPageRef.current = fetchNextPage;
   refetchRef.current = refetch;
   fetchMoreDocumentRef.current = fetchMoreDocument;
+  variablesRef.current = variables;
 
   // Parse 403 error response to determine the specific error code
-  const serverError = getServerError(error);
-  const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(error);
+  const isMissingTotalCountField = isMissingGraphQLFieldError(error, totalCountField);
+  const shouldFallbackToAggregate = countMode === 'total' && isMissingTotalCountField;
+  const effectiveError = isMissingTotalCountField ? undefined : error;
+  const isTotalCountFallbackLoading = isMissingTotalCountField && !data?.[entityNamePlural];
+  const serverError = getServerError(effectiveError);
+  const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(effectiveError);
 
   const { isProjectDisabled, isProjectReadOnly } = (() => {
     if (serverError?.statusCode === 403) {
@@ -139,6 +168,14 @@ export function useEntityQuery({
     };
   })();
 
+  useEffect(() => {
+    if (!shouldFallbackToAggregate) {
+      return;
+    }
+
+    setUnsupportedTotalCount({ field: totalCountField, schema });
+  }, [schema, shouldFallbackToAggregate, totalCountField]);
+
   const fetchMore = useCallback(
     (args: FetchMoreOptions): void => {
       if (isLoadingMoreRef.current || isReloadingRef.current) {
@@ -148,7 +185,7 @@ export function useEntityQuery({
       isLoadingMoreRef.current = true;
       setIsLoadingMore(true);
 
-      const limit = args.variables.limit;
+      const { limit } = args.variables;
       const offset = nextOffsetRef.current;
 
       fetchNextPageRef
@@ -156,6 +193,9 @@ export function useEntityQuery({
           ...args,
           query: fetchMoreDocumentRef.current,
           variables: {
+            // fetchMore uses a count-free document, so Apollo will not inherit
+            // the original operation's where/sort unless we pass them again.
+            ...variablesRef.current,
             ...args.variables,
             offset,
             limit,
@@ -251,13 +291,13 @@ export function useEntityQuery({
       return;
     }
 
-    if (data && schemaErrorMessage && !error) {
+    if (data && schemaErrorMessage && !effectiveError) {
       setSchemaErrorMessage(null);
     }
-  }, [data, error, schemaErrorMessage, schemaMismatchMessage, setSchemaErrorMessage]);
+  }, [data, effectiveError, schemaErrorMessage, schemaMismatchMessage, setSchemaErrorMessage]);
 
   useEffect(() => {
-    if (error || schemaMismatchMessage) {
+    if (effectiveError || schemaMismatchMessage || isTotalCountFallbackLoading) {
       return;
     }
 
@@ -285,7 +325,19 @@ export function useEntityQuery({
     pendingQueryKeyRef.current = null;
     nextOffsetRef.current = getVariablesOffset(variables) + mapped.results.length;
     setResult(mapped);
-  }, [data, entityNamePlural, error, isForm, isLoading, schema, schemaMismatchMessage, scope, selection, variables]);
+  }, [
+    data,
+    effectiveError,
+    entityNamePlural,
+    isForm,
+    isLoading,
+    isTotalCountFallbackLoading,
+    schema,
+    schemaMismatchMessage,
+    scope,
+    selection,
+    variables,
+  ]);
 
   // After an Apollo refetch (delete/upload), replace accumulated pages with the
   // fresh first page. fetchMore uses NetworkStatus.fetchMore and is ignored.
@@ -293,7 +345,7 @@ export function useEntityQuery({
     const previousStatus = previousNetworkStatusRef.current;
     previousNetworkStatusRef.current = networkStatus;
 
-    if (error || schemaMismatchMessage || isReloadingRef.current) {
+    if (effectiveError || schemaMismatchMessage || isReloadingRef.current || isTotalCountFallbackLoading) {
       return;
     }
 
@@ -309,9 +361,10 @@ export function useEntityQuery({
     setResult(mapped);
   }, [
     data,
+    effectiveError,
     entityNamePlural,
-    error,
     isForm,
+    isTotalCountFallbackLoading,
     networkStatus,
     schema,
     schemaMismatchMessage,
@@ -390,7 +443,8 @@ export function useEntityQuery({
 
   return {
     // Refetch keeps existing rows visible; only initial load / explicit reload show as loading.
-    isLoading: (isLoading && networkStatus !== NetworkStatus.refetch) || isReloading,
+    isLoading:
+      (isLoading && networkStatus !== NetworkStatus.refetch) || isReloading || isTotalCountFallbackLoading,
     isLoadingMore,
     fetchMore,
     reload,
@@ -467,13 +521,14 @@ function sortEntityListResults<T extends { [key: string]: unknown }>(results: T[
     return results;
   }
 
-  const primarySort = sort[0];
+  const [primarySort] = sort;
 
   if (!primarySort || typeof primarySort !== 'object') {
     return results;
   }
 
-  const [sortField, sortDirection] = Object.entries(primarySort as { [key: string]: unknown })[0] ?? [];
+  const [primarySortEntry] = Object.entries(primarySort as { [key: string]: unknown });
+  const [sortField, sortDirection] = primarySortEntry ?? [];
 
   if (!sortField || (sortDirection !== 'ASC' && sortDirection !== 'DESC')) {
     return results;
