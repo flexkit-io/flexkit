@@ -129,9 +129,10 @@ export function useEntityQuery({
   variablesRef.current = variables;
 
   // Parse 403 error response to determine the specific error code
-  const shouldFallbackToAggregate =
-    countMode === 'total' && isMissingGraphQLFieldError(error, totalCountField);
-  const effectiveError = shouldFallbackToAggregate ? undefined : error;
+  const isMissingTotalCountField = isMissingGraphQLFieldError(error, totalCountField);
+  const shouldFallbackToAggregate = countMode === 'total' && isMissingTotalCountField;
+  const effectiveError = isMissingTotalCountField ? undefined : error;
+  const isTotalCountFallbackLoading = isMissingTotalCountField && !data?.[entityNamePlural];
   const serverError = getServerError(effectiveError);
   const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(effectiveError);
 
@@ -290,13 +291,13 @@ export function useEntityQuery({
       return;
     }
 
-    if (data && schemaErrorMessage && !error) {
+    if (data && schemaErrorMessage && !effectiveError) {
       setSchemaErrorMessage(null);
     }
-  }, [data, error, schemaErrorMessage, schemaMismatchMessage, setSchemaErrorMessage]);
+  }, [data, effectiveError, schemaErrorMessage, schemaMismatchMessage, setSchemaErrorMessage]);
 
   useEffect(() => {
-    if (error || schemaMismatchMessage) {
+    if (effectiveError || schemaMismatchMessage || isTotalCountFallbackLoading) {
       return;
     }
 
@@ -324,7 +325,19 @@ export function useEntityQuery({
     pendingQueryKeyRef.current = null;
     nextOffsetRef.current = getVariablesOffset(variables) + mapped.results.length;
     setResult(mapped);
-  }, [data, entityNamePlural, error, isForm, isLoading, schema, schemaMismatchMessage, scope, selection, variables]);
+  }, [
+    data,
+    effectiveError,
+    entityNamePlural,
+    isForm,
+    isLoading,
+    isTotalCountFallbackLoading,
+    schema,
+    schemaMismatchMessage,
+    scope,
+    selection,
+    variables,
+  ]);
 
   // After an Apollo refetch (delete/upload), replace accumulated pages with the
   // fresh first page. fetchMore uses NetworkStatus.fetchMore and is ignored.
@@ -332,7 +345,7 @@ export function useEntityQuery({
     const previousStatus = previousNetworkStatusRef.current;
     previousNetworkStatusRef.current = networkStatus;
 
-    if (error || schemaMismatchMessage || isReloadingRef.current) {
+    if (effectiveError || schemaMismatchMessage || isReloadingRef.current || isTotalCountFallbackLoading) {
       return;
     }
 
@@ -348,9 +361,10 @@ export function useEntityQuery({
     setResult(mapped);
   }, [
     data,
+    effectiveError,
     entityNamePlural,
-    error,
     isForm,
+    isTotalCountFallbackLoading,
     networkStatus,
     schema,
     schemaMismatchMessage,
@@ -429,7 +443,8 @@ export function useEntityQuery({
 
   return {
     // Refetch keeps existing rows visible; only initial load / explicit reload show as loading.
-    isLoading: (isLoading && networkStatus !== NetworkStatus.refetch) || isReloading,
+    isLoading:
+      (isLoading && networkStatus !== NetworkStatus.refetch) || isReloading || isTotalCountFallbackLoading,
     isLoadingMore,
     fetchMore,
     reload,
