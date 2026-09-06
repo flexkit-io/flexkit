@@ -18,12 +18,10 @@ import { DataTableColumnHeader } from './data-table-column-header';
 
 const SORTABLE_INPUT_TYPES = new Set<InputType>([
   'text',
-  'textarea',
   'number',
   'datetime',
   'switch',
   'select',
-  'editor',
 ]);
 
 type Props<TData> = {

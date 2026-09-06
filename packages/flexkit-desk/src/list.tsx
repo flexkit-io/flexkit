@@ -2,6 +2,7 @@ import { JSX, useCallback, useMemo, useState } from 'react';
 import { find, propEq } from 'ramda';
 import {
   getEntitySchema,
+  getSortNotNullWhere,
   useAppContext,
   useConfig,
   useLocation,
@@ -64,6 +65,13 @@ export function List(): JSX.Element {
     // Tie-break so offset pages stay stable when sort values collide.
     return [...primarySort, { _id: 'DESC' }];
   }, [sorting]);
+  const sortNotNullWhere = useMemo(() => {
+    if (sorting.length === 0) {
+      return undefined;
+    }
+
+    return getSortNotNullWhere(graphqlSort, entitySchema);
+  }, [entitySchema, graphqlSort, sorting.length]);
 
   const variables = entityId
     ? { where: { _id: { eq: entityId } } }
@@ -71,6 +79,7 @@ export function List(): JSX.Element {
         offset: 0,
         limit: pageSize,
         sort: graphqlSort,
+        ...(sortNotNullWhere ? { where: sortNotNullWhere } : {}),
       };
 
   const { isLoading, isLoadingMore, fetchMore, reload, count, data, isProjectDisabled } = useEntityQuery({

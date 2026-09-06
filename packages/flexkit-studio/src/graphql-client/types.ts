@@ -27,7 +27,7 @@ export type EntityQueryResult = {
 };
 
 export type EntityQueryResults = {
-  [key: string]: EntityQueryAggregate | EntityQueryResult[];
+  [key: string]: EntityQueryAggregate | EntityQueryResult[] | number;
 };
 
 export type EntityItem = {
