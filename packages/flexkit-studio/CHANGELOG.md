@@ -1,5 +1,22 @@
 # @flexkit/studio
 
+## 0.0.32
+
+### Patch Changes
+
+- e598bc6: Move isPrimary from attributes to an optional entity-level display field that names the attribute shown in relationship previews.
+- d1ebaf9: Smooth virtualized DataTable scrolling with spacer rows, higher overscan, and cheaper recycled cells.
+- 36bf20f: Rename attribute flags to `hidden`, `readOnly`, `unique`, and `searchable`, and support conditional `hidden` / `readOnly` callbacks in Studio forms.
+- 59ccc03: Add `@flexkit/studio/tools` so customer apps can register HMAC-signed custom tools. Production invoke uses the shared signing secret. After a rotate, Flexkit sends `Flexkit-Signature` (current) and `Flexkit-Signature-Previous` (previous) so either `FLEXKIT_TOOLS_SECRET` or optional `FLEXKIT_TOOLS_SECRET_PREVIOUS` still verifies. Localhost Studio (owner/developer) can run custom tools from Agent Chat and Run now; production Studio, schedules, webhooks, and entity triggers always call the production URL.
+- 53b79be: Keep the active DataTable sort (and where) on infinite-scroll pages after the first request.
+- 8223254: Add entity field groups so long forms can be organized into tabs, including an All fields tab that can be hidden.
+- 8976298: GraphQL queries performance improvements
+- 53b79be: Speed up DataTable listings with count-store totals, index-backed nullable-column sorting, and less frequent local tools polling.
+- 0b115f8: Chat dictation, rolling thinking states"
+- 5659fa3: Version-controlled skills. Skills can now be added via code
+- 1877cec: Add an entity selector to global search so queries can be limited to one collection, hide the empty state while results are loading, and reset the filter when the project or schema changes.
+- 261f06a: Keep entity lists loading while older GraphQL schemas fall back from count-store totals to aggregate counts.
+
 ## 0.0.31
 
 ### Patch Changes
