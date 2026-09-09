@@ -16,6 +16,8 @@ import { customers } from 'demo-schemas/ecommerce/customers';
 import { customerAddresses } from 'demo-schemas/ecommerce/customer-addresses';
 import { salesOrders } from 'demo-schemas/ecommerce/sales-orders';
 import { salesOrderItems } from 'demo-schemas/ecommerce/sales-order-items';
+import { shipments } from 'demo-schemas/ecommerce/shipments';
+import { shipmentItems } from 'demo-schemas/ecommerce/shipment-items';
 import { channels } from 'demo-schemas/ecommerce/channels';
 import { taxes } from 'demo-schemas/ecommerce/taxes';
 import { countries } from 'demo-schemas/ecommerce/countries';
@@ -240,6 +242,8 @@ export default defineConfig([
       customerAddresses,
       salesOrders,
       salesOrderItems,
+      shipments,
+      shipmentItems,
       taxes,
       countries,
       channels,

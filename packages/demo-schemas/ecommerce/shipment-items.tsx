@@ -1,0 +1,136 @@
+import { defineEntity } from '@flexkit/studio';
+
+export const shipmentItems = defineEntity({
+  name: 'shipmentItem',
+  plural: 'shipmentItems',
+  display: 'name',
+  menu: {
+    label: 'Shipment Items',
+    hidden: true,
+  },
+  attributes: [
+    {
+      name: 'sku',
+      label: 'SKU',
+      scope: 'global',
+      options: {
+        size: 140,
+        comment: 'Catalog SKU on this shipment line',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      searchable: true,
+      validation: (z) => z.string().min(1, { error: 'SKU is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'name',
+      label: 'Name',
+      scope: 'global',
+      options: {
+        size: 260,
+        comment: 'Product name on this shipment line',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      searchable: true,
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'quantity',
+      label: 'Quantity',
+      scope: 'global',
+      options: {
+        size: 120,
+        comment: 'Quantity allocated to this shipment',
+      },
+      dataType: 'int',
+      inputType: 'number',
+      validation: (z) => z.number().min(0, { error: 'Quantity is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'quantityShipped',
+      label: 'Quantity Shipped',
+      scope: 'global',
+      options: {
+        size: 150,
+        comment: 'Quantity actually shipped',
+      },
+      dataType: 'int',
+      inputType: 'number',
+      defaultValue: '',
+    },
+    {
+      name: 'status',
+      label: 'Status',
+      scope: 'global',
+      options: {
+        size: 140,
+        comment: 'Fulfillment status of this shipment line',
+        list: [
+          { label: 'Pending', value: 'pending' },
+          { label: 'Completed', value: 'completed' },
+          { label: 'Cancelled', value: 'cancelled' },
+        ],
+        placeholder: 'Select a status',
+      },
+      dataType: 'string',
+      inputType: 'select',
+      defaultValue: '',
+    },
+    {
+      name: 'salesOrderItem',
+      label: 'Sales Order Item',
+      scope: 'relationship',
+      options: {
+        size: 200,
+        comment: 'Order line this shipment item fulfills',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'single',
+        field: 'name',
+        entity: 'salesOrderItem',
+      },
+    },
+    {
+      name: 'product',
+      label: 'Product',
+      scope: 'relationship',
+      options: {
+        size: 200,
+        comment: 'Catalog product linked by SKU when available',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'single',
+        field: 'name',
+        entity: 'product',
+      },
+    },
+    {
+      name: 'shipment',
+      label: 'Shipment',
+      scope: 'relationship',
+      options: {
+        size: 180,
+        comment: 'Parent shipment',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      searchable: true,
+      defaultValue: '',
+      relationship: {
+        mode: 'single',
+        field: 'shipmentNumber',
+        entity: 'shipment',
+      },
+    },
+  ],
+});
