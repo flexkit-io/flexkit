@@ -36,7 +36,6 @@ export const customers = defineEntity({
       dataType: 'string',
       inputType: 'text',
       searchable: true,
-      validation: (z) => z.string().min(1, { error: 'First name is required' }),
       defaultValue: '',
     },
     {
@@ -50,7 +49,6 @@ export const customers = defineEntity({
       dataType: 'string',
       inputType: 'text',
       searchable: true,
-      validation: (z) => z.string().min(1, { error: 'Last name is required' }),
       defaultValue: '',
     },
     {
@@ -120,7 +118,7 @@ export const customers = defineEntity({
       defaultValue: '',
       relationship: {
         mode: 'multiple',
-        field: 'address',
+        field: 'name',
         entity: 'customerAddress',
       },
     },
@@ -137,7 +135,7 @@ export const customers = defineEntity({
       defaultValue: '',
       relationship: {
         mode: 'multiple',
-        field: 'date',
+        field: 'orderNumber',
         entity: 'salesOrder',
       },
     },

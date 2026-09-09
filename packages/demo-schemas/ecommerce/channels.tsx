@@ -25,5 +25,18 @@ export const channels = defineEntity({
       validation: (z) => z.string().min(1, { error: 'Channel name is required' }),
       defaultValue: '',
     },
+    {
+      name: 'externalId',
+      label: 'External ID',
+      scope: 'global',
+      options: {
+        size: 280,
+      },
+      dataType: 'string',
+      searchable: true,
+      unique: true,
+      inputType: 'text',
+      defaultValue: '',
+    },
   ],
 });
