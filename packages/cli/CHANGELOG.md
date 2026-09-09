@@ -1,5 +1,13 @@
 # @flexkit/cli
 
+## 0.0.11
+
+### Patch Changes
+
+- e598bc6: Move isPrimary from attributes to an optional entity-level display field that names the attribute shown in relationship previews.
+- 36bf20f: Rename attribute flags to `hidden`, `readOnly`, `unique`, and `searchable`, and support conditional `hidden` / `readOnly` callbacks in Studio forms.
+- 8223254: Add entity field groups so long forms can be organized into tabs, including an All fields tab that can be hidden.
+
 ## 0.0.10
 
 ### Patch Changes
