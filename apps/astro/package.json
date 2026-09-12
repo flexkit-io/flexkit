@@ -17,7 +17,7 @@
     "@flexkit/desk": "workspace:*",
     "@flexkit/explorer": "workspace:*",
     "@flexkit/studio": "workspace:*",
-    "astro": "^7.1.6",
+    "astro": "7.3.2",
     "demo-schemas": "workspace:*",
     "react": "19.2.5",
     "react-dom": "19.2.5"
