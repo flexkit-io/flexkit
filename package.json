@@ -31,7 +31,7 @@
       "@streamdown/code>shiki": "4.4.3",
       "brace-expansion@1": "1.1.18",
       "brace-expansion@5": "5.0.9",
-      "seroval@<1.5.3": "1.5.3",
+      "seroval": ">=1.5.6",
       "svgo": "4.1.0"
     }
   },
