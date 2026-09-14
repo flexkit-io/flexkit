@@ -47,7 +47,7 @@ import { crmTags } from 'demo-schemas/flexkit-crm/tags';
 
 export default defineConfig([
   {
-    title: 'E-Commerce Example',
+    title: 'Atlas Commerce',
     projectId: 'abcdefghij',
     basePath: '/',
     menuGroups: [
