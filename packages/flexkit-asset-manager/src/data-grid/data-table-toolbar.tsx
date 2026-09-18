@@ -37,7 +37,6 @@ import {
   DataTableSortedBy,
   useCanMutate,
   useParams,
-  useUploadAssets,
   useDispatch,
   useEntityQuery,
   useAppContext,
@@ -47,8 +46,10 @@ import {
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
+  isUploading?: boolean;
   table: ReactTable<TData>;
   viewMode: AssetViewMode;
+  onUploadClick?: () => void;
   onViewModeChange: (mode: AssetViewMode) => void;
   onSearchLoadingChange?: (isLoading: boolean) => void;
   onSearchWhereChange?: (where: WhereClause) => void;
@@ -91,15 +92,16 @@ const mimeTypes = [
 
 export function DataTableToolbar<TData>({
   entityName,
+  isUploading = false,
   table,
   viewMode,
+  onUploadClick,
   onViewModeChange,
   onSearchLoadingChange,
   onSearchWhereChange,
 }: DataTableToolbarProps<TData>): JSX.Element {
   const isFiltered = table.getState().columnFilters.length > 0;
   const { projectId } = useParams();
-  const uploadAssets = useUploadAssets();
   const dispatch = useDispatch();
   const { scope } = useAppContext();
   const [tagDialogMode, setTagDialogMode] = useState<AssetTagDialogMode>(null);
@@ -139,10 +141,6 @@ export function DataTableToolbar<TData>({
       debouncedSetSearchQuery.cancel();
     };
   }, [debouncedSetSearchQuery]);
-
-  async function handleUpload(): Promise<void> {
-    await uploadAssets({ projectId, accept: 'image/*', multiple: true, maxBytes: 4 * 1024 * 1024 });
-  }
 
   // Collect selected entity ids from the table
   const selectedIds: string[] = table
@@ -427,12 +425,14 @@ export function DataTableToolbar<TData>({
         </ToggleGroup>
         <PermissionTooltip disabled={!canMutate}>
           <Button
+            aria-busy={isUploading}
             className="fk:h-8 fk:lg:flex"
-            disabled={!canMutate}
-            onClick={handleUpload}
+            disabled={!canMutate || isUploading}
+            onClick={onUploadClick}
             size="sm"
             variant="default"
           >
+            {isUploading ? <LoaderCircle className="fk:mr-2 fk:h-4 fk:w-4 fk:animate-spin" /> : null}
             Upload assets
           </Button>
         </PermissionTooltip>

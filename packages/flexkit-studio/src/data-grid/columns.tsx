@@ -123,8 +123,6 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
             options?: SelectOptions;
           }>;
 
-          // TODO: Pass the complete row data to the preview component, so it can concatenate values from other attributes (i.e. for the "image dimensions" column)
-          // console.log(row.getAllCells());
           if (previewType === 'select') {
             return (
               <PreviewComponent
@@ -132,6 +130,10 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
                 options={attribute.options as SelectOptions | undefined}
               />
             );
+          }
+
+          if (previewType === 'assetPreviewField') {
+            return <PreviewComponent value={row.original} />;
           }
 
           return <PreviewComponent value={row.getValue(attribute.name)} />;

@@ -8,7 +8,7 @@ import {
   TagIcon,
   Trash2 as Trash2Icon,
 } from 'lucide-react';
-import { assetSchema, IMAGES_BASE_URL, useCanMutate, useDispatch } from '@flexkit/studio';
+import { assetSchema, useCanMutate, useDispatch } from '@flexkit/studio';
 import type { Row } from '@flexkit/studio';
 import {
   Button,
@@ -22,7 +22,7 @@ import { AssetTagDialogs, type AssetTagDialogMode } from './asset-tag-dialogs';
 
 type AssetRow = {
   _id?: string;
-  path?: string | null;
+  url?: string | null;
 };
 
 interface AssetRowActionsProps<TData> {
@@ -37,7 +37,7 @@ export function AssetRowActions<TData>({ overlay = false, row }: AssetRowActions
   const canMutate = useCanMutate();
   const asset = row.original as AssetRow;
   const assetId = asset._id ?? '';
-  const assetPath = asset.path ?? '';
+  const assetUrl = asset.url ?? '';
 
   function handleDelete(): void {
     dispatch({ type: 'DeleteEntity', payload: { entityId: assetId, entityName: assetSchema.name } });
@@ -80,10 +80,10 @@ export function AssetRowActions<TData>({ overlay = false, row }: AssetRowActions
             Copy ID
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={!assetPath}
+            disabled={!assetUrl}
             onClick={(event) => {
               event.stopPropagation();
-              copyToClipboard('url', `${IMAGES_BASE_URL}${assetPath}`);
+              copyToClipboard('url', assetUrl);
             }}
           >
             {copiedField === 'url' ? (

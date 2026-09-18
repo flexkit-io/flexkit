@@ -53,6 +53,7 @@ export type MappedEntityItem = {
 export type ImageValue = {
   _id: string;
   path: string;
+  url?: string;
   size: number;
   mimeType: string;
   originalFilename: string;

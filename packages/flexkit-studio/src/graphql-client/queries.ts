@@ -47,6 +47,7 @@ const assetFields = `_id
       originalFilename
       mimeType
       path
+      url
       size
       height
       width
@@ -56,12 +57,14 @@ const assetFieldsWithoutLqip = `_id
       originalFilename
       mimeType
       path
+      url
       size
       height
       width`;
-/** List grids resolve thumbnails from the CDN path; extra asset metadata is unused. */
+/** List grids resolve thumbnails from the asset URL; extra metadata is unused. */
 const listAssetPreviewFields = `_id
-          path`;
+          path
+          url`;
 
 type AssetRelationshipConnection = {
   aggregate?: {
@@ -270,7 +273,7 @@ function getDisplayAttributeSelection(
 
   if (isAssetAttribute(primaryAttribute)) {
     if (forList) {
-      return `      ${primaryAttribute.name} {\n        _id\n        path\n      }\n`;
+      return `      ${primaryAttribute.name} {\n        _id\n        path\n        url\n      }\n`;
     }
 
     return `      ${primaryAttribute.name} {\n        ${assetFields}\n      }\n`;
@@ -362,6 +365,11 @@ function getAttributesByName(attributes: Attribute[]): { [name: string]: Attribu
 function shouldSelectAttributeInList(attribute: Attribute | undefined): boolean {
   if (!attribute) {
     return false;
+  }
+
+  // Computed asset URL is hidden from the grid but required to preview and copy links.
+  if (attribute.name === 'url') {
+    return true;
   }
 
   if (isStaticallyHidden(attribute.hidden) || attribute.name === 'lqip') {
@@ -472,11 +480,11 @@ export function getEntityQuery(
     ''
   );
   const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
-  let imageFieldsSelection = `_id\n      path`;
+  let imageFieldsSelection = `_id\n      path\n      url`;
 
   if (selection !== 'list') {
     imageFieldsSelection =
-      `_id\n      originalFilename\n      mimeType\n      path\n      size\n      height\n      width\n      lqip`;
+      `_id\n      originalFilename\n      mimeType\n      path\n      url\n      size\n      height\n      width\n      lqip`;
   }
 
   const imageAttributesList: string = imageAttributes.reduce((acc, attribute) => {
