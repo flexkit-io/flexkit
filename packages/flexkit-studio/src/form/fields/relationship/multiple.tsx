@@ -151,7 +151,22 @@ export default function MultipleRelationship({
     setRows(uniqBy(prop('_id'), [...(selectedRows as []), ...initialRows]));
   }, [data, defaultValue.count, initialRows, relationships, relationshipId]);
 
+  const pendingConnections =
+    (relationships[relationshipId]?.connect as MultipleRelationshipConnection | null) ?? [];
+  const pendingDisconnectIds = relationships[relationshipId]?.disconnect ?? [];
+  const existingRelationshipIds = new Set(initialRows.map((row) => row._id));
+  const pendingDisconnectIdSet = new Set(pendingDisconnectIds);
+  // The picker cannot hide already-linked records without a reverse relationship,
+  // so re-selecting them must not inflate the displayed total.
+  const pendingConnectCount = pendingConnections.filter(
+    (connection) => !existingRelationshipIds.has(connection._id) || pendingDisconnectIdSet.has(connection._id)
+  ).length;
+  const pendingDisconnectCount = pendingDisconnectIds.length;
   const totalCount = defaultValue.count ?? 0;
+  const displayCount = Math.max(
+    0,
+    Math.max(totalCount, initialRows.length) + pendingConnectCount - pendingDisconnectCount
+  );
   const hasMore = totalCount > 0 && rows.length > 0 && rows.length < totalCount;
 
   const handleLoadMore = useCallback(() => {
@@ -257,9 +272,9 @@ export default function MultipleRelationship({
               tabIndex={0}
             >
               <div className="fk:flex fk:w-full fk:min-w-0 fk:flex-col">
-                <div className="fk:flex fk:w-full fk:space-x-2">
+                <div className="fk:flex fk:w-full fk:min-w-0 fk:items-start fk:gap-2">
                   {!isOpen ? (
-                    <span className="fk:flex fk:min-w-0 fk:flex-wrap fk:grow fk:overflow-hidden fk:pb-1.5 fk:pr-10">
+                    <span className="fk:flex fk:min-w-0 fk:flex-wrap fk:grow fk:overflow-hidden fk:pb-1.5">
                       {previewItems.map((item) => (
                         <Badge
                           className="fk:mr-2 fk:mt-1.5 fk:max-w-60 fk:justify-start fk:rounded-xs"
@@ -278,7 +293,7 @@ export default function MultipleRelationship({
                     </span>
                   ) : (
                     <Button
-                      className="fk:h-8 fk:mr-auto fk:mt-2"
+                      className="fk:h-8 fk:mr-auto fk:mt-[0.1875rem]"
                       disabled={readOnly}
                       onClick={handleSelection}
                       variant="outline"
@@ -287,62 +302,69 @@ export default function MultipleRelationship({
                       {relationshipEntitySchema?.menu?.label ?? relationshipEntitySchema?.plural}
                     </Button>
                   )}
-                  {!isOpen ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
-                            id={fieldId}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                wrapperRef.current?.focus();
-                                wrapperRef.current?.click();
-                              }
-                            }}
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <Maximize2 className="fk:h-4 fk:w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Expand field</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              wrapperRef.current?.blur();
-                              setIsOpen(false);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                  <div className="fk:mt-[0.1875rem] fk:ml-auto fk:flex fk:shrink-0 fk:items-center fk:gap-2">
+                    {isOpen ? (
+                      <span className="fk:text-sm fk:font-normal fk:text-muted-foreground">
+                        {displayCount.toLocaleString()} {displayCount === 1 ? 'record' : 'records'}
+                      </span>
+                    ) : null}
+                    {!isOpen ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              className="fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                              id={fieldId}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  wrapperRef.current?.focus();
+                                  wrapperRef.current?.click();
+                                }
+                              }}
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <Maximize2 className="fk:h-4 fk:w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Expand field</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              className="fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                              onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 wrapperRef.current?.blur();
                                 setIsOpen(false);
-                              }
-                            }}
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <ClearIcon className="fk:h-4 fk:w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Close</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  wrapperRef.current?.blur();
+                                  setIsOpen(false);
+                                }
+                              }}
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <ClearIcon className="fk:h-4 fk:w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Close</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                 </div>
                 <Collapsible
                   className="fk:w-full fk:min-w-0 fk:space-y-2 fk:ml-0!"
