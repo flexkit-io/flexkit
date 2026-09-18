@@ -91,6 +91,17 @@ export const assetSchema: Entity = {
       defaultValue: '',
     },
     {
+      name: 'url',
+      label: 'URL',
+      scope: 'global',
+      hidden: true,
+      readOnly: true,
+      dataType: 'string',
+      inputType: 'text',
+      previewType: 'text',
+      defaultValue: '',
+    },
+    {
       name: '_updatedAt',
       label: 'Updated At',
       scope: 'global',

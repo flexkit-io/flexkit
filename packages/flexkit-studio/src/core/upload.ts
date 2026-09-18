@@ -97,9 +97,36 @@ type AssetUploadResponse = {
 export type OpenFileDialogAndUploadOptions = {
   projectId: string | undefined;
   accept?: string;
+  files?: File[] | FileList;
   multiple?: boolean;
   maxBytes?: number;
+  onUploadStart?: () => void;
 };
+
+function isAcceptedMimeType(file: File, accept?: string): boolean {
+  if (!file.type) {
+    return true;
+  }
+
+  const allowed = accept
+    ? accept
+        .split(',')
+        .map((pattern) => pattern.trim())
+        .filter(Boolean)
+    : ACCEPTED_MIME_TYPES;
+
+  if (allowed.length === 0) {
+    return true;
+  }
+
+  return allowed.some((pattern) => {
+    if (pattern.endsWith('/*')) {
+      return file.type.startsWith(pattern.slice(0, -1));
+    }
+
+    return file.type === pattern;
+  });
+}
 
 /**
  * Uploads a single file to the one-shot /assets endpoint, which stores the
@@ -142,45 +169,36 @@ export async function uploadAssetFile(file: File, projectId: string | undefined)
   };
 }
 
-/**
- * Opens a native file picker and uploads selected files to the Flexkit assets
- * endpoint, which also creates an asset node in the database.
- * Returns a list of uploaded file results. Skips files that exceed maxBytes.
- */
-async function openFileDialogAndUpload(options: OpenFileDialogAndUploadOptions): Promise<UploadedAssetResult[]> {
-  const { projectId, accept, multiple = true, maxBytes = 4 * 1024 * 1024 } = options;
+async function uploadSelectedFiles(
+  files: File[] | FileList,
+  options: OpenFileDialogAndUploadOptions
+): Promise<UploadedAssetResult[]> {
+  const { projectId, accept, maxBytes = 4 * 1024 * 1024, onUploadStart } = options;
+  const validFiles: File[] = [];
 
-  const input = document.createElement('input');
-  input.type = 'file';
-  const resolvedAccept = accept ?? ACCEPTED_MIME_TYPES.join(',');
+  for (const file of Array.from(files)) {
+    if (file.size > maxBytes) {
+      toast.error(`File size too big (max ${(maxBytes / (1024 * 1024)).toFixed(0)}MB): ${file.name}`);
 
-  input.accept = resolvedAccept;
-  input.multiple = multiple;
-  input.style.display = 'none';
-  document.body.appendChild(input);
+      continue;
+    }
+
+    if (!isAcceptedMimeType(file, accept)) {
+      toast.error(`Unsupported file type: ${file.name}`);
+
+      continue;
+    }
+
+    validFiles.push(file);
+  }
+
+  if (validFiles.length === 0) {
+    return [];
+  }
+
+  onUploadStart?.();
 
   try {
-    const files = await new Promise<FileList | null>((resolve) => {
-      input.onchange = () => resolve(input.files);
-      input.click();
-    });
-
-    if (!files || files.length === 0) {
-      return [];
-    }
-
-    const validFiles: File[] = [];
-
-    for (const file of Array.from(files)) {
-      if (file.size > maxBytes) {
-        toast.error(`File size too big (max ${(maxBytes / (1024 * 1024)).toFixed(0)}MB): ${file.name}`);
-
-        continue;
-      }
-
-      validFiles.push(file);
-    }
-
     const uploads = await Promise.all(validFiles.map(async (file) => uploadAssetFile(file, projectId)));
 
     if (uploads.length > 0) {
@@ -193,6 +211,35 @@ async function openFileDialogAndUpload(options: OpenFileDialogAndUploadOptions):
     toast.error('Upload failed. Please try again.');
 
     return [];
+  }
+}
+
+/**
+ * Opens a native file picker and uploads selected files to the Flexkit assets
+ * endpoint, which also creates an asset node in the database.
+ * Returns a list of uploaded file results. Skips files that exceed maxBytes.
+ */
+async function openFileDialogAndUpload(options: OpenFileDialogAndUploadOptions): Promise<UploadedAssetResult[]> {
+  const { accept, multiple = true } = options;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = accept ?? ACCEPTED_MIME_TYPES.join(',');
+  input.multiple = multiple;
+  input.style.display = 'none';
+  document.body.appendChild(input);
+
+  try {
+    const files = await new Promise<FileList | null>((resolve) => {
+      input.addEventListener('change', () => resolve(input.files), { once: true });
+      input.addEventListener('cancel', () => resolve(null), { once: true });
+      input.click();
+    });
+
+    if (!files || files.length === 0) {
+      return [];
+    }
+
+    return uploadSelectedFiles(files, options);
   } finally {
     document.body.removeChild(input);
   }
@@ -203,7 +250,9 @@ export function useUploadAssets(): (options: OpenFileDialogAndUploadOptions) => 
 
   return useCallback(
     async (options: OpenFileDialogAndUploadOptions) => {
-      const uploads = await openFileDialogAndUpload(options);
+      const uploads = options.files
+        ? await uploadSelectedFiles(options.files, options)
+        : await openFileDialogAndUpload(options);
 
       if (uploads.length > 0) {
         // Upload is outside Apollo; soft-refresh mounted asset lists via useEntityQuery.

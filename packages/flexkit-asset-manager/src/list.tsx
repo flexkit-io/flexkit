@@ -15,9 +15,11 @@ import {
 } from '@flexkit/studio';
 import { Skeleton } from '@flexkit/studio/ui';
 import type { AttributeValue, ColumnDef, SingleProject, SortingState, Updater } from '@flexkit/studio';
+import { AssetDropZone } from './data-grid/asset-drop-zone';
 import { AssetGrid } from './data-grid/asset-grid';
 import { DataTableToolbar } from './data-grid/data-table-toolbar';
 import { AssetRowActions } from './data-grid/asset-row-actions';
+import { useAssetManagerUpload } from './data-grid/use-asset-manager-upload';
 import { getStoredViewMode, setStoredViewMode, type AssetViewMode } from './data-grid/view-mode';
 
 type WhereClause = { [key: string]: unknown };
@@ -45,6 +47,7 @@ export function List(): JSX.Element {
 
   const [searchWhere, setSearchWhere] = useState<WhereClause>({});
   const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const { canMutate, isUploading, uploadFiles, uploadFromDialog } = useAssetManagerUpload();
 
   const where = useMemo(() => {
     const whereBase = entityId ? { _id: { eq: entityId } } : { NOT: { path: { eq: null } } };
@@ -135,53 +138,60 @@ export function List(): JSX.Element {
           </span>
         ) : null}
       </div>
-      {!schemaErrorMessage && viewMode === 'list' ? (
-        <DataTable
-          classNames={{ row: 'fk:h-20' }}
-          columns={isInitialLoading ? loadingColumns : columnsDefinition}
-          data={isInitialLoading ? loadingData : ((data ?? []) as AttributeValue[])}
-          entityName={assetSchema.name}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          pageSize={pageSize}
-          sorting={sorting}
-          onLoadMore={handleLoadMore}
-          onSortingChange={handleSortingChange}
-          toolbarComponent={(table) => (
-            <DataTableToolbar
+      {!schemaErrorMessage ? (
+        <AssetDropZone disabled={!canMutate || isUploading} onDropFiles={uploadFiles}>
+          {viewMode === 'list' ? (
+            <DataTable
+              classNames={{ row: 'fk:h-20' }}
+              columns={isInitialLoading ? loadingColumns : columnsDefinition}
+              data={isInitialLoading ? loadingData : ((data ?? []) as AttributeValue[])}
               entityName={assetSchema.name}
-              table={table}
-              viewMode={viewMode}
-              onSearchLoadingChange={setIsSearchLoading}
-              onSearchWhereChange={setSearchWhere}
-              onViewModeChange={handleViewModeChange}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              pageSize={pageSize}
+              sorting={sorting}
+              onLoadMore={handleLoadMore}
+              onSortingChange={handleSortingChange}
+              toolbarComponent={(table) => (
+                <DataTableToolbar
+                  entityName={assetSchema.name}
+                  isUploading={isUploading}
+                  table={table}
+                  viewMode={viewMode}
+                  onSearchLoadingChange={setIsSearchLoading}
+                  onSearchWhereChange={setSearchWhere}
+                  onUploadClick={uploadFromDialog}
+                  onViewModeChange={handleViewModeChange}
+                />
+              )}
+            />
+          ) : (
+            <AssetGrid
+              columns={columnsDefinition}
+              data={isInitialLoading ? [] : ((data ?? []) as AttributeValue[])}
+              entityName={assetSchema.name}
+              hasMore={hasMore}
+              isLoading={isInitialLoading}
+              isLoadingMore={isLoadingMore}
+              pageSize={pageSize}
+              sorting={sorting}
+              onLoadMore={handleLoadMore}
+              onSortingChange={handleSortingChange}
+              toolbarComponent={(table) => (
+                <DataTableToolbar
+                  entityName={assetSchema.name}
+                  isUploading={isUploading}
+                  table={table}
+                  viewMode={viewMode}
+                  onSearchLoadingChange={setIsSearchLoading}
+                  onSearchWhereChange={setSearchWhere}
+                  onUploadClick={uploadFromDialog}
+                  onViewModeChange={handleViewModeChange}
+                />
+              )}
             />
           )}
-        />
-      ) : null}
-      {!schemaErrorMessage && viewMode === 'grid' ? (
-        <AssetGrid
-          columns={columnsDefinition}
-          data={isInitialLoading ? [] : ((data ?? []) as AttributeValue[])}
-          entityName={assetSchema.name}
-          hasMore={hasMore}
-          isLoading={isInitialLoading}
-          isLoadingMore={isLoadingMore}
-          pageSize={pageSize}
-          sorting={sorting}
-          onLoadMore={handleLoadMore}
-          onSortingChange={handleSortingChange}
-          toolbarComponent={(table) => (
-            <DataTableToolbar
-              entityName={assetSchema.name}
-              table={table}
-              viewMode={viewMode}
-              onSearchLoadingChange={setIsSearchLoading}
-              onSearchWhereChange={setSearchWhere}
-              onViewModeChange={handleViewModeChange}
-            />
-          )}
-        />
+        </AssetDropZone>
       ) : null}
       <Outlet />
     </div>

@@ -12,7 +12,6 @@ import {
   type UIEvent,
 } from 'react';
 import {
-  IMAGES_BASE_URL,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
@@ -42,6 +41,7 @@ import {
 } from '@flexkit/studio/ui';
 import { LoaderCircle } from 'lucide-react';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
+import { getAssetFilename, getAssetImageUrl, getExtensionFromAsset, isImageAsset } from './asset-url';
 import { AssetRowActions } from './asset-row-actions';
 
 // Temporary fix due to runtime mismatch between React 18 and React 19 types
@@ -57,10 +57,11 @@ const transparentImageBackground =
 
 type AssetRecord = {
   _id?: string;
-  path?: string | null;
-  originalFilename?: string | null;
   mimeType?: string | null;
+  originalFilename?: string | null;
+  path?: string | null;
   size?: number | null;
+  url?: string | null;
 };
 
 interface AssetGridProps<TData extends AttributeValue, TValue> {
@@ -95,21 +96,6 @@ function formatAssetSize(bytes: number | null | undefined): string {
   }
 
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getExtensionFromPath(path: string): string {
-  const [clean] = path.split('?');
-  const parts = clean.split('.');
-
-  if (parts.length > 1) {
-    return parts.pop()!.toLowerCase();
-  }
-
-  return 'file';
-}
-
-function isImagePath(path: string): boolean {
-  return /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(path);
 }
 
 export function AssetGrid<TData extends AttributeValue, TValue>({
@@ -268,8 +254,7 @@ export function AssetGrid<TData extends AttributeValue, TValue>({
 
 function AssetGridCard({ row }: { row: Row<AttributeValue> }): JSX.Element {
   const asset = row.original as AssetRecord;
-  const path = asset.path ?? '';
-  const filename = asset.originalFilename || path || 'Untitled';
+  const filename = getAssetFilename(asset) || 'Untitled';
   const mimeType = asset.mimeType ?? '';
   const sizeLabel = formatAssetSize(asset.size);
   const isSelected = row.getIsSelected();
@@ -298,7 +283,7 @@ function AssetGridCard({ row }: { row: Row<AttributeValue> }): JSX.Element {
       <div className="fk:group fk:absolute fk:right-2 fk:top-2 fk:z-10 fk:mix-blend-difference">
         <AssetRowActions overlay row={row} />
       </div>
-      <AssetGridMedia filename={filename} path={path} />
+      <AssetGridMedia asset={asset} filename={filename} />
       <div className="fk:mt-2 fk:truncate fk:text-xs fk:font-medium" title={filename}>
         {filename}
       </div>
@@ -311,11 +296,12 @@ function AssetGridCard({ row }: { row: Row<AttributeValue> }): JSX.Element {
   );
 }
 
-function AssetGridMedia({ filename, path }: { filename: string; path: string }): JSX.Element {
+function AssetGridMedia({ asset, filename }: { asset: AssetRecord; filename: string }): JSX.Element {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [isZoomImageLoaded, setIsZoomImageLoaded] = useState(false);
+  const url = asset.url ?? '';
 
-  if (!path) {
+  if (!url && !asset.path) {
     return (
       <div className="fk:flex fk:aspect-square fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted">
         <span className="fk:text-xs fk:text-muted-foreground">No preview</span>
@@ -323,10 +309,10 @@ function AssetGridMedia({ filename, path }: { filename: string; path: string }):
     );
   }
 
-  const isImage = isImagePath(path);
+  const isImage = isImageAsset(asset);
 
-  if (!isImage) {
-    const ext = getExtensionFromPath(path);
+  if (!isImage || !url) {
+    const ext = getExtensionFromAsset(asset);
     const style = (
       defaultStyles as unknown as {
         [key: string]: { [key: string]: string | number | boolean | undefined } | undefined;
@@ -340,10 +326,8 @@ function AssetGridMedia({ filename, path }: { filename: string; path: string }):
     );
   }
 
-  const thumbnailUrl = path.endsWith('.svg')
-    ? `${IMAGES_BASE_URL}${path}`
-    : `${IMAGES_BASE_URL}${path}?w=320&h=320&f=webp`;
-  const zoomUrl = `${IMAGES_BASE_URL}${path}`;
+  const thumbnailUrl = getAssetImageUrl(url, { width: 320, height: 320 });
+  const zoomUrl = url;
 
   function handleThumbnailClick(event: MouseEvent<HTMLButtonElement>): void {
     event.stopPropagation();
