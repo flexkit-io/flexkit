@@ -166,6 +166,25 @@ export const salesOrders = defineEntity({
       },
     },
     {
+      name: 'products',
+      group: 'items',
+      label: 'Products',
+      scope: 'relationship',
+      options: {
+        size: 240,
+        comment: 'Catalog products purchased on this order',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      searchable: true,
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'name',
+        entity: 'product',
+      },
+    },
+    {
       name: 'itemCount',
       group: 'items',
       label: 'Line Count',

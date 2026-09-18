@@ -490,6 +490,25 @@ export const products = defineEntity({
       },
     },
     {
+      name: 'salesOrders',
+      group: 'inventory',
+      label: 'Sales Orders',
+      scope: 'relationship',
+      options: {
+        size: 200,
+        comment: 'Orders that include this product',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      searchable: true,
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'orderNumber',
+        entity: 'salesOrder',
+      },
+    },
+    {
       name: 'contentFormat',
       group: 'details',
       label: 'Content Format',
