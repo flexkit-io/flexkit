@@ -151,9 +151,17 @@ export default function MultipleRelationship({
     setRows(uniqBy(prop('_id'), [...(selectedRows as []), ...initialRows]));
   }, [data, defaultValue.count, initialRows, relationships, relationshipId]);
 
-  const pendingConnectCount =
-    ((relationships[relationshipId]?.connect as MultipleRelationshipConnection | null) ?? []).length;
-  const pendingDisconnectCount = relationships[relationshipId]?.disconnect?.length ?? 0;
+  const pendingConnections =
+    (relationships[relationshipId]?.connect as MultipleRelationshipConnection | null) ?? [];
+  const pendingDisconnectIds = relationships[relationshipId]?.disconnect ?? [];
+  const existingRelationshipIds = new Set(initialRows.map((row) => row._id));
+  const pendingDisconnectIdSet = new Set(pendingDisconnectIds);
+  // The picker cannot hide already-linked records without a reverse relationship,
+  // so re-selecting them must not inflate the displayed total.
+  const pendingConnectCount = pendingConnections.filter(
+    (connection) => !existingRelationshipIds.has(connection._id) || pendingDisconnectIdSet.has(connection._id)
+  ).length;
+  const pendingDisconnectCount = pendingDisconnectIds.length;
   const totalCount = defaultValue.count ?? 0;
   const displayCount = Math.max(
     0,
