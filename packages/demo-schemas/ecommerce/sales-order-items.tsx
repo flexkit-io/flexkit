@@ -141,7 +141,8 @@ export const salesOrderItems = defineEntity({
       scope: 'relationship',
       options: {
         size: 200,
-        comment: 'Current catalog product matched by SKU; prices above are the historical ones',
+        comment:
+          'Current catalog product matched by SKU; the inverse is product.salesOrderItems. Prices above are historical.',
       },
       dataType: 'string',
       inputType: 'relationship',
