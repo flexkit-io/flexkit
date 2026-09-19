@@ -172,7 +172,7 @@ export const salesOrders = defineEntity({
       scope: 'relationship',
       options: {
         size: 240,
-        comment: 'Catalog products purchased on this order',
+        comment: 'Catalog products purchased on this order (one edge per distinct product, not per unit)',
       },
       dataType: 'string',
       inputType: 'relationship',

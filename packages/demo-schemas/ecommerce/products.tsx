@@ -436,12 +436,61 @@ export const products = defineEntity({
       scope: 'global',
       options: {
         size: 130,
-        comment: 'Product popularity score',
+        comment:
+          'Storefront catalog search ranking score, not units sold. Use unitsSoldLast180Days to rank bestsellers.',
       },
       dataType: 'float',
       searchable: false,
       inputType: 'number',
       defaultValue: '',
+    },
+    {
+      name: 'unitsSold',
+      group: 'inventory',
+      label: 'Units Sold',
+      scope: 'global',
+      options: {
+        size: 140,
+        comment:
+          'Lifetime units sold, excluding gifts and cancelled or refunded orders. Sort this field to rank all-time bestsellers.',
+      },
+      dataType: 'int',
+      searchable: false,
+      inputType: 'number',
+      readOnly: true,
+      defaultValue: 0,
+    },
+    {
+      name: 'unitsSoldLast180Days',
+      group: 'inventory',
+      label: 'Units Sold (180d)',
+      scope: 'global',
+      options: {
+        size: 170,
+        comment:
+          'Units sold in the last 180 days, excluding gifts and cancelled or refunded orders. Sort this field to answer bestseller questions for the last six months.',
+      },
+      dataType: 'int',
+      searchable: false,
+      inputType: 'number',
+      readOnly: true,
+      defaultValue: 0,
+    },
+    {
+      name: 'revenueLast180Days',
+      group: 'inventory',
+      label: 'Revenue (180d)',
+      scope: 'global',
+      options: {
+        size: 160,
+        comment:
+          'Gross line revenue in the last 180 days, excluding gifts and cancelled or refunded orders.',
+      },
+      dataType: 'float',
+      searchable: false,
+      inputType: 'number',
+      readOnly: true,
+      defaultValue: 0,
     },
     {
       name: 'avgRating',
@@ -496,7 +545,8 @@ export const products = defineEntity({
       scope: 'relationship',
       options: {
         size: 200,
-        comment: 'Orders that include this product',
+        comment:
+          'Orders that include this product (one edge per order, not per unit). Prefer unitsSold fields or salesOrderItems to measure volume.',
       },
       dataType: 'string',
       inputType: 'relationship',
@@ -506,6 +556,26 @@ export const products = defineEntity({
         mode: 'multiple',
         field: 'orderNumber',
         entity: 'salesOrder',
+      },
+    },
+    {
+      name: 'salesOrderItems',
+      group: 'inventory',
+      label: 'Order Lines',
+      scope: 'relationship',
+      options: {
+        size: 200,
+        comment:
+          'Order lines for this product. Use the connection aggregate to sum quantity or lineTotal for a custom date range.',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      searchable: true,
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'name',
+        entity: 'salesOrderItem',
       },
     },
     {
