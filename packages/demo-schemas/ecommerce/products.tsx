@@ -484,7 +484,7 @@ export const products = defineEntity({
       options: {
         size: 160,
         comment:
-          'Gross line revenue in the last 180 days, excluding gifts and cancelled or refunded orders.',
+          'Gross line revenue in EUR for the last 180 days, excluding gifts and cancelled or refunded orders. Foreign-currency lines are converted with the order exchange rate.',
       },
       dataType: 'float',
       searchable: false,
