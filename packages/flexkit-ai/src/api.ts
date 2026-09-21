@@ -1,6 +1,8 @@
+import { put } from '@vercel/blob/client';
 import { convertRecordedAudioToPcm } from './agent/dictation';
 import type {
   AgentChat,
+  AgentChatAttachment,
   AgentChatMessage,
   AgentChatTurn,
   Automation,
@@ -22,15 +24,36 @@ export interface DecideApprovalInput {
   reason?: string;
 }
 
+export interface SendAgentChatMessageInput {
+  attachments?: AgentChatAttachment[];
+  content: string;
+  modelId?: string | null;
+}
+
+/** Thrown when the API refuses an upload; `code` lets the UI tailor the message. */
+export class AgentUploadError extends Error {
+  code: string | null;
+  status: number;
+
+  constructor(status: number, message: string, code: string | null = null) {
+    super(message);
+    this.name = 'AgentUploadError';
+    this.code = code;
+    this.status = status;
+  }
+}
+
 export interface ApiClient {
   cancelRun: (_runId: string) => Promise<MutationResult>;
   createAgentChat: (_input?: { modelId?: string | null }) => Promise<{ chat: AgentChat }>;
   deleteAgentChat: (_chatId: string) => Promise<{ success: boolean }>;
   getAgentChatStreamUrl: (_chatId: string, _workflowRunId: string) => string;
   renameAgentChat: (_chatId: string, _title: string) => Promise<{ chat: AgentChat }>;
-  sendAgentChatMessage: (_chatId: string, _input: { content: string; modelId?: string | null }) => Promise<AgentChatTurn>;
+  sendAgentChatMessage: (_chatId: string, _input: SendAgentChatMessageInput) => Promise<AgentChatTurn>;
   stopAgentChat: (_chatId: string) => Promise<{ message: AgentChatMessage }>;
   transcribeAgentAudio: (_audio: Blob, _signal?: AbortSignal) => Promise<{ text: string }>;
+  /** Uploads a chat attachment straight to the platform file store. */
+  uploadAgentChatAttachment: (_file: File, _signal?: AbortSignal) => Promise<AgentChatAttachment>;
   decideApproval: (
     _approvalId: string,
     _input: DecideApprovalInput
@@ -171,6 +194,47 @@ export function createApiClient(projectId: string): ApiClient {
       }
 
       return { text: data.text };
+    },
+    uploadAgentChatAttachment: async (file, signal) => {
+      // The platform issues a token scoped to one pathname, type and size; the
+      // browser then writes the bytes to the store directly, so large files
+      // never pass through the API function body limit.
+      const tokenResponse = await fetch(`${projectBasePath}/agent/uploads`, {
+        body: JSON.stringify({ filename: file.name, mediaType: file.type || null, sizeBytes: file.size }),
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        signal,
+      });
+      const tokenData = (await tokenResponse.json()) as {
+        code?: string;
+        error?: string;
+        mediaType?: string;
+        pathname?: string;
+        token?: string;
+      };
+
+      if (!tokenResponse.ok || !tokenData.pathname || !tokenData.token || !tokenData.mediaType) {
+        throw new AgentUploadError(
+          tokenResponse.status,
+          tokenData.error ? String(tokenData.error) : 'The file could not be uploaded.',
+          tokenData.code ?? null
+        );
+      }
+
+      const blob = await put(tokenData.pathname, file, {
+        abortSignal: signal,
+        access: 'public',
+        contentType: tokenData.mediaType,
+        token: tokenData.token,
+      });
+
+      return {
+        filename: file.name,
+        mediaType: tokenData.mediaType,
+        sizeBytes: file.size,
+        url: blob.url,
+      };
     },
     decideApproval: async (approvalId, input) => {
       const response = await fetch(`${automationsBasePath}/approvals/${encodeURIComponent(approvalId)}/decide`, {
