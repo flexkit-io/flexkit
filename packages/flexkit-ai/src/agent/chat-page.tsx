@@ -523,6 +523,9 @@ function ChatComposer({
 }): JSX.Element {
   const { attachments, textInput } = usePromptInputController();
   const uploads = useAttachmentUploads(api, onError);
+  // `sending` only flips on the next render, so track the in-flight send
+  // synchronously to reject a duplicate submit before it clears the text.
+  const submittingRef = useRef(false);
   const selectableModels = models.filter((model) => !model.deprecated || model.id === modelId);
   const status = streaming ? ('streaming' as const) : sending ? ('submitted' as const) : undefined;
   const isBusy = sending || streaming;
@@ -543,19 +546,29 @@ function ChatComposer({
 
         // PromptInput clears the text and attachments whenever onSubmit returns
         // without throwing, so a blocked submit must reject to keep the draft.
-        if ((!trimmed && sentAttachments.length === 0) || uploads.isUploading || isBusy) {
+        if (
+          (!trimmed && sentAttachments.length === 0) ||
+          uploads.isUploading ||
+          isBusy ||
+          submittingRef.current
+        ) {
           return Promise.reject(new Error('The message cannot be sent right now.'));
         }
 
         // Clear the text immediately; restore it if sending fails. Returning
         // the promise makes PromptInput clear the attachments only once the
         // send resolved, so a failed send keeps the uploaded files attached.
+        submittingRef.current = true;
         textInput.clear();
 
-        return onSend(trimmed, sentAttachments).catch((error: unknown) => {
-          textInput.setInput(text);
-          throw error;
-        });
+        return onSend(trimmed, sentAttachments)
+          .catch((error: unknown) => {
+            textInput.setInput(text);
+            throw error;
+          })
+          .finally(() => {
+            submittingRef.current = false;
+          });
       }}
     >
       <PromptInputHeader>
