@@ -219,10 +219,10 @@ function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMe
     return <UserBubble text={message.textContent} />;
   }
 
-  // Rolling-status tool parts are only meaningful while the call is in
-  // flight; drop them from finished turns entirely.
+  // Reasoning stays persisted for debugging, but is never displayed in chat.
+  // Rolling-status tool parts are only meaningful while the call is in flight.
   const parts = (Array.isArray(message.parts) ? message.parts : []).filter(
-    (part) => !isRollingStatusPartType(part.type)
+    (part) => part.type !== 'reasoning' && part.type !== 'step-start' && !isRollingStatusPartType(part.type)
   );
   const hasTurnErrorPart = parts.some((part) => part.type === 'data-turn-error');
 
@@ -278,7 +278,15 @@ function LiveTurn({
     resumeToken,
     suppressApprovalPause,
   });
-  const rawMessages = useMemo(() => (streamMessage ? [streamMessage] : []), [streamMessage]);
+  // Filter only the presentation copy, before session splitting, so a
+  // reasoning-only message cannot leave an empty wrapper and extra spacing.
+  const rawMessages = useMemo(
+    () =>
+      streamMessage
+        ? [{ ...streamMessage, parts: streamMessage.parts.filter((part) => part.type !== 'reasoning') }]
+        : [],
+    [streamMessage]
+  );
   const sessionMessages = useSessionMessages(rawMessages);
   const onTurnUpdatedRef = useRef(onTurnUpdated);
   onTurnUpdatedRef.current = onTurnUpdated;
@@ -332,14 +340,10 @@ function LiveTurn({
   const streamApprovalIds = useMemo(() => new Set(getMutationApprovalIds(streamMessage)), [streamMessage]);
   const fallbackApproval =
     detail.pendingApproval && !streamApprovalIds.has(detail.pendingApproval.id) ? detail.pendingApproval : null;
-  // While a reasoning or text part is actively streaming, that part already
-  // shows its own progress ("Reasoning..." / the growing text), so the
-  // generic "Thinking..." indicator would double up.
-  const lastSessionMessage = sessionMessages[sessionMessages.length - 1];
-  const lastPart = lastSessionMessage?.parts[lastSessionMessage.parts.length - 1];
-  const contentIsStreaming = Boolean(
-    lastPart && (lastPart.type === 'reasoning' || lastPart.type === 'text') && lastPart.state === 'streaming'
-  );
+  // Growing text shows its own progress. Reasoning uses the same rolling
+  // Thinking indicator as the gaps between tool calls, without a separate card.
+  const lastPart = streamMessage?.parts[streamMessage.parts.length - 1];
+  const contentIsStreaming = lastPart?.type === 'text' && lastPart.state === 'streaming';
   const showRunningSpinner = status === 'streaming' && !isAwaitingApproval && !contentIsStreaming;
   // While a tool call is in flight the indicator names the activity
   // ("Searching schema", ...) and rolls back to "Thinking..." once it ends.
@@ -403,18 +407,19 @@ function ChatComposer({
   return (
     <PromptInput
       className="fk:mx-auto fk:max-w-4xl"
-      onSubmit={async ({ text }) => {
+      onSubmit={({ text }) => {
         const trimmed = text?.trim();
 
         if (!trimmed || sending || streaming) {
           return;
         }
 
-        await onSend(trimmed);
+        // Clear immediately; restore the draft if sending fails.
+        void onSend(trimmed).catch(() => textInput.setInput(text));
       }}
     >
       <PromptInputBody>
-        <PromptInputTextarea disabled={streaming} placeholder="Ask the agent anything about your project..." />
+        <PromptInputTextarea disabled={isBusy} placeholder="Ask the agent anything about your project..." />
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
@@ -454,14 +459,27 @@ function ChatComposer({
   );
 }
 
+function PendingChatMessage({ text }: { text: string }): JSX.Element {
+  return (
+    <>
+      <UserBubble text={text} />
+      <div className="fk:flex fk:items-center fk:gap-2 fk:py-2 fk:text-sm fk:text-muted-foreground" role="status">
+        <RollingStatusText text="Sending" />
+      </div>
+    </>
+  );
+}
+
 function ChatConversation({
   api,
   chatId,
   projectId,
+  pendingText,
 }: {
   api: ApiClient;
   chatId: string;
   projectId: string;
+  pendingText?: string;
 }): JSX.Element {
   // SWR only re-arms its polling timer when the refreshInterval option (or
   // the key) changes. A module-level function has a stable identity, so the
@@ -504,6 +522,7 @@ function ChatConversation({
               onTurnUpdated={() => void mutate()}
             />
           ) : null}
+          {pendingText ? <PendingChatMessage text={pendingText} /> : null}
         </div>
       </ConversationContent>
       <ConversationScrollButton />
@@ -565,6 +584,9 @@ export function AgentChatPage(): JSX.Element {
   const models = useMemo(() => toolsData?.tools.models ?? [], [toolsData]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
+  const [pendingMessage, setPendingMessage] = useState<{ chatId: string | undefined; text: string } | null>(null);
+  const pendingText = pendingMessage?.chatId === chatId ? pendingMessage?.text : undefined;
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
   const defaultModelId = useMemo(() => models.find((model) => !model.deprecated)?.id ?? null, [models]);
@@ -591,25 +613,54 @@ export function AgentChatPage(): JSX.Element {
   );
 
   async function handleSend(text: string): Promise<void> {
+    if (sendingRef.current) {
+      return;
+    }
+
+    sendingRef.current = true;
     setSending(true);
+    setPendingMessage({ chatId, text });
     setSendError(null);
 
     try {
-      if (chatId) {
-        await chatApi.sendAgentChatMessage(chatId, { content: text, modelId });
-        // The idle detail SWR does not poll; revalidate so the new turn shows up.
-        await globalMutate(paths(chatProjectId).agentChat(chatId));
+      const chat = chatId ? null : (await chatApi.createAgentChat({ modelId })).chat;
+      const targetChatId = chatId ?? chat!.id;
+      const turn = await chatApi.sendAgentChatMessage(targetChatId, { content: text, modelId });
 
-        return;
+      // Seed the confirmed turn without waiting for another network round trip.
+      await globalMutate<AgentChatDetail>(
+        paths(chatProjectId).agentChat(targetChatId),
+        (current) => {
+          const detail = current ?? (chat ? { chat, messages: [], pendingApproval: null } : chatDetail);
+
+          if (!detail) {
+            return detail;
+          }
+
+          const turnIds = new Set([turn.userMessage.id, turn.assistantMessage.id]);
+
+          return {
+            ...detail,
+            messages: [
+              ...detail.messages.filter((message) => !turnIds.has(message.id)),
+              turn.userMessage,
+              turn.assistantMessage,
+            ],
+          };
+        },
+        { revalidate: false }
+      );
+      setPendingMessage(null);
+
+      if (chat) {
+        navigate(`${agentBase}/chats/${chat.id}`);
       }
-
-      const { chat } = await chatApi.createAgentChat({ modelId });
-
-      await chatApi.sendAgentChatMessage(chat.id, { content: text, modelId });
-      navigate(`${agentBase}/chats/${chat.id}`);
     } catch (error) {
+      setPendingMessage(null);
       setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
+      throw error;
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }
@@ -648,7 +699,15 @@ export function AgentChatPage(): JSX.Element {
         <div className="fk:flex fk:min-h-0 fk:flex-1 fk:gap-4">
           <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-3">
             {chatId ? (
-              <ChatConversation api={chatApi} chatId={chatId} projectId={projectId} />
+              <ChatConversation api={chatApi} chatId={chatId} pendingText={pendingText} projectId={projectId} />
+            ) : pendingText ? (
+              <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
+                <ConversationContent className="fk:gap-0 fk:p-0">
+                  <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
+                    <PendingChatMessage text={pendingText} />
+                  </div>
+                </ConversationContent>
+              </Conversation>
             ) : (
               <EmptyConversation projectId={chatProjectId} />
             )}
