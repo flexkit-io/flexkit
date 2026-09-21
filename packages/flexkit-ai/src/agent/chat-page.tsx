@@ -53,10 +53,12 @@ import {
   type RunReplayActions,
 } from '../replay';
 import type {
+  AgentChat,
   AgentChatDetail,
   AgentChatMessage,
   AgentChatMessageStatus,
   AgentChatPart,
+  AgentChatTurn,
   AutomationTools,
 } from '../types';
 import { useAgentBasePath } from './chat-list';
@@ -103,6 +105,95 @@ function getChatDetailRefreshInterval(latestData: AgentChatDetail | undefined): 
   }
 
   return 0;
+}
+
+function createFallbackChatDetail(chatId: string, modelId: string | null, timestamp: string): AgentChatDetail {
+  return {
+    chat: {
+      createdAt: timestamp,
+      id: chatId,
+      lastMessageAt: timestamp,
+      modelId,
+      title: null,
+      updatedAt: timestamp,
+    },
+    messages: [],
+    pendingApproval: null,
+  };
+}
+
+function getSeedBaseDetail(
+  current: AgentChatDetail | undefined,
+  createdChat: AgentChat | null,
+  cachedDetail: AgentChatDetail | undefined,
+  chatId: string,
+  modelId: string | null,
+  timestamp: string
+): AgentChatDetail {
+  if (current) {
+    return current;
+  }
+
+  if (createdChat) {
+    return { chat: createdChat, messages: [], pendingApproval: null };
+  }
+
+  if (cachedDetail) {
+    return cachedDetail;
+  }
+
+  return createFallbackChatDetail(chatId, modelId, timestamp);
+}
+
+/** Keep locally confirmed turns when a stale in-flight GET wins the SWR write. */
+function mergeChatDetail(
+  current: AgentChatDetail | undefined,
+  incoming: AgentChatDetail | undefined
+): AgentChatDetail | undefined {
+  if (!incoming) {
+    return current;
+  }
+
+  if (!current) {
+    return incoming;
+  }
+
+  const incomingIds = new Set(incoming.messages.map((message) => message.id));
+  const retained = current.messages.filter((message) => !incomingIds.has(message.id));
+
+  if (retained.length === 0) {
+    return incoming;
+  }
+
+  return {
+    ...incoming,
+    messages: [...incoming.messages, ...retained],
+  };
+}
+
+function appendTurnToDetail(detail: AgentChatDetail, turn: AgentChatTurn): AgentChatDetail {
+  const turnIds = new Set([turn.userMessage.id, turn.assistantMessage.id]);
+
+  return {
+    ...detail,
+    messages: [
+      ...detail.messages.filter((message) => !turnIds.has(message.id)),
+      turn.userMessage,
+      turn.assistantMessage,
+    ],
+  };
+}
+
+function resolveSeededChatDetail(
+  seeds: { [chatId: string]: AgentChatDetail },
+  chatId: string | undefined,
+  detail: AgentChatDetail | undefined
+): AgentChatDetail | undefined {
+  if (!chatId) {
+    return detail;
+  }
+
+  return mergeChatDetail(seeds[chatId], detail);
 }
 
 /** Maps a chat turn status onto the record statuses the stream hook understands. */
@@ -475,11 +566,13 @@ function ChatConversation({
   chatId,
   projectId,
   pendingText,
+  resolveDetail,
 }: {
   api: ApiClient;
   chatId: string;
   projectId: string;
   pendingText?: string;
+  resolveDetail: (_detail: AgentChatDetail | undefined) => AgentChatDetail | undefined;
 }): JSX.Element {
   // SWR only re-arms its polling timer when the refreshInterval option (or
   // the key) changes. A module-level function has a stable identity, so the
@@ -488,9 +581,23 @@ function ChatConversation({
   // noticed a finished turn until a tab refocus revalidated it. The inline
   // arrow changes identity on every render, re-arming the timer whenever new
   // data (e.g. an active turn) arrives.
-  const { data, mutate } = useSWR<AgentChatDetail>(paths(projectId).agentChat(chatId), fetcher, {
-    refreshInterval: (latestData) => getChatDetailRefreshInterval(latestData),
+  const { data: rawDetail, mutate } = useSWR<AgentChatDetail>(paths(projectId).agentChat(chatId), fetcher, {
+    refreshInterval: (latestData) => getChatDetailRefreshInterval(resolveDetail(latestData)),
   });
+  const data = resolveDetail(rawDetail);
+
+  if (!data && pendingText) {
+    return (
+      <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
+        <ConversationContent className="fk:gap-0 fk:p-0">
+          <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
+            <PendingChatMessage text={pendingText} />
+          </div>
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
+    );
+  }
 
   if (!data) {
     return (
@@ -577,10 +684,17 @@ export function AgentChatPage(): JSX.Element {
   const agentBase = useAgentBasePath();
   const { mutate: globalMutate } = useSWRConfig();
   const { data: toolsData } = useSWR<ToolsResponse>(projectId ? paths(projectId).tools() : null, fetcher);
-  const { data: chatDetail } = useSWR<AgentChatDetail>(
+  const { data: rawChatDetail } = useSWR<AgentChatDetail>(
     projectId && chatId ? paths(projectId).agentChat(chatId) : null,
     fetcher
   );
+  const seededDetailRef = useRef<{ [chatId: string]: AgentChatDetail }>({});
+
+  function resolveDetail(detail: AgentChatDetail | undefined): AgentChatDetail | undefined {
+    return resolveSeededChatDetail(seededDetailRef.current, chatId, detail);
+  }
+
+  const chatDetail = resolveDetail(rawChatDetail);
   const models = useMemo(() => toolsData?.tools.models ?? [], [toolsData]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -628,25 +742,25 @@ export function AgentChatPage(): JSX.Element {
       const turn = await chatApi.sendAgentChatMessage(targetChatId, { content: text, modelId });
 
       // Seed the confirmed turn without waiting for another network round trip.
+      // Keep a local overlay so an in-flight GET that started before POST cannot
+      // replace this seed with a snapshot that omits the new messages.
       await globalMutate<AgentChatDetail>(
         paths(chatProjectId).agentChat(targetChatId),
         (current) => {
-          const detail = current ?? (chat ? { chat, messages: [], pendingApproval: null } : chatDetail);
+          const next = appendTurnToDetail(
+            getSeedBaseDetail(
+              mergeChatDetail(seededDetailRef.current[targetChatId], current),
+              chat,
+              rawChatDetail,
+              targetChatId,
+              modelId,
+              turn.userMessage.createdAt
+            ),
+            turn
+          );
+          seededDetailRef.current[targetChatId] = next;
 
-          if (!detail) {
-            return detail;
-          }
-
-          const turnIds = new Set([turn.userMessage.id, turn.assistantMessage.id]);
-
-          return {
-            ...detail,
-            messages: [
-              ...detail.messages.filter((message) => !turnIds.has(message.id)),
-              turn.userMessage,
-              turn.assistantMessage,
-            ],
-          };
+          return next;
         },
         { revalidate: false }
       );
@@ -699,7 +813,13 @@ export function AgentChatPage(): JSX.Element {
         <div className="fk:flex fk:min-h-0 fk:flex-1 fk:gap-4">
           <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-3">
             {chatId ? (
-              <ChatConversation api={chatApi} chatId={chatId} pendingText={pendingText} projectId={projectId} />
+              <ChatConversation
+                api={chatApi}
+                chatId={chatId}
+                pendingText={pendingText}
+                projectId={projectId}
+                resolveDetail={resolveDetail}
+              />
             ) : pendingText ? (
               <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
                 <ConversationContent className="fk:gap-0 fk:p-0">
