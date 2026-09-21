@@ -541,8 +541,10 @@ function ChatComposer({
         const trimmed = text?.trim() ?? '';
         const sentAttachments = uploads.getUploaded(attachments.files.map((file) => file.id));
 
+        // PromptInput clears the text and attachments whenever onSubmit returns
+        // without throwing, so a blocked submit must reject to keep the draft.
         if ((!trimmed && sentAttachments.length === 0) || uploads.isUploading || isBusy) {
-          return;
+          return Promise.reject(new Error('The message cannot be sent right now.'));
         }
 
         // Clear the text immediately; restore it if sending fails. Returning
@@ -790,8 +792,10 @@ export function AgentChatPage(): JSX.Element {
   );
 
   async function handleSend(text: string, attachments: AgentChatAttachment[]): Promise<void> {
+    // Reject rather than resolve so the composer does not treat a duplicate
+    // submit as a successful send and clear the attachments of the in-flight one.
     if (sendingRef.current) {
-      return;
+      throw new Error('A message is already being sent.');
     }
 
     sendingRef.current = true;
