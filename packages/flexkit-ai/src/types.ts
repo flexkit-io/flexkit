@@ -284,16 +284,32 @@ export interface AgentChatsList {
   hasMore: boolean;
 }
 
+/** A file the user uploaded for a chat message. */
+export interface AgentChatAttachment {
+  filename: string;
+  mediaType: string;
+  sizeBytes: number;
+  url: string;
+}
+
 /** UIMessage-shaped part persisted for finished turns. */
 export interface AgentChatPart {
   data?: unknown;
   errorText?: string;
+  /** `file` parts: original filename of a user attachment. */
+  filename?: string;
   input?: unknown;
+  /** `file` parts: IANA media type of a user attachment. */
+  mediaType?: string;
   output?: unknown;
+  /** `file` parts: byte size of a user attachment. */
+  sizeBytes?: number;
   state?: string;
   text?: string;
   toolCallId?: string;
   type: string;
+  /** `file` parts: public URL of a user attachment. */
+  url?: string;
 }
 
 export interface AgentChatMessage {

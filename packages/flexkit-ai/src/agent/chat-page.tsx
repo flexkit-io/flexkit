@@ -9,8 +9,13 @@ import {
   ConversationContent,
   ConversationScrollButton,
   PromptInput,
+  PromptInputActionAddAttachments,
+  PromptInputActionMenu,
+  PromptInputActionMenuContent,
+  PromptInputActionMenuTrigger,
   PromptInputBody,
   PromptInputFooter,
+  PromptInputHeader,
   PromptInputProvider,
   PromptInputSelect,
   PromptInputSelectContent,
@@ -54,6 +59,7 @@ import {
 } from '../replay';
 import type {
   AgentChat,
+  AgentChatAttachment,
   AgentChatDetail,
   AgentChatMessage,
   AgentChatMessageStatus,
@@ -61,6 +67,15 @@ import type {
   AgentChatTurn,
   AutomationTools,
 } from '../types';
+import {
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_MAX_BYTES,
+  ATTACHMENTS_MAX_PER_MESSAGE,
+  ComposerAttachments,
+  MessageAttachments,
+  getAttachmentsFromParts,
+  useAttachmentUploads,
+} from './attachments';
 import { useAgentBasePath } from './chat-list';
 import { appendDictatedText } from './dictation';
 
@@ -213,9 +228,16 @@ function getTurnRecordStatus(status: AgentChatMessageStatus): RunRecordStatus {
   return 'running';
 }
 
-function UserBubble({ text }: { text: string }): JSX.Element {
+function UserBubble({
+  attachments = [],
+  text,
+}: {
+  attachments?: AgentChatAttachment[];
+  text: string;
+}): JSX.Element {
   const { textInput } = usePromptInputController();
   const [copied, setCopied] = useState(false);
+  const hasText = text.trim().length > 0;
 
   async function handleCopy(): Promise<void> {
     await navigator.clipboard.writeText(text);
@@ -225,10 +247,19 @@ function UserBubble({ text }: { text: string }): JSX.Element {
 
   return (
     <div className="fk:group fk:ml-auto fk:flex fk:w-fit fk:max-w-[70%] fk:flex-col fk:items-end fk:gap-1">
-      <div className="fk:whitespace-pre-wrap fk:rounded-xl fk:bg-muted fk:dark:bg-white/20 fk:px-3.5 fk:py-2 fk:text-base">
-        {text}
-      </div>
-      <div className="fk:flex fk:gap-0.5 fk:opacity-0 fk:transition-opacity fk:group-hover:opacity-100">
+      <MessageAttachments attachments={attachments} />
+      {hasText ? (
+        <div className="fk:whitespace-pre-wrap fk:rounded-xl fk:bg-muted fk:dark:bg-white/20 fk:px-3.5 fk:py-2 fk:text-base">
+          {text}
+        </div>
+      ) : null}
+      <div
+        className={
+          hasText
+            ? 'fk:flex fk:gap-0.5 fk:opacity-0 fk:transition-opacity fk:group-hover:opacity-100'
+            : 'fk:hidden'
+        }
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -307,7 +338,7 @@ function PersistedPart({
 
 function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMessage }): JSX.Element | null {
   if (message.role === 'user') {
-    return <UserBubble text={message.textContent} />;
+    return <UserBubble attachments={getAttachmentsFromParts(message.parts)} text={message.textContent} />;
   }
 
   // Reasoning stays persisted for debugging, but is never displayed in chat.
@@ -485,35 +516,75 @@ function ChatComposer({
   models: AutomationTools['models'];
   onError: (_message: string | null) => void;
   onModelChange: (_modelId: string) => void;
-  onSend: (_text: string) => Promise<void>;
+  onSend: (_text: string, _attachments: AgentChatAttachment[]) => Promise<void>;
   onStop: () => Promise<void>;
   sending: boolean;
   streaming: boolean;
 }): JSX.Element {
-  const { textInput } = usePromptInputController();
+  const { attachments, textInput } = usePromptInputController();
+  const uploads = useAttachmentUploads(api, onError);
+  // `sending` only flips on the next render, so track the in-flight send
+  // synchronously to reject a duplicate submit before it clears the text.
+  const submittingRef = useRef(false);
   const selectableModels = models.filter((model) => !model.deprecated || model.id === modelId);
   const status = streaming ? ('streaming' as const) : sending ? ('submitted' as const) : undefined;
   const isBusy = sending || streaming;
+  const hasDraft = textInput.value.trim().length > 0 || attachments.files.length > 0;
+  const canSubmit = hasDraft && !uploads.isUploading && !isBusy;
 
   return (
     <PromptInput
+      accept={ATTACHMENT_ACCEPT}
       className="fk:mx-auto fk:max-w-4xl"
+      maxFileSize={ATTACHMENT_MAX_BYTES}
+      maxFiles={ATTACHMENTS_MAX_PER_MESSAGE}
+      multiple
+      onError={(error) => onError(error.message)}
       onSubmit={({ text }) => {
-        const trimmed = text?.trim();
+        const trimmed = text?.trim() ?? '';
+        const sentAttachments = uploads.getUploaded(attachments.files.map((file) => file.id));
 
-        if (!trimmed || sending || streaming) {
-          return;
+        // PromptInput clears the text and attachments whenever onSubmit returns
+        // without throwing, so a blocked submit must reject to keep the draft.
+        if (
+          (!trimmed && sentAttachments.length === 0) ||
+          uploads.isUploading ||
+          isBusy ||
+          submittingRef.current
+        ) {
+          return Promise.reject(new Error('The message cannot be sent right now.'));
         }
 
-        // Clear immediately; restore the draft if sending fails.
-        void onSend(trimmed).catch(() => textInput.setInput(text));
+        // Clear the text immediately; restore it if sending fails. Returning
+        // the promise makes PromptInput clear the attachments only once the
+        // send resolved, so a failed send keeps the uploaded files attached.
+        submittingRef.current = true;
+        textInput.clear();
+
+        return onSend(trimmed, sentAttachments)
+          .catch((error: unknown) => {
+            textInput.setInput(text);
+            throw error;
+          })
+          .finally(() => {
+            submittingRef.current = false;
+          });
       }}
     >
+      <PromptInputHeader>
+        <ComposerAttachments uploads={uploads} />
+      </PromptInputHeader>
       <PromptInputBody>
         <PromptInputTextarea disabled={isBusy} placeholder="Ask the agent anything about your project..." />
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
+          <PromptInputActionMenu>
+            <PromptInputActionMenuTrigger aria-label="Add attachments" disabled={isBusy} tooltip="Add photos or files" />
+            <PromptInputActionMenuContent>
+              <PromptInputActionAddAttachments />
+            </PromptInputActionMenuContent>
+          </PromptInputActionMenu>
           {selectableModels.length > 0 ? (
             <PromptInputSelect value={modelId ?? undefined} onValueChange={onModelChange}>
               <PromptInputSelectTrigger className="fk:min-w-36">
@@ -543,17 +614,22 @@ function ChatComposer({
               textInput.setInput(appendDictatedText(textInput.value, transcript));
             }}
           />
-          <PromptInputSubmit status={status} onStop={() => void onStop()} />
+          <PromptInputSubmit disabled={!isBusy && !canSubmit} status={status} onStop={() => void onStop()} />
         </div>
       </PromptInputFooter>
     </PromptInput>
   );
 }
 
-function PendingChatMessage({ text }: { text: string }): JSX.Element {
+interface PendingMessage {
+  attachments: AgentChatAttachment[];
+  text: string;
+}
+
+function PendingChatMessage({ message }: { message: PendingMessage }): JSX.Element {
   return (
     <>
-      <UserBubble text={text} />
+      <UserBubble attachments={message.attachments} text={message.text} />
       <div className="fk:flex fk:items-center fk:gap-2 fk:py-2 fk:text-sm fk:text-muted-foreground" role="status">
         <RollingStatusText text="Sending" />
       </div>
@@ -565,13 +641,13 @@ function ChatConversation({
   api,
   chatId,
   projectId,
-  pendingText,
+  pendingMessage,
   resolveDetail,
 }: {
   api: ApiClient;
   chatId: string;
   projectId: string;
-  pendingText?: string;
+  pendingMessage?: PendingMessage;
   resolveDetail: (_detail: AgentChatDetail | undefined) => AgentChatDetail | undefined;
 }): JSX.Element {
   // SWR only re-arms its polling timer when the refreshInterval option (or
@@ -586,12 +662,12 @@ function ChatConversation({
   });
   const data = resolveDetail(rawDetail);
 
-  if (!data && pendingText) {
+  if (!data && pendingMessage) {
     return (
       <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
         <ConversationContent className="fk:gap-0 fk:p-0">
           <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
-            <PendingChatMessage text={pendingText} />
+            <PendingChatMessage message={pendingMessage} />
           </div>
         </ConversationContent>
         <ConversationScrollButton />
@@ -629,7 +705,7 @@ function ChatConversation({
               onTurnUpdated={() => void mutate()}
             />
           ) : null}
-          {pendingText ? <PendingChatMessage text={pendingText} /> : null}
+          {pendingMessage ? <PendingChatMessage message={pendingMessage} /> : null}
         </div>
       </ConversationContent>
       <ConversationScrollButton />
@@ -699,8 +775,10 @@ export function AgentChatPage(): JSX.Element {
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
-  const [pendingMessage, setPendingMessage] = useState<{ chatId: string | undefined; text: string } | null>(null);
-  const pendingText = pendingMessage?.chatId === chatId ? pendingMessage?.text : undefined;
+  const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(
+    null
+  );
+  const visiblePendingMessage = pendingMessage && pendingMessage.chatId === chatId ? pendingMessage : undefined;
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
   const defaultModelId = useMemo(() => models.find((model) => !model.deprecated)?.id ?? null, [models]);
@@ -726,20 +804,22 @@ export function AgentChatPage(): JSX.Element {
     lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status)
   );
 
-  async function handleSend(text: string): Promise<void> {
+  async function handleSend(text: string, attachments: AgentChatAttachment[]): Promise<void> {
+    // Reject rather than resolve so the composer does not treat a duplicate
+    // submit as a successful send and clear the attachments of the in-flight one.
     if (sendingRef.current) {
-      return;
+      throw new Error('A message is already being sent.');
     }
 
     sendingRef.current = true;
     setSending(true);
-    setPendingMessage({ chatId, text });
+    setPendingMessage({ attachments, chatId, text });
     setSendError(null);
 
     try {
       const chat = chatId ? null : (await chatApi.createAgentChat({ modelId })).chat;
       const targetChatId = chatId ?? chat!.id;
-      const turn = await chatApi.sendAgentChatMessage(targetChatId, { content: text, modelId });
+      const turn = await chatApi.sendAgentChatMessage(targetChatId, { attachments, content: text, modelId });
 
       // Seed the confirmed turn without waiting for another network round trip.
       // Keep a local overlay so an in-flight GET that started before POST cannot
@@ -816,15 +896,15 @@ export function AgentChatPage(): JSX.Element {
               <ChatConversation
                 api={chatApi}
                 chatId={chatId}
-                pendingText={pendingText}
+                pendingMessage={visiblePendingMessage}
                 projectId={projectId}
                 resolveDetail={resolveDetail}
               />
-            ) : pendingText ? (
+            ) : visiblePendingMessage ? (
               <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
                 <ConversationContent className="fk:gap-0 fk:p-0">
                   <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
-                    <PendingChatMessage text={pendingText} />
+                    <PendingChatMessage message={visiblePendingMessage} />
                   </div>
                 </ConversationContent>
               </Conversation>

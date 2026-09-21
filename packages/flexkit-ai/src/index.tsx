@@ -91,6 +91,7 @@ export function AI(): PluginOptions {
 
 export type {
   AgentChat,
+  AgentChatAttachment,
   AgentChatDetail,
   AgentChatMessage,
   AgentChatMessageRole,

@@ -66,6 +66,7 @@
     "@json-render/react": "0.19.0",
     "@lezer/highlight": "1.2.3",
     "@uiw/codemirror-themes": "4.25.11",
+    "@vercel/blob": "0.25.0",
     "ai": "^6.0.116",
     "cron-parser": "5.5.0",
     "date-fns": "4.1.0",

@@ -340,16 +340,23 @@ export type PromptInputActionAddAttachmentsProps = ComponentProps<typeof Dropdow
 
 export const PromptInputActionAddAttachments = ({
   label = 'Add photos or files',
+  onSelect,
   ...props
 }: PromptInputActionAddAttachmentsProps) => {
   const attachments = usePromptInputAttachments();
 
   const handleSelect = useCallback(
-    (e: Event) => {
-      e.preventDefault();
+    (event: Event) => {
+      onSelect?.(event);
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      // Not calling preventDefault lets the menu close; the file dialog still
+      // opens because input.click() runs within the same user gesture.
       attachments.openFileDialog();
     },
-    [attachments]
+    [attachments, onSelect]
   );
 
   return (
@@ -472,6 +479,11 @@ export const PromptInput = ({
         .filter(Boolean);
 
       return patterns.some((pattern) => {
+        if (pattern.startsWith('.')) {
+          // e.g: .csv — match on the filename like the native accept attribute,
+          // since browsers report inconsistent media types for many extensions
+          return f.name.toLowerCase().endsWith(pattern.toLowerCase());
+        }
         if (pattern.endsWith('/*')) {
           // e.g: image/* -> image/
           const prefix = pattern.slice(0, -1);
@@ -1016,8 +1028,22 @@ export const PromptInputActionMenuTrigger = ({ className, children, ...props }: 
 );
 
 export type PromptInputActionMenuContentProps = ComponentProps<typeof DropdownMenuContent>;
-export const PromptInputActionMenuContent = ({ className, ...props }: PromptInputActionMenuContentProps) => (
-  <DropdownMenuContent align="start" className={cn(className)} {...props} />
+export const PromptInputActionMenuContent = ({ className, onCloseAutoFocus, ...props }: PromptInputActionMenuContentProps) => (
+  <DropdownMenuContent
+    align="start"
+    className={cn(className)}
+    onCloseAutoFocus={(event) => {
+      onCloseAutoFocus?.(event);
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      // Radix refocuses the trigger on close, which would open the trigger's
+      // tooltip (tooltips show on focus) right after picking an action.
+      event.preventDefault();
+    }}
+    {...props}
+  />
 );
 
 export type PromptInputActionMenuItemProps = ComponentProps<typeof DropdownMenuItem>;
