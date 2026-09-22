@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/ai",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Flexkit Studio extension for AI Automations and Skills: configure, monitor and extend AI agents.",
   "keywords": [
     "flexkit",
