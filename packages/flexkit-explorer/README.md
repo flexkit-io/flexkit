@@ -13,7 +13,7 @@
 
 </div>
 
-**Explorer is a plugin for Flexkit Studio that provides a graphical interactive in-browser GraphQL IDE where you can explore and test the GraphQL API of your Flexkit project.**
+**`@flexkit/explorer` is an official Flexkit Studio extension. It provides a graphical interactive in-browser GraphQL IDE where you can explore and test the GraphQL API of your Flexkit project.**
 
 ## Features
 
@@ -43,7 +43,7 @@ import { defineConfig } from '@flexkit/studio';
 import { Explorer } from '@flexkit/explorer';
 
 export default defineConfig({
-  plugins: [Explorer()],
+  extensions: [Explorer()],
 });
 ```
 

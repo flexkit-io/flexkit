@@ -1,10 +1,10 @@
 import { SquarePlay as SquarePlayIcon } from 'lucide-react';
-import type { PluginOptions } from '@flexkit/studio';
+import type { StudioExtension } from '@flexkit/studio';
 import { Root } from './root';
 
-export function Explorer(): PluginOptions {
+export function Explorer(): StudioExtension {
   return {
-    name: 'flexkit.explorer',
+    id: 'flexkit.explorer',
     contributes: {
       apps: [
         {

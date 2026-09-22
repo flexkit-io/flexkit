@@ -56,14 +56,14 @@ export default defineConfig([
       { title: 'Finance', name: 'finance' },
       { title: 'Config', name: 'config' },
     ],
-    plugins: [
+    extensions: [
       Desk(),
       AssetManager(),
       Explorer(),
       AI(),
       {
-        // <-- this is a plugin. It's a function that returns a plugin object. Required fields are `name` and `contributes`.
-        name: 'flexkit.desk',
+        // <-- this is a Studio extension object. Required fields are `id` and `contributes`.
+        id: 'demo.workspace',
         contributes: {
           apps: [
             // <-- this is a list of apps that will be shown in the sidebar. It's an array, because existing apps can't be overwritten.
@@ -149,11 +149,11 @@ export default defineConfig([
             // },
           },
         },
-        plugins: [
-          // nested plugins are allowed. For example, the `desk` plugin could have a `gridList` plugin.
+        extensions: [
+          // nested extensions are allowed. For example, the `desk` extension could have a `gridList` extension.
           // gridList()
           // {
-          //   name: 'test-plugin',
+          //   id: 'test-extension',
           //   contributes: {
           //     apps: [
           //       {
@@ -164,10 +164,10 @@ export default defineConfig([
           //       },
           //     ],
           //   },
-          //   plugins: [
-          //     // another nested plugin
+          //   extensions: [
+          //     // another nested extension
           //     {
-          //       name: 'test-plugin-2',
+          //       id: 'test-extension-2',
           //       contributes: {},
           //     },
           //   ],
@@ -175,8 +175,8 @@ export default defineConfig([
         ],
       },
       {
-        name: 'flexkit.hello',
-        title: 'Hello',
+        id: 'flexkit.hello',
+        name: 'Hello',
         contributes: {
           commands: [
             {
@@ -322,14 +322,14 @@ export default defineConfig([
         label: 'Government',
       },
     ],
-    plugins: [
+    extensions: [
       Desk(),
       AssetManager(),
       Explorer(),
       AI(),
       {
-        name: 'demo.2.plugin',
-        title: 'Demo 2 plugin',
+        id: 'demo.2.extension',
+        name: 'Demo 2 extension',
         contributes: {
           // apps: [
           //   // <-- this is a list of apps that will be shown in the sidebar. It's an array, because existing apps can't be overwritten.

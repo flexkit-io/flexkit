@@ -13,7 +13,7 @@
 
 </div>
 
-**A plugin for Flexkit Studio that that powers the Desk experience, enabling developers and teams to browse entities, manage attributes, and perform CRUD operations on structured business data.**
+**`@flexkit/desk` is an official Flexkit Studio extension. It powers the Desk experience, enabling developers and teams to browse entities, manage attributes, and perform CRUD operations on structured business data.**
 
 ## Features
 
@@ -41,7 +41,7 @@ import { defineConfig } from '@flexkit/studio';
 import { Desk } from '@flexkit/desk';
 
 export default defineConfig({
-  plugins: [Desk()],
+  extensions: [Desk()],
 });
 ```
 

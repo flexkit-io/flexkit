@@ -1,6 +1,6 @@
 import { Bot as BotIcon } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
-import type { PluginOptions } from '@flexkit/studio';
+import type { StudioExtension } from '@flexkit/studio';
 import { Root } from './root';
 import {
   ApprovalsPage,
@@ -19,9 +19,9 @@ const NavigateCompat = Navigate as unknown as React.ComponentType<{
   to: string;
 }>;
 
-export function AI(): PluginOptions {
+export function AI(): StudioExtension {
   return {
-    name: 'flexkit.ai',
+    id: 'flexkit.ai',
     contributes: {
       apps: [
         {

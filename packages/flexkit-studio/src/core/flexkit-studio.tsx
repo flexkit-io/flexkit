@@ -100,7 +100,7 @@ function mapConfig(project: SingleProject | ProjectOptions): ProjectOptions {
     basePath: normalizeBasePath(project.basePath),
     menuGroups: project.menuGroups ?? [],
     icon: project.icon,
-    plugins: project.plugins,
+    extensions: project.extensions,
     projectId: project.projectId,
     title: project.title,
     schema: project.schema,

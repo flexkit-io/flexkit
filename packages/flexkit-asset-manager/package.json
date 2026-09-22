@@ -1,14 +1,14 @@
 {
   "name": "@flexkit/asset-manager",
   "version": "0.0.33",
-  "description": "Flexkit plugin for browsing and managing assets in a project.",
+  "description": "Official Flexkit Studio extension for browsing and managing assets in a project.",
   "keywords": [
     "flexkit",
     "studio",
     "react",
     "node",
     "assets",
-    "flexkit-plugin"
+    "flexkit-extension"
   ],
   "type": "module",
   "main": "./dist/index.js",

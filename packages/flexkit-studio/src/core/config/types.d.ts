@@ -40,37 +40,40 @@ export interface AppRoute {
 
 type PreviewComponent<T = unknown> = React.ComponentType<{ value: T }>;
 
-export interface PluginOptions {
-  name: string;
-  title?: string;
-  contributes?: {
-    apps?: AppOptions[];
-    formFields?: {
-      [key: string]: {
-        component: (Props: FormFieldProps) => JSX.Element;
-        description?: string;
-      };
-    };
-    previewFields?: {
-      [key: string]: {
-        component: ({ value }: { value: string | boolean | number | null | Date | Image }) => JSX.Element | null;
-        description?: string;
-      };
-    };
-    commands?: CommandOptions[];
-    navbar?: {
-      logo?: {
-        component: (Props: LogoProps) => JSX.Element;
-      };
-      projectSelector?: {
-        component: (Props: ProjectSelectorProps) => JSX.Element;
-      };
-      search?: {
-        component: (Props: SearchProps) => JSX.Element;
-      };
+export interface StudioExtension {
+  /** Stable machine-readable identity, independent of the optional display label. */
+  id: string;
+  name?: string;
+  contributes: StudioContributions;
+  extensions?: StudioExtension[];
+}
+
+export interface StudioContributions {
+  apps?: AppOptions[];
+  formFields?: {
+    [key: string]: {
+      component: (Props: FormFieldProps) => JSX.Element;
+      description?: string;
     };
   };
-  plugins?: PluginOptions[];
+  previewFields?: {
+    [key: string]: {
+      component: ({ value }: { value: string | boolean | number | null | Date | Image }) => JSX.Element | null;
+      description?: string;
+    };
+  };
+  commands?: CommandOptions[];
+  navbar?: {
+    logo?: {
+      component: (Props: LogoProps) => JSX.Element;
+    };
+    projectSelector?: {
+      component: (Props: ProjectSelectorProps) => JSX.Element;
+    };
+    search?: {
+      component: (Props: SearchProps) => JSX.Element;
+    };
+  };
 }
 
 export interface ProjectOptions {
@@ -82,7 +85,7 @@ export interface ProjectOptions {
     title: string;
     name: string;
   }[];
-  plugins?: PluginOptions[];
+  extensions?: StudioExtension[];
   scopes?: Scopes;
   /**
    * Permission spaces for this project. Spaces scope access to entities,

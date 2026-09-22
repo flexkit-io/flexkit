@@ -6,21 +6,20 @@ import { has, path } from 'ramda';
 import { useParams } from 'react-router-dom';
 import { assetSchema } from '../../entities/assets-schema';
 import { tagSchema } from '../../entities/tags-schema';
-import type { AppOptions, PluginOptions, ProjectOptions } from './types';
+import type { AppOptions, StudioExtension, StudioContributions, ProjectOptions } from './types';
 import type { Entity } from '../types';
 
-type Contributes = NonNullable<PluginOptions['contributes']>;
 export interface ConfigContext {
   contributions: {
     apps: AppOptions[] | [];
   };
   currentProjectId?: string;
   currentProjectSchema: Entity[];
-  getContributionPointConfig: <T extends keyof Contributes>(
+  getContributionPointConfig: <T extends keyof StudioContributions>(
     contributionPoint: T,
     subPath?: string[]
-  ) => Contributes[T][] | [];
-  plugins: PluginOptions[];
+  ) => StudioContributions[T][] | [];
+  extensions: StudioExtension[];
   projects: ProjectOptions[];
 }
 
@@ -31,12 +30,12 @@ const ConfigContext = createContext<ConfigContext>({
   currentProjectId: undefined,
   currentProjectSchema: [],
   getContributionPointConfig: () => [],
-  plugins: [] as PluginOptions[],
+  extensions: [] as StudioExtension[],
   projects: [] as ProjectOptions[],
 });
-const hasProjectIdProperty = (configItem: ProjectOptions | PluginOptions): boolean =>
+const hasProjectIdProperty = (configItem: ProjectOptions | StudioExtension): boolean =>
   Object.prototype.hasOwnProperty.call(configItem, 'projectId');
-const hasContributesProperty = (configItem: ProjectOptions | PluginOptions): boolean =>
+const hasContributesProperty = (configItem: ProjectOptions | StudioExtension): boolean =>
   Object.prototype.hasOwnProperty.call(configItem, 'contributes');
 
 export function ConfigProvider({
@@ -66,48 +65,51 @@ export function ConfigProvider({
     }));
   }, [config]);
 
-  const globalFlattenedConfig = useMemo(() => flattenConfigByProperty(['plugins'], enhancedConfig), [enhancedConfig]);
+  const globalFlattenedConfig = useMemo(
+    () => flattenConfigByProperty(['extensions'], enhancedConfig),
+    [enhancedConfig]
+  );
   const currentProjectFlattenedConfig = useMemo(
     () =>
       flattenConfigByProperty(
-        ['plugins'],
+        ['extensions'],
         enhancedConfig.filter((item) => item.projectId === currentProjectId)
       ),
     [enhancedConfig, currentProjectId]
   );
-  const allPlugins = useMemo(
+  const allExtensions = useMemo(
     () =>
       globalFlattenedConfig.filter(
-        (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
-      ) as PluginOptions[],
+        (item: ProjectOptions | StudioExtension) => !hasProjectIdProperty(item) && hasContributesProperty(item)
+      ) as StudioExtension[],
     [globalFlattenedConfig]
   );
-  const currentProjectPlugins = useMemo(
+  const currentProjectExtensions = useMemo(
     () =>
       currentProjectFlattenedConfig.filter(
-        (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
-      ) as PluginOptions[],
+        (item: ProjectOptions | StudioExtension) => !hasProjectIdProperty(item) && hasContributesProperty(item)
+      ) as StudioExtension[],
     [currentProjectFlattenedConfig]
   );
 
   const globalConfig = useMemo(
     () => ({
       contributions: {
-        apps: _getContributionPointConfig('apps', [], currentProjectPlugins) as AppOptions[] | [],
+        apps: _getContributionPointConfig('apps', [], currentProjectExtensions) as AppOptions[] | [],
       },
       currentProjectId,
       currentProjectSchema: enhancedConfig.find((item) => item.projectId === currentProjectId)?.schema ?? [],
-      getContributionPointConfig: <T extends keyof Contributes>(
+      getContributionPointConfig: <T extends keyof StudioContributions>(
         contributionPoint: T,
         subPath: string[] = []
-      ): Contributes[T][] =>
-        _getContributionPointConfig(contributionPoint, subPath, currentProjectPlugins) as Contributes[T][],
-      plugins: allPlugins,
-      projects: globalFlattenedConfig.filter((item: ProjectOptions | PluginOptions) =>
+      ): StudioContributions[T][] =>
+        _getContributionPointConfig(contributionPoint, subPath, currentProjectExtensions) as StudioContributions[T][],
+      extensions: allExtensions,
+      projects: globalFlattenedConfig.filter((item: ProjectOptions | StudioExtension) =>
         hasProjectIdProperty(item)
       ) as ProjectOptions[],
     }),
-    [allPlugins, currentProjectId, currentProjectPlugins, enhancedConfig, globalFlattenedConfig]
+    [allExtensions, currentProjectId, currentProjectExtensions, enhancedConfig, globalFlattenedConfig]
   );
 
   return <ConfigContext.Provider value={globalConfig}>{children}</ConfigContext.Provider>;
@@ -119,13 +121,13 @@ export function useConfig(): ConfigContext {
 
 function flattenConfigByProperty(
   property: string[],
-  config: (ProjectOptions | PluginOptions)[]
-): (ProjectOptions | PluginOptions)[] | [] {
+  config: (ProjectOptions | StudioExtension)[]
+): (ProjectOptions | StudioExtension)[] | [] {
   if (!Array.isArray(config)) {
     return [config];
   }
 
-  return config.reduce<(ProjectOptions | PluginOptions)[]>((acc, curr) => {
+  return config.reduce<(ProjectOptions | StudioExtension)[]>((acc, curr) => {
     if (path(property, curr)) {
       return [...acc, curr, ...flattenConfigByProperty(property, path(property, curr) ?? [])];
     }
@@ -134,20 +136,22 @@ function flattenConfigByProperty(
   }, []);
 }
 
-function _getContributionPointConfig<T extends keyof Contributes>(
+function _getContributionPointConfig<T extends keyof StudioContributions>(
   contributionPoint: T,
   subPath: string[] = [],
-  config: PluginOptions[]
-): Contributes[T] {
+  config: StudioExtension[]
+): StudioContributions[T] {
   const pathArray = ['contributes', contributionPoint, ...subPath];
 
-  return flattenConfigByProperty(pathArray.flat(), config).filter((item) => has('component', item)) as Contributes[T];
+  return flattenConfigByProperty(pathArray.flat(), config).filter((item) =>
+    has('component', item)
+  ) as StudioContributions[T];
 }
 
 export function getApps(config: ProjectOptions[]): AppOptions[] | [] {
-  const flattenedConfig = flattenConfigByProperty(['plugins'], config);
-  const plugins = flattenedConfig.filter(
-    (item: ProjectOptions | PluginOptions) => !hasProjectIdProperty(item) && hasContributesProperty(item)
-  ) as PluginOptions[];
-  return _getContributionPointConfig('apps', [], plugins) as AppOptions[] | [];
+  const flattenedConfig = flattenConfigByProperty(['extensions'], config);
+  const extensions = flattenedConfig.filter(
+    (item: ProjectOptions | StudioExtension) => !hasProjectIdProperty(item) && hasContributesProperty(item)
+  ) as StudioExtension[];
+  return _getContributionPointConfig('apps', [], extensions) as AppOptions[] | [];
 }

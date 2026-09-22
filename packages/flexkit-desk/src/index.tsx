@@ -1,12 +1,12 @@
 import { Layout as LayoutIcon } from 'lucide-react';
-import type { PluginOptions } from '@flexkit/studio';
+import type { StudioExtension } from '@flexkit/studio';
 import { Root } from './root';
 import { List } from './list';
 import { EditEntity } from './edit-entity';
 
-export function Desk(): PluginOptions {
+export function Desk(): StudioExtension {
   return {
-    name: 'flexkit.desk',
+    id: 'flexkit.desk',
     contributes: {
       apps: [
         {
@@ -21,7 +21,7 @@ export function Desk(): PluginOptions {
               children: [
                 {
                   path: 'edit/:id',
-                  component: <EditEntity />, // Not used, left here as an example of how to nest routes in plugins
+                  component: <EditEntity />, // Not used, left here as an example of how to nest routes in extensions
                 },
               ],
             },
