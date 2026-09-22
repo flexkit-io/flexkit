@@ -1,5 +1,19 @@
 # @flexkit/desk
 
+## 0.0.34
+
+### Patch Changes
+
+- 5774b96: Rename the Studio composition API to extensions and update all official extension factories, examples, and package documentation.
+
+  This is a breaking API change: use `extensions` for project and nested configuration, replace the former composition type with `StudioExtension`, and supply a machine-readable `id` and required `contributes` object. The optional `name` is a display label. Export `StudioContributions` and the new `defineExtension` helper without compatibility aliases.
+
+  Add the `@flexkit/ai` README with installation, configuration, and an overview of AI workflows, custom tools, and skills.
+
+- Updated dependencies [bb111a6]
+- Updated dependencies [5774b96]
+  - @flexkit/studio@0.0.34
+
 ## 0.0.33
 
 ### Patch Changes
