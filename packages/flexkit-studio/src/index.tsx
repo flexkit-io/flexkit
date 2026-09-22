@@ -13,13 +13,21 @@ export { SchemaError } from './core/error/schema-error';
 export { useGraphQLError } from './graphql-client/graphql-context';
 export { useSearch } from './core/use-search';
 export { defineConfig } from './core/config/define-config';
+export { defineExtension } from './core/config/define-extension';
 export { defineEntity } from './core/config/define-entity';
 export { canAccessSpaces, filterAttributesForSpaces, filterEntitiesForSpaces } from './core/spaces';
 export { canMutateData, useCanMutate } from './core/permissions';
 export { ALL_FIELDS_GROUP, ALL_FIELDS_GROUP_NAME } from './core/field-groups';
 
 // Core types
-export type { AppOptions, FormFieldProps, LogoProps, PluginOptions, SingleProject } from './core/config/types';
+export type {
+  AppOptions,
+  FormFieldProps,
+  LogoProps,
+  StudioExtension,
+  StudioContributions,
+  SingleProject,
+} from './core/config/types';
 export type {
   Attribute,
   ConditionalFieldContext,

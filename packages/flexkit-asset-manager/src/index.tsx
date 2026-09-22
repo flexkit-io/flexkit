@@ -1,11 +1,11 @@
 import { FileStack as FileStackIcon } from 'lucide-react';
-import type { PluginOptions } from '@flexkit/studio';
+import type { StudioExtension } from '@flexkit/studio';
 import { Asset } from './data-grid/preview-components/asset';
 import { Root } from './root';
 
-export function AssetManager(): PluginOptions {
+export function AssetManager(): StudioExtension {
   return {
-    name: 'flexkit.asset-manager',
+    id: 'flexkit.asset-manager',
     contributes: {
       apps: [
         {

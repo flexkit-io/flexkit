@@ -15,7 +15,7 @@
 
 Flexkit is an AI-native platform for building custom business applications. It combines a flexible graph-based data model, a powerful GraphQL API, integrated asset management, and AI capabilities that can understand, query, and automate your data.
 
-**The Asset Manager is a Studio plugin that provides a first-class interface for managing digital assets such as images, documents, PDFs, and other files within your Flexkit projects.**
+**`@flexkit/asset-manager` is an official Flexkit Studio extension. It provides an interface for managing digital assets such as images, documents, PDFs, and other files within your Flexkit projects.**
 
 It allows your team to upload, browse, organize, and relate assets to entities defined in your schema, making assets a natural part of the same graph-based data model used for the rest of your business data.
 
@@ -39,7 +39,7 @@ import { defineConfig } from '@flexkit/studio';
 import { AssetManager } from '@flexkit/asset-manager';
 
 export default defineConfig({
-  plugins: [AssetManager()],
+  extensions: [AssetManager()],
 });
 ```
 

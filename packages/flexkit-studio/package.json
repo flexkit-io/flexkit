@@ -63,6 +63,8 @@
     "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts src/tools.ts --format esm --dts --external react --external react-dom --no-config",
     "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch=always & tsup --config tsup.config.ts --watch & tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts src/tools.ts --format esm --dts --external react --external react-dom --no-config --watch",
     "lint": "eslint \"src/**/*.ts*\"",
+    "test:extensions": "tsup --config tests/tsup.config.ts && node --test build/tests/extensions.test.js",
+    "test:extensions:types": "tsc --noEmit --skipLibCheck --strict --moduleResolution bundler --module esnext --target es2022 --jsx react-jsx tests/extensions.types.ts",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "ui:add": "pnpm dlx shadcn@latest add"
   },

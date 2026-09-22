@@ -249,7 +249,7 @@
 
 ### Patch Changes
 
-- 526357c: Unbundle the Studio core from the plugins. Now each package is published separately to NPM.
+- 526357c: Unbundle the Studio core from the extensions. Now each package is published separately to NPM.
 - Updated dependencies [526357c]
   - @flexkit/studio@0.0.5
 
@@ -263,7 +263,7 @@
 
 ### Patch Changes
 
-- d2693d1: Refactor dependency bundling to include Flexkit's core and plugins
+- d2693d1: Refactor dependency bundling to include Flexkit's core and extensions
   Upgrade @apollo/client to v4.x
 - Updated dependencies [d2693d1]
   - @flexkit/core@0.0.3

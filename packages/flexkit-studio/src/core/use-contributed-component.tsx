@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import type { ComponentType, LazyExoticComponent } from 'react';
 import { useConfig } from './config/config-context';
-import { PluginOptions } from './config/types';
+import type { StudioContributions } from './config/types';
 import type { LogoProps, ProjectSelectorProps, SearchProps, UserNavProps } from './config/types';
 import type { SelectOptions } from './types';
 import type { FormFieldParams } from '../form/types';
@@ -67,7 +67,7 @@ export function useContributedComponent<T extends keyof ContributionPointMap>(
   const [section, ...pathParts] = contributionPoint.split('.');
   const defaultComponent = contributionPointMap[contributionPoint];
   const contributionPointConfig = getContributionPointConfig(
-    section as keyof PluginOptions['contributes'],
+    section as keyof StudioContributions,
     pathParts
   ) as unknown as { component: ContributionPointMap[T] }[];
 
