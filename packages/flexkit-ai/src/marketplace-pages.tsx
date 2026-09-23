@@ -1,6 +1,6 @@
 import { useMemo, useState, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import Markdown from 'react-markdown';
 import { useConfig } from '@flexkit/studio';
 import {
@@ -205,6 +205,7 @@ export function PluginDetailPage(): JSX.Element {
     base && pluginId ? `${base}/plugins/${pluginId}` : null,
     fetcher
   );
+  const { mutate: revalidateKey } = useSWRConfig();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [googleSelection, setGoogleSelection] = useState<string[]>([]);
@@ -244,7 +245,7 @@ export function PluginDetailPage(): JSX.Element {
     <main className="fk:flex fk:min-h-0 fk:flex-1 fk:flex-col fk:overflow-auto">
       <header className="fk:flex fk:items-center fk:gap-3 fk:border-b fk:p-4">
         <SidebarTrigger />
-        <Button variant="ghost" size="sm" onClick={() => navigate('..')}>
+        <Button variant="ghost" size="sm" onClick={() => navigate('..', { relative: 'path' })}>
           <ArrowLeft />
           Marketplace
         </Button>
@@ -382,7 +383,12 @@ export function PluginDetailPage(): JSX.Element {
                         size="sm"
                         variant="ghost"
                         disabled={busy}
-                        onClick={() => void perform(() => api.refreshPluginTools(connection.id))}
+                        onClick={() =>
+                          void perform(async () => {
+                            await api.refreshPluginTools(connection.id);
+                            await revalidateKey(`${base}/plugin-connections/${connection.id}/tools`);
+                          })
+                        }
                       >
                         <RefreshCw />
                         Refresh
@@ -414,7 +420,10 @@ export function PluginDetailPage(): JSX.Element {
             <ul>
               {plugin.usedBy.map((automation) => (
                 <li key={automation.id}>
-                  <Button variant="link" onClick={() => navigate(`../../automations/${automation.id}`)}>
+                  <Button
+                    variant="link"
+                    onClick={() => navigate(`../../automations/${automation.id}`, { relative: 'path' })}
+                  >
                     {automation.name}
                   </Button>
                 </li>
