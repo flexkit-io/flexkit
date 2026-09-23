@@ -28,6 +28,36 @@ import { createApiClient, fetcher } from './api';
 import { connectPluginPopup } from './plugin-oauth';
 import type { Marketplace, MarketplacePlugin, PluginDetail, PluginScope, PluginTools } from './plugin-types';
 
+function httpsCatalogUrl(value: string): string | null {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') {
+    return null;
+  }
+
+  return url.href;
+}
+
+function catalogMarkdownUrl(value: string): string {
+  const absolute = httpsCatalogUrl(value);
+
+  if (absolute) {
+    return absolute;
+  }
+
+  if (!value || /[\s:\\]/.test(value) || value.startsWith('//')) {
+    return '';
+  }
+
+  return value;
+}
+
 function useMarketplaceApi() {
   const { currentProjectId } = useConfig();
   const api = useMemo(() => (currentProjectId ? createApiClient(currentProjectId) : null), [currentProjectId]);
@@ -210,6 +240,7 @@ export function PluginDetailPage(): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [googleSelection, setGoogleSelection] = useState<string[]>([]);
   const plugin = data?.plugin;
+  const sourceUrl = plugin ? httpsCatalogUrl(plugin.sourceUrl) : null;
   const perform = async (action: () => Promise<unknown>) => {
     setBusy(true);
 
@@ -262,15 +293,17 @@ export function PluginDetailPage(): JSX.Element {
             <span className="fk:text-sm">
               Version {plugin.version ?? 'unversioned'} · {new Date(plugin.updatedAt).toLocaleDateString()}
             </span>
-            <a
-              href={plugin.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="fk:inline-flex fk:items-center fk:gap-1 fk:text-sm fk:underline"
-            >
-              View source
-              <ExternalLink className="fk:size-3" />
-            </a>
+            {sourceUrl ? (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fk:inline-flex fk:items-center fk:gap-1 fk:text-sm fk:underline"
+              >
+                View source
+                <ExternalLink className="fk:size-3" />
+              </a>
+            ) : null}
           </div>
         </section>
         {plugin.preview ? (
@@ -479,7 +512,7 @@ export function PluginDetailPage(): JSX.Element {
           </section>
         ) : null}
         <section className="fk:prose fk:prose-sm">
-          <Markdown>{data.changelog || 'No changelog available.'}</Markdown>
+          <Markdown urlTransform={catalogMarkdownUrl}>{data.changelog || 'No changelog available.'}</Markdown>
         </section>
       </div>
     </main>

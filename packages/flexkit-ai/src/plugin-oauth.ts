@@ -1,5 +1,47 @@
-import type { ApiClient } from './api';
+import { getPlatformOrigin, type ApiClient } from './api';
 import type { PluginScope } from './plugin-types';
+
+const OAUTH_START_PATH = '/plugins/oauth/start';
+
+function httpsUrl(value: string): URL | null {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') {
+    return null;
+  }
+
+  return url;
+}
+
+/** Popup navigation and postMessage stay on the platform OAuth start page. */
+function trustedPluginOAuthTargets(
+  authorizeUrl: string,
+  completionOrigin: string
+): { href: string; origin: string } | null {
+  const origin = getPlatformOrigin();
+  const authorize = httpsUrl(authorizeUrl);
+  const completion = httpsUrl(completionOrigin);
+
+  if (!authorize || !completion) {
+    return null;
+  }
+
+  if (authorize.origin !== origin || authorize.pathname !== OAUTH_START_PATH) {
+    return null;
+  }
+
+  if (completion.origin !== origin || completion.pathname !== '/') {
+    return null;
+  }
+
+  return { href: authorize.href, origin };
+}
 
 /** Must be called directly from the click handler so browsers allow the popup. */
 export async function connectPluginPopup(api: ApiClient, pluginIds: string[], scope: PluginScope): Promise<void> {
@@ -18,7 +60,14 @@ export async function connectPluginPopup(api: ApiClient, pluginIds: string[], sc
     throw error;
   }
 
-  const expectedOrigin = new URL(transaction.completionOrigin).origin;
+  const targets = trustedPluginOAuthTargets(transaction.authorizeUrl, transaction.completionOrigin);
+
+  if (!targets) {
+    popup.close();
+    throw new Error('Connection could not be started.');
+  }
+
+  const expectedOrigin = targets.origin;
 
   await new Promise<void>((resolve, reject) => {
     let polling = false;
@@ -105,6 +154,6 @@ export async function connectPluginPopup(api: ApiClient, pluginIds: string[], sc
     }, 2000);
     const timeout = window.setTimeout(() => finish(new Error('Connection timed out. Please try again.')), 600_000);
     window.addEventListener('message', onMessage);
-    popup.location.href = transaction.authorizeUrl;
+    popup.location.href = targets.href;
   });
 }

@@ -102,6 +102,11 @@ function getApiRootDomain(): string {
   return isDevHost ? 'flexkit.test' : 'flexkit.io';
 }
 
+/** Origin that hosts plugin OAuth start and completion. */
+export function getPlatformOrigin(): string {
+  return `https://${getApiRootDomain()}`;
+}
+
 /** Public URL an external system calls to fire a webhook trigger. */
 export function getWebhookTriggerUrl(projectId: string, token: string): string {
   return `https://${projectId}.api.${getApiRootDomain()}/automations/webhook/${encodeURIComponent(token)}`;
