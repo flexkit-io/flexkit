@@ -1,3 +1,4 @@
+import { PluginUsagePicker } from './plugin-usage-picker';
 import type { FormEvent, JSX } from 'react';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
@@ -145,6 +146,7 @@ interface FormValidation {
   instructions: string;
   model: string;
   name: string;
+  plugins: string;
   space: string;
   toolErrors: { [provider: string]: string };
   triggerErrors: { [triggerKey: string]: string };
@@ -155,10 +157,15 @@ function isFormValidationClean(validation: FormValidation): boolean {
     !validation.instructions &&
     !validation.model &&
     !validation.name &&
+    !validation.plugins &&
     !validation.space &&
     Object.keys(validation.toolErrors).length === 0 &&
     Object.keys(validation.triggerErrors).length === 0
   );
+}
+
+function usesEnabledPersonalPlugin(usages: AutomationToolConfigInput[]): boolean {
+  return usages.some((usage) => usage.enabled && usage.connectionMode === 'personal');
 }
 
 function FieldError({ id, message }: { id?: string; message: string }): JSX.Element | null {
@@ -1056,6 +1063,7 @@ async function fetchSkillOrNull(projectId: string, skillId: string): Promise<Ski
 }
 
 export function AutomationForm({ api, automation, mode, onSaved, projectId }: AutomationFormProps): JSX.Element {
+  const [pluginUsages, setPluginUsages] = useState<AutomationToolConfigInput[]>((automation?.toolConfigs ?? []).filter((entry) => !['slack', 'teams'].includes(entry.pluginId)));
   const [name, setName] = useState(automation?.name ?? '');
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
   const [enabled, setEnabled] = useState(automation?.enabled ?? false);
@@ -1207,6 +1215,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       return next.length === current.length ? current : next;
     });
   }, [resolvedAttachedSkills, skillsById, skillsData, spaceId, unresolvedAttachedSkillIds, visibility]);
+  const personalPluginInUse = usesEnabledPersonalPlugin(pluginUsages);
   const validation = useMemo<FormValidation>(() => {
     const triggerErrors: { [triggerKey: string]: string } = {};
 
@@ -1239,11 +1248,15 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       instructions: instructions.trim() ? '' : 'Instructions are required',
       model: effectiveModelId ? '' : 'Select a model',
       name: name.trim() ? '' : 'Name is required',
+      plugins:
+        personalPluginInUse && visibility !== 'personal'
+          ? 'Personal plugin connections can only be used by a personal automation.'
+          : '',
       space: visibility === 'space' && !spaceId ? 'Select a space' : '',
       toolErrors,
       triggerErrors,
     };
-  }, [effectiveModelId, instructions, name, spaceId, toolsFormData, triggers, visibility]);
+  }, [effectiveModelId, instructions, name, personalPluginInUse, spaceId, toolsFormData, triggers, visibility]);
   const isValid = isFormValidationClean(validation);
   const showNameError = touched.name && Boolean(validation.name);
   const showInstructionsError = touched.instructions && Boolean(validation.instructions);
@@ -1400,7 +1413,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       return {
         channels: providerTools?.channels ?? [],
         enabled: providerTools?.enabled ?? false,
-        provider,
+        pluginId: provider,
+        connectionMode: 'project',
+        connectionId: null,
+        selectedTools: [],
+        deliveryEnabled: providerTools?.enabled ?? false,
       };
     });
     const input: AutomationInput = {
@@ -1412,7 +1429,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       name,
       skillIds,
       spaceId: visibility === 'space' ? spaceId : null,
-      toolConfigs,
+      toolConfigs: [...toolConfigs, ...pluginUsages],
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
       visibility,
     };
@@ -1488,6 +1505,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           <Select
             value={visibility}
             onValueChange={(value) => {
+              if (personalPluginInUse && value !== 'personal') {
+                return;
+              }
+
               setVisibility(value === 'space' || value === 'personal' ? value : 'project');
 
               if (value !== 'space') {
@@ -1499,8 +1520,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start">
-              <SelectItem value="project">Project</SelectItem>
-              <SelectItem disabled={selectableSpaces.length === 0} value="space">
+              <SelectItem disabled={personalPluginInUse} value="project">
+                Project
+              </SelectItem>
+              <SelectItem disabled={personalPluginInUse || selectableSpaces.length === 0} value="space">
                 Space
               </SelectItem>
               <SelectItem value="personal">Personal</SelectItem>
@@ -1526,6 +1549,12 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             </Select>
           ) : null}
         </div>
+        {personalPluginInUse ? (
+          <p className="fk:text-xs fk:text-muted-foreground">
+            This automation uses a personal plugin connection, so project and space visibility are unavailable.
+          </p>
+        ) : null}
+        {validation.plugins ? <FieldError message={validation.plugins} /> : null}
         {visibility === 'space' && validation.space ? <FieldError message={validation.space} /> : null}
       </div>
 
@@ -1831,6 +1860,15 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             ) : null}
           </div>
 
+          <PluginUsagePicker projectId={projectId} value={pluginUsages} disabled={!canMutate} onChange={(usages) => {
+            setPluginUsages(usages);
+
+            if (usesEnabledPersonalPlugin(usages)) {
+              setVisibility('personal');
+              setSpaceId(null);
+            }
+          }} />
+
           {toolsFormData ? (
             TOOL_PROVIDERS.map((provider) => {
               const tool = toolsFormData[provider];
@@ -1883,7 +1921,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                             return;
                           }
 
-                          window.open(api.getIntegrationManageUrl(teamId), '_blank', 'noopener,noreferrer');
+                          window.open(window.location.pathname.replace(/\/ai\/.*$/, '/ai/marketplace'), '_blank', 'noopener,noreferrer');
                         }}
                       >
                         Manage

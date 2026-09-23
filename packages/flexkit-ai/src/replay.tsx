@@ -1,3 +1,4 @@
+import { Link, useLocation } from 'react-router-dom';
 import type { JSX } from 'react';
 import type { ReasoningUIPart, TextUIPart, UIMessage, UIMessageChunk } from 'ai';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -44,6 +45,7 @@ interface ReplayError {
 }
 
 export interface ReplayDataParts {
+  'plugin-connection': { pluginId: string };
   [key: string]: unknown;
   'bulk-graphql-action': {
     changedItems?: number;
@@ -805,6 +807,12 @@ export function MessagePart({
     return <RunSummaryPart message={getPartData<ReplayDataParts['run-summary']>(part)} />;
   }
 
+  if (part.type === 'data-plugin-connection') {
+    const data = getPartData<ReplayDataParts['plugin-connection']>(part);
+
+    return <PluginConnectionPart pluginId={data.pluginId} />;
+  }
+
   if (part.type === 'data-turn-error') {
     const data = getPartData<ReplayDataParts['turn-error']>(part);
 
@@ -1358,4 +1366,18 @@ function getArtifactLabel(message: ReplayDataParts['run-artifact']): string {
   }
 
   return 'Artifact';
+}
+
+function PluginConnectionPart({ pluginId }: { pluginId: string }): JSX.Element {
+  const { pathname } = useLocation();
+  const [base] = pathname.split('/ai/');
+
+  return (
+    <ToolMessage>
+      <p className="fk:text-sm">Connect {pluginId} to use it in this conversation.</p>
+      <Button asChild size="sm" variant="outline">
+        <Link to={`${base}/ai/marketplace/${encodeURIComponent(pluginId)}`}>Connect {pluginId}</Link>
+      </Button>
+    </ToolMessage>
+  );
 }

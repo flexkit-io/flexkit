@@ -4,7 +4,7 @@ export type AutomationTriggerEvent = 'create' | 'update' | 'delete';
 export type AutomationToolProvider = 'slack' | 'teams';
 export type AutomationMutationPolicy = 'require_approval' | 'auto_approve';
 export type AutomationApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
-export type AutomationApprovalKind = 'graphql' | 'bulk';
+export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin';
 export type AutomationApprovalPreviewKind = 'create' | 'update' | 'delete' | 'unknown';
 export type AutomationVisibility = 'project' | 'space' | 'personal';
 
@@ -60,7 +60,7 @@ export interface Skill {
   id: string;
   name: string;
   projectId: string;
-  source: 'code' | 'studio';
+  source: 'code' | 'studio' | 'plugin';
   spaceId: string | null;
   updatedAt: string;
   visibility: AutomationVisibility;
@@ -82,6 +82,7 @@ export interface SkillInput {
 }
 
 export interface Automation {
+  toolConfigs?: AutomationToolConfigInput[];
   createdAt: string | null;
   createdBy?: string;
   /** Customer tool names attached to this automation. */
@@ -239,9 +240,13 @@ export interface AutomationArtifact {
 }
 
 export interface AutomationToolConfigInput {
-  channels: AutomationToolChannel[];
+  pluginId: string;
   enabled: boolean;
-  provider: AutomationToolProvider;
+  connectionMode: 'project' | 'personal';
+  connectionId: string | null;
+  selectedTools: string[];
+  deliveryEnabled: boolean;
+  channels: AutomationToolChannel[];
 }
 
 export interface AutomationInput {

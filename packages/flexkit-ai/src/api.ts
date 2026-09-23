@@ -1,3 +1,4 @@
+import type { PluginScope, PluginTools } from './plugin-types';
 import { put } from '@vercel/blob/client';
 import { convertRecordedAudioToPcm } from './agent/dictation';
 import type {
@@ -44,6 +45,13 @@ export class AgentUploadError extends Error {
 }
 
 export interface ApiClient {
+  connectPlugins: (_input: { pluginIds: string[]; scope: PluginScope; studioOrigin: string }) => Promise<{ transactionId: string; authorizeUrl: string; completionOrigin: string; launchTicket: string }>;
+  pluginOAuthStatus: (_id: string) => Promise<{ id: string; status: 'pending' | 'exchanging' | 'complete' | 'failed'; expires_at: string }>;
+  disconnectPlugin: (_id: string) => Promise<{ success: boolean }>;
+  installPlugin: (_id: string, _input?: { versionId?: string; updateMode?: 'auto' | 'pinned' }) => Promise<unknown>;
+  setPluginPolicy: (_id: string, _input: { enabled: boolean; allowPersonal: boolean }) => Promise<{ success: boolean }>;
+  refreshPluginTools: (_id: string) => Promise<PluginTools>;
+
   cancelRun: (_runId: string) => Promise<MutationResult>;
   createAgentChat: (_input?: { modelId?: string | null }) => Promise<{ chat: AgentChat }>;
   deleteAgentChat: (_chatId: string) => Promise<{ success: boolean }>;
@@ -63,7 +71,6 @@ export interface ApiClient {
   deleteAutomation: (_automationId: string) => Promise<MutationResult>;
   deleteSkill: (_skillId: string) => Promise<MutationResult>;
   getArtifactUrl: (_artifactId: string, _options?: { download?: boolean }) => string;
-  getIntegrationManageUrl: (_teamId: string) => string;
   getRunArtifacts: (_workflowRunId: string) => Promise<AutomationArtifact[]>;
   getStreamUrl: (_workflowRunId: string) => string;
   listChannels: (_provider: AutomationToolProvider) => Promise<{
@@ -79,23 +86,6 @@ export interface ApiClient {
   updateSkill: (_skillId: string, _input: SkillInput) => Promise<MutationResult & { skill?: Skill }>;
 }
 
-function getDashboardOrigin(): string {
-  if (typeof window === 'undefined') {
-    return 'https://flexkit.io';
-  }
-
-  const { hostname, protocol } = window.location;
-
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'https://flexkit.test';
-  }
-
-  if (hostname === 'flexkit.test' || hostname.endsWith('.flexkit.test')) {
-    return `${protocol}//flexkit.test`;
-  }
-
-  return 'https://flexkit.io';
-}
 
 function getApiRootDomain(): string {
   if (typeof window === 'undefined') {
@@ -110,6 +100,11 @@ function getApiRootDomain(): string {
     hostname.endsWith('.flexkit.test');
 
   return isDevHost ? 'flexkit.test' : 'flexkit.io';
+}
+
+/** Origin that hosts plugin OAuth start and completion. */
+export function getPlatformOrigin(): string {
+  return `https://${getApiRootDomain()}`;
 }
 
 /** Public URL an external system calls to fire a webhook trigger. */
@@ -144,6 +139,12 @@ export function createApiClient(projectId: string): ApiClient {
   }
 
   return {
+    connectPlugins: (input) => request(`${projectBasePath}/plugins/connect`, { method: 'POST', body: JSON.stringify(input) }),
+    pluginOAuthStatus: (id) => request(`${projectBasePath}/plugins/oauth-transactions/${encodeURIComponent(id)}`),
+    disconnectPlugin: (id) => request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    installPlugin: (id, input = {}) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/installation`, { method: 'PUT', body: JSON.stringify(input) }),
+    setPluginPolicy: (id, input) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/policy`, { method: 'PATCH', body: JSON.stringify(input) }),
+    refreshPluginTools: (id) => request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}/tools/refresh`, { method: 'POST' }),
     cancelRun: async (runId) =>
       request<MutationResult>(`${automationsBasePath}/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' }),
     createAgentChat: async (input) =>
@@ -274,14 +275,13 @@ export function createApiClient(projectId: string): ApiClient {
 
       return `${automationsBasePath}/artifacts/${encodeURIComponent(artifactId)}/content${suffix}`;
     },
-    getIntegrationManageUrl: (teamId) => `${getDashboardOrigin()}/dashboard/${teamId}/${projectId}/integrations`,
     getRunArtifacts: async (workflowRunId) =>
       request<{ artifacts: AutomationArtifact[] }>(
         `${automationsBasePath}/runs/${encodeURIComponent(workflowRunId)}/artifacts`
       ).then((response) => response.artifacts),
     getStreamUrl: (workflowRunId) => `${automationsBasePath}/runs/${encodeURIComponent(workflowRunId)}/stream`,
     listChannels: async (provider) => {
-      const response = await fetch(`${projectBasePath}/integrations/${provider}/channels`, {
+      const response = await fetch(`${projectBasePath}/plugins/${provider}/channels`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
