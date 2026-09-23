@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { BotIcon, GraduationCapIcon, HistoryIcon, InboxIcon, SearchIcon, SquarePenIcon, XIcon } from 'lucide-react';
+import { BotIcon, PlugIcon, GraduationCapIcon, HistoryIcon, InboxIcon, SearchIcon, SquarePenIcon, XIcon } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import { useConfig } from '@flexkit/studio';
@@ -106,6 +106,11 @@ export function AutomationsSidebar(): JSX.Element {
                   <GraduationCapIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
                   <span>Skills</span>
                 </NavLinkCompat>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname.includes('/ai/marketplace')} tooltip="Marketplace">
+                <NavLinkCompat to="marketplace"><PlugIcon className="fk:size-4" /><span>Marketplace</span></NavLinkCompat>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

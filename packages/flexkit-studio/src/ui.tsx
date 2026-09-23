@@ -150,3 +150,5 @@ export * from './ui/ai-elements/sources';
 export * from './ui/ai-elements/speech-input';
 export * from './ui/ai-elements/suggestion';
 export * from './ui/ai-elements/tool';
+
+export { Alert, AlertTitle, AlertDescription } from './ui/primitives/alert';

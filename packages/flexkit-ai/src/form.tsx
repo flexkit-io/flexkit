@@ -1,3 +1,4 @@
+import { PluginUsagePicker } from './plugin-usage-picker';
 import type { FormEvent, JSX } from 'react';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
@@ -1056,6 +1057,7 @@ async function fetchSkillOrNull(projectId: string, skillId: string): Promise<Ski
 }
 
 export function AutomationForm({ api, automation, mode, onSaved, projectId }: AutomationFormProps): JSX.Element {
+  const [pluginUsages, setPluginUsages] = useState<AutomationToolConfigInput[]>((automation?.toolConfigs ?? []).filter((entry) => !['slack', 'teams'].includes(entry.pluginId)));
   const [name, setName] = useState(automation?.name ?? '');
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
   const [enabled, setEnabled] = useState(automation?.enabled ?? false);
@@ -1400,7 +1402,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       return {
         channels: providerTools?.channels ?? [],
         enabled: providerTools?.enabled ?? false,
-        provider,
+        pluginId: provider,
+        connectionMode: 'project',
+        connectionId: null,
+        selectedTools: [],
+        deliveryEnabled: providerTools?.enabled ?? false,
       };
     });
     const input: AutomationInput = {
@@ -1412,7 +1418,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       name,
       skillIds,
       spaceId: visibility === 'space' ? spaceId : null,
-      toolConfigs,
+      toolConfigs: [...toolConfigs, ...pluginUsages],
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
       visibility,
     };
@@ -1831,6 +1837,15 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             ) : null}
           </div>
 
+          <PluginUsagePicker projectId={projectId} value={pluginUsages} disabled={!canMutate} onChange={(usages) => {
+            setPluginUsages(usages);
+
+            if (usages.some((usage) => usage.enabled && usage.connectionMode === 'personal')) {
+              setVisibility('personal');
+              setSpaceId(null);
+            }
+          }} />
+
           {toolsFormData ? (
             TOOL_PROVIDERS.map((provider) => {
               const tool = toolsFormData[provider];
@@ -1883,7 +1898,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                             return;
                           }
 
-                          window.open(api.getIntegrationManageUrl(teamId), '_blank', 'noopener,noreferrer');
+                          window.open(window.location.pathname.replace(/\/ai\/.*$/, '/ai/marketplace'), '_blank', 'noopener,noreferrer');
                         }}
                       >
                         Manage

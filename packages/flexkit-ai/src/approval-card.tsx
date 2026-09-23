@@ -173,11 +173,11 @@ function OperationPreviewTable({ operation }: { operation: AutomationApprovalPre
   );
 }
 
-function OperationDocuments({ operations }: { operations: AutomationApprovalOperation[] }): JSX.Element {
+function OperationDocuments({ operations, plugin }: { operations: AutomationApprovalOperation[]; plugin: boolean }): JSX.Element {
   return (
-    <details className="fk:rounded-md fk:border fk:border-border">
+    <details open={plugin} className="fk:rounded-md fk:border fk:border-border">
       <summary className="fk:cursor-pointer fk:px-3 fk:py-2 fk:text-xs fk:font-medium fk:text-muted-foreground">
-        GraphQL documents ({operations.length})
+        {plugin ? 'Plugin tool and arguments' : `GraphQL documents (${operations.length})`}
       </summary>
       <div className="fk:space-y-3 fk:border-t fk:border-border fk:p-3">
         {operations.map((operation, index) => (
@@ -477,11 +477,11 @@ function ApprovalCardBody({
         </div>
       ) : (
         <div className="fk:rounded-md fk:border fk:border-dashed fk:p-3 fk:text-xs fk:text-muted-foreground">
-          No structured preview is available for this proposal. Review the raw GraphQL documents below.
+          {approval.kind === 'plugin' ? 'Review the account, tool, and arguments before allowing this external call.' : 'No structured preview is available for this proposal. Review the raw GraphQL documents below.'}
         </div>
       )}
 
-      <OperationDocuments operations={approval.operations} />
+      <OperationDocuments operations={approval.operations} plugin={approval.kind === 'plugin'} />
 
       {approval.reason ? (
         <div className="fk:text-sm">

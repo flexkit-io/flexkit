@@ -1,3 +1,4 @@
+import { MarketplacePage, PluginDetailPage } from './marketplace-pages';
 import { Bot as BotIcon } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import type { StudioExtension } from '@flexkit/studio';
@@ -29,6 +30,8 @@ export function AI(): StudioExtension {
           icon: <BotIcon strokeWidth={1.5} />,
           name: 'ai',
           routes: [
+            { path: 'marketplace', component: <MarketplacePage /> },
+            { path: 'marketplace/:pluginId', component: <PluginDetailPage /> },
             {
               component: <NavigateCompat replace to="agent" />,
               path: '',

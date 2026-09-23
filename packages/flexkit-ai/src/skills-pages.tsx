@@ -331,7 +331,7 @@ export function SkillsPage(): JSX.Element {
                 {formatDistance(new Date(skill.updatedAt), new Date(), { addSuffix: true })}
               </TableCell>
               <TableCell className="fk:text-right">
-                {skill.source !== 'code' ? (
+                {skill.source === 'studio' ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -874,18 +874,51 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
 }
 
 function ReadOnlyCodeSkill({
+  projectId,
   skill,
   spaceLabelById,
 }: {
   skill: Skill;
+  projectId: string;
   spaceLabelById: Map<string, string>;
 }): JSX.Element {
+  const canMutate = useCanMutate();
+  const navigate = useNavigate();
+  const [forking, setForking] = useState(false);
+  const [forkError, setForkError] = useState('');
+
+  async function fork(): Promise<void> {
+    setForking(true);
+    setForkError('');
+    let response: Response;
+
+    try {
+      response = await fetch(`/api/flexkit/${projectId}/skills/${skill.id}/fork`, { method: 'POST', credentials: 'include' });
+    } catch {
+      setForkError('Unable to create a copy. Try again.');
+      setForking(false);
+
+      return;
+    }
+
+    setForking(false);
+
+    if (!response.ok) {
+      setForkError('Unable to create a copy. Check your permissions.');
+
+      return;
+    }
+
+    navigate('..', { relative: 'path' });
+  }
+
   return (
     <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:overflow-hidden fk:gap-3 fk:pb-3">
       <SkillPageHeader
         actions={
           <div className="fk:flex fk:items-center fk:gap-2">
-            <Badge variant="secondary">Code</Badge>
+            <Badge variant="secondary">{skill.source === 'plugin' ? 'Plugin' : 'Code'}</Badge>
+            {skill.source === 'plugin' && <Button type="button" disabled={forking || !canMutate} onClick={() => void fork()}>Edit a copy</Button>}
           </div>
         }
         title={skill.name}
@@ -893,7 +926,7 @@ function ReadOnlyCodeSkill({
       <div className="fk:shrink-0 fk:rounded-md fk:border fk:bg-muted/30 fk:px-3 fk:py-2">
         <p className="fk:text-sm fk:font-medium">Version-controlled skill</p>
         <p className="fk:text-sm fk:text-muted-foreground">
-          Edit this skill in your repository and re-sync it from the Custom Tools settings.
+          {skill.source === 'plugin' ? 'This skill is managed by its plugin. Edit a copy to create a personal Studio skill.' : 'Edit this skill in your repository and re-sync it from the Custom Tools settings.'}
         </p>
       </div>
       <div className="fk:grid fk:min-w-0 fk:shrink-0 fk:gap-3 fk:lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
@@ -910,6 +943,7 @@ function ReadOnlyCodeSkill({
           <Badge variant="outline">{getSkillVisibilityLabel(skill, spaceLabelById)}</Badge>
         </div>
       </div>
+      {forkError && <p role="alert">{forkError}</p>}
       <SkillContentPane content={skill.content} readOnly />
     </div>
   );
@@ -951,8 +985,8 @@ export function SkillDetailPage(): JSX.Element {
 
   const spaceLabelById = new Map((spacesData?.spaces ?? []).map((space) => [space.id, space.label]));
 
-  if (data.skill.source === 'code') {
-    return <ReadOnlyCodeSkill skill={data.skill} spaceLabelById={spaceLabelById} />;
+  if (data.skill.source !== 'studio') {
+    return <ReadOnlyCodeSkill projectId={projectId} skill={data.skill} spaceLabelById={spaceLabelById} />;
   }
 
   return (
