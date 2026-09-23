@@ -182,7 +182,6 @@ export function MarketplacePage(): JSX.Element {
               <div className="fk:flex fk:items-center fk:gap-3">
                 <img src={plugin.logoUrl} alt="" className="fk:size-10 fk:rounded-lg" />
                 <span className="fk:text-lg fk:font-semibold">{plugin.name}</span>
-                {plugin.preview ? <Badge variant="secondary">Preview</Badge> : null}
               </div>
               <p className="fk:flex-1 fk:text-sm fk:text-muted-foreground">{plugin.description}</p>
               <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
@@ -306,14 +305,6 @@ export function PluginDetailPage(): JSX.Element {
             ) : null}
           </div>
         </section>
-        {plugin.preview ? (
-          <Alert>
-            <AlertDescription>
-              This provider is in preview. Google plugins require an eligible Google Workspace Developer Preview
-              account.
-            </AlertDescription>
-          </Alert>
-        ) : null}
         {!plugin.enabled ? (
           <Alert>
             <AlertDescription>This plugin is disabled by project policy.</AlertDescription>
