@@ -40,6 +40,7 @@ import {
 } from '@flexkit/studio/ui';
 import { fetcher, paths, type ApiClient } from '../api';
 import {
+  ChatApprovalContext,
   MessagePart,
   MutationApprovalPart,
   RollingStatusText,
@@ -893,13 +894,15 @@ export function AgentChatPage(): JSX.Element {
         <div className="fk:flex fk:min-h-0 fk:flex-1 fk:gap-4">
           <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-3">
             {chatId ? (
-              <ChatConversation
-                api={chatApi}
-                chatId={chatId}
-                pendingMessage={visiblePendingMessage}
-                projectId={projectId}
-                resolveDetail={resolveDetail}
-              />
+              <ChatApprovalContext.Provider value>
+                <ChatConversation
+                  api={chatApi}
+                  chatId={chatId}
+                  pendingMessage={visiblePendingMessage}
+                  projectId={projectId}
+                  resolveDetail={resolveDetail}
+                />
+              </ChatApprovalContext.Provider>
             ) : visiblePendingMessage ? (
               <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
                 <ConversationContent className="fk:gap-0 fk:p-0">

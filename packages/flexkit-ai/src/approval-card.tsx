@@ -173,11 +173,19 @@ function OperationPreviewTable({ operation }: { operation: AutomationApprovalPre
   );
 }
 
-function OperationDocuments({ operations, plugin }: { operations: AutomationApprovalOperation[]; plugin: boolean }): JSX.Element {
+function OperationDocuments({
+  operations,
+  plugin,
+  chat,
+}: {
+  operations: AutomationApprovalOperation[];
+  plugin: boolean;
+  chat: boolean;
+}): JSX.Element {
   return (
-    <details open={plugin} className="fk:rounded-md fk:border fk:border-border">
+    <details className="fk:rounded-md fk:border fk:border-border">
       <summary className="fk:cursor-pointer fk:px-3 fk:py-2 fk:text-xs fk:font-medium fk:text-muted-foreground">
-        {plugin ? 'Plugin tool and arguments' : `GraphQL documents (${operations.length})`}
+        {chat ? 'Action details' : plugin ? 'Plugin tool and arguments' : `GraphQL documents (${operations.length})`}
       </summary>
       <div className="fk:space-y-3 fk:border-t fk:border-border fk:p-3">
         {operations.map((operation, index) => (
@@ -193,6 +201,42 @@ function OperationDocuments({ operations, plugin }: { operations: AutomationAppr
       </div>
     </details>
   );
+}
+
+function getChatPluginAction(
+  approval: AutomationApproval
+): { action: string; app: string; accountEmail?: string } | null {
+  if (approval.kind !== 'plugin') {
+    return null;
+  }
+
+  const toolPath = approval.operations[0]?.query.split('\n')[0]?.trim();
+  const segments = toolPath?.split('/');
+  const toolName = segments?.at(-1);
+  const pluginName = segments?.[0];
+
+  if (!toolName || !pluginName || segments?.length < 2) {
+    return null;
+  }
+
+  const action = toolName
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .toLowerCase();
+  const app = pluginName.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const accountEmail = approval.operations[0]?.query.match(/^Connection:.*?([^\s<>]+@[^\s<>]+)\s*$/m)?.[1];
+
+  return { action, app, accountEmail };
+}
+
+function getChatActionTitle(approval: AutomationApproval): string {
+  const pluginAction = getChatPluginAction(approval);
+
+  if (pluginAction) {
+    return `${pluginAction.action.charAt(0).toUpperCase()}${pluginAction.action.slice(1)} in ${pluginAction.app}`;
+  }
+
+  return approval.kind === 'plugin' ? 'Use a connected app' : approval.operationsSummary;
 }
 
 /** Fields the card syncs from parent props; ignores object identity from SWR. */
@@ -330,6 +374,7 @@ function useApprovalDecision({
 }
 
 function ApprovalDecisionActions({
+  askForRejectionReason,
   decide,
   isDeciding,
   isRejectDialogOpen,
@@ -339,6 +384,7 @@ function ApprovalDecisionActions({
   setRejectReason,
   variant,
 }: {
+  askForRejectionReason: boolean;
   decide: (_options: { approved: boolean; force?: boolean; reason?: string }) => void;
   isDeciding: boolean;
   isRejectDialogOpen: boolean;
@@ -370,8 +416,12 @@ function ApprovalDecisionActions({
           size={buttonSize}
           variant="outline"
           onClick={() => {
-            setRejectReason('');
-            setIsRejectDialogOpen(true);
+            if (askForRejectionReason) {
+              setRejectReason('');
+              setIsRejectDialogOpen(true);
+            } else {
+              decide({ approved: false });
+            }
           }}
         >
           <XIcon className="fk:size-4" />
@@ -379,55 +429,60 @@ function ApprovalDecisionActions({
         </Button>
       </div>
 
-      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject this proposal?</DialogTitle>
-            <DialogDescription>
-              The mutation will not be executed. The agent receives your reason and can adapt its plan.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            placeholder="Optional reason for the agent..."
-            value={rejectReason}
-            onChange={(event) => setRejectReason(event.target.value)}
-          />
-          <DialogFooter>
-            <Button disabled={isDeciding} size="sm" variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={isDeciding}
-              size="sm"
-              variant="destructive"
-              onClick={() => decide({ approved: false, reason: rejectReason.trim() || undefined })}
-            >
-              {isDeciding ? (
-                <LoaderCircle className="fk:size-4 fk:animate-spin" />
-              ) : (
-                <ArrowRightIcon className="fk:size-4" />
-              )}
-              Reject proposal
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {askForRejectionReason ? (
+        <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reject this proposal?</DialogTitle>
+              <DialogDescription>
+                The mutation will not be executed. The agent receives your reason and can adapt its plan.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
+              placeholder="Optional reason for the agent..."
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+            />
+            <DialogFooter>
+              <Button disabled={isDeciding} size="sm" variant="outline" onClick={() => setIsRejectDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={isDeciding}
+                size="sm"
+                variant="destructive"
+                onClick={() => decide({ approved: false, reason: rejectReason.trim() || undefined })}
+              >
+                {isDeciding ? (
+                  <LoaderCircle className="fk:size-4 fk:animate-spin" />
+                ) : (
+                  <ArrowRightIcon className="fk:size-4" />
+                )}
+                Reject proposal
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </>
   );
 }
 
 function ApprovalCardBody({
   approval,
+  chat,
   errorMessage,
   isPending,
   isStale,
 }: {
   approval: AutomationApproval;
+  chat: boolean;
   errorMessage: string;
   isPending: boolean;
   isStale: boolean;
 }): JSX.Element {
   const { preview } = approval;
+  const pluginAction = chat ? getChatPluginAction(approval) : null;
 
   return (
     // min-w-0 lets the card shrink inside flex/grid parents (e.g. DrawerModal)
@@ -436,7 +491,9 @@ function ApprovalCardBody({
     <div className="fk:min-w-0 fk:max-w-full fk:space-y-4">
       <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
         <ApprovalStatusBadge status={approval.status} />
-        <span className="fk:text-sm fk:font-medium">{approval.operationsSummary}</span>
+        <span className="fk:text-sm fk:font-medium">
+          {chat ? getChatActionTitle(approval) : approval.operationsSummary}
+        </span>
       </div>
       <div className="fk:text-xs fk:text-muted-foreground">
         {approval.automationName ? `${approval.automationName} · ` : ''}
@@ -477,11 +534,17 @@ function ApprovalCardBody({
         </div>
       ) : (
         <div className="fk:rounded-md fk:border fk:border-dashed fk:p-3 fk:text-xs fk:text-muted-foreground">
-          {approval.kind === 'plugin' ? 'Review the account, tool, and arguments before allowing this external call.' : 'No structured preview is available for this proposal. Review the raw GraphQL documents below.'}
+          {chat
+            ? pluginAction
+              ? `This action uses your ${pluginAction.app} account${pluginAction.accountEmail ? ` (${pluginAction.accountEmail})` : ''}. Check the details before deciding.`
+              : 'The assistant wants to make this change. Check the details before deciding.'
+            : approval.kind === 'plugin'
+              ? 'Review the account, tool, and arguments before allowing this external call.'
+              : 'No structured preview is available for this proposal. Review the raw GraphQL documents below.'}
         </div>
       )}
 
-      <OperationDocuments operations={approval.operations} plugin={approval.kind === 'plugin'} />
+      <OperationDocuments operations={approval.operations} plugin={approval.kind === 'plugin'} chat={chat} />
 
       {approval.reason ? (
         <div className="fk:text-sm">
@@ -507,10 +570,12 @@ function ApprovalCardBody({
 export function ApprovalCard({
   api,
   approval: initialApproval,
+  chat,
   onDecided,
 }: {
   api: ApiClient;
   approval: AutomationApproval;
+  chat: boolean;
   onDecided?: (_approval: AutomationApproval) => void;
 }): JSX.Element {
   const {
@@ -528,10 +593,17 @@ export function ApprovalCard({
 
   return (
     <>
-      <ApprovalCardBody approval={approval} errorMessage={errorMessage} isPending={isPending} isStale={isStale} />
+      <ApprovalCardBody
+        approval={approval}
+        chat={chat}
+        errorMessage={errorMessage}
+        isPending={isPending}
+        isStale={isStale}
+      />
       {isPending ? (
         <div className="fk:mt-4">
           <ApprovalDecisionActions
+            askForRejectionReason={!chat}
             decide={decide}
             isDeciding={isDeciding}
             isRejectDialogOpen={isRejectDialogOpen}
@@ -576,6 +648,7 @@ export function ApprovalDrawer({
       actions={
         isPending ? (
           <ApprovalDecisionActions
+            askForRejectionReason
             decide={decide}
             isDeciding={isDeciding}
             isRejectDialogOpen={isRejectDialogOpen}
@@ -592,7 +665,13 @@ export function ApprovalDrawer({
       onClose={onClose}
       title="Mutation proposal"
     >
-      <ApprovalCardBody approval={approval} errorMessage={errorMessage} isPending={isPending} isStale={isStale} />
+      <ApprovalCardBody
+        approval={approval}
+        chat={false}
+        errorMessage={errorMessage}
+        isPending={isPending}
+        isStale={isStale}
+      />
     </DrawerModal>
   );
 }
