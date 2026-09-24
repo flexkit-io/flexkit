@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/explorer",
-  "version": "0.0.34",
+  "version": "0.0.35",
   "description": "Official Flexkit Studio extension for running and debugging GraphQL queries in a graphical interactive in-browser GraphQL IDE",
   "keywords": [
     "flexkit",
