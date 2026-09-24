@@ -17,6 +17,7 @@ import {
   MessageSquareIcon,
   SearchIcon,
   SendIcon,
+  ShieldIcon,
   TerminalIcon,
   XCircleIcon,
   XIcon,
@@ -169,6 +170,7 @@ export interface RunReplayActions {
 }
 
 export const RunReplayActionsContext = createContext<RunReplayActions | null>(null);
+export const ChatApprovalContext = createContext(false);
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -1195,6 +1197,7 @@ export function MutationApprovalPart({
 }): JSX.Element {
   const { projectId } = useProjectApi();
   const replayActions = useContext(RunReplayActionsContext);
+  const isChat = useContext(ChatApprovalContext);
   const previousApprovalStatusRef = useRef<AutomationApproval['status'] | undefined>(undefined);
   // Poll while the stream still says pending so a decision from the Approvals
   // inbox / another tab updates this card. RunReplay refreshes the run record
@@ -1261,7 +1264,15 @@ export function MutationApprovalPart({
   let body: JSX.Element;
 
   if (data?.approval) {
-    body = <ApprovalCard api={api} approval={data.approval} key={data.approval.status} onDecided={handleDecided} />;
+    body = (
+      <ApprovalCard
+        api={api}
+        approval={data.approval}
+        chat={isChat}
+        key={data.approval.status}
+        onDecided={handleDecided}
+      />
+    );
   } else if (error && !isValidating) {
     const detail = error instanceof Error && error.message ? error.message : 'Request failed';
 
@@ -1287,8 +1298,8 @@ export function MutationApprovalPart({
   return (
     <ToolMessage>
       <ToolHeader>
-        <DatabaseZapIcon className="fk:size-3.5" />
-        Mutation approval
+        {isChat ? <ShieldIcon className="fk:size-3.5" /> : <DatabaseZapIcon className="fk:size-3.5" />}
+        {isChat ? 'Approval request' : 'Mutation approval'}
         {isPending ? <LoaderCircle className="fk:ml-1 fk:size-3.5 fk:animate-spin" /> : null}
       </ToolHeader>
       <div className="fk:mt-2">{body}</div>
