@@ -504,6 +504,7 @@ function LiveTurn({
 function ChatComposer({
   api,
   modelId,
+  modelPending,
   models,
   onError,
   onModelChange,
@@ -514,6 +515,7 @@ function ChatComposer({
 }: {
   api: ApiClient;
   modelId: string | null;
+  modelPending: boolean;
   models: AutomationTools['models'];
   onError: (_message: string | null) => void;
   onModelChange: (_modelId: string) => void;
@@ -531,7 +533,7 @@ function ChatComposer({
   const status = streaming ? ('streaming' as const) : sending ? ('submitted' as const) : undefined;
   const isBusy = sending || streaming;
   const hasDraft = textInput.value.trim().length > 0 || attachments.files.length > 0;
-  const canSubmit = hasDraft && !uploads.isUploading && !isBusy;
+  const canSubmit = hasDraft && !uploads.isUploading && !isBusy && !modelPending;
 
   return (
     <PromptInput
@@ -551,7 +553,8 @@ function ChatComposer({
           (!trimmed && sentAttachments.length === 0) ||
           uploads.isUploading ||
           isBusy ||
-          submittingRef.current
+          submittingRef.current ||
+          modelPending
         ) {
           return Promise.reject(new Error('The message cannot be sent right now.'));
         }
@@ -751,6 +754,26 @@ function readLastAgentModelId(): string | null {
   }
 }
 
+function resolveComposerModelId(input: {
+  awaitingChatModel: boolean;
+  chatModelId: string | null;
+  defaultModelId: string | null;
+  lastUsedModelId: string | null;
+  selectedModelId: string | null;
+}): string | null {
+  if (input.selectedModelId) {
+    return input.selectedModelId;
+  }
+
+  // The chat detail request has not returned yet, so its model is unknown.
+  // Falling through to the remembered model would display and send that one.
+  if (input.awaitingChatModel) {
+    return null;
+  }
+
+  return input.chatModelId ?? input.lastUsedModelId ?? input.defaultModelId;
+}
+
 function writeLastAgentModelId(modelId: string): void {
   if (typeof localStorage === 'undefined') {
     return;
@@ -815,6 +838,7 @@ export function AgentChatPage(): JSX.Element {
   const visiblePendingMessage = pendingMessage && pendingMessage.chatId === chatId ? pendingMessage : undefined;
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
+  const awaitingChatModel = Boolean(chatId) && chatDetail === undefined;
   const defaultModelId = useMemo(() => models.find((model) => !model.deprecated)?.id ?? null, [models]);
   const lastUsedModelId = useMemo(() => {
     if (!rememberedModelId) {
@@ -829,7 +853,14 @@ export function AgentChatPage(): JSX.Element {
 
     return rememberedModelId;
   }, [models, rememberedModelId]);
-  const modelId = selectedModelId ?? chatModelId ?? lastUsedModelId ?? defaultModelId;
+  const modelId = resolveComposerModelId({
+    awaitingChatModel,
+    chatModelId,
+    defaultModelId,
+    lastUsedModelId,
+    selectedModelId,
+  });
+  const modelPending = awaitingChatModel && !selectedModelId;
 
   useEffect(() => {
     setSelectedModelId(null);
@@ -866,6 +897,10 @@ export function AgentChatPage(): JSX.Element {
     // submit as a successful send and clear the attachments of the in-flight one.
     if (sendingRef.current) {
       throw new Error('A message is already being sent.');
+    }
+
+    if (modelPending) {
+      throw new Error('This chat is still loading.');
     }
 
     sendingRef.current = true;
@@ -981,6 +1016,7 @@ export function AgentChatPage(): JSX.Element {
               <ChatComposer
                 api={chatApi}
                 modelId={modelId}
+                modelPending={modelPending}
                 models={models}
                 sending={sending}
                 streaming={turnInProgress}
