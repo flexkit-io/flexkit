@@ -95,7 +95,7 @@ function SelectItem({ className, children, ...props }: React.ComponentProps<type
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "fk:relative fk:flex fk:w-full fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:py-1.5 fk:pr-8 fk:pl-2 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-[disabled]:pointer-events-none fk:data-[disabled]:opacity-50 fk:*[_svg]:pointer-events-none fk:*[_svg]:shrink-0 fk:*[_svg:not([class*='size-'])]:size-4 fk:*[_svg:not([class*='text-'])]:text-muted-foreground *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        "fk:relative fk:flex fk:w-full fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:py-1.5 fk:pr-8 fk:pl-2 fk:text-sm fk:outline-hidden fk:select-none fk:hover:bg-accent fk:hover:text-accent-foreground fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-[disabled]:pointer-events-none fk:data-[disabled]:opacity-50 fk:*[_svg]:pointer-events-none fk:*[_svg]:shrink-0 fk:*[_svg:not([class*='size-'])]:size-4 fk:*[_svg:not([class*='text-'])]:text-muted-foreground *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
       {...props}

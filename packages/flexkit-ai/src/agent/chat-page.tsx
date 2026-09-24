@@ -731,6 +731,38 @@ function pickGreeting(preferredName: string | null): string {
   return greetings[Math.floor(Math.random() * greetings.length)] ?? 'How can I help?';
 }
 
+const LAST_AGENT_MODEL_STORAGE_KEY = 'flexkit-ai:lastModelId';
+
+function readLastAgentModelId(): string | null {
+  if (typeof localStorage === 'undefined') {
+    return null;
+  }
+
+  try {
+    const stored = localStorage.getItem(LAST_AGENT_MODEL_STORAGE_KEY);
+
+    if (!stored) {
+      return null;
+    }
+
+    return stored;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastAgentModelId(modelId: string): void {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  try {
+    localStorage.setItem(LAST_AGENT_MODEL_STORAGE_KEY, modelId);
+  } catch {
+    // Ignore storage access errors (private mode, blocked storage, etc.)
+  }
+}
+
 function EmptyConversation({ projectId }: { projectId: string }): JSX.Element {
   const { data, isLoading } = useSWR<{ preferredName: string | null }>(paths(projectId).agentProfile(), fetcher);
   // Pick once the profile resolves so the greeting never flashes from a
@@ -774,6 +806,7 @@ export function AgentChatPage(): JSX.Element {
   const chatDetail = resolveDetail(rawChatDetail);
   const models = useMemo(() => toolsData?.tools.models ?? [], [toolsData]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [rememberedModelId, setRememberedModelId] = useState<string | null>(readLastAgentModelId);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
   const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(
@@ -783,12 +816,35 @@ export function AgentChatPage(): JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
   const defaultModelId = useMemo(() => models.find((model) => !model.deprecated)?.id ?? null, [models]);
-  const modelId = selectedModelId ?? chatModelId ?? defaultModelId;
+  const lastUsedModelId = useMemo(() => {
+    if (!rememberedModelId) {
+      return null;
+    }
+
+    const model = models.find((item) => item.id === rememberedModelId);
+
+    if (!model || model.deprecated) {
+      return null;
+    }
+
+    return rememberedModelId;
+  }, [models, rememberedModelId]);
+  const modelId = selectedModelId ?? chatModelId ?? lastUsedModelId ?? defaultModelId;
 
   useEffect(() => {
     setSelectedModelId(null);
     setSendError(null);
   }, [chatId]);
+
+  function rememberModel(nextModelId: string): void {
+    setRememberedModelId(nextModelId);
+    writeLastAgentModelId(nextModelId);
+  }
+
+  function handleModelChange(nextModelId: string): void {
+    setSelectedModelId(nextModelId);
+    rememberModel(nextModelId);
+  }
 
   if (!projectId || !api) {
     return (
@@ -816,6 +872,10 @@ export function AgentChatPage(): JSX.Element {
     setSending(true);
     setPendingMessage({ attachments, chatId, text });
     setSendError(null);
+
+    if (modelId) {
+      rememberModel(modelId);
+    }
 
     try {
       const chat = chatId ? null : (await chatApi.createAgentChat({ modelId })).chat;
@@ -925,7 +985,7 @@ export function AgentChatPage(): JSX.Element {
                 sending={sending}
                 streaming={turnInProgress}
                 onError={setSendError}
-                onModelChange={setSelectedModelId}
+                onModelChange={handleModelChange}
                 onSend={handleSend}
                 onStop={handleStop}
               />
