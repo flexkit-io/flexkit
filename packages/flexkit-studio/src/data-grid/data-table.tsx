@@ -71,6 +71,7 @@ interface ExtendedDataTable extends TableMeta<unknown> {
 // Matches default `fk:h-9` rows (text-sm / 28px assets + cell padding + border).
 const DEFAULT_ROW_HEIGHT_PX = 36;
 const ROW_OVERSCAN = 15;
+const COLUMN_OVERSCAN = 2;
 // Matches `fk:h-10` on TableHead. The header lives in the same scroll
 // container as the rows, so item measurements must start after it.
 const STICKY_HEADER_HEIGHT_PX = 40;
@@ -130,7 +131,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
   const sorting = sortingProp ?? uncontrolledSorting;
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
+    scrollRef.current?.scrollTo({ top: 0, left: 0 });
   }, [entityName, scrollToTopKey]);
 
   useEffect(() => {
@@ -206,6 +207,35 @@ export function DataTable<TData extends AttributeValue, TValue>({
     scrollMargin: STICKY_HEADER_HEIGHT_PX,
   });
 
+  const visibleColumns = table.getVisibleLeafColumns();
+  const headerGroups = table.getHeaderGroups();
+  // Grouped headers span multiple leaf columns; keep their existing layout.
+  const virtualizeColumns = headerGroups.length === 1;
+  const columnVirtualizer = useVirtualizer({
+    horizontal: true,
+    count: visibleColumns.length,
+    estimateSize: (index) => visibleColumns[index].getSize(),
+    getItemKey: (index) => visibleColumns[index].id,
+    getScrollElement: () => scrollRef.current,
+    overscan: COLUMN_OVERSCAN,
+    enabled: virtualizeColumns,
+  });
+  // Visibility/size changes invalidate cached offsets even when the count stays
+  // the same (e.g. navigating between two equally wide entity schemas).
+  const columnSizesKey = JSON.stringify(visibleColumns.map((column) => [column.id, column.getSize()]));
+  useEffect(() => {
+    columnVirtualizer.measure();
+  }, [columnSizesKey, columnVirtualizer]);
+  const virtualColumns = columnVirtualizer.getVirtualItems();
+  const firstColumn = virtualizeColumns ? (virtualColumns[0]?.index ?? 0) : 0;
+  const lastColumn = virtualizeColumns
+    ? (virtualColumns[virtualColumns.length - 1]?.index ?? -1) + 1
+    : visibleColumns.length;
+  const paddingLeft = virtualizeColumns ? (virtualColumns[0]?.start ?? 0) : 0;
+  const paddingRight = virtualizeColumns
+    ? Math.max(0, columnVirtualizer.getTotalSize() - (virtualColumns[virtualColumns.length - 1]?.end ?? 0))
+    : 0;
+
   const virtualItems = rowVirtualizer.getVirtualItems();
   const { paddingTop, paddingBottom } = getVirtualBodySpacers(
     virtualItems,
@@ -270,33 +300,45 @@ export function DataTable<TData extends AttributeValue, TValue>({
         <TooltipProvider delayDuration={400}>
           <TablePrimitive
             className={cn('fk:grid fk:pb-20', classNames?.table)}
+            aria-colcount={visibleColumns.length}
+            style={{ minWidth: table.getTotalSize() }}
             containerClassName={classNames?.tableContainer}
             onScroll={handleScroll}
             ref={scrollRef}
           >
             <TableHeader className="fk:sticky fk:top-0 fk:z-20 fk:grid">
-              {table.getHeaderGroups().map((headerGroup) => (
+              {headerGroups.map((headerGroup) => (
                 <TableRow className="fk:flex fk:w-full" key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead
-                        className={cn('fk:flex fk:items-center', header.column.id === 'actions' && 'fk:pl-0')}
-                        colSpan={header.colSpan}
-                        key={header.id}
-                        style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
-                      >
-                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                        {isLoadingMore ? (
-                          <div
-                            aria-hidden
-                            className="fk:pointer-events-none fk:absolute fk:top-10.25 fk:right-px fk:left-px fk:z-20 fk:h-0.5 fk:overflow-hidden fk:opacity-4"
-                          >
-                            <div className="fk:animate-progress fk:h-full fk:w-full fk:bg-foreground" />
-                          </div>
-                        ) : null}
-                      </TableHead>
-                    );
-                  })}
+                  {paddingLeft > 0 ? <VirtualColumnSpacer width={paddingLeft} header /> : null}
+                  {(virtualizeColumns ? headerGroup.headers.slice(firstColumn, lastColumn) : headerGroup.headers).map(
+                    (header, index) => {
+                      return (
+                        <TableHead
+                          aria-colindex={virtualizeColumns ? firstColumn + index + 1 : undefined}
+                          className={cn(
+                            'fk:flex fk:shrink-0 fk:items-center',
+                            header.column.id === 'actions' && 'fk:pl-0'
+                          )}
+                          colSpan={header.colSpan}
+                          key={header.id}
+                          style={header.getSize() ? { width: `${header.getSize().toString()}px` } : {}}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(header.column.columnDef.header, header.getContext())}
+                          {isLoadingMore ? (
+                            <div
+                              aria-hidden
+                              className="fk:pointer-events-none fk:absolute fk:top-10.25 fk:right-px fk:left-px fk:z-20 fk:h-0.5 fk:overflow-hidden fk:opacity-4"
+                            >
+                              <div className="fk:animate-progress fk:h-full fk:w-full fk:bg-foreground" />
+                            </div>
+                          ) : null}
+                        </TableHead>
+                      );
+                    }
+                  )}
+                  {paddingRight > 0 ? <VirtualColumnSpacer width={paddingRight} header /> : null}
                 </TableRow>
               ))}
             </TableHeader>
@@ -328,20 +370,26 @@ export function DataTable<TData extends AttributeValue, TValue>({
                           height: `${rowHeightPx.toString()}px`,
                         }}
                       >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            className={cn(
-                              'fk:flex fk:items-center fk:truncate',
-                              cell.column.id === 'actions' && 'fk:pl-1!'
-                            )}
-                            key={cell.id}
-                            style={{
-                              width: cell.column.getSize(),
-                            }}
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
+                        {paddingLeft > 0 ? <VirtualColumnSpacer width={paddingLeft} /> : null}
+                        {row
+                          .getVisibleCells()
+                          .slice(firstColumn, lastColumn)
+                          .map((cell, index) => (
+                            <TableCell
+                              className={cn(
+                                'fk:flex fk:shrink-0 fk:items-center fk:truncate',
+                                cell.column.id === 'actions' && 'fk:pl-1!'
+                              )}
+                              aria-colindex={firstColumn + index + 1}
+                              key={cell.id}
+                              style={{
+                                width: cell.column.getSize(),
+                              }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                          ))}
+                        {paddingRight > 0 ? <VirtualColumnSpacer width={paddingRight} /> : null}
                       </TableRow>
                     );
                   })}
@@ -374,6 +422,12 @@ function getVirtualBodySpacers(
     paddingTop: Math.max(0, firstStart - scrollMargin),
     paddingBottom: Math.max(0, totalSize - (lastEnd - scrollMargin)),
   };
+}
+
+function VirtualColumnSpacer({ width, header = false }: { width: number; header?: boolean }): JSX.Element {
+  const Component = header ? 'th' : 'td';
+
+  return <Component aria-hidden style={{ width, flexShrink: 0, padding: 0, border: 0 }} />;
 }
 
 function VirtualRowSpacer({ height }: { height: number }): JSX.Element {
