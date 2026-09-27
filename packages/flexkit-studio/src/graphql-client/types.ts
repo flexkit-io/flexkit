@@ -82,7 +82,7 @@ export type FormEntityItem = {
   [attributeName: string]: FormFieldValue;
 };
 
-export type EntityQuerySelection = 'list' | 'full';
+export type EntityQuerySelection = 'list' | 'full' | 'display';
 
 export type UseEntityQueryParams = {
   entityNamePlural: string;
@@ -93,8 +93,11 @@ export type UseEntityQueryParams = {
   /**
    * `list` only selects each related entity's display attribute (desk/list grids).
    * `full` keeps nested relationship fields (forms, relationship pickers). Default: `full`.
+   * `display` selects only the entity's display attribute (menus and selectors).
    */
   selection?: EntityQuerySelection;
+  /** Omit the collection count when only rows are needed; count returns 0. Default: true. */
+  includeCount?: boolean;
 };
 
 export type FormFieldValue = {

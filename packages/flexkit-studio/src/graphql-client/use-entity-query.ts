@@ -48,6 +48,7 @@ export function useEntityQuery({
   variables,
   isForm,
   selection = 'full',
+  includeCount = true,
 }: UseEntityQueryParams): {
   count: number;
   data: MappedEntityItem[] | FormEntityItem[] | ImageValue[] | undefined;
@@ -88,23 +89,15 @@ export function useEntityQuery({
     (entitySchema?.spaces?.length ?? 0) === 0 &&
     (unsupportedTotalCount?.field !== totalCountField || unsupportedTotalCount.schema !== schema);
   const countMode = canUseTotalCount ? 'total' : 'aggregate';
-  const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection, countMode });
   const queryDocument = useMemo(
-    () =>
-      gql`
-        ${entityQuery.query}
-      `,
-    [entityQuery.query]
+    () => gql(getEntityQuery(entityNamePlural, scope, schema, { selection, countMode, includeCount }).query),
+    [entityNamePlural, scope, schema, selection, countMode, includeCount]
   );
   // fetchMore pages skip the top-level aggregate count (a filtered label scan
   // on the server); the total from the first page still stands.
-  const fetchMoreEntityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection, includeCount: false });
   const fetchMoreDocument = useMemo(
-    () =>
-      gql`
-        ${fetchMoreEntityQuery.query}
-      `,
-    [fetchMoreEntityQuery.query]
+    () => gql(getEntityQuery(entityNamePlural, scope, schema, { selection, includeCount: false }).query),
+    [entityNamePlural, scope, schema, selection]
   );
   const { schemaErrorMessage, setSchemaErrorMessage } = useGraphQLError();
   const {
@@ -129,7 +122,7 @@ export function useEntityQuery({
   variablesRef.current = variables;
 
   // Parse 403 error response to determine the specific error code
-  const isMissingTotalCountField = isMissingGraphQLFieldError(error, totalCountField);
+  const isMissingTotalCountField = includeCount && isMissingGraphQLFieldError(error, totalCountField);
   const shouldFallbackToAggregate = countMode === 'total' && isMissingTotalCountField;
   const effectiveError = isMissingTotalCountField ? undefined : error;
   const isTotalCountFallbackLoading = isMissingTotalCountField && !data?.[entityNamePlural];
@@ -265,7 +258,7 @@ export function useEntityQuery({
       return refetchRef
         .current()
         .then(({ data: res }) => {
-          const queryKey = JSON.stringify({ entityNamePlural, scope, selection, variables });
+          const queryKey = JSON.stringify({ entityNamePlural, scope, selection, includeCount, variables });
           const mapped = mapResults({ data: res, entityNamePlural, isForm, schema, scope });
 
           syncedQueryKeyRef.current = queryKey;
@@ -281,7 +274,7 @@ export function useEntityQuery({
           setIsReloading(false);
         });
     },
-    [entityNamePlural, isForm, schema, scope, selection, variables]
+    [entityNamePlural, isForm, schema, scope, selection, includeCount, variables]
   );
 
   useEffect(() => {
@@ -301,7 +294,7 @@ export function useEntityQuery({
       return;
     }
 
-    const queryKey = JSON.stringify({ entityNamePlural, scope, selection, variables });
+    const queryKey = JSON.stringify({ entityNamePlural, scope, selection, includeCount, variables });
 
     // Already synced for this query identity — ignore Apollo `data` updates from fetchMore.
     if (syncedQueryKeyRef.current === queryKey) {
@@ -336,6 +329,7 @@ export function useEntityQuery({
     schemaMismatchMessage,
     scope,
     selection,
+    includeCount,
     variables,
   ]);
 
@@ -353,7 +347,7 @@ export function useEntityQuery({
       return;
     }
 
-    const queryKey = JSON.stringify({ entityNamePlural, scope, selection, variables });
+    const queryKey = JSON.stringify({ entityNamePlural, scope, selection, includeCount, variables });
     const mapped = mapResults({ data, entityNamePlural, isForm, schema, scope });
     syncedQueryKeyRef.current = queryKey;
     pendingQueryKeyRef.current = null;
@@ -370,6 +364,7 @@ export function useEntityQuery({
     schemaMismatchMessage,
     scope,
     selection,
+    includeCount,
     variables,
   ]);
 
@@ -390,7 +385,7 @@ export function useEntityQuery({
       return refetchRef
         .current()
         .then(({ data: res }) => {
-          const queryKey = JSON.stringify({ entityNamePlural, scope, selection, variables });
+          const queryKey = JSON.stringify({ entityNamePlural, scope, selection, includeCount, variables });
           const mapped = mapResults({ data: res, entityNamePlural, isForm, schema, scope });
           syncedQueryKeyRef.current = queryKey;
           pendingQueryKeyRef.current = null;
@@ -439,7 +434,7 @@ export function useEntityQuery({
       unsubscribeRemoval();
       unsubscribePatch();
     };
-  }, [entityNamePlural, isForm, schema, scope, selection, variables]);
+  }, [entityNamePlural, isForm, schema, scope, selection, includeCount, variables]);
 
   return {
     // Refetch keeps existing rows visible; only initial load / explicit reload show as loading.

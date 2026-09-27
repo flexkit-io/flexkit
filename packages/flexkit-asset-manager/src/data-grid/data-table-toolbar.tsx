@@ -43,6 +43,7 @@ import {
   useConfig,
   useSearch,
 } from '@flexkit/studio';
+import { tagQueryOptions, tagQueryVariables } from '../tag-query';
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
@@ -147,15 +148,13 @@ export function DataTableToolbar<TData>({
     .getSelectedRowModel()
     .rows.map((row) => (row.original as unknown as { _id: string })._id);
 
-  const tagsQueryVariables = useMemo(() => ({ where: {}, limit: 500, offset: 0, sort: [{ name: 'ASC' }] }), []);
-
   // Load tags for the selector (full tags collection, not derived from loaded assets)
   const { data: tagsData } = useEntityQuery({
     entityNamePlural: '_tags',
     schema,
     scope,
-    variables: tagsQueryVariables,
-    selection: 'list',
+    variables: tagQueryVariables,
+    ...tagQueryOptions,
   });
   const allTags = useMemo(() => {
     const items = Array.isArray(tagsData) ? (tagsData as unknown[]) : [];

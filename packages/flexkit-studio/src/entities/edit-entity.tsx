@@ -148,6 +148,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
     scope: currentScope,
     variables: { where: { _id: { eq: entityId } } },
     isForm: true,
+    includeCount: false,
   });
 
   const saveEntity = useCallback(

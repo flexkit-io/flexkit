@@ -18,6 +18,7 @@ import type {
   EntityQueryResult,
   ImageValue,
   OrderedAssetValue,
+  EntityQuerySelection,
 } from './types';
 
 type EntityQuery = {
@@ -420,7 +421,7 @@ export function getEntityQuery(
   scope: string,
   schema: Schema,
   options?: {
-    selection?: 'list' | 'full';
+    selection?: EntityQuerySelection;
     /**
      * The top-level aggregate count is a filtered label scan on the server.
      * Pagination pages (fetchMore) skip it — the total from the first page
@@ -431,13 +432,17 @@ export function getEntityQuery(
     operationName?: string;
   }
 ): EntityQuery {
-  const selection = options?.selection ?? 'full';
+  const requestedSelection = options?.selection ?? 'full';
+  const selection = requestedSelection === 'display' ? 'list' : requestedSelection;
   const includeCount = options?.includeCount ?? true;
   const countMode = options?.countMode ?? 'aggregate';
   const filters = `(where: $where, limit: $limit, offset: $offset, sort: $sort)`;
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
-  const attributes = entitySchema?.attributes ?? [];
+  const displayAttribute = getDisplayAttribute(entitySchema);
+  const attributes = requestedSelection === 'display'
+    ? (displayAttribute ? [displayAttribute] : [])
+    : entitySchema?.attributes ?? [];
   const attributesByName = getAttributesByName(attributes);
   const heading = `$where: ${entityName}Where, $limit: Int, $offset: Int, $sort: [${entityName}Sort!]`;
   const operationName = options?.operationName ?? `Get${getOperationEntityName(entityNamePlural)}`;
@@ -457,19 +462,21 @@ export function getEntityQuery(
       }
 
       if (selection === 'list') {
-        return shouldSelectAttributeInList(attributesByName[attributeName]);
+        return requestedSelection === 'display' || shouldSelectAttributeInList(attributesByName[attributeName]);
       }
 
       return true;
     })
     .join('\n  ');
-  const imageAttributes: string[] = getImageAttributes(attributes);
+  const imageAttributes = getImageAttributes(attributes).filter((attributeName) =>
+    selection !== 'list' || requestedSelection === 'display' || shouldSelectAttributeInList(attributesByName[attributeName])
+  );
   const localAttributes: readonly string[] = getAttributeListByScope(['local'], attributes).filter((attributeName) => {
     if (selection !== 'list') {
       return true;
     }
 
-    return shouldSelectAttributeInList(attributesByName[attributeName]);
+    return requestedSelection === 'display' || shouldSelectAttributeInList(attributesByName[attributeName]);
   });
   const defaultScopedAttr = localAttributes.reduce(
     (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n    }\n  `,
@@ -493,7 +500,7 @@ export function getEntityQuery(
 
   const relationshipAttributes = attributes.filter((attribute) => getAttributeScope(attribute) === 'relationship');
   const relationshipAttributesList: string = relationshipAttributes.reduce((acc, attribute) => {
-    if (selection === 'list' && isStaticallyHidden(attribute.hidden)) {
+    if (selection === 'list' && requestedSelection !== 'display' && isStaticallyHidden(attribute.hidden)) {
       return acc;
     }
 
