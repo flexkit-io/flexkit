@@ -3,7 +3,7 @@ import type { JSX } from 'react';
 export function Logo({ title, theme }: { title: string; theme: string | undefined }): JSX.Element {
   return (
     <a
-      className="fk:flex fk:items-center fk:rounded-md fk:outline-none fk:transition-[color,box-shadow] fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50"
+      className="fk:flex fk:items-center fk:rounded-md fk:outline-none fk:transition-[color,box-shadow] fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:corner-squircle"
       href="/"
       title={title}
     >

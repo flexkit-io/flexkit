@@ -69,9 +69,9 @@ function DiffCell({ after, before }: { after: unknown; before: unknown }): JSX.E
 
   return (
     <span className="fk:inline-flex fk:flex-wrap fk:items-center fk:gap-1.5">
-      <span className="fk:rounded fk:bg-destructive/10 fk:px-1 fk:text-destructive fk:line-through">{beforeText}</span>
+      <span className="fk:rounded fk:bg-destructive/10 fk:px-1 fk:text-destructive fk:line-through fk:corner-squircle">{beforeText}</span>
       <MoveRightIcon className="fk:size-3 fk:shrink-0 fk:text-muted-foreground" />
-      <span className="fk:rounded fk:bg-success/15 fk:px-1 fk:text-success">{afterText}</span>
+      <span className="fk:rounded fk:bg-success/15 fk:px-1 fk:text-success fk:corner-squircle">{afterText}</span>
     </span>
   );
 }
@@ -158,7 +158,7 @@ function OperationPreviewTable({ operation }: { operation: AutomationApprovalPre
             {columns.map((column) => (
               <TableCell className="fk:text-xs" key={column}>
                 {operation.kind === 'create' ? (
-                  <span className="fk:rounded fk:bg-success/15 fk:px-1 fk:text-success">
+                  <span className="fk:rounded fk:bg-success/15 fk:px-1 fk:text-success fk:corner-squircle">
                     {formatCellValue(row.after?.[column])}
                   </span>
                 ) : (
@@ -183,16 +183,16 @@ function OperationDocuments({
   chat: boolean;
 }): JSX.Element {
   return (
-    <details className="fk:rounded-md fk:border fk:border-border">
+    <details className="fk:rounded-md fk:border fk:border-border fk:corner-squircle">
       <summary className="fk:cursor-pointer fk:px-3 fk:py-2 fk:text-xs fk:font-medium fk:text-muted-foreground">
         {chat ? 'Action details' : plugin ? 'Plugin tool and arguments' : `GraphQL documents (${operations.length})`}
       </summary>
       <div className="fk:space-y-3 fk:border-t fk:border-border fk:p-3">
         {operations.map((operation, index) => (
           <div className="fk:space-y-2" key={index.toString()}>
-            <pre className="fk:overflow-x-auto fk:rounded-md fk:bg-muted fk:p-3 fk:text-xs">{operation.query}</pre>
+            <pre className="fk:overflow-x-auto fk:rounded-md fk:bg-muted fk:p-3 fk:text-xs fk:corner-squircle">{operation.query}</pre>
             {operation.variables && Object.keys(operation.variables).length > 0 ? (
-              <pre className="fk:overflow-x-auto fk:rounded-md fk:bg-muted/60 fk:p-3 fk:text-xs">
+              <pre className="fk:overflow-x-auto fk:rounded-md fk:bg-muted/60 fk:p-3 fk:text-xs fk:corner-squircle">
                 {JSON.stringify(operation.variables, null, 2)}
               </pre>
             ) : null}
@@ -503,7 +503,7 @@ function ApprovalCardBody({
       </div>
 
       {isStale ? (
-        <div className="fk:flex fk:items-start fk:gap-2 fk:rounded-md fk:border fk:border-amber-500/40 fk:bg-amber-500/10 fk:p-3 fk:text-sm">
+        <div className="fk:flex fk:items-start fk:gap-2 fk:rounded-md fk:border fk:border-amber-500/40 fk:bg-amber-500/10 fk:p-3 fk:text-sm fk:corner-squircle">
           <TriangleAlertIcon className="fk:mt-0.5 fk:size-4 fk:shrink-0 fk:text-amber-600" />
           <span>
             The affected data changed since this proposal was created. The preview below has been refreshed — review it
@@ -518,7 +518,7 @@ function ApprovalCardBody({
             <div className="fk:space-y-2" key={index.toString()}>
               <div className="fk:text-sm fk:font-medium">{getOperationTitle(operation)}</div>
               {operation.kind === 'delete' && operation.affectedCount !== null ? (
-                <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive">
+                <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive fk:corner-squircle">
                   {operation.affectedCount.toString()} record{operation.affectedCount === 1 ? '' : 's'} will be
                   permanently deleted.
                 </div>
@@ -533,7 +533,7 @@ function ApprovalCardBody({
           ))}
         </div>
       ) : (
-        <div className="fk:rounded-md fk:border fk:border-dashed fk:p-3 fk:text-xs fk:text-muted-foreground">
+        <div className="fk:rounded-md fk:border fk:border-dashed fk:p-3 fk:text-xs fk:text-muted-foreground fk:corner-squircle">
           {chat
             ? pluginAction
               ? `This action uses your ${pluginAction.app} account${pluginAction.accountEmail ? ` (${pluginAction.accountEmail})` : ''}. Check the details before deciding.`
@@ -552,7 +552,7 @@ function ApprovalCardBody({
         </div>
       ) : null}
       {approval.error ? (
-        <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm">
+        <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:corner-squircle">
           Execution failed: {approval.error}
         </div>
       ) : null}

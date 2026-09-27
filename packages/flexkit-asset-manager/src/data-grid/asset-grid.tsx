@@ -226,8 +226,8 @@ export function AssetGrid<TData extends AttributeValue, TValue>({
           {isLoading ? (
             <div className="fk:grid fk:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] fk:gap-3">
               {Array.from({ length: pageSize ?? 50 }, (_, index) => (
-                <div className="fk:rounded-md fk:border fk:border-border fk:p-2" key={`skeleton-${index}`}>
-                  <Skeleton className="fk:aspect-square fk:w-full fk:rounded-sm" />
+                <div className="fk:rounded-md fk:border fk:border-border fk:p-2 fk:corner-squircle" key={`skeleton-${index}`}>
+                  <Skeleton className="fk:aspect-square fk:w-full fk:rounded-sm fk:corner-squircle" />
                   <Skeleton className="fk:mt-2 fk:h-3 fk:w-[75%]" />
                   <Skeleton className="fk:mt-1.5 fk:h-3 fk:w-[50%]" />
                 </div>
@@ -266,7 +266,7 @@ function AssetGridCard({ row }: { row: Row<AttributeValue> }): JSX.Element {
         isSelected
           ? 'fk:border-primary fk:ring-1 fk:ring-primary/40 fk:bg-muted/40'
           : 'fk:border-border fk:bg-background fk:hover:border-muted-foreground/30'
-      }`}
+      } fk:corner-squircle`}
       data-state={isSelected ? 'selected' : undefined}
     >
       <div className="fk:absolute fk:left-3 fk:top-3 fk:z-10 fk:mix-blend-difference">
@@ -303,7 +303,7 @@ function AssetGridMedia({ asset, filename }: { asset: AssetRecord; filename: str
 
   if (!url && !asset.path) {
     return (
-      <div className="fk:flex fk:aspect-square fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted">
+      <div className="fk:flex fk:aspect-square fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted fk:corner-squircle">
         <span className="fk:text-xs fk:text-muted-foreground">No preview</span>
       </div>
     );
@@ -320,7 +320,7 @@ function AssetGridMedia({ asset, filename }: { asset: AssetRecord; filename: str
     )[ext];
 
     return (
-      <div className="fk:flex fk:aspect-square fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted fk:[&>svg]:h-12 fk:[&>svg]:w-auto">
+      <div className="fk:flex fk:aspect-square fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted fk:[&>svg]:h-12 fk:[&>svg]:w-auto fk:corner-squircle">
         <FileTypeIconCompat extension={ext} {...(style || {})} />
       </div>
     );
@@ -346,7 +346,7 @@ function AssetGridMedia({ asset, filename }: { asset: AssetRecord; filename: str
   return (
     <>
       <button
-        className={`fk:aspect-square fk:w-full fk:cursor-zoom-in fk:overflow-hidden fk:rounded-sm fk:border-0 fk:p-0 ${transparentImageBackground}`}
+        className={`fk:aspect-square fk:w-full fk:cursor-zoom-in fk:overflow-hidden fk:rounded-sm fk:border-0 fk:p-0 ${transparentImageBackground} fk:corner-squircle`}
         onClick={handleThumbnailClick}
         type="button"
       >
@@ -358,7 +358,7 @@ function AssetGridMedia({ asset, filename }: { asset: AssetRecord; filename: str
             <DialogTitle className="fk:sr-only">Asset preview</DialogTitle>
             <DialogDescription className="fk:sr-only">Enlarged asset preview</DialogDescription>
           </DialogHeader>
-          <div className="fk:relative fk:flex fk:h-[min(85vh,56rem)] fk:w-full fk:items-center fk:justify-center fk:overflow-hidden fk:rounded-md">
+          <div className="fk:relative fk:flex fk:h-[min(85vh,56rem)] fk:w-full fk:items-center fk:justify-center fk:overflow-hidden fk:rounded-md fk:corner-squircle">
             {!isZoomImageLoaded ? (
               <LoaderCircle
                 aria-label="Loading image"

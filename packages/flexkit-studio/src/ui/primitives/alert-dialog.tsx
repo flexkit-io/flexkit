@@ -44,7 +44,7 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          'fk:group/alert-dialog-content fk:fixed fk:top-[50%] fk:left-[50%] fk:z-50 fk:grid fk:w-full fk:max-w-[calc(100%-2rem)] fk:translate-x-[-50%] fk:translate-y-[-50%] fk:gap-4 fk:rounded-lg fk:border fk:bg-background fk:p-6 fk:shadow-lg fk:duration-200 fk:data-[size=sm]:max-w-xs fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95 fk:data-[size=default]:sm:max-w-lg',
+          'fk:group/alert-dialog-content fk:fixed fk:top-[50%] fk:left-[50%] fk:z-50 fk:grid fk:w-full fk:max-w-[calc(100%-2rem)] fk:translate-x-[-50%] fk:translate-y-[-50%] fk:gap-4 fk:rounded-lg fk:border fk:bg-background fk:p-6 fk:shadow-lg fk:duration-200 fk:data-[size=sm]:max-w-xs fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95 fk:data-[size=default]:sm:max-w-lg fk:corner-squircle',
           className
         )}
         {...props}
@@ -110,7 +110,7 @@ function AlertDialogMedia({ className, ...props }: React.ComponentProps<'div'>) 
     <div
       data-slot="alert-dialog-media"
       className={cn(
-        "fk:mb-2 fk:inline-flex fk:size-16 fk:items-center fk:justify-center fk:rounded-md fk:bg-muted fk:sm:group-data-[size=default]/alert-dialog-content:row-span-2 fk:*:[svg:not([class*='size-'])]:size-8",
+        "fk:mb-2 fk:inline-flex fk:size-16 fk:items-center fk:justify-center fk:rounded-md fk:bg-muted fk:sm:group-data-[size=default]/alert-dialog-content:row-span-2 fk:*:[svg:not([class*='size-'])]:size-8 fk:corner-squircle",
         className
       )}
       {...props}

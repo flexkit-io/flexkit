@@ -35,7 +35,7 @@ export const Suggestion = ({
 
   return (
     <Button
-      className={cn('fk:cursor-pointer fk:rounded-full fk:px-4', className)}
+      className={cn('fk:cursor-pointer fk:rounded-full fk:px-4 fk:corner-squircle', className)}
       onClick={handleClick}
       size={size}
       type="button"

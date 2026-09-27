@@ -95,7 +95,7 @@ export function CopyableTruncatedText({ value }: CopyableTruncatedTextProps): JS
         <button
           aria-label="Copy value"
           className={cn(
-            'fk:group/copyable fk:relative fk:flex fk:w-full fk:min-w-0 fk:items-center fk:rounded-sm fk:border-0 fk:bg-transparent fk:px-0.5 fk:-mx-0.5 fk:py-0.5 fk:text-left fk:text-inherit fk:font-inherit',
+            'fk:group/copyable fk:relative fk:flex fk:w-full fk:min-w-0 fk:items-center fk:rounded-sm fk:border-0 fk:bg-transparent fk:px-0.5 fk:-mx-0.5 fk:py-0.5 fk:text-left fk:text-inherit fk:font-inherit fk:corner-squircle',
             'fk:cursor-pointer fk:transition-[transform,background-color] fk:duration-75 fk:ease-out',
             'fk:hover:bg-muted/50 fk:active:translate-y-px fk:active:scale-[0.98] fk:active:bg-muted/70',
             'fk:focus-visible:outline-hidden fk:focus-visible:ring-1 fk:focus-visible:ring-ring'
@@ -111,7 +111,7 @@ export function CopyableTruncatedText({ value }: CopyableTruncatedTextProps): JS
             aria-hidden
             className={cn(
               'fk:pointer-events-none fk:absolute fk:right-0.5 fk:top-1/2 fk:flex fk:-translate-y-1/2 fk:items-center fk:justify-center',
-              'fk:rounded-sm fk:bg-muted/80 fk:p-0.5 fk:text-muted-foreground fk:shadow-sm fk:ring-1 fk:ring-border/60',
+              'fk:rounded-sm fk:bg-muted/80 fk:p-0.5 fk:text-muted-foreground fk:shadow-sm fk:ring-1 fk:ring-border/60 fk:corner-squircle',
               'fk:transition-opacity fk:duration-100',
               copied
                 ? 'fk:opacity-100 fk:text-foreground'

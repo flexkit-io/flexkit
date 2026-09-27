@@ -49,7 +49,7 @@ function ButtonGroupText({
   return (
     <Comp
       className={cn(
-        'fk:bg-muted fk:shadow-xs fk:flex fk:items-center fk:gap-2 fk:rounded-md fk:border fk:px-4 fk:text-sm fk:font-medium fk:[&_svg:not([class*=size-])]:size-4 fk:[&_svg]:pointer-events-none',
+        'fk:bg-muted fk:shadow-xs fk:flex fk:items-center fk:gap-2 fk:rounded-md fk:border fk:px-4 fk:text-sm fk:font-medium fk:[&_svg:not([class*=size-])]:size-4 fk:[&_svg]:pointer-events-none fk:corner-squircle',
         className
       )}
       {...props}

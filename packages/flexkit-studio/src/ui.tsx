@@ -1,5 +1,5 @@
 // UI Primitives
-export { Avatar, AvatarImage, AvatarFallback } from './ui/primitives/avatar';
+export { Avatar, AvatarImage, AvatarFallback, AvatarGroup } from './ui/primitives/avatar';
 export { Badge, badgeVariants } from './ui/primitives/badge';
 export { Button, buttonVariants } from './ui/primitives/button';
 export {
@@ -43,6 +43,7 @@ export {
   FormField,
 } from './ui/primitives/form';
 export { Checkbox } from './ui/primitives/checkbox';
+export { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/primitives/collapsible';
 export { Input } from './ui/primitives/input';
 export {
   Command,

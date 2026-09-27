@@ -25,7 +25,7 @@ function HoverCardContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          'fk:z-50 fk:w-64 fk:origin-(--radix-hover-card-content-transform-origin) fk:rounded-md fk:border fk:bg-popover fk:p-4 fk:text-popover-foreground fk:shadow-md fk:outline-hidden fk:data-[side=bottom]:slide-in-from-top-2 fk:data-[side=left]:slide-in-from-right-2 fk:data-[side=right]:slide-in-from-left-2 fk:data-[side=top]:slide-in-from-bottom-2 fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95',
+          'fk:z-50 fk:w-64 fk:origin-(--radix-hover-card-content-transform-origin) fk:rounded-md fk:border fk:bg-popover fk:p-4 fk:text-popover-foreground fk:shadow-md fk:outline-hidden fk:data-[side=bottom]:slide-in-from-top-2 fk:data-[side=left]:slide-in-from-right-2 fk:data-[side=right]:slide-in-from-left-2 fk:data-[side=top]:slide-in-from-bottom-2 fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95 fk:corner-squircle',
           className
         )}
         {...props}

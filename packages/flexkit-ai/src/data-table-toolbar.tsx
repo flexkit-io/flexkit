@@ -137,7 +137,7 @@ export function AutomationsDataTableToolbar<TData>({
               {draftSearch ? (
                 <Button
                   aria-label="Clear search"
-                  className="fk:absolute fk:right-1 fk:top-1 fk:h-6 fk:w-6 fk:text-muted-foreground fk:hover:text-foreground fk:hover:bg-foreground/10 fk:cursor-pointer fk:rounded-full fk:bg-transparent"
+                  className="fk:absolute fk:right-1 fk:top-1 fk:h-6 fk:w-6 fk:text-muted-foreground fk:hover:text-foreground fk:hover:bg-foreground/10 fk:cursor-pointer fk:rounded-full fk:bg-transparent fk:corner-squircle"
                   onClick={clearSearch}
                   type="button"
                 >

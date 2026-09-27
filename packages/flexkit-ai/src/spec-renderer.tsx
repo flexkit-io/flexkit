@@ -71,7 +71,7 @@ const Card: ComponentRenderer<CardProps> = ({ children, element }) => {
 
   return (
     <div
-      className={`fk:w-full fk:rounded-lg fk:border fk:border-border fk:bg-card fk:p-4 fk:gap-2 fk:flex fk:flex-col ${maxWidthClass} ${centeredClass} ${props.className ?? ''}`}
+      className={`fk:w-full fk:rounded-lg fk:border fk:border-border fk:bg-card fk:p-4 fk:gap-2 fk:flex fk:flex-col ${maxWidthClass} ${centeredClass} ${props.className ?? ''} fk:corner-squircle`}
     >
       {props.title && <div className="fk:text-sm fk:font-medium">{props.title}</div>}
       {props.description && <div className="fk:mt-0.5 fk:text-xs fk:text-muted-foreground">{props.description}</div>}
@@ -195,7 +195,7 @@ const textClasses = {
   muted: 'fk:text-sm fk:text-muted-foreground',
   caption: 'fk:text-xs fk:text-muted-foreground',
   lead: 'fk:text-base',
-  code: 'fk:rounded fk:bg-muted fk:px-1 fk:py-0.5 fk:font-mono fk:text-xs',
+  code: 'fk:rounded fk:bg-muted fk:px-1 fk:py-0.5 fk:font-mono fk:text-xs fk:corner-squircle',
 };
 
 const Text: ComponentRenderer<TextProps> = ({ element }) => (
@@ -236,7 +236,7 @@ const Alert: ComponentRenderer<AlertProps> = ({ element }) => {
 
   return (
     <div
-      className={`fk:flex fk:w-full fk:gap-3 fk:rounded-lg fk:border fk:bg-card fk:px-4 fk:py-3 fk:text-sm ${typeClass}`}
+      className={`fk:flex fk:w-full fk:gap-3 fk:rounded-lg fk:border fk:bg-card fk:px-4 fk:py-3 fk:text-sm ${typeClass} fk:corner-squircle`}
       role="alert"
     >
       <AlertIcon type={props.type} />
@@ -259,7 +259,7 @@ const Table: ComponentRenderer<TableProps> = ({ element }) => {
   const rows = (element.props.rows ?? []).map((row) => row.map(String));
 
   return (
-    <div className="fk:w-full fk:overflow-hidden fk:rounded-md fk:mt-2">
+    <div className="fk:w-full fk:overflow-hidden fk:rounded-md fk:mt-2 fk:corner-squircle">
       <TablePrimitive>
         {element.props.caption && <TableCaption>{element.props.caption}</TableCaption>}
         <TableHeader>
@@ -302,8 +302,8 @@ const Progress: ComponentRenderer<ProgressProps> = ({ element }) => {
           <span className="fk:tabular-nums">{Math.round(percent)}%</span>
         </div>
       )}
-      <div className="fk:h-2 fk:w-full fk:overflow-hidden fk:rounded-full fk:bg-secondary">
-        <div className="fk:h-full fk:rounded-full fk:bg-primary" style={{ width: `${percent.toString()}%` }} />
+      <div className="fk:h-2 fk:w-full fk:overflow-hidden fk:rounded-full fk:bg-secondary fk:corner-squircle">
+        <div className="fk:h-full fk:rounded-full fk:bg-primary fk:corner-squircle" style={{ width: `${percent.toString()}%` }} />
       </div>
     </div>
   );
@@ -313,7 +313,7 @@ const Skeleton: ComponentRenderer<{ height: string | null; rounded: boolean | nu
   element,
 }) => (
   <SkeletonPrimitive
-    className={element.props.rounded ? 'fk:rounded-full' : ''}
+    className={element.props.rounded ? 'fk:rounded-full fk:corner-squircle' : ''}
     style={{ height: element.props.height ?? '1rem', width: element.props.width ?? '100%' }}
   />
 );
@@ -335,7 +335,7 @@ const Image: ComponentRenderer<{
   return (
     <img
       alt={element.props.alt}
-      className="fk:max-w-full fk:rounded-md"
+      className="fk:max-w-full fk:rounded-md fk:corner-squircle"
       height={element.props.height ?? undefined}
       src={element.props.src}
       width={element.props.width ?? undefined}
@@ -349,7 +349,7 @@ interface AccordionProps {
 }
 
 const Accordion: ComponentRenderer<AccordionProps> = ({ element }) => (
-  <div className="fk:w-full fk:divide-y fk:divide-border fk:rounded-md fk:border fk:border-border">
+  <div className="fk:w-full fk:divide-y fk:divide-border fk:rounded-md fk:border fk:border-border fk:corner-squircle">
     {(element.props.items ?? []).map((item, index) => (
       <details className="fk:group fk:px-4 fk:py-3" key={index}>
         <summary className="fk:cursor-pointer fk:list-none fk:text-sm fk:font-medium">{item.title}</summary>
@@ -423,7 +423,7 @@ const Metric: ComponentRenderer<MetricProps> = ({ element }) => {
   const { props } = element;
 
   return (
-    <div className="fk:w-full fk:rounded-lg fk:border fk:border-border fk:bg-card fk:p-4">
+    <div className="fk:w-full fk:rounded-lg fk:border fk:border-border fk:bg-card fk:p-4 fk:corner-squircle">
       <div className="fk:text-xs fk:font-medium fk:text-muted-foreground">{props.label}</div>
       <div className="fk:mt-1 fk:flex fk:items-center fk:gap-2">
         <span className="fk:text-2xl fk:font-semibold fk:tabular-nums fk:tracking-tight">{props.value}</span>
@@ -470,7 +470,7 @@ const Callout: ComponentRenderer<CalloutProps> = ({ element }) => {
 
   return (
     <div
-      className={`fk:flex fk:w-full fk:gap-3 fk:rounded-lg fk:border fk:px-4 fk:py-3 fk:text-sm ${calloutClasses[type]}`}
+      className={`fk:flex fk:w-full fk:gap-3 fk:rounded-lg fk:border fk:px-4 fk:py-3 fk:text-sm ${calloutClasses[type]} fk:corner-squircle`}
     >
       <CalloutIcon type={type} />
       <div className="fk:min-w-0">
@@ -504,7 +504,7 @@ const Timeline: ComponentRenderer<TimelineProps> = ({ element }) => (
           <div className="fk:absolute fk:left-[5px] fk:top-4 fk:h-full fk:w-px fk:bg-border" />
         )}
         <div
-          className={`fk:mt-1 fk:size-[11px] fk:shrink-0 fk:rounded-full fk:border-2 ${timelineDotClasses[item.status ?? 'upcoming']}`}
+          className={`fk:mt-1 fk:size-[11px] fk:shrink-0 fk:rounded-full fk:border-2 ${timelineDotClasses[item.status ?? 'upcoming']} fk:corner-squircle`}
         />
         <div className="fk:min-w-0">
           <div className="fk:flex fk:flex-wrap fk:items-baseline fk:gap-x-2">
@@ -747,7 +747,7 @@ const Mermaid: ComponentRenderer<MermaidProps> = ({ element }) => {
   }, [chart, diagramId]);
 
   return (
-    <div className="fk:w-full fk:rounded-lg fk:border fk:border-border fk:bg-card fk:p-4">
+    <div className="fk:w-full fk:rounded-lg fk:border fk:border-border fk:bg-card fk:p-4 fk:corner-squircle">
       {title && <div className="fk:mb-2 fk:text-sm fk:font-medium">{title}</div>}
       {error ? (
         <pre className="fk:overflow-x-auto fk:whitespace-pre-wrap fk:text-xs fk:text-muted-foreground">{chart}</pre>
@@ -791,7 +791,7 @@ const registry: ComponentRegistry = {
 };
 
 const fallback: ComponentRenderer = ({ element }) => (
-  <div className="fk:rounded-md fk:border fk:border-dashed fk:border-border fk:p-3 fk:text-sm fk:text-muted-foreground">
+  <div className="fk:rounded-md fk:border fk:border-dashed fk:border-border fk:p-3 fk:text-sm fk:text-muted-foreground fk:corner-squircle">
     Unsupported component: {element.type}
   </div>
 );

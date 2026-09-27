@@ -13,7 +13,7 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        'fk:flex fk:h-full fk:w-full fk:flex-col fk:rounded-md fk:bg-popover fk:text-popover-foreground',
+        'fk:flex fk:h-full fk:w-full fk:flex-col fk:rounded-md fk:bg-popover fk:text-popover-foreground fk:corner-squircle',
         className
       )}
       {...props}
@@ -56,7 +56,7 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
-          'fk:flex fk:h-10 fk:w-full fk:rounded-md fk:bg-transparent fk:py-3 fk:text-sm fk:outline-hidden fk:placeholder:text-muted-foreground fk:disabled:cursor-not-allowed fk:disabled:opacity-50',
+          'fk:flex fk:h-10 fk:w-full fk:rounded-md fk:bg-transparent fk:py-3 fk:text-sm fk:outline-hidden fk:placeholder:text-muted-foreground fk:disabled:cursor-not-allowed fk:disabled:opacity-50 fk:corner-squircle',
           className
         )}
         {...props}
@@ -107,7 +107,7 @@ function CommandItem({ className, ...props }: React.ComponentProps<typeof Comman
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        "fk:relative fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:px-2 fk:py-1.5 fk:text-sm fk:outline-hidden fk:select-none fk:data-[disabled=true]:pointer-events-none fk:data-[disabled=true]:opacity-50 fk:data-[selected=true]:bg-accent fk:data-[selected=true]:text-accent-foreground fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:[&_svg:not([class*='text-'])]:text-muted-foreground",
+        "fk:relative fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:px-2 fk:py-1.5 fk:text-sm fk:outline-hidden fk:select-none fk:data-[disabled=true]:pointer-events-none fk:data-[disabled=true]:opacity-50 fk:data-[selected=true]:bg-accent fk:data-[selected=true]:text-accent-foreground fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:[&_svg:not([class*='text-'])]:text-muted-foreground fk:corner-squircle",
         className
       )}
       {...props}

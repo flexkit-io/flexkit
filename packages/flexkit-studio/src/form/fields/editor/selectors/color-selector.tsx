@@ -102,9 +102,9 @@ export const ColorSelector = ({ open, onOpenChange }: ColorSelectorProps) => {
   return (
     <Popover modal={true} open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button size="sm" className="fk:gap-2 fk:rounded-none" variant="ghost">
+        <Button size="sm" className="fk:gap-2 fk:rounded-none fk:corner-squircle" variant="ghost">
           <span
-            className="fk:rounded-xs fk:px-1"
+            className="fk:rounded-xs fk:px-1 fk:corner-squircle"
             style={{
               color: activeColorItem?.color,
               backgroundColor: activeHighlightItem?.color,
@@ -118,7 +118,7 @@ export const ColorSelector = ({ open, onOpenChange }: ColorSelectorProps) => {
 
       <PopoverContent
         sideOffset={5}
-        className="fk:my-1 fk:flex fk:max-h-80 fk:w-48 fk:flex-col fk:overflow-hidden fk:overflow-y-auto fk:rounded-sm fk:border fk:p-1 fk:shadow-xl "
+        className="fk:my-1 fk:flex fk:max-h-80 fk:w-48 fk:flex-col fk:overflow-hidden fk:overflow-y-auto fk:rounded-sm fk:border fk:p-1 fk:shadow-xl  fk:corner-squircle"
         align="start"
       >
         <div className="fk:flex fk:flex-col">
@@ -139,7 +139,7 @@ export const ColorSelector = ({ open, onOpenChange }: ColorSelectorProps) => {
               className="fk:flex fk:cursor-pointer fk:items-center fk:justify-between fk:px-2 fk:py-1 fk:text-sm fk:hover:bg-muted"
             >
               <div className="fk:flex fk:items-center fk:gap-2">
-                <div className="fk:rounded-xs fk:border fk:px-2 fk:py-px fk:font-medium" style={{ color }}>
+                <div className="fk:rounded-xs fk:border fk:px-2 fk:py-px fk:font-medium fk:corner-squircle" style={{ color }}>
                   A
                 </div>
                 <span>{name}</span>
@@ -161,7 +161,7 @@ export const ColorSelector = ({ open, onOpenChange }: ColorSelectorProps) => {
             >
               <div className="fk:flex fk:items-center fk:gap-2">
                 <div
-                  className="fk:rounded-xs fk:border fk:px-2 fk:py-px fk:font-medium"
+                  className="fk:rounded-xs fk:border fk:px-2 fk:py-px fk:font-medium fk:corner-squircle"
                   style={{ backgroundColor: color }}
                 >
                   A

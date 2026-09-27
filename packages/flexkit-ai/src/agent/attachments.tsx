@@ -212,7 +212,7 @@ function ImagePreviewDialog({
   return (
     <Dialog onOpenChange={(open) => (open ? undefined : onClose())} open={image !== null}>
       <DialogContent
-        className="fk:h-dvh fk:w-dvw fk:max-w-none fk:sm:max-w-none fk:rounded-none fk:border-0 fk:bg-black/90 fk:p-4 fk:shadow-none fk:flex fk:items-center fk:justify-center"
+        className="fk:h-dvh fk:w-dvw fk:max-w-none fk:sm:max-w-none fk:rounded-none fk:border-0 fk:bg-black/90 fk:p-4 fk:shadow-none fk:flex fk:items-center fk:justify-center fk:corner-squircle"
         showCloseButton={false}
       >
         <DialogTitle className="fk:sr-only">{image?.filename ?? 'Image preview'}</DialogTitle>
@@ -225,7 +225,7 @@ function ImagePreviewDialog({
         ) : null}
         <DialogClose
           aria-label="Close preview"
-          className="fk:absolute fk:top-4 fk:right-4 fk:flex fk:size-9 fk:items-center fk:justify-center fk:rounded-full fk:bg-white/10 fk:text-white fk:transition-colors fk:hover:bg-white/20 fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-white/60"
+          className="fk:absolute fk:top-4 fk:right-4 fk:flex fk:size-9 fk:items-center fk:justify-center fk:rounded-full fk:bg-white/10 fk:text-white fk:transition-colors fk:hover:bg-white/20 fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-white/60 fk:corner-squircle"
         >
           <XIcon className="fk:size-5" />
         </DialogClose>
@@ -239,7 +239,7 @@ function ChipRemoveButton({ label, onRemove }: { label: string; onRemove: () => 
   return (
     <button
       aria-label={label}
-      className="fk:absolute fk:top-1 fk:right-1 fk:z-10 fk:flex fk:size-5 fk:items-center fk:justify-center fk:rounded-full fk:border fk:border-border fk:bg-background fk:text-foreground fk:shadow-sm fk:transition-colors fk:hover:bg-accent fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring"
+      className="fk:absolute fk:top-1 fk:right-1 fk:z-10 fk:flex fk:size-5 fk:items-center fk:justify-center fk:rounded-full fk:border fk:border-border fk:bg-background fk:text-foreground fk:shadow-sm fk:transition-colors fk:hover:bg-accent fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:corner-squircle"
       onClick={(event) => {
         event.stopPropagation();
         onRemove();
@@ -266,7 +266,7 @@ function ImageThumbnail({
   sizeClassName: string;
 }): JSX.Element {
   return (
-    <div className={`fk:relative fk:shrink-0 fk:overflow-hidden fk:rounded-xl fk:bg-muted ${sizeClassName}`}>
+    <div className={`fk:relative fk:shrink-0 fk:overflow-hidden fk:rounded-xl fk:bg-muted ${sizeClassName} fk:corner-squircle`}>
       <button
         aria-label={`Preview ${image.filename}`}
         className="fk:block fk:size-full fk:cursor-zoom-in fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring"
@@ -312,7 +312,7 @@ function FileChip({
 }): JSX.Element {
   const content = (
     <>
-      <div className="fk:flex fk:size-10 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-lg fk:bg-muted fk:text-muted-foreground">
+      <div className="fk:flex fk:size-10 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-lg fk:bg-muted fk:text-muted-foreground fk:corner-squircle">
         {isUploading ? <Spinner className="fk:size-4" /> : <FileIcon className="fk:size-5" />}
       </div>
       <div className="fk:min-w-0 fk:pr-4 fk:text-left">
@@ -322,7 +322,7 @@ function FileChip({
     </>
   );
   const chipClassName =
-    'fk:flex fk:h-14 fk:max-w-64 fk:items-center fk:gap-2.5 fk:rounded-xl fk:border fk:border-border fk:bg-background fk:px-2';
+    'fk:flex fk:h-14 fk:max-w-64 fk:items-center fk:gap-2.5 fk:rounded-xl fk:border fk:border-border fk:bg-background fk:px-2 fk:corner-squircle';
 
   return (
     <div className="fk:relative fk:shrink-0">

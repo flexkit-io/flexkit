@@ -590,7 +590,7 @@ export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
                     key={plugin.title}
                     value={plugin.title}
                   >
-                    <ScrollArea className="ex:flex ex:w-full ex:max-h-full ex:overflow-auto ex:px-6 ex:pt-3 ex:pb-6 ex:mb-3 ex:[&>div>div]:block!">
+                    <ScrollArea className="ex:flex ex:w-full ex:max-h-full ex:overflow-auto ex:pl-3 ex:pr-6 ex:pt-3 ex:pb-6 ex:mb-3 ex:[&>div>div]:block!">
                       <plugin.content />
                       <ScrollBar orientation="horizontal" />
                     </ScrollArea>

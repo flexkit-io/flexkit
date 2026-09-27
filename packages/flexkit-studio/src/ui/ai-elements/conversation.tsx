@@ -72,7 +72,7 @@ export const ConversationScrollButton = ({ className, ...props }: ConversationSc
     !isAtBottom && (
       <Button
         className={cn(
-          'fk:absolute fk:bottom-4 fk:left-[50%] fk:translate-x-[-50%] fk:rounded-full fk:dark:bg-background fk:dark:hover:bg-muted',
+          'fk:absolute fk:bottom-4 fk:left-[50%] fk:translate-x-[-50%] fk:rounded-full fk:dark:bg-background fk:dark:hover:bg-muted fk:corner-squircle',
           className
         )}
         onClick={handleScrollToBottom}
@@ -133,7 +133,7 @@ export const ConversationDownload = ({
   return (
     <Button
       className={cn(
-        'fk:absolute fk:top-4 fk:right-4 fk:rounded-full fk:dark:bg-background fk:dark:hover:bg-muted',
+        'fk:absolute fk:top-4 fk:right-4 fk:rounded-full fk:dark:bg-background fk:dark:hover:bg-muted fk:corner-squircle',
         className
       )}
       onClick={handleDownload}

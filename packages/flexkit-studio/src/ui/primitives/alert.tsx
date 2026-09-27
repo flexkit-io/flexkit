@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/utils';
 
 const alertVariants = cva(
-  'fk:relative fk:w-full fk:rounded-lg fk:border fk:px-4 fk:py-3 fk:[&>svg~*]:pl-7 fk:[&>svg+div]:translate-y-[-3px] fk:[&>svg]:absolute fk:[&>svg]:left-4 fk:[&>svg]:top-4 fk:[&>svg]:text-foreground',
+  'fk:relative fk:w-full fk:rounded-lg fk:border fk:px-4 fk:py-3 fk:[&>svg~*]:pl-7 fk:[&>svg+div]:translate-y-[-3px] fk:[&>svg]:absolute fk:[&>svg]:left-4 fk:[&>svg]:top-4 fk:[&>svg]:text-foreground fk:corner-squircle',
   {
     variants: {
       variant: {

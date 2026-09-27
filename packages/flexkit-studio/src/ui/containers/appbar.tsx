@@ -79,7 +79,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
                 <Tooltip>
                   <TooltipTrigger
                     asChild
-                    className="fk:h-12 fk:p-2 fk:rounded-none fk:border-2 fk:border-transparent! fk:data-[state=active]:border-l-foreground! fk:focus-visible:outline-hidden fk:focus-visible:ring-0 fk:focus-visible:ring-offset-0 fk:focus-visible:border-2! fk:focus-visible:border-ring! fk:focus-visible:rounded-xs"
+                    className="fk:h-12 fk:p-2 fk:rounded-none fk:border-2 fk:border-transparent! fk:data-[state=active]:border-l-foreground! fk:focus-visible:outline-hidden fk:focus-visible:ring-0 fk:focus-visible:ring-offset-0 fk:focus-visible:border-2! fk:focus-visible:border-ring! fk:focus-visible:rounded-xs fk:corner-squircle"
                   >
                     <NavLink
                       className="fk:text-muted-foreground fk:aria-[current]:text-foreground fk:aria-[current]:bg-background fk:aria-[current]:border-l-white!"

@@ -266,7 +266,7 @@ export const CodeBlockContainer = ({
 }: HTMLAttributes<HTMLDivElement> & { language: string }) => (
   <div
     className={cn(
-      'fk:group fk:relative fk:w-full fk:overflow-hidden fk:rounded-md fk:border fk:bg-background fk:text-foreground',
+      'fk:group fk:relative fk:w-full fk:overflow-hidden fk:rounded-md fk:border fk:bg-background fk:text-foreground fk:corner-squircle',
       className
     )}
     data-language={language}

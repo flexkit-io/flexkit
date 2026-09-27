@@ -117,7 +117,7 @@ export default defineConfig([
               component: (props) => {
                 return (
                   <a
-                    className="fk:flex fk:items-center fk:rounded-md fk:outline-none fk:transition-[color,box-shadow] fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50"
+                    className="fk:flex fk:items-center fk:rounded-md fk:outline-none fk:transition-[color,box-shadow] fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:corner-squircle"
                     href="/"
                     title={props.title}
                   >

@@ -180,9 +180,7 @@ body {
     --sidebar-border: 240 2% 18%;
     --sidebar-ring: 212.7 26.8% 83.9%;
   }
-}
 
-@layer base {
   body {
     @apply fk:bg-background fk:text-foreground;
   }
@@ -190,6 +188,16 @@ body {
   button:not(:disabled),
   [role='button']:not(:disabled) {
     cursor: pointer;
+  }
+
+  .corner-squircle,
+  .fk\:corner-squircle {
+    corner-shape: superellipse(1.15);
+  }
+
+  .corner-round,
+  .fk\:corner-round {
+    corner-shape: round;
   }
 }
 

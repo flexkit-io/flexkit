@@ -14,7 +14,7 @@ export type ToolProps = ComponentProps<typeof Collapsible>;
 
 export const Tool = ({ className, ...props }: ToolProps) => (
   <Collapsible
-    className={cn('fk:group fk:not-prose fk:mb-4 fk:w-full fk:rounded-md fk:border', className)}
+    className={cn('fk:group fk:not-prose fk:mb-4 fk:w-full fk:rounded-md fk:border fk:corner-squircle', className)}
     {...props}
   />
 );
@@ -54,7 +54,7 @@ const statusIcons: Record<ToolPart['state'], ReactNode> = {
 };
 
 export const getStatusBadge = (status: ToolPart['state']) => (
-  <Badge className="fk:gap-1.5 fk:py-px fk:rounded-full fk:text-xs" variant="secondary">
+  <Badge className="fk:gap-1.5 fk:py-px fk:rounded-full fk:text-xs fk:corner-squircle" variant="secondary">
     {statusIcons[status]}
     {statusLabels[status]}
   </Badge>
@@ -97,7 +97,7 @@ export type ToolInputProps = ComponentProps<'div'> & {
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
   <div className={cn('fk:space-y-2 fk:overflow-hidden', className)} {...props}>
     <h4 className="fk:font-medium fk:text-muted-foreground fk:text-xs fk:uppercase fk:tracking-wide">Parameters</h4>
-    <div className="fk:rounded-md fk:bg-muted/50">
+    <div className="fk:rounded-md fk:bg-muted/50 fk:corner-squircle">
       <CodeBlock code={JSON.stringify(input, null, 2)} language="json" />
     </div>
   </div>
@@ -128,7 +128,7 @@ export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutpu
       </h4>
       <div
         className={cn(
-          'fk:overflow-x-auto fk:rounded-md fk:text-xs fk:[&_table]:w-full',
+          'fk:overflow-x-auto fk:rounded-md fk:text-xs fk:[&_table]:w-full fk:corner-squircle',
           errorText ? 'fk:bg-destructive/10 fk:text-destructive' : 'fk:bg-muted/50 fk:text-foreground'
         )}
       >

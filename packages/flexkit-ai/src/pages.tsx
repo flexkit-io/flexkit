@@ -111,13 +111,17 @@ interface HistoryResponse {
   history: RunHistory;
 }
 
+function isRunHistoryScope(value: string): value is 'mine' | 'team' {
+  return value === 'mine' || value === 'team';
+}
+
 interface CreditResponse {
   creditBalance: AutomationCreditBalance;
 }
 
 function PageMessage({ children }: { children: string }): JSX.Element {
   return (
-    <div className="fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:text-center fk:text-sm fk:text-muted-foreground">
+    <div className="fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:text-center fk:text-sm fk:text-muted-foreground fk:corner-squircle">
       {children}
     </div>
   );
@@ -234,10 +238,12 @@ function getVisibilityLabel(automation: Automation, spaceLabelById: Map<string, 
   return 'Project';
 }
 
+const stickyTableHeaderClassName = 'fk:sticky fk:top-0 fk:z-10 fk:[&_th]:sticky fk:[&_th]:top-0 fk:[&_th]:bg-muted';
+
 function AutomationsTableSkeleton(): JSX.Element {
   return (
     <Table>
-      <TableHeader>
+      <TableHeader className={stickyTableHeaderClassName}>
         <TableRow>
           <TableHead>Automation</TableHead>
           <TableHead>Triggers</TableHead>
@@ -493,7 +499,7 @@ export function AutomationsPage(): JSX.Element {
   } else {
     content = (
       <Table>
-        <TableHeader>
+        <TableHeader className={stickyTableHeaderClassName}>
           <TableRow>
             <TableHead>Automation</TableHead>
             <TableHead>Triggers</TableHead>
@@ -581,7 +587,7 @@ export function AutomationsPage(): JSX.Element {
   }
 
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:gap-4">
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:gap-4 fk:pr-4">
       <div className="fk:flex fk:shrink-0 fk:items-start fk:gap-2">
         <Tooltip>
           <TooltipTrigger asChild>
@@ -644,7 +650,7 @@ export function AutomationsPage(): JSX.Element {
             <div className="fk:animate-progress fk:h-full fk:w-full fk:bg-foreground" />
           </div>
         ) : null}
-        <div className="fk:h-full fk:overflow-auto fk:pb-20" onScroll={handleScroll} ref={scrollRef}>
+        <div className="fk:h-full fk:overflow-auto" onScroll={handleScroll} ref={scrollRef}>
           {content}
         </div>
       </div>
@@ -1042,13 +1048,21 @@ export function RunHistoryPage(): JSX.Element {
     void setSize((currentSize) => currentSize + 1);
   }
 
+  function handleScopeChange(nextScope: string): void {
+    if (!isRunHistoryScope(nextScope) || nextScope === scope) {
+      return;
+    }
+
+    setScope(nextScope);
+  }
+
   let metricsContent: JSX.Element | null = null;
 
   if (isLoading) {
     metricsContent = (
-      <div className="fk:grid fk:shrink-0 fk:gap-3 fk:grid-cols-4">
+      <div className="fk:mb-6 fk:grid fk:shrink-0 fk:gap-3 fk:grid-cols-4 fk:pr-4">
         {Array.from({ length: 4 }, (_, index) => (
-          <div className="fk:rounded-md fk:bg-muted/60 fk:p-4" key={index}>
+          <div className="fk:rounded-md fk:bg-muted/60 fk:p-4 fk:corner-squircle" key={index}>
             <Skeleton className="fk:h-4 fk:w-24" />
             <Skeleton className="fk:mt-2 fk:h-8 fk:w-12" />
           </div>
@@ -1057,7 +1071,7 @@ export function RunHistoryPage(): JSX.Element {
     );
   } else if (metrics) {
     metricsContent = (
-      <div className="fk:grid fk:shrink-0 fk:gap-3 fk:grid-cols-4">
+      <div className="fk:mb-6 fk:grid fk:shrink-0 fk:gap-3 fk:grid-cols-4 fk:pr-4">
         <MetricCard title="Successful 24h" value={metrics.successful24h} />
         <MetricCard title="Failed 24h" value={metrics.failed24h} />
         <MetricCard title="Successful 7d" value={metrics.successful7d} />
@@ -1067,14 +1081,20 @@ export function RunHistoryPage(): JSX.Element {
   }
 
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-6">
-      <div className="fk:flex fk:shrink-0 fk:gap-2">
-        <Button size="sm" variant={scope === 'team' ? 'default' : 'outline'} onClick={() => setScope('team')}>
-          Team
-        </Button>
-        <Button size="sm" variant={scope === 'mine' ? 'default' : 'outline'} onClick={() => setScope('mine')}>
-          Mine
-        </Button>
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col">
+      <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-center fk:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Tabs value={scope} onValueChange={handleScopeChange}>
+          <TabsList>
+            <TabsTrigger value="team">Team</TabsTrigger>
+            <TabsTrigger value="mine">Mine</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
       {metricsContent}
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
@@ -1101,6 +1121,10 @@ export function RunHistoryPage(): JSX.Element {
 }
 
 const APPROVALS_PAGE_SIZE = 25;
+
+function isApprovalStatusFilter(value: string): value is 'pending' | 'all' {
+  return value === 'pending' || value === 'all';
+}
 
 export function ApprovalsPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
@@ -1155,8 +1179,8 @@ export function ApprovalsPage(): JSX.Element {
     void setSize((currentSize) => currentSize + 1);
   }
 
-  function handleStatusFilterChange(nextFilter: 'pending' | 'all'): void {
-    if (nextFilter === statusFilter) {
+  function handleStatusFilterChange(nextFilter: string): void {
+    if (!isApprovalStatusFilter(nextFilter) || nextFilter === statusFilter) {
       return;
     }
 
@@ -1167,22 +1191,22 @@ export function ApprovalsPage(): JSX.Element {
   }
 
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-6">
-      <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2">
-        <Button
-          size="sm"
-          variant={statusFilter === 'pending' ? 'default' : 'outline'}
-          onClick={() => handleStatusFilterChange('pending')}
-        >
-          Pending{pendingCount > 0 ? ` (${pendingCount.toString()})` : ''}
-        </Button>
-        <Button
-          size="sm"
-          variant={statusFilter === 'all' ? 'default' : 'outline'}
-          onClick={() => handleStatusFilterChange('all')}
-        >
-          All
-        </Button>
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col">
+      <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-center fk:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Tabs value={statusFilter} onValueChange={handleStatusFilterChange}>
+          <TabsList>
+            <TabsTrigger value="pending">
+              Pending{pendingCount > 0 ? ` (${pendingCount.toString()})` : ''}
+            </TabsTrigger>
+            <TabsTrigger value="all">All</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
         <div className="fk:pb-6 fk:pr-4">
@@ -1246,7 +1270,7 @@ export function ApprovalsPage(): JSX.Element {
 
 function MetricCard({ title, value }: { title: string; value: number }): JSX.Element {
   return (
-    <div className="fk:rounded-md fk:bg-muted/60 fk:p-4">
+    <div className="fk:rounded-md fk:bg-muted/60 fk:p-4 fk:corner-squircle">
       <div className="fk:text-sm fk:text-muted-foreground">{title}</div>
       <div className="fk:mt-1 fk:text-2xl fk:font-medium">{value.toLocaleString()}</div>
     </div>
@@ -1574,22 +1598,22 @@ function RunReplay({
     <RunReplayActionsContext.Provider value={replayActions}>
       <div className="fk:space-y-4">
         {run.status === 'failed' && run.error ? (
-          <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm">
+          <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm fk:corner-squircle">
             {run.summary ?? run.error}
           </div>
         ) : null}
         {status === 'unavailable' ? (
-          <div className="fk:rounded-md fk:border fk:border-amber-500/30 fk:bg-amber-500/5 fk:p-4 fk:text-sm">
+          <div className="fk:rounded-md fk:border fk:border-amber-500/30 fk:bg-amber-500/5 fk:p-4 fk:text-sm fk:corner-squircle">
             The workflow replay is no longer available. Generated artifacts may still be available below.
           </div>
         ) : null}
         {status === 'error' && !hasReplayContent ? (
-          <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm">
+          <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-4 fk:text-sm fk:corner-squircle">
             Failed to load the run stream. Try reloading the page.
           </div>
         ) : null}
         {hasReplayContent ? (
-          <div className="fk:space-y-5 fk:rounded-md fk:bg-background">
+          <div className="fk:space-y-5 fk:rounded-md fk:bg-background fk:corner-squircle">
             {messages.map((replayMessage) => (
               <ReplayMessageView key={replayMessage.id} api={api} message={replayMessage} />
             ))}
@@ -1613,7 +1637,7 @@ function RunReplay({
             ) : null}
           </div>
         ) : (
-          <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground">
+          <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground fk:corner-squircle">
             {status === 'unavailable' || status === 'error' ? (
               <TriangleAlertIcon className="fk:size-4" />
             ) : (

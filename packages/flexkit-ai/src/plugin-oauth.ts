@@ -60,6 +60,12 @@ export async function connectPluginPopup(api: ApiClient, pluginIds: string[], sc
     throw error;
   }
 
+  if (!('authorizeUrl' in transaction)) {
+    popup.close();
+
+    return;
+  }
+
   const targets = trustedPluginOAuthTargets(transaction.authorizeUrl, transaction.completionOrigin);
 
   if (!targets) {

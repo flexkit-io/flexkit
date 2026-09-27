@@ -69,7 +69,7 @@ const renderAttachmentImage = (url: string, filename: string | undefined, isGrid
   ) : (
     <img
       alt={filename || 'Image'}
-      className="fk:size-full fk:rounded fk:object-cover"
+      className="fk:size-full fk:rounded fk:object-cover fk:corner-squircle"
       height={20}
       src={url}
       width={20}
@@ -160,15 +160,15 @@ export const Attachment = ({ data, onRemove, className, children, ...props }: At
       <div
         className={cn(
           'fk:group fk:relative',
-          variant === 'grid' && 'fk:size-24 fk:overflow-hidden fk:rounded-lg',
+          variant === 'grid' && 'fk:size-24 fk:overflow-hidden fk:rounded-lg fk:corner-squircle',
           variant === 'inline' && [
             'fk:flex fk:h-8 fk:cursor-pointer fk:select-none fk:items-center fk:gap-1.5',
-            'fk:rounded-md fk:border fk:border-border fk:px-1.5',
+            'fk:rounded-md fk:border fk:border-border fk:px-1.5 fk:corner-squircle',
             'fk:font-medium fk:text-sm fk:transition-all',
             'fk:hover:bg-accent fk:hover:text-accent-foreground fk:dark:hover:bg-accent/50',
           ],
           variant === 'list' && [
-            'fk:flex fk:w-full fk:items-center fk:gap-3 fk:rounded-lg fk:border fk:p-3',
+            'fk:flex fk:w-full fk:items-center fk:gap-3 fk:rounded-lg fk:border fk:p-3 fk:corner-squircle',
             'fk:hover:bg-accent/50',
           ],
           className
@@ -214,8 +214,8 @@ export const AttachmentPreview = ({ fallbackIcon, className, ...props }: Attachm
       className={cn(
         'fk:flex fk:shrink-0 fk:items-center fk:justify-center fk:overflow-hidden',
         variant === 'grid' && 'fk:size-full fk:bg-muted',
-        variant === 'inline' && 'fk:size-5 fk:rounded fk:bg-background',
-        variant === 'list' && 'fk:size-12 fk:rounded fk:bg-muted',
+        variant === 'inline' && 'fk:size-5 fk:rounded fk:bg-background fk:corner-squircle',
+        variant === 'list' && 'fk:size-12 fk:rounded fk:bg-muted fk:corner-squircle',
         className
       )}
       {...props}
@@ -279,18 +279,18 @@ export const AttachmentRemove = ({ label = 'Remove', className, children, ...pro
       aria-label={label}
       className={cn(
         variant === 'grid' && [
-          'fk:absolute fk:top-2 fk:right-2 fk:size-6 fk:rounded-full fk:p-0',
+          'fk:absolute fk:top-2 fk:right-2 fk:size-6 fk:rounded-full fk:p-0 fk:corner-squircle',
           'fk:bg-background/80 fk:backdrop-blur-sm',
           'fk:opacity-0 fk:transition-opacity fk:group-hover:opacity-100',
           'fk:hover:bg-background',
           'fk:[&>svg]:size-3',
         ],
         variant === 'inline' && [
-          'fk:size-5 fk:rounded fk:p-0',
+          'fk:size-5 fk:rounded fk:p-0 fk:corner-squircle',
           'fk:opacity-0 fk:transition-opacity fk:group-hover:opacity-100',
           'fk:[&>svg]:size-2.5',
         ],
-        variant === 'list' && ['fk:size-8 fk:shrink-0 fk:rounded fk:p-0', 'fk:[&>svg]:size-4'],
+        variant === 'list' && ['fk:size-8 fk:shrink-0 fk:rounded fk:p-0 fk:corner-squircle', 'fk:[&>svg]:size-4'],
         className
       )}
       onClick={handleClick}

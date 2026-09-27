@@ -49,7 +49,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fk:fixed fk:top-[50%] fk:left-[50%] fk:z-50 fk:grid fk:w-full fk:max-w-[calc(100%-2rem)] fk:translate-x-[-50%] fk:translate-y-[-50%] fk:gap-4 fk:rounded-lg fk:border fk:bg-background fk:p-6 fk:shadow-lg fk:duration-200 fk:outline-none fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95 fk:sm:max-w-lg',
+          'fk:fixed fk:top-[50%] fk:left-[50%] fk:z-50 fk:grid fk:w-full fk:max-w-[calc(100%-2rem)] fk:translate-x-[-50%] fk:translate-y-[-50%] fk:gap-4 fk:rounded-lg fk:border fk:bg-background fk:p-6 fk:shadow-lg fk:duration-200 fk:outline-none fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95 fk:sm:max-w-lg fk:corner-squircle',
           className
         )}
         {...props}
@@ -58,7 +58,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="fk:absolute fk:top-4 fk:right-4 fk:rounded-xs fk:opacity-70 fk:ring-offset-background fk:transition-opacity fk:hover:opacity-100 fk:focus:ring-2 fk:focus:ring-ring fk:focus:ring-offset-2 fk:focus:outline-hidden fk:disabled:pointer-events-none fk:data-[state=open]:bg-accent fk:data-[state=open]:text-muted-foreground fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4"
+            className="fk:absolute fk:top-4 fk:right-4 fk:rounded-xs fk:opacity-70 fk:ring-offset-background fk:transition-opacity fk:hover:opacity-100 fk:focus:ring-2 fk:focus:ring-ring fk:focus:ring-offset-2 fk:focus:outline-hidden fk:disabled:pointer-events-none fk:data-[state=open]:bg-accent fk:data-[state=open]:text-muted-foreground fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:corner-squircle"
           >
             <XIcon />
             <span className="fk:sr-only">Close</span>

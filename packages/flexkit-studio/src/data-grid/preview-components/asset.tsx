@@ -63,7 +63,7 @@ function SingleAsset({ value }: { value: Asset }) {
           <TooltipTrigger asChild>
             <img
               alt="asset"
-              className={`fk:w-7 fk:h-7 fk:cursor-zoom-in fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
+              className={`fk:w-7 fk:h-7 fk:cursor-zoom-in fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground} fk:corner-squircle`}
               decoding="async"
               src={cachedThumbnailSrc ?? undefined}
             />
@@ -72,7 +72,7 @@ function SingleAsset({ value }: { value: Asset }) {
             <TooltipContent>
               <img
                 alt="asset"
-                className={`fk:w-52 fk:h-52 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
+                className={`fk:w-52 fk:h-52 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground} fk:corner-squircle`}
                 decoding="async"
                 src={fullUrl}
               />
@@ -82,7 +82,7 @@ function SingleAsset({ value }: { value: Asset }) {
       ) : (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="fk:w-7 fk:h-7 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
+            <div className="fk:w-7 fk:h-7 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto fk:corner-squircle">
               {(() => {
                 const ext = getExtensionFromPath(path);
                 const style = (
@@ -135,7 +135,7 @@ function AssetStack({ value }: { value: Asset[] }): JSX.Element | null {
         {assets.map((asset) => (
           <img
             alt="asset"
-            className={`fk:h-7 fk:w-7 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
+            className={`fk:h-7 fk:w-7 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground} fk:corner-squircle`}
             decoding="async"
             key={asset._id}
             src={`${IMAGES_BASE_URL}${asset.path}?w=84&h=84&f=webp`}

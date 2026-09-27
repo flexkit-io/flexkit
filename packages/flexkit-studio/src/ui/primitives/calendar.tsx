@@ -61,7 +61,7 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          'fk:relative fk:rounded-md fk:border fk:border-input fk:shadow-xs fk:has-focus:border-ring fk:has-focus:ring-[3px] fk:has-focus:ring-ring/50',
+          'fk:relative fk:rounded-md fk:border fk:border-input fk:shadow-xs fk:has-focus:border-ring fk:has-focus:ring-[3px] fk:has-focus:ring-ring/50 fk:corner-squircle',
           defaultClassNames.dropdown_root
         ),
         dropdown: cn('fk:absolute fk:inset-0 fk:bg-popover fk:opacity-0', defaultClassNames.dropdown),
@@ -69,13 +69,13 @@ function Calendar({
           'fk:font-medium fk:select-none',
           captionLayout === 'label'
             ? 'fk:text-sm'
-            : 'fk:flex fk:h-8 fk:items-center fk:gap-1 fk:rounded-md fk:pr-1 fk:pl-2 fk:text-sm fk:[&>svg]:size-3.5 fk:[&>svg]:text-muted-foreground',
+            : 'fk:flex fk:h-8 fk:items-center fk:gap-1 fk:rounded-md fk:pr-1 fk:pl-2 fk:text-sm fk:[&>svg]:size-3.5 fk:[&>svg]:text-muted-foreground fk:corner-squircle',
           defaultClassNames.caption_label
         ),
         table: 'fk:w-full fk:border-collapse',
         weekdays: cn('fk:flex', defaultClassNames.weekdays),
         weekday: cn(
-          'fk:flex-1 fk:rounded-md fk:text-[0.8rem] fk:font-normal fk:text-muted-foreground fk:select-none',
+          'fk:flex-1 fk:rounded-md fk:text-[0.8rem] fk:font-normal fk:text-muted-foreground fk:select-none fk:corner-squircle',
           defaultClassNames.weekday
         ),
         week: cn('fk:mt-2 fk:flex fk:w-full', defaultClassNames.week),
@@ -88,11 +88,11 @@ function Calendar({
             : 'fk:[&:first-child[data-selected=true]_button]:rounded-l-md',
           defaultClassNames.day
         ),
-        range_start: cn('fk:rounded-l-md fk:bg-accent', defaultClassNames.range_start),
-        range_middle: cn('fk:rounded-none', defaultClassNames.range_middle),
-        range_end: cn('fk:rounded-r-md fk:bg-accent', defaultClassNames.range_end),
+        range_start: cn('fk:rounded-l-md fk:bg-accent fk:corner-squircle', defaultClassNames.range_start),
+        range_middle: cn('fk:rounded-none fk:corner-squircle', defaultClassNames.range_middle),
+        range_end: cn('fk:rounded-r-md fk:bg-accent fk:corner-squircle', defaultClassNames.range_end),
         today: cn(
-          'fk:rounded-md fk:bg-accent fk:text-accent-foreground fk:data-[selected=true]:rounded-none',
+          'fk:rounded-md fk:bg-accent fk:text-accent-foreground fk:data-[selected=true]:rounded-none fk:corner-squircle',
           defaultClassNames.today
         ),
         outside: cn('fk:text-muted-foreground fk:aria-selected:text-muted-foreground', defaultClassNames.outside),

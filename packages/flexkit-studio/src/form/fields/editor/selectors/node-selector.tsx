@@ -146,7 +146,7 @@ export const NodeSelector = ({ open, onOpenChange }: NodeSelectorProps) => {
 
   return (
     <Popover.Root modal={true} open={open} onOpenChange={onOpenChange}>
-      <Popover.Trigger asChild className="fk:gap-2 fk:rounded-none fk:border-none fk:hover:bg-muted fk:focus:ring-0">
+      <Popover.Trigger asChild className="fk:gap-2 fk:rounded-none fk:border-none fk:hover:bg-muted fk:focus:ring-0 fk:corner-squircle">
         <Button size="sm" variant="ghost" className="fk:gap-2">
           <span className="fk:whitespace-nowrap fk:text-sm">{activeItem.name}</span>
           <ChevronDown className="fk:h-4 fk:w-4" />
@@ -160,10 +160,10 @@ export const NodeSelector = ({ open, onOpenChange }: NodeSelectorProps) => {
               item.command(editor);
               onOpenChange(false);
             }}
-            className="fk:flex fk:cursor-pointer fk:items-center fk:justify-between fk:rounded-xs fk:px-2 fk:py-1 fk:text-sm fk:hover:bg-muted"
+            className="fk:flex fk:cursor-pointer fk:items-center fk:justify-between fk:rounded-xs fk:px-2 fk:py-1 fk:text-sm fk:hover:bg-muted fk:corner-squircle"
           >
             <div className="fk:flex fk:items-center fk:space-x-2">
-              <div className="fk:rounded-xs fk:border fk:p-1">
+              <div className="fk:rounded-xs fk:border fk:p-1 fk:corner-squircle">
                 <item.icon className="fk:h-3 fk:w-3" />
               </div>
               <span>{item.name}</span>

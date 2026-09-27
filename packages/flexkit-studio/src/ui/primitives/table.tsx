@@ -12,7 +12,7 @@ function Table({ className, containerClassName, onScroll, ref, ...props }: Table
       ref={ref}
       data-slot="table-container"
       className={cn(
-        'fk:relative fk:h-full fk:w-full fk:min-w-0 fk:overflow-auto fk:rounded-t-md fk:border-border fk:border',
+        'fk:relative fk:h-full fk:w-full fk:min-w-0 fk:overflow-auto fk:rounded-t-md fk:border-border fk:border fk:corner-squircle',
         containerClassName
       )}
       onScroll={onScroll}

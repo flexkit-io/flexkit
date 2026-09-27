@@ -34,13 +34,13 @@ export default function GenerativeMenuSwitch({
           editor.chain().unsetHighlight().run();
         },
       }}
-      className="fk:flex fk:w-fit fk:max-w-[90vw] fk:overflow-hidden fk:rounded-md fk:border fk:border-muted fk:bg-background fk:shadow-xl"
+      className="fk:flex fk:w-fit fk:max-w-[90vw] fk:overflow-hidden fk:rounded-md fk:border fk:border-muted fk:bg-background fk:shadow-xl fk:corner-squircle"
     >
       {open && <AISelector open={open} onOpenChange={onOpenChange} />}
       {!open && (
         <Fragment>
           <Button
-            className="fk:gap-1 fk:rounded-none fk:text-pink-600"
+            className="fk:gap-1 fk:rounded-none fk:text-pink-600 fk:corner-squircle"
             variant="ghost"
             onClick={(e) => {
               e.preventDefault();

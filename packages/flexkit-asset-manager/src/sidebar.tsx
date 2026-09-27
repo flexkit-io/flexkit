@@ -247,7 +247,7 @@ export function Sidebar(): JSX.Element {
             tags.map((tag) => (
               <div
                 key={tag._id}
-                className="fk:group fk:flex fk:items-center fk:justify-between fk:rounded-sm fk:border fk:border-border fk:bg-card fk:px-3 fk:py-1"
+                className="fk:group fk:flex fk:items-center fk:justify-between fk:rounded-sm fk:border fk:border-border fk:bg-card fk:px-3 fk:py-1 fk:corner-squircle"
               >
                 <span className="fk:text-sm">{tag.name}</span>
                 <DropdownMenu>

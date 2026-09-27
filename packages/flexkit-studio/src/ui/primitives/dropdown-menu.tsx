@@ -28,7 +28,7 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          'fk:z-50 fk:max-h-(--radix-dropdown-menu-content-available-height) fk:min-w-32 fk:origin-(--radix-dropdown-menu-content-transform-origin) fk:overflow-x-hidden fk:overflow-y-auto fk:rounded-md fk:border fk:bg-popover fk:p-1 fk:text-popover-foreground fk:shadow-md fk:data-[side=bottom]:slide-in-from-top-2 fk:data-[side=left]:slide-in-from-right-2 fk:data-[side=right]:slide-in-from-left-2 fk:data-[side=top]:slide-in-from-bottom-2 fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95',
+          'fk:z-50 fk:max-h-(--radix-dropdown-menu-content-available-height) fk:min-w-32 fk:origin-(--radix-dropdown-menu-content-transform-origin) fk:overflow-x-hidden fk:overflow-y-auto fk:rounded-md fk:border fk:bg-popover fk:p-1 fk:text-popover-foreground fk:shadow-md fk:data-[side=bottom]:slide-in-from-top-2 fk:data-[side=left]:slide-in-from-right-2 fk:data-[side=right]:slide-in-from-left-2 fk:data-[side=top]:slide-in-from-bottom-2 fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95 fk:corner-squircle',
           className
         )}
         {...props}
@@ -56,7 +56,7 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "fk:relative fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:px-2 fk:py-1.5 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-disabled:pointer-events-none fk:data-disabled:opacity-50 fk:data-inset:pl-8 fk:data-[variant=destructive]:text-destructive fk:data-[variant=destructive]:focus:bg-destructive/10 fk:data-[variant=destructive]:focus:text-destructive fk:dark:data-[variant=destructive]:focus:bg-destructive/20 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:[&_svg:not([class*='text-'])]:text-muted-foreground fk:data-[variant=destructive]:*:[svg]:text-destructive!",
+        "fk:relative fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:px-2 fk:py-1.5 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-disabled:pointer-events-none fk:data-disabled:opacity-50 fk:data-inset:pl-8 fk:data-[variant=destructive]:text-destructive fk:data-[variant=destructive]:focus:bg-destructive/10 fk:data-[variant=destructive]:focus:text-destructive fk:dark:data-[variant=destructive]:focus:bg-destructive/20 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:[&_svg:not([class*='text-'])]:text-muted-foreground fk:data-[variant=destructive]:*:[svg]:text-destructive! fk:corner-squircle",
         className
       )}
       {...props}
@@ -74,7 +74,7 @@ function DropdownMenuCheckboxItem({
     <DropdownMenuPrimitive.CheckboxItem
       data-slot="dropdown-menu-checkbox-item"
       className={cn(
-        "fk:relative fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:py-1.5 fk:pr-2 fk:pl-8 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-disabled:pointer-events-none fk:data-disabled:opacity-50 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4",
+        "fk:relative fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:py-1.5 fk:pr-2 fk:pl-8 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-disabled:pointer-events-none fk:data-disabled:opacity-50 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:corner-squircle",
         className
       )}
       checked={checked}
@@ -103,7 +103,7 @@ function DropdownMenuRadioItem({
     <DropdownMenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       className={cn(
-        "fk:relative fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:py-1.5 fk:pr-2 fk:pl-8 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-disabled:pointer-events-none fk:data-disabled:opacity-50 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4",
+        "fk:relative fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:py-1.5 fk:pr-2 fk:pl-8 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-disabled:pointer-events-none fk:data-disabled:opacity-50 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:corner-squircle",
         className
       )}
       {...props}
@@ -172,7 +172,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:px-2 fk:py-1.5 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-inset:pl-8 fk:data-[state=open]:bg-accent fk:data-[state=open]:text-accent-foreground fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:[&_svg:not([class*='text-'])]:text-muted-foreground",
+        "fk:flex fk:cursor-default fk:items-center fk:gap-2 fk:rounded-sm fk:px-2 fk:py-1.5 fk:text-sm fk:outline-hidden fk:select-none fk:focus:bg-accent fk:focus:text-accent-foreground fk:data-inset:pl-8 fk:data-[state=open]:bg-accent fk:data-[state=open]:text-accent-foreground fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:[&_svg:not([class*='text-'])]:text-muted-foreground fk:corner-squircle",
         className
       )}
       {...props}
@@ -191,7 +191,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        'fk:z-50 fk:min-w-32 fk:origin-(--radix-dropdown-menu-content-transform-origin) fk:overflow-hidden fk:rounded-md fk:border fk:bg-popover fk:p-1 fk:text-popover-foreground fk:shadow-lg fk:data-[side=bottom]:slide-in-from-top-2 fk:data-[side=left]:slide-in-from-right-2 fk:data-[side=right]:slide-in-from-left-2 fk:data-[side=top]:slide-in-from-bottom-2 fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95',
+        'fk:z-50 fk:min-w-32 fk:origin-(--radix-dropdown-menu-content-transform-origin) fk:overflow-hidden fk:rounded-md fk:border fk:bg-popover fk:p-1 fk:text-popover-foreground fk:shadow-lg fk:data-[side=bottom]:slide-in-from-top-2 fk:data-[side=left]:slide-in-from-right-2 fk:data-[side=right]:slide-in-from-left-2 fk:data-[side=top]:slide-in-from-bottom-2 fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:data-[state=open]:animate-in fk:data-[state=open]:fade-in-0 fk:data-[state=open]:zoom-in-95 fk:corner-squircle',
         className
       )}
       {...props}

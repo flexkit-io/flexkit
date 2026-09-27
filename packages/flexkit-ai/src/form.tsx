@@ -432,7 +432,7 @@ function ChannelPicker({
           ) : (
             value.map((channel) => (
               <Badge
-                className="fk:rounded-sm fk:bg-accent fk:text-xs"
+                className="fk:rounded-sm fk:bg-accent fk:text-xs fk:corner-squircle"
                 key={getChannelKey(channel)}
                 variant="secondary"
                 onClick={(event) => {
@@ -449,7 +449,7 @@ function ChannelPicker({
         <ChevronsUpDownIcon className="fk:size-4 fk:shrink-0 fk:opacity-50" />
       </Button>
       {open ? (
-        <div className="fk:absolute fk:z-50 fk:mt-1 fk:w-full fk:max-w-100 fk:rounded-md fk:border fk:bg-popover fk:p-0 fk:text-popover-foreground fk:shadow-md">
+        <div className="fk:absolute fk:z-50 fk:mt-1 fk:w-full fk:max-w-100 fk:rounded-md fk:border fk:bg-popover fk:p-0 fk:text-popover-foreground fk:shadow-md fk:corner-squircle">
           <div className="fk:border-b fk:p-2">
             <Input
               className="fk:h-8"
@@ -462,7 +462,7 @@ function ChannelPicker({
             {filteredChannels.length > 0 ? (
               filteredChannels.map((channel) => (
                 <Button
-                  className="fk:h-auto fk:w-full fk:justify-start fk:rounded-sm fk:px-2 fk:py-1.5 fk:font-normal"
+                  className="fk:h-auto fk:w-full fk:justify-start fk:rounded-sm fk:px-2 fk:py-1.5 fk:font-normal fk:corner-squircle"
                   key={getChannelKey(channel)}
                   type="button"
                   variant="ghost"
@@ -617,7 +617,7 @@ function CronEditor({
         <ChevronDownIcon className="fk:size-3.5 fk:opacity-50" />
       </Button>
       {open ? (
-        <div className="fk:absolute fk:z-50 fk:mt-1 fk:w-72 fk:rounded-md fk:border fk:bg-popover fk:p-3 fk:text-popover-foreground fk:shadow-md">
+        <div className="fk:absolute fk:z-50 fk:mt-1 fk:w-72 fk:rounded-md fk:border fk:bg-popover fk:p-3 fk:text-popover-foreground fk:shadow-md fk:corner-squircle">
           <div className="fk:mb-2 fk:text-xs fk:text-muted-foreground">Cron expression ({timezone})</div>
           <Input
             className={`fk:h-8 fk:font-mono ${error ? 'fk:border-destructive focus-visible:fk:ring-destructive' : ''}`}
@@ -879,10 +879,10 @@ function TriggersField({
   }
 
   return (
-    <div className="fk:rounded-lg fk:border fk:bg-muted/60 fk:dark:bg-muted/30">
+    <div className="fk:rounded-lg fk:border fk:bg-muted/60 fk:dark:bg-muted/30 fk:corner-squircle">
       {triggers.map((trigger) => (
         <Fragment key={trigger.key}>
-          <div className="fk:group fk:rounded-md fk:m-1.5 fk:p-1.5 fk:hover:bg-muted" key={trigger.key}>
+          <div className="fk:group fk:rounded-md fk:m-1.5 fk:p-1.5 fk:hover:bg-muted fk:corner-squircle" key={trigger.key}>
             <div className="fk:flex fk:items-center fk:gap-3">
               {trigger.type === 'schedule' ? (
                 <ClockIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
@@ -923,7 +923,7 @@ function TriggersField({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            className={`fk:h-auto fk:w-full fk:justify-start fk:gap-3 fk:px-3 fk:py-3 fk:text-muted-foreground hover:fk:bg-muted hover:fk:text-foreground ${triggers.length === 0 ? 'fk:rounded-lg' : 'fk:rounded-none fk:rounded-b-lg'}`}
+            className={`fk:h-auto fk:w-full fk:justify-start fk:gap-3 fk:px-3 fk:py-3 fk:text-muted-foreground hover:fk:bg-muted hover:fk:text-foreground ${triggers.length === 0 ? 'fk:rounded-lg fk:corner-squircle' : 'fk:rounded-none fk:rounded-b-lg fk:corner-squircle'}`}
             type="button"
             variant="ghost"
           >
@@ -1458,7 +1458,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   return (
     <form className="fk:max-w-4xl fk:space-y-8 fk:px-1 fk:mx-auto" onSubmit={(event) => void handleSubmit(event)}>
       {message ? (
-        <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive">
+        <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive fk:corner-squircle">
           {message}
         </div>
       ) : null}
@@ -1582,12 +1582,12 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         </p>
         <div>
           <div
-            className={`fk:rounded-t-md fk:border-x fk:border-t fk:bg-muted/60 fk:ring-offset-background focus-within:fk:ring-2 focus-within:fk:ring-ring focus-within:fk:ring-offset-2 fk:dark:bg-muted/30 ${showInstructionsError ? 'fk:border-destructive' : 'fk:border-input'}`}
+            className={`fk:rounded-t-md fk:border-x fk:border-t fk:bg-muted/60 fk:ring-offset-background focus-within:fk:ring-2 focus-within:fk:ring-ring focus-within:fk:ring-offset-2 fk:dark:bg-muted/30 ${showInstructionsError ? 'fk:border-destructive' : 'fk:border-input'} fk:corner-squircle`}
           >
             <Textarea
               aria-describedby={showInstructionsError ? 'automation-instructions-error' : undefined}
               aria-invalid={showInstructionsError}
-              className="fk:flex fk:min-h-[160px] fk:max-h-[320px] fk:w-full fk:rounded-none fk:border-0 fk:bg-transparent fk:dark:bg-transparent fk:pb-11 fk:shadow-none focus-visible:fk:ring-0 focus-visible:fk:ring-offset-0 fk:mask-[linear-gradient(to_bottom,black_calc(100%-2.75rem),#0009_calc(100%-1.25rem),#0003_calc(100%-0.5rem),transparent)]"
+              className="fk:flex fk:min-h-[160px] fk:max-h-[320px] fk:w-full fk:rounded-none fk:border-0 fk:bg-transparent fk:dark:bg-transparent fk:pb-11 fk:shadow-none focus-visible:fk:ring-0 focus-visible:fk:ring-offset-0 fk:mask-[linear-gradient(to_bottom,black_calc(100%-2.75rem),#0009_calc(100%-1.25rem),#0003_calc(100%-0.5rem),transparent)] fk:corner-squircle"
               id="automation-instructions"
               placeholder="Describe what the agent should do on each run, e.g. 'When a new Review is created, translate the text to English, run a sentiment analysis and store the result in the sentiment attribute...'"
               rows={8}
@@ -1597,7 +1597,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             />
           </div>
           <div
-            className={`fk:rounded-b-md fk:border-x fk:border-b fk:bg-muted/60 fk:dark:bg-muted/30 fk:px-2 fk:py-2 ${showInstructionsError ? 'fk:border-destructive' : 'fk:border-input'}`}
+            className={`fk:rounded-b-md fk:border-x fk:border-b fk:bg-muted/60 fk:dark:bg-muted/30 fk:px-2 fk:py-2 ${showInstructionsError ? 'fk:border-destructive' : 'fk:border-input'} fk:corner-squircle`}
           >
             <Select value={effectiveModelId} onValueChange={setModelId}>
               <SelectTrigger
@@ -1655,9 +1655,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             Configure additional destinations and built-in capabilities for this automation.
           </p>
         </div>
-        <div className="fk:rounded-lg fk:border fk:bg-muted/60 fk:dark:bg-muted/30">
-          <div className="fk:rounded-t-lg">
-            <div className="fk:m-1.5 fk:flex fk:items-start fk:justify-between fk:gap-3 fk:rounded-md fk:p-1.5 fk:hover:bg-muted">
+        <div className="fk:rounded-lg fk:border fk:bg-muted/60 fk:dark:bg-muted/30 fk:corner-squircle">
+          <div className="fk:rounded-t-lg fk:corner-squircle">
+            <div className="fk:m-1.5 fk:flex fk:items-start fk:justify-between fk:gap-3 fk:rounded-md fk:p-1.5 fk:hover:bg-muted fk:corner-squircle">
               <div className="fk:flex fk:gap-3 fk:pb-0.5">
                 <BrainIcon className="fk:mt-1 fk:size-3.5 fk:text-muted-foreground" />
                 <div>
@@ -1673,7 +1673,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             </div>
           </div>
 
-          <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted">
+          <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted fk:corner-squircle">
             <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
               <div className="fk:flex fk:gap-2.5">
                 <GraduationCapIcon className="fk:mt-px fk:size-5 fk:text-muted-foreground" />
@@ -1739,7 +1739,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             </div>
             {skillsData && attachableSkills.length === 0 && lockedSpaceSkills.length === 0 ? (
               <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
-                No attachable skills yet. Create them in the Skills section.
+                No attachable skills yet. Create them on the Skills tab.
               </p>
             ) : null}
             {skillsData?.hasMore ? (
@@ -1760,7 +1760,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                       {skill?.source === 'code' ? <span className="fk:text-[10px] fk:uppercase">Code</span> : null}
                       <button
                         aria-label={skill ? `Detach ${skill.name}` : 'Detach skill'}
-                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed"
+                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed fk:corner-squircle"
                         disabled={!canMutate}
                         type="button"
                         onClick={() => toggleSkill(skillId, false)}
@@ -1774,7 +1774,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             ) : null}
           </div>
 
-          <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted">
+          <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted fk:corner-squircle">
             <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
               <div className="fk:flex fk:gap-2.5">
                 <WrenchIcon className="fk:mt-px fk:size-5 fk:text-muted-foreground" />
@@ -1846,7 +1846,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                       {label}
                       <button
                         aria-label={`Detach ${label}`}
-                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed"
+                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed fk:corner-squircle"
                         disabled={!canMutate}
                         type="button"
                         onClick={() => toggleCustomTool(toolName, false)}
@@ -1876,7 +1876,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               const Icon = provider === 'slack' ? SlackIcon : TeamsIcon;
 
               return (
-                <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:p-1.5 fk:hover:bg-muted" key={provider}>
+                <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:p-1.5 fk:hover:bg-muted fk:corner-squircle" key={provider}>
                   <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
                     <div className="fk:flex fk:gap-3">
                       <Icon />
@@ -1921,7 +1921,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                             return;
                           }
 
-                          window.open(window.location.pathname.replace(/\/ai\/.*$/, '/ai/marketplace'), '_blank', 'noopener,noreferrer');
+                          window.open(window.location.pathname.replace(/\/ai\/.*$/, '/ai/plugins'), '_blank', 'noopener,noreferrer');
                         }}
                       >
                         Manage

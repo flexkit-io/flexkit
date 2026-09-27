@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { BotIcon, PlugIcon, GraduationCapIcon, HistoryIcon, InboxIcon, SearchIcon, SquarePenIcon, XIcon } from 'lucide-react';
+import { BotIcon, PlugIcon, HistoryIcon, InboxIcon, SearchIcon, SquarePenIcon, XIcon } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import { useConfig } from '@flexkit/studio';
@@ -41,7 +41,7 @@ function PendingApprovalsBadge(): JSX.Element | null {
   }
 
   return (
-    <Badge className="fk:ml-auto fk:h-5 fk:min-w-5 fk:justify-center fk:rounded-full fk:bg-amber-500/20 fk:px-1.5 fk:text-[0.6875rem] fk:text-amber-600 fk:border-none">
+    <Badge className="fk:ml-auto fk:h-5 fk:min-w-5 fk:justify-center fk:rounded-full fk:bg-amber-500/20 fk:px-1.5 fk:text-[0.6875rem] fk:text-amber-600 fk:border-none fk:corner-squircle">
       {pendingCount > 99 ? '99+' : pendingCount.toString()}
     </Badge>
   );
@@ -53,7 +53,7 @@ export function AutomationsSidebar(): JSX.Element {
   const isNewChat = pathname.endsWith('/ai/agent');
   const isRunHistory = pathname.endsWith('/ai/runs');
   const isApprovals = pathname.endsWith('/ai/approvals');
-  const isSkills = pathname.includes('/ai/skills');
+  const isPlugins = pathname.includes('/ai/plugins') || pathname.includes('/ai/skills');
   const isAutomations = pathname.includes('/ai/automations');
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS);
@@ -101,19 +101,6 @@ export function AutomationsSidebar(): JSX.Element {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isSkills} tooltip="Skills">
-                <NavLinkCompat to="skills">
-                  <GraduationCapIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
-                  <span>Skills</span>
-                </NavLinkCompat>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname.includes('/ai/marketplace')} tooltip="Marketplace">
-                <NavLinkCompat to="marketplace"><PlugIcon className="fk:size-4" /><span>Marketplace</span></NavLinkCompat>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isRunHistory} tooltip="Run History">
                 <NavLinkCompat to="runs">
                   <HistoryIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
@@ -127,6 +114,14 @@ export function AutomationsSidebar(): JSX.Element {
                   <InboxIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
                   <span>Approvals</span>
                   <PendingApprovalsBadge />
+                </NavLinkCompat>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isPlugins} tooltip="Plugins">
+                <NavLinkCompat to="plugins">
+                  <PlugIcon className="fk:size-4" />
+                  <span>Plugins</span>
                 </NavLinkCompat>
               </SidebarMenuButton>
             </SidebarMenuItem>

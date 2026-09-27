@@ -88,7 +88,7 @@ export function AISelector({ onOpenChange }: AISelectorProps): JSX.Element | nul
             />
             <Button
               size="icon"
-              className="fk:absolute fk:right-2 fk:top-1/2 fk:h-6 w-6 fk:-translate-y-1/2 fk:rounded-full fk:bg-pink-600 fk:hover:bg-pink-800"
+              className="fk:absolute fk:right-2 fk:top-1/2 fk:h-6 w-6 fk:-translate-y-1/2 fk:rounded-full fk:bg-pink-600 fk:hover:bg-pink-800 fk:corner-squircle"
               onClick={() => {
                 if (completion) {
                   return complete(completion, {
