@@ -594,17 +594,23 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
     isSavingRef.current = true;
     setIsSaving(true);
     setMessage('');
-    const result = await api.deleteSkill(skill.id);
-    isSavingRef.current = false;
-    setIsSaving(false);
 
-    if (!result.success) {
-      setMessage(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
+    try {
+      const result = await api.deleteSkill(skill.id);
 
-      return;
+      if (!result.success) {
+        setMessage(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
+
+        return;
+      }
+
+      navigate('..', { relative: 'path' });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to delete skill.');
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
-
-    navigate('..', { relative: 'path' });
   }
 
   return (
@@ -858,7 +864,7 @@ function ReadOnlyCodeSkill({
                     <SelectValue placeholder="Select a space" />
                   </SelectTrigger>
                   <SelectContent align="start">
-                    <SelectItem>
+                    <SelectItem value={skill.spaceId ?? ''}>
                       {getSkillVisibilityLabel(skill, spaceLabelById)}
                     </SelectItem>
                   </SelectContent>

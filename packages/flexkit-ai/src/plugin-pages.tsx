@@ -77,7 +77,7 @@ function scopeColorClassname(scopes: PluginScope[]): string {
 }
 
 function isConnected(plugin: MarketplacePlugin): boolean {
-  return plugin.connections.some((connection) => connection.status === 'connected');
+  return plugin.connections.some((connection) => connection.status !== 'revoked');
 }
 
 function scopeTitle(scope: PluginScope): string {
