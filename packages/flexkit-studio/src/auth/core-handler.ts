@@ -279,7 +279,7 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
   const response = await fetch(`${apiUrl}${path}${search}`, requestInit);
 
   if (response.status === 204) {
-    return { type: 'json', status: 204, body: { status: 204 } };
+    return { type: 'response', status: 204, body: null };
   }
 
   const responseHeaders = sanitizeForwardHeaders(response.headers);

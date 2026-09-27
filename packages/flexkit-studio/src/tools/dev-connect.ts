@@ -31,6 +31,15 @@ function jsonResult(status: number, body: unknown): FlexkitHandlerResult {
   };
 }
 
+/** A 204 cannot carry a body; the Response constructor rejects one. */
+function noContentResult(): FlexkitHandlerResult {
+  return {
+    body: null,
+    status: 204,
+    type: 'response',
+  };
+}
+
 export function shouldHandleDevConnectTick(): boolean {
   const env = (globalThis as { process?: { env?: { [key: string]: string | undefined } } }).process?.env ?? {};
 
@@ -291,7 +300,7 @@ export async function handleDevConnectTick({
   tools: FlexkitTool[];
 }): Promise<FlexkitHandlerResult> {
   if (!shouldHandleDevConnectTick()) {
-    return jsonResult(204, { ok: true });
+    return noContentResult();
   }
 
   if (!sessionToken) {
@@ -299,7 +308,7 @@ export async function handleDevConnectTick({
   }
 
   if (!projectId || (tools.length === 0 && skills === undefined)) {
-    return jsonResult(204, { ok: true });
+    return noContentResult();
   }
 
   const denial = await getDevConnectDenial({ projectId, sessionToken });
@@ -309,7 +318,7 @@ export async function handleDevConnectTick({
   }
 
   if (tickInFlight) {
-    return jsonResult(204, { ok: true });
+    return noContentResult();
   }
 
   tickInFlight = true;
