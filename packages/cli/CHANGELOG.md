@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.0.13
+
+### Patch Changes
+
+- 3033004: Load Flexkit configs that import Node.js built-in modules by name. `flexkit deploy` failed while bundling configs that pull in `@vercel/blob`, because `import { Readable } from "stream"` was rewritten to a stub that does not expose `Readable`. A failed bundle also hid that error by trying to delete a temp file that was never written.
+
 ## 0.0.12
 
 ### Patch Changes

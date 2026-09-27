@@ -1,5 +1,26 @@
 # @flexkit/studio
 
+## 0.0.35
+
+### Patch Changes
+
+- a24e18f: Return 204 responses from the Flexkit API handler without a body. The local tools dev-connect tick and proxied 204 responses previously attached a JSON body, which made the framework Response constructor throw and logged a 500 in the dev server console on every overlapping tick.
+- d0be938: Use Jev to assess Chat GraphQL mutations and plugin actions, automatically approving clear, low-risk requests and asking the user only when review is needed. Charge Jev evaluations to the team and show them in project Usage. Keep Chat responses aligned with the actual approval decision.
+
+  Make approval requests easier to understand: show the action and connected account in plain language, keep technical details collapsed, and let users reject without entering a reason. Automation approval flows retain their existing behavior. Left-align shared dialog titles and descriptions.
+
+- 05bec33: Reduce entity grid work by reusing rich-text serializers, memoizing query generation,
+  omitting hidden assets and unused counts, and avoiding speculative pagination on
+  initial table load. Asset-manager tag menus share a display-only query without
+  asset relationship previews or counts.
+- 602aa27: Add the Plugins Marketplace with catalog and detail pages, OAuth connection management, automatic access to all connected, permitted plugin tools in chat, and explicit tool selection for automations. Trusted chat read tools run without confirmation; other plugin calls follow the approval policy. Support plugin tool approvals and read-only plugin skills that can be copied into editable Studio skills. Requires the matching platform plugins API and database migrations.
+
+  Export the shared Alert components from `@flexkit/studio/ui` for marketplace status and permission messages.
+
+- 2581ddd: Virtualize columns in entity grids so offscreen previews and thumbnails mount only
+  as they approach the viewport. Preserve column widths, sorting, selection, and
+  vertical pagination, and reset horizontal scrolling when changing entities.
+
 ## 0.0.34
 
 ### Patch Changes

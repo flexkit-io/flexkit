@@ -1,5 +1,20 @@
 # @flexkit/asset-manager
 
+## 0.0.35
+
+### Patch Changes
+
+- 05bec33: Reduce entity grid work by reusing rich-text serializers, memoizing query generation,
+  omitting hidden assets and unused counts, and avoiding speculative pagination on
+  initial table load. Asset-manager tag menus share a display-only query without
+  asset relationship previews or counts.
+- Updated dependencies [a24e18f]
+- Updated dependencies [d0be938]
+- Updated dependencies [05bec33]
+- Updated dependencies [602aa27]
+- Updated dependencies [2581ddd]
+  - @flexkit/studio@0.0.35
+
 ## 0.0.34
 
 ### Patch Changes
