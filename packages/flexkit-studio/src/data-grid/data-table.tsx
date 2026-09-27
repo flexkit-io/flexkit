@@ -36,6 +36,7 @@ import { TooltipProvider } from '../ui/primitives/tooltip';
 import type { AttributeValue } from '../graphql-client/types';
 import type { MultipleRelationshipConnection } from '../core/types';
 import { useGraphQLError } from '../graphql-client/graphql-context';
+import { shouldLoadMore } from './should-load-more';
 
 interface DataTableProps<TData extends AttributeValue, TValue> {
   classNames?: {
@@ -98,11 +99,6 @@ function inferRowHeightEstimate(rowClassName?: string): number | undefined {
 
 function resolveRowHeightPx(rowHeightEstimate?: number, rowClassName?: string): number {
   return rowHeightEstimate ?? inferRowHeightEstimate(rowClassName) ?? DEFAULT_ROW_HEIGHT_PX;
-}
-
-function getLoadMoreThreshold(clientHeight: number): number {
-  // Prefetch about one viewport ahead so faster scrolls still request early.
-  return Math.max(600, clientHeight);
 }
 
 export function DataTable<TData extends AttributeValue, TValue>({
@@ -237,10 +233,7 @@ export function DataTable<TData extends AttributeValue, TValue>({
       return;
     }
 
-    const { scrollHeight, scrollTop, clientHeight } = scrollElement;
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-    if (distanceFromBottom >= getLoadMoreThreshold(clientHeight)) {
+    if (!shouldLoadMore(scrollElement)) {
       return;
     }
 

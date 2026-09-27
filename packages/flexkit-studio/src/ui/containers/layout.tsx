@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type JSX } from 'react';
 import { Outlet, useParams, useLocation } from 'react-router-dom';
 import { find, propEq } from 'ramda';
 import { useAuth } from '../../auth/auth-context';

@@ -21,6 +21,7 @@ import {
   useEntityQuery,
   usePatchEntityList,
 } from '@flexkit/studio';
+import { tagQueryOptions, tagQueryVariables } from '../tag-query';
 
 type TagItem = {
   _id: string;
@@ -69,14 +70,13 @@ export function AssetTagDialogs({
   const { currentProjectSchema: schema } = useConfig();
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const tagsQueryVariables = useMemo(() => ({ where: {}, limit: 500, offset: 0, sort: [{ name: 'ASC' }] }), []);
 
   const { data: tagsData } = useEntityQuery({
     entityNamePlural: '_tags',
     schema,
     scope,
-    variables: tagsQueryVariables,
-    selection: 'list',
+    variables: tagQueryVariables,
+    ...tagQueryOptions,
   });
 
   const allTags = useMemo(() => {

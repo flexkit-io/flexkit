@@ -1,4 +1,4 @@
-import { JSX, useCallback, useMemo, useState } from 'react';
+import { JSX, useCallback, useState } from 'react';
 import { Loader2, PlusIcon, TagIcon, Ellipsis } from 'lucide-react';
 import {
   Button,
@@ -34,6 +34,8 @@ import {
 import { getEntityCreateMutation, getEntityQuery, getEntityUpdateMutation } from '@flexkit/studio';
 import type { FormEntityItem } from '@flexkit/studio';
 
+import { tagQueryOptions, tagQueryVariables } from './tag-query';
+
 type TagItem = { _id: string; name: string };
 
 export function Sidebar(): JSX.Element {
@@ -53,13 +55,12 @@ export function Sidebar(): JSX.Element {
 
   const entityName = '_tag';
   const entityNamePlural = '_tags';
-  const variables = useMemo(() => ({ where: {}, limit: 200, offset: 0, sort: [{ name: 'ASC' }] }), []);
   const { data, isLoading } = useEntityQuery({
     entityNamePlural,
     schema,
     scope,
-    variables,
-    selection: 'list',
+    variables: tagQueryVariables,
+    ...tagQueryOptions,
   });
 
   const tags: TagItem[] = (Array.isArray(data) ? (data as unknown[]) : []).map((item) => {
@@ -78,8 +79,8 @@ export function Sidebar(): JSX.Element {
     const _id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
     const entityData: FormEntityItem = { name: { value: name, disabled: false, scope: 'default' } };
     const mutation = getEntityCreateMutation(entityNamePlural, schema, entityData, _id);
-    // Match the mounted list query: 'list' skips the unbounded assets connection.
-    const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection: 'list' });
+    // Match the name-only tag query; no asset previews or counts are needed.
+    const entityQuery = getEntityQuery(entityNamePlural, scope, schema, tagQueryOptions);
     const refreshQuery = gql`
       ${entityQuery.query}
     `;
@@ -105,8 +106,8 @@ export function Sidebar(): JSX.Element {
     async (_id: string): Promise<void> => {
       setIsDeleting(true);
       const mutation = getEntityDeleteMutation(entityName, schema, _id);
-      // Match the mounted list query: 'list' skips the unbounded assets connection.
-    const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection: 'list' });
+      // Match the name-only tag query; no asset previews or counts are needed.
+      const entityQuery = getEntityQuery(entityNamePlural, scope, schema, tagQueryOptions);
       const refreshQuery = gql`
         ${entityQuery.query}
       `;
@@ -151,8 +152,8 @@ export function Sidebar(): JSX.Element {
       originalData,
       dataToMutate
     );
-    // Match the mounted list query: 'list' skips the unbounded assets connection.
-    const entityQuery = getEntityQuery(entityNamePlural, scope, schema, { selection: 'list' });
+    // Match the name-only tag query; no asset previews or counts are needed.
+    const entityQuery = getEntityQuery(entityNamePlural, scope, schema, tagQueryOptions);
     const refreshQuery = gql`
       ${entityQuery.query}
     `;
