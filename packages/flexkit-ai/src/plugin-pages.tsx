@@ -16,6 +16,7 @@ import {
   CollapsibleTrigger,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
@@ -112,7 +113,7 @@ function PluginConnectControl({
   onConnect: (scope: PluginScope) => void;
 }): JSX.Element | null {
   const pendingScopes = plugin.scopes.filter((scope) => activeConnection(plugin, scope) === null);
-  const scope = pendingScopes[0];
+  const [scope] = pendingScopes;
 
   if (!scope) {
     return null;
@@ -141,16 +142,25 @@ function PluginConnectControl({
           Connect
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {pendingScopes.map((item) => (
-          <DropdownMenuItem
-            disabled={!scopePermitted(plugin, canManage, item)}
-            key={item}
-            onSelect={() => onConnect(item)}
-          >
-            {scopeTitle(item)}
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="end" className="fk:w-72">
+        <DropdownMenuGroup>
+          {pendingScopes.map((item) => (
+            <DropdownMenuItem
+              disabled={!scopePermitted(plugin, canManage, item)}
+              key={item}
+              onSelect={() => onConnect(item)}
+            >
+              <span className="fk:flex fk:flex-col fk:gap-0.5">
+                <span>{scopeTitle(item)}</span>
+                <span className="fk:text-xs fk:text-muted-foreground">
+                  {item === 'personal'
+                    ? 'Only you can use this connection in this project.'
+                    : 'Shared with project members who can use this plugin.'}
+                </span>
+              </span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
