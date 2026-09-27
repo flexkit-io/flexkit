@@ -25,7 +25,7 @@ export function Root(): JSX.Element {
     <SidebarProvider className="fk:h-full" defaultOpen={defaultOpen}>
       <AutomationsSidebar />
       <SidebarInset className="fk:min-w-0">
-        <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:overflow-hidden fk:px-4 fk:pt-3">
+        <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:overflow-hidden fk:pl-4 fk:pt-3">
           <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col">
             <Outlet />
           </div>

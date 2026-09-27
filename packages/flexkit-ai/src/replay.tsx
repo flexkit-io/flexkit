@@ -935,7 +935,7 @@ export function ReasoningPart({ streaming, text }: { streaming: boolean; text: s
   }
 
   return (
-    <details className="fk:rounded-xl fk:border fk:border-border fk:bg-muted/30 fk:px-3.5 fk:py-3">
+    <details className="fk:rounded-xl fk:border fk:border-border fk:bg-muted/30 fk:px-3.5 fk:py-3 fk:corner-squircle">
       <summary className="fk:flex fk:cursor-pointer fk:items-center fk:gap-1.5 fk:text-sm fk:font-medium fk:text-muted-foreground">
         <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
         Reasoning
@@ -1000,7 +1000,7 @@ export function ToolMessage({
 }): JSX.Element {
   return (
     <div
-      className={`fk:min-w-0 fk:max-w-full fk:overflow-x-auto fk:rounded-xl fk:border fk:border-border fk:bg-background fk:px-3.5 fk:py-3 fk:text-sm ${className}`}
+      className={`fk:min-w-0 fk:max-w-full fk:overflow-x-auto fk:rounded-xl fk:border fk:border-border fk:bg-background fk:px-3.5 fk:py-3 fk:text-sm ${className} fk:corner-squircle`}
     >
       {children}
     </div>
@@ -1387,7 +1387,7 @@ function PluginConnectionPart({ pluginId }: { pluginId: string }): JSX.Element {
     <ToolMessage>
       <p className="fk:text-sm">Connect {pluginId} to use it in this conversation.</p>
       <Button asChild size="sm" variant="outline">
-        <Link to={`${base}/ai/marketplace/${encodeURIComponent(pluginId)}`}>Connect {pluginId}</Link>
+        <Link to={`${base}/ai/plugins/${encodeURIComponent(pluginId)}`}>Connect {pluginId}</Link>
       </Button>
     </ToolMessage>
   );

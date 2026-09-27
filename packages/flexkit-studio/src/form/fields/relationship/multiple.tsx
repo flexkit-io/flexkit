@@ -247,7 +247,7 @@ export default function MultipleRelationship({
               aria-expanded={isOpen}
               className={`fk:relative fk:flex fk:w-full fk:min-w-0 fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:border-input fk:bg-background fk:focus-visible:outline-hidden fk:ring-offset-background fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:focus-visible:ring-offset-2 ${
                 isOpen ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
-              }`}
+              } fk:corner-squircle`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -277,7 +277,7 @@ export default function MultipleRelationship({
                     <span className="fk:flex fk:min-w-0 fk:flex-wrap fk:grow fk:overflow-hidden fk:pb-1.5">
                       {previewItems.map((item) => (
                         <Badge
-                          className="fk:mr-2 fk:mt-1.5 fk:max-w-60 fk:justify-start fk:rounded-xs"
+                          className="fk:mr-2 fk:mt-1.5 fk:max-w-60 fk:justify-start fk:rounded-xs fk:corner-squircle"
                           key={item}
                           title={item}
                           variant="secondary"
@@ -286,7 +286,7 @@ export default function MultipleRelationship({
                         </Badge>
                       ))}
                       {hasMorePreviewItems ? (
-                        <Badge className="fk:mr-2 fk:mt-1.5 fk:rounded-xs" variant="secondary">
+                        <Badge className="fk:mr-2 fk:mt-1.5 fk:rounded-xs fk:corner-squircle" variant="secondary">
                           …
                         </Badge>
                       ) : null}
@@ -313,7 +313,7 @@ export default function MultipleRelationship({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              className="fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                              className="fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                               id={fieldId}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
@@ -337,7 +337,7 @@ export default function MultipleRelationship({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
-                              className="fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                              className="fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();

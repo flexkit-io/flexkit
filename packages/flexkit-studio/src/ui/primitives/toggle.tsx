@@ -6,7 +6,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../lib/utils';
 
 const toggleVariants = cva(
-  "fk:inline-flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:text-sm fk:font-medium fk:whitespace-nowrap fk:transition-[color,box-shadow] fk:outline-none fk:hover:bg-muted fk:hover:text-muted-foreground fk:focus-visible:border-ring fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:aria-invalid:border-destructive fk:aria-invalid:ring-destructive/20 fk:data-[state=on]:bg-accent fk:data-[state=on]:text-accent-foreground fk:dark:aria-invalid:ring-destructive/40 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4",
+  "fk:inline-flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:text-sm fk:font-medium fk:whitespace-nowrap fk:transition-[color,box-shadow] fk:outline-none fk:hover:bg-muted fk:hover:text-muted-foreground fk:focus-visible:border-ring fk:focus-visible:ring-[3px] fk:focus-visible:ring-ring/50 fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:aria-invalid:border-destructive fk:aria-invalid:ring-destructive/20 fk:data-[state=on]:bg-accent fk:data-[state=on]:text-accent-foreground fk:dark:aria-invalid:ring-destructive/40 fk:[&_svg]:pointer-events-none fk:[&_svg]:shrink-0 fk:[&_svg:not([class*='size-'])]:size-4 fk:corner-squircle",
   {
     variants: {
       variant: {

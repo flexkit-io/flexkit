@@ -51,14 +51,14 @@ const tiptapImage = TiptapImage.extend({
   addProseMirrorPlugins() {
     return [
       UploadImagesPlugin({
-        imageClass: cx('fk:opacity-40 fk:rounded-lg fk:border fk:border-stone-200'),
+        imageClass: cx('fk:opacity-40 fk:rounded-lg fk:border fk:border-stone-200 fk:corner-squircle'),
       }),
     ];
   },
 }).configure({
   allowBase64: true,
   HTMLAttributes: {
-    class: cx('fk:rounded-lg fk:border fk:border-muted'),
+    class: cx('fk:rounded-lg fk:border fk:border-muted fk:corner-squircle'),
   },
 });
 
@@ -104,7 +104,7 @@ const starterKit = StarterKit.configure({
   codeBlock: false,
   code: {
     HTMLAttributes: {
-      'class': cx('fk:rounded-md fk:bg-muted fk:px-1.5 fk:py-1 fk:font-mono fk:font-medium'),
+      'class': cx('fk:rounded-md fk:bg-muted fk:px-1.5 fk:py-1 fk:font-mono fk:font-medium fk:corner-squircle'),
       spellcheck: 'false',
     },
   },
@@ -124,7 +124,7 @@ const codeBlockLowlight = CodeBlockLowlight.configure({
 
 const youtube = Youtube.configure({
   HTMLAttributes: {
-    'class': cx('fk:rounded-lg fk:border fk:border-muted'),
+    'class': cx('fk:rounded-lg fk:border fk:border-muted fk:corner-squircle'),
   },
   inline: false,
 });
@@ -138,7 +138,7 @@ const twitter = Twitter.configure({
 
 const mathematics = Mathematics.configure({
   HTMLAttributes: {
-    'class': cx('fk:text-foreground fk:rounded-sm fk:p-1 fk:hover:bg-muted fk:cursor-pointer'),
+    'class': cx('fk:text-foreground fk:rounded-sm fk:p-1 fk:hover:bg-muted fk:cursor-pointer fk:corner-squircle'),
   },
   katexOptions: {
     throwOnError: false,

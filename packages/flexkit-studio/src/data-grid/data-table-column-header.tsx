@@ -36,7 +36,7 @@ export function DataTableColumnHeader<TData, TValue>({
         <DropdownMenuTrigger asChild>
           <button
             aria-label={`Sort ${title}`}
-            className="fk:inline-flex fk:shrink-0 fk:items-center fk:justify-center fk:rounded-sm fk:p-0.5 fk:text-muted-foreground fk:outline-hidden fk:hover:bg-accent fk:hover:text-accent-foreground fk:focus-visible:ring-1 fk:focus-visible:ring-ring"
+            className="fk:inline-flex fk:shrink-0 fk:items-center fk:justify-center fk:rounded-sm fk:p-0.5 fk:text-muted-foreground fk:outline-hidden fk:hover:bg-accent fk:hover:text-accent-foreground fk:focus-visible:ring-1 fk:focus-visible:ring-ring fk:corner-squircle"
             type="button"
           >
             <ChevronDown className="fk:h-3.5 fk:w-3.5" />

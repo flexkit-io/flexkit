@@ -42,19 +42,19 @@ export function DataTableFacetedFilter<TData, TValue>({
           {selectedValues?.size > 0 && (
             <>
               <Separator orientation="vertical" className="fk:mx-2 fk:h-4" />
-              <Badge variant="secondary" className="fk:rounded-xs fk:px-1 fk:font-normal fk:lg:hidden">
+              <Badge variant="secondary" className="fk:rounded-xs fk:px-1 fk:font-normal fk:lg:hidden fk:corner-squircle">
                 {selectedValues.size}
               </Badge>
               <div className="fk:space-x-1 fk:lg:flex">
                 {selectedValues.size > 2 ? (
-                  <Badge variant="secondary" className="fk:rounded-xs fk:px-1 fk:font-normal">
+                  <Badge variant="secondary" className="fk:rounded-xs fk:px-1 fk:font-normal fk:corner-squircle">
                     {selectedValues.size} selected
                   </Badge>
                 ) : (
                   options
                     .filter((option) => selectedValues.has(option.value))
                     .map((option) => (
-                      <Badge variant="secondary" key={option.value} className="fk:rounded-xs fk:px-1 fk:font-normal">
+                      <Badge variant="secondary" key={option.value} className="fk:rounded-xs fk:px-1 fk:font-normal fk:corner-squircle">
                         {option.label}
                       </Badge>
                     ))
@@ -87,7 +87,7 @@ export function DataTableFacetedFilter<TData, TValue>({
                   >
                     <div
                       className={cn(
-                        'fk:mr-2 fk:flex fk:h-4 fk:w-4 fk:items-center fk:justify-center fk:rounded-xs fk:border fk:border-primary',
+                        'fk:mr-2 fk:flex fk:h-4 fk:w-4 fk:items-center fk:justify-center fk:rounded-xs fk:border fk:border-primary fk:corner-squircle',
                         isSelected ? 'fk:bg-primary fk:text-primary-foreground' : 'fk:opacity-50 fk:[&_svg]:invisible'
                       )}
                     >

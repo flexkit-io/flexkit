@@ -127,7 +127,7 @@ function ChatListItem({
     <div
       className={`fk:group/chat fk:flex fk:items-center fk:gap-1 fk:rounded-md fk:pr-1 ${
         active ? 'fk:bg-sidebar-accent' : 'fk:hover:bg-accent/60'
-      }`}
+      } fk:corner-squircle`}
     >
       <button
         className="fk:min-w-0 fk:flex-1 fk:truncate fk:px-2 fk:py-1.5 fk:text-left fk:text-sm"
@@ -227,7 +227,7 @@ function SearchResults({
     <div className="fk:space-y-1">
       {data.results.map((result) => (
         <button
-          className="fk:block fk:w-full fk:rounded-md fk:px-2 fk:py-1.5 fk:text-left fk:hover:bg-accent/60"
+          className="fk:block fk:w-full fk:rounded-md fk:px-2 fk:py-1.5 fk:text-left fk:hover:bg-accent/60 fk:corner-squircle"
           key={result.messageId}
           type="button"
           onClick={() => onOpen(result.chatId)}
@@ -253,7 +253,7 @@ export function AgentChatsSection({ query }: { query: string }): JSX.Element | n
   const location = useLocation();
   const { mutate: globalMutate } = useSWRConfig();
   const activeChatId = /\/agent\/chats\/([^/]+)/.exec(location.pathname)?.[1];
-  const { data, mutate, setSize, size } = useSWRInfinite<AgentChatsList>(
+  const { data, isLoading, mutate, setSize, size } = useSWRInfinite<AgentChatsList>(
     (pageIndex, previousPage: AgentChatsList | null) => {
       if (!projectId || (previousPage && !previousPage.hasMore)) {
         return null;
@@ -338,7 +338,13 @@ export function AgentChatsSection({ query }: { query: string }): JSX.Element | n
               </div>
             </div>
           ))}
-          {chats.length === 0 ? (
+          {isLoading ? (
+            <div className="fk:flex fk:items-center fk:gap-2 fk:px-2 fk:py-3 fk:text-xs fk:text-muted-foreground">
+              <LoaderCircle className="fk:size-3.5 fk:animate-spin" />
+              Loading recent chats...
+            </div>
+          ) : null}
+          {!isLoading && chats.length === 0 ? (
             <div className="fk:flex fk:flex-col fk:items-center fk:gap-2 fk:px-2 fk:py-6 fk:text-center fk:text-xs fk:text-muted-foreground">
               <MessageSquareIcon className="fk:size-5" />
               <span>No chats yet. Start a conversation with the agent.</span>

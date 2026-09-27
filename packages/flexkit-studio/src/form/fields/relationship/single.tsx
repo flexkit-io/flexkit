@@ -154,7 +154,7 @@ export default function SingleRelationship({
               <div
                 className={`fk:relative fk:flex fk:w-full fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:border-input fk:bg-background fk:ring-offset-background ${
                   hasFocus ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
-                }`}
+                } fk:corner-squircle`}
               >
                 <Input
                   className="fk:h-9.5 fk:py-1.75 fk:caret-transparent fk:border-0 fk:focus-visible:ring-0 fk:focus-visible:ring-offset-0"
@@ -181,7 +181,7 @@ export default function SingleRelationship({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk:absolute fk:right-10 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                          className="fk:absolute fk:right-10 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                           disabled={readOnly}
                           onClick={handleClearing}
                           size="icon"
@@ -200,7 +200,7 @@ export default function SingleRelationship({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        className="fk:absolute fk:right-0.75 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                        className="fk:absolute fk:right-0.75 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                         disabled={readOnly}
                         onClick={handleSelection}
                         size="icon"

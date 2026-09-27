@@ -45,10 +45,17 @@ export class AgentUploadError extends Error {
 }
 
 export interface ApiClient {
-  connectPlugins: (_input: { pluginIds: string[]; scope: PluginScope; studioOrigin: string }) => Promise<{ transactionId: string; authorizeUrl: string; completionOrigin: string; launchTicket: string }>;
+  connectPlugins: (_input: {
+    pluginIds: string[];
+    scope: PluginScope;
+    studioOrigin: string;
+  }) => Promise<
+    | { connected: true }
+    | { transactionId: string; authorizeUrl: string; completionOrigin: string; launchTicket: string }
+  >;
   pluginOAuthStatus: (_id: string) => Promise<{ id: string; status: 'pending' | 'exchanging' | 'complete' | 'failed'; expires_at: string }>;
   disconnectPlugin: (_id: string) => Promise<{ success: boolean }>;
-  installPlugin: (_id: string, _input?: { versionId?: string; updateMode?: 'auto' | 'pinned' }) => Promise<unknown>;
+  installPlugin: (_id: string) => Promise<unknown>;
   setPluginPolicy: (_id: string, _input: { enabled: boolean; allowPersonal: boolean }) => Promise<{ success: boolean }>;
   refreshPluginTools: (_id: string) => Promise<PluginTools>;
 
@@ -142,7 +149,7 @@ export function createApiClient(projectId: string): ApiClient {
     connectPlugins: (input) => request(`${projectBasePath}/plugins/connect`, { method: 'POST', body: JSON.stringify(input) }),
     pluginOAuthStatus: (id) => request(`${projectBasePath}/plugins/oauth-transactions/${encodeURIComponent(id)}`),
     disconnectPlugin: (id) => request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-    installPlugin: (id, input = {}) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/installation`, { method: 'PUT', body: JSON.stringify(input) }),
+    installPlugin: (id) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/installation`, { method: 'PUT', body: JSON.stringify({}) }),
     setPluginPolicy: (id, input) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/policy`, { method: 'PATCH', body: JSON.stringify(input) }),
     refreshPluginTools: (id) => request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}/tools/refresh`, { method: 'POST' }),
     cancelRun: async (runId) =>

@@ -49,7 +49,7 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
           'fk:group/drawer-content fk:fixed fk:z-50 fk:flex fk:h-auto fk:flex-col fk:bg-background',
           'fk:data-[vaul-drawer-direction=top]:inset-x-0 fk:data-[vaul-drawer-direction=top]:top-0 fk:data-[vaul-drawer-direction=top]:mb-24 fk:data-[vaul-drawer-direction=top]:max-h-[80vh] fk:data-[vaul-drawer-direction=top]:rounded-b-lg fk:data-[vaul-drawer-direction=top]:border-b',
           'fk:data-[vaul-drawer-direction=bottom]:inset-x-0 fk:data-[vaul-drawer-direction=bottom]:bottom-0 fk:data-[vaul-drawer-direction=bottom]:mt-24 fk:data-[vaul-drawer-direction=bottom]:max-h-[80vh] fk:data-[vaul-drawer-direction=bottom]:rounded-t-lg fk:data-[vaul-drawer-direction=bottom]:border-t',
-          'fk:data-[vaul-drawer-direction=right]:inset-y-0 fk:data-[vaul-drawer-direction=right]:right-0 fk:data-[vaul-drawer-direction=right]:w-full fk:data-[vaul-drawer-direction=right]:max-w-[clamp(40vw,95vw,60rem)] fk:data-[vaul-drawer-direction=right]:border-l fk:rounded-l-[20px]',
+          'fk:data-[vaul-drawer-direction=right]:inset-y-0 fk:data-[vaul-drawer-direction=right]:right-0 fk:data-[vaul-drawer-direction=right]:w-full fk:data-[vaul-drawer-direction=right]:max-w-[clamp(40vw,95vw,60rem)] fk:data-[vaul-drawer-direction=right]:border-l fk:rounded-l-[20px] fk:corner-squircle',
           'fk:data-[vaul-drawer-direction=left]:inset-y-0 fk:data-[vaul-drawer-direction=left]:left-0 fk:data-[vaul-drawer-direction=left]:w-3/4 fk:data-[vaul-drawer-direction=left]:border-r fk:data-[vaul-drawer-direction=left]:sm:max-w-sm',
           className
         )}
@@ -57,7 +57,7 @@ function DrawerContent({ className, children, ...props }: React.ComponentProps<t
       >
         <div
           className={cn(
-            'fk:absolute fk:z-10 fk:hidden fk:shrink-0 fk:rounded-full fk:bg-muted',
+            'fk:absolute fk:z-10 fk:hidden fk:shrink-0 fk:rounded-full fk:bg-muted fk:corner-squircle',
             'fk:group-data-[vaul-drawer-direction=bottom]/drawer-content:top-4 fk:group-data-[vaul-drawer-direction=bottom]/drawer-content:left-1/2 fk:group-data-[vaul-drawer-direction=bottom]/drawer-content:block fk:group-data-[vaul-drawer-direction=bottom]/drawer-content:h-2 fk:group-data-[vaul-drawer-direction=bottom]/drawer-content:w-[100px] fk:group-data-[vaul-drawer-direction=bottom]/drawer-content:-translate-x-1/2',
             'fk:group-data-[vaul-drawer-direction=top]/drawer-content:bottom-4 fk:group-data-[vaul-drawer-direction=top]/drawer-content:left-1/2 fk:group-data-[vaul-drawer-direction=top]/drawer-content:block fk:group-data-[vaul-drawer-direction=top]/drawer-content:h-2 fk:group-data-[vaul-drawer-direction=top]/drawer-content:w-[100px] fk:group-data-[vaul-drawer-direction=top]/drawer-content:-translate-x-1/2',
             'fk:group-data-[vaul-drawer-direction=right]/drawer-content:left-3 fk:group-data-[vaul-drawer-direction=right]/drawer-content:top-1/2 fk:group-data-[vaul-drawer-direction=right]/drawer-content:block fk:group-data-[vaul-drawer-direction=right]/drawer-content:h-[100px] fk:group-data-[vaul-drawer-direction=right]/drawer-content:w-2 fk:group-data-[vaul-drawer-direction=right]/drawer-content:-translate-y-1/2',

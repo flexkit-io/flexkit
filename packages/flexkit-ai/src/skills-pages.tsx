@@ -1,28 +1,15 @@
 import type { FormEvent, JSX } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { formatDistance } from 'date-fns';
-import { ArrowLeft, Ellipsis, Eye, Info, LoaderCircle, Pencil, PenLine, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Eye, GraduationCapIcon, Info, LoaderCircle, PenLine, Plus, Trash2 } from 'lucide-react';
 import Markdown, { type Components } from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import {
-  getCoreRowModel,
-  useAuth,
-  useCanMutate,
-  useConfig,
-  useReactTable,
-  type ColumnDef,
-  type ColumnFiltersState,
-} from '@flexkit/studio';
+import { useAuth, useCanMutate, useConfig } from '@flexkit/studio';
 import { MAX_SKILL_CONTENT_LENGTH } from '@flexkit/studio/tools';
 import {
+  Alert,
+  AlertDescription,
   Badge,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  ExternalLink,
   Input,
   Label,
   PermissionTooltip,
@@ -35,12 +22,6 @@ import {
   Separator,
   SidebarTrigger,
   Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -52,11 +33,37 @@ import {
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths, type ApiClient } from './api';
-import { AutomationsDataTableToolbar } from './data-table-toolbar';
 import { MarkdownEditor } from './markdown-editor';
+import { CatalogHeader } from './plugin-pages';
 import type { AutomationVisibility, ProjectSpace, Skill, SkillInput, SkillsList } from './types';
 
 const SKILLS_PAGE_SIZE = 25;
+
+const SKILL_SKELETON_ROWS: { descriptionWidth: string; id: string; nameWidth: string }[] = [
+  { descriptionWidth: 'fk:w-44', id: 'skill-a', nameWidth: 'fk:w-28' },
+  { descriptionWidth: 'fk:w-52', id: 'skill-b', nameWidth: 'fk:w-20' },
+  { descriptionWidth: 'fk:w-40', id: 'skill-c', nameWidth: 'fk:w-36' },
+  { descriptionWidth: 'fk:w-48', id: 'skill-d', nameWidth: 'fk:w-24' },
+  { descriptionWidth: 'fk:w-36', id: 'skill-e', nameWidth: 'fk:w-32' },
+  { descriptionWidth: 'fk:w-56', id: 'skill-f', nameWidth: 'fk:w-16' },
+];
+
+function SkillListSkeleton(): JSX.Element {
+  return (
+    <div aria-busy="true" className="fk:grid fk:grid-cols-1 fk:gap-x-16 fk:gap-y-1 fk:lg:grid-cols-2">
+      <span className="fk:sr-only">Loading skills</span>
+      {SKILL_SKELETON_ROWS.map((row) => (
+        <div className="fk:-mx-3 fk:flex fk:min-w-0 fk:items-center fk:gap-3 fk:px-3 fk:py-2" key={row.id}>
+          <Skeleton className="fk:size-10 fk:shrink-0 fk:rounded-lg" />
+          <span className="fk:flex fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-1.5">
+            <Skeleton className={`fk:h-4 ${row.nameWidth}`} />
+            <Skeleton className={`fk:h-4 ${row.descriptionWidth}`} />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const skillMarkdownComponents: Components = {
   code({ children, className, node: _node, ...props }) {
@@ -72,7 +79,7 @@ const skillMarkdownComponents: Components = {
 
     return (
       <code
-        className="fk:rounded fk:bg-muted fk:px-1.5 fk:py-0.5 fk:font-mono fk:text-[0.875em] fk:font-medium fk:before:content-none fk:after:content-none"
+        className="fk:rounded fk:bg-muted fk:px-1.5 fk:py-0.5 fk:font-mono fk:text-[0.875em] fk:font-medium fk:before:content-none fk:after:content-none fk:corner-squircle"
         {...props}
       >
         {children}
@@ -90,7 +97,7 @@ function useProjectApi(): { api: ApiClient | null; projectId: string | undefined
 
 function PageMessage({ children }: { children: string }): JSX.Element {
   return (
-    <div className="fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:text-center fk:text-sm fk:text-muted-foreground">
+    <div className="fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:text-center fk:text-sm fk:text-muted-foreground fk:corner-squircle">
       {children}
     </div>
   );
@@ -137,79 +144,24 @@ function getSkillVisibilityLabel(skill: Skill, spaceLabelById: Map<string, strin
   return 'Project';
 }
 
-function columnFilterValues(filters: ColumnFiltersState, columnId: string): string[] {
-  const filter = filters.find((entry) => entry.id === columnId);
-  const value = filter?.value;
-
-  if (!Array.isArray(value)) {
-    return [];
+function SkillLogo({ skill }: { skill: Skill }): JSX.Element {
+  if (skill.logoUrl) {
+    return <img alt="" className="fk:size-10 fk:shrink-0 fk:rounded-lg fk:corner-squircle" src={skill.logoUrl} />;
   }
 
-  return value.filter((entry): entry is string => typeof entry === 'string');
-}
-
-function mapVisibilityFilter(values: string[]): AutomationVisibility[] | undefined {
-  if (values.length === 0) {
-    return undefined;
-  }
-
-  const visibility = values.filter(
-    (value): value is AutomationVisibility => value === 'project' || value === 'space' || value === 'personal'
-  );
-
-  if (visibility.length === 0) {
-    return undefined;
-  }
-
-  return visibility;
-}
-
-function SkillsTableSkeleton(): JSX.Element {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Skill</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead>Visibility</TableHead>
-          <TableHead>Updated</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {Array.from({ length: 5 }, (_, index) => (
-          <TableRow key={index}>
-            <TableCell>
-              <Skeleton className="fk:h-4 fk:w-36" />
-            </TableCell>
-            <TableCell>
-              <Skeleton className="fk:h-4 fk:w-64" />
-            </TableCell>
-            <TableCell>
-              <Skeleton className="fk:h-4.75 fk:w-16" />
-            </TableCell>
-            <TableCell>
-              <Skeleton className="fk:h-4 fk:w-24" />
-            </TableCell>
-            <TableCell className="fk:text-right">
-              <Skeleton className="fk:ml-auto fk:size-8" />
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <span className="fk:flex fk:size-10 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-lg fk:bg-muted fk:text-muted-foreground fk:corner-squircle">
+      <GraduationCapIcon className="fk:size-5" />
+    </span>
   );
 }
 
 export function SkillsPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const navigate = useNavigate();
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [search, setSearch] = useState('');
-  const [message, setMessage] = useState('');
   const canMutate = useCanMutate();
-  const visibilityFilter = mapVisibilityFilter(columnFilterValues(columnFilters, 'visibility'));
-  const hasActiveFilters = columnFilters.length > 0 || search.trim().length > 0;
+  const hasActiveFilters = search.trim().length > 0;
 
   const getSkillsKey = (pageIndex: number, previousPage: SkillsList | null): string | null => {
     if (!projectId) {
@@ -224,233 +176,96 @@ export function SkillsPage(): JSX.Element {
       limit: SKILLS_PAGE_SIZE,
       offset: pageIndex * SKILLS_PAGE_SIZE,
       search: search.trim() || undefined,
-      visibility: visibilityFilter,
     });
   };
-  const { data: skillPages, isLoading, mutate, setSize, size } = useSWRInfinite<SkillsList>(getSkillsKey, fetcher);
-  const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(projectId ? paths(projectId).spaces : null, fetcher);
-  const spaceLabelById = useMemo(
-    () => new Map((spacesData?.spaces ?? []).map((space) => [space.id, space.label])),
-    [spacesData?.spaces]
-  );
+  const { data: skillPages, isLoading, setSize, size } = useSWRInfinite<SkillsList>(getSkillsKey, fetcher);
   const skills = skillPages?.flatMap((page) => page.skills) ?? [];
   const lastPage = skillPages?.[skillPages.length - 1];
   const hasMore = lastPage?.hasMore ?? false;
   const isLoadingMore = skillPages !== undefined && size > skillPages.length;
-  const skillsCount = skillPages?.[0]?.count;
   const isInitialLoading = isLoading && skills.length === 0;
-
-  const filterColumns = useMemo<ColumnDef<Skill>[]>(() => [{ id: 'visibility', accessorKey: 'visibility' }], []);
-  const table = useReactTable({
-    columns: filterColumns,
-    data: skills,
-    getCoreRowModel: getCoreRowModel(),
-    manualFiltering: true,
-    onColumnFiltersChange: (updater) => {
-      void setSize(1);
-      setColumnFilters(updater);
-    },
-    state: { columnFilters },
-  });
-
-  const searchRef = useRef(search);
-  searchRef.current = search;
-
-  const handleSearchChange = useCallback(
-    (nextSearch: string) => {
-      if (nextSearch === searchRef.current) {
-        return;
-      }
-
-      void setSize(1);
-      setSearch(nextSearch);
-    },
-    [setSize]
-  );
 
   if (!projectId || !api) {
     return <PageMessage>Select a project to view skills.</PageMessage>;
-  }
-
-  async function handleDelete(skill: Skill): Promise<void> {
-    setMessage('');
-
-    if (!api) {
-      return;
-    }
-
-    const result = await api.deleteSkill(skill.id);
-
-    if (!result.success) {
-      setMessage(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
-
-      return;
-    }
-
-    await mutate();
   }
 
   function handleLoadMore(): void {
     void setSize((currentSize) => currentSize + 1);
   }
 
-  let content: JSX.Element;
+  let emptyMessage = 'No skills yet.';
+
+  if (hasActiveFilters) {
+    emptyMessage = 'No skills match your search.';
+  }
+
+  let content: JSX.Element = (
+    <div className="fk:grid fk:grid-cols-1 fk:gap-x-16 fk:gap-y-1 fk:lg:grid-cols-2">
+      {skills.map((skill) => (
+        <button
+          key={skill.id}
+          type="button"
+          onClick={() => navigate(skill.id)}
+          className="fk:-mx-3 fk:flex fk:min-w-0 fk:items-center fk:gap-3 fk:rounded-lg fk:px-3 fk:py-2 fk:text-left fk:transition-colors fk:hover:bg-accent fk:focus-visible:bg-accent fk:focus-visible:outline-none fk:corner-squircle"
+        >
+          <SkillLogo skill={skill} />
+          <span className="fk:min-w-0 fk:flex-1">
+            <span className="fk:block fk:truncate fk:text-sm fk:font-medium">{skill.name}</span>
+            <span className="fk:block fk:truncate fk:text-sm fk:text-muted-foreground">{skill.description}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
 
   if (isInitialLoading) {
-    content = <SkillsTableSkeleton />;
+    content = <SkillListSkeleton />;
   } else if (skills.length === 0) {
-    content = <PageMessage>{hasActiveFilters ? 'No results.' : 'No skills yet.'}</PageMessage>;
-  } else {
     content = (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Skill</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Visibility</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {skills.map((skill) => (
-            <TableRow className="fk:cursor-pointer" key={skill.id} onClick={() => navigate(skill.id)}>
-              <TableCell>
-                <span className="fk:font-medium">{skill.name}</span>
-              </TableCell>
-              <TableCell className="fk:max-w-md fk:truncate fk:text-muted-foreground">{skill.description}</TableCell>
-              <TableCell>
-                <Badge
-                  className="fk:h-4.75 fk:text-[0.6875rem] fk:leading-4.5 fk:tracking-wide"
-                  variant={skill.visibility === 'personal' ? 'secondary' : 'outline'}
-                >
-                  {getSkillVisibilityLabel(skill, spaceLabelById)}
-                </Badge>
-              </TableCell>
-              <TableCell className="fk:text-muted-foreground">
-                {formatDistance(new Date(skill.updatedAt), new Date(), { addSuffix: true })}
-              </TableCell>
-              <TableCell className="fk:text-right">
-                {skill.source === 'studio' ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        aria-label={`Actions for ${skill.name}`}
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                        }}
-                      >
-                        <Ellipsis className="fk:size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="fk:w-40">
-                      <DropdownMenuItem
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          navigate(skill.id);
-                        }}
-                      >
-                        <Pencil />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        disabled={!canMutate}
-                        variant="destructive"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleDelete(skill);
-                        }}
-                      >
-                        <Trash2 />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        aria-label={`About ${skill.name}`}
-                        size="icon"
-                        type="button"
-                        variant="ghost"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                        }}
-                      >
-                        <Info className="fk:size-4 fk:text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>This skill can only be modified via code.</TooltipContent>
-                  </Tooltip>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <Alert>
+        <AlertDescription>{emptyMessage}</AlertDescription>
+      </Alert>
     );
   }
 
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:gap-4">
-      <div className="fk:flex fk:shrink-0 fk:items-start fk:gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
-          </TooltipTrigger>
-          <TooltipContent>Toggle Sidebar</TooltipContent>
-        </Tooltip>
-        <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
-        <div className="fk:min-w-0 fk:flex-1">
-          <div className="fk:flex fk:items-center fk:gap-2">
-            <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">Skills</h1>
-            {!isInitialLoading && skillsCount !== undefined ? (
-              <span className="fk:ml-auto fk:text-sm fk:font-normal fk:text-muted-foreground">
-                {skillsCount.toLocaleString()} {skillsCount === 1 ? 'skill' : 'skills'}
-              </span>
-            ) : null}
+    <main className="fk:flex fk:min-h-0 fk:flex-1 fk:flex-col">
+      <CatalogHeader />
+      <div className="fk:min-h-0 fk:flex-1 fk:overflow-auto">
+        <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-4xl fk:flex-col fk:gap-8 fk:py-6 fk:pl-4 fk:pr-6">
+          <div>
+            <h2 className="fk:text-2xl fk:font-semibold">Skills for your agents</h2>
+            <p className="fk:mt-2 fk:text-muted-foreground">
+              Reusable Markdown instructions that agents load when relevant, or always when attached to an automation.
+            </p>
           </div>
-          <p className="fk:mt-1 fk:text-sm fk:text-muted-foreground">
-            Reusable Markdown instructions that agents load when relevant, or always when attached to an automation.
-            <ExternalLink href="https://flexkit.io/docs/automations/skills">Learn more</ExternalLink>
-          </p>
-        </div>
-      </div>
-
-      {message ? <div className="fk:text-sm fk:text-destructive">{message}</div> : null}
-
-      <AutomationsDataTableToolbar
-        actions={
-          canMutate ? (
-            <Button asChild className="fk:h-8" size="sm">
-              <Link to="new">
-                <Plus className="fk:mr-2 fk:size-4" />
-                New Skill
-              </Link>
-            </Button>
-          ) : (
-            <PermissionTooltip disabled>
-              <Button className="fk:h-8" disabled size="sm">
-                <Plus className="fk:mr-2 fk:size-4" />
-                New Skill
+          <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-3">
+            <Input
+              aria-label="Search skills"
+              className="fk:w-full fk:max-w-xs"
+              placeholder="Search skills…"
+              value={search}
+              onChange={(event) => {
+                void setSize(1);
+                setSearch(event.target.value);
+              }}
+            />
+            {canMutate ? (
+              <Button asChild className="fk:ml-auto" size="sm">
+                <Link to="new">
+                  <Plus />
+                  New Skill
+                </Link>
               </Button>
-            </PermissionTooltip>
-          )
-        }
-        isSearchLoading={isLoading && search.trim().length > 0}
-        search={search}
-        searchPlaceholder="Search skills..."
-        table={table}
-        onSearchChange={handleSearchChange}
-      />
-
-      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
-        <div className="fk:pb-6 fk:pr-4">
+            ) : (
+              <PermissionTooltip disabled>
+                <Button className="fk:ml-auto" disabled size="sm">
+                  <Plus />
+                  New Skill
+                </Button>
+              </PermissionTooltip>
+            )}
+          </div>
           {content}
           {hasMore && !isLoadingMore ? <InfiniteScrollSentinel onVisible={handleLoadMore} /> : null}
           {isLoadingMore ? (
@@ -460,8 +275,8 @@ export function SkillsPage(): JSX.Element {
             </div>
           ) : null}
         </div>
-      </ScrollArea>
-    </div>
+      </div>
+    </main>
   );
 }
 
@@ -493,7 +308,7 @@ function FieldHintLabel({
         <TooltipTrigger asChild>
           <button
             aria-label={`About ${children.toLowerCase()}`}
-            className="fk:rounded-sm fk:text-muted-foreground hover:fk:text-foreground"
+            className="fk:rounded-sm fk:text-muted-foreground hover:fk:text-foreground fk:corner-squircle"
             type="button"
           >
             <Info className="fk:size-3.5" />
@@ -505,10 +320,10 @@ function FieldHintLabel({
   );
 }
 
-function SkillPageHeader({ actions, title }: { actions?: JSX.Element; title: string }): JSX.Element {
+function SkillPageHeader({ actions, title }: { actions?: JSX.Element; title: string | JSX.Element }): JSX.Element {
   return (
     <>
-      <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2">
+      <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2 fk:pr-4">
         <Tooltip>
           <TooltipTrigger asChild>
             <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
@@ -528,6 +343,33 @@ function SkillPageHeader({ actions, title }: { actions?: JSX.Element; title: str
         </Link>
       </Button>
     </>
+  );
+}
+
+function SkillDetailSkeleton(): JSX.Element {
+  return (
+    <div aria-busy="true" className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:gap-3 fk:overflow-hidden fk:pb-3">
+      <span className="fk:sr-only">Loading skill</span>
+      <SkillPageHeader actions={<Skeleton className="fk:h-8 fk:w-24" />} title={<Skeleton className="fk:h-5 fk:w-40" />} />
+      <div className="fk:m-auto fk:flex fk:min-h-0 fk:w-full fk:max-w-6xl fk:flex-1 fk:flex-col fk:gap-8 fk:px-6">
+        <div className="fk:grid fk:shrink-0 fk:gap-3 fk:lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
+          {['name', 'description'].map((field) => (
+            <div className="fk:flex fk:flex-col fk:gap-2" key={field}>
+              <Skeleton className="fk:h-4 fk:w-20" />
+              <Skeleton className="fk:h-9 fk:w-full" />
+            </div>
+          ))}
+          <div className="fk:flex fk:flex-col fk:gap-2">
+            <Skeleton className="fk:h-4 fk:w-20" />
+            <Skeleton className="fk:h-9 fk:w-32" />
+          </div>
+        </div>
+        <div className="fk:flex fk:min-h-0 fk:flex-1 fk:flex-col fk:gap-1.5">
+          <Skeleton className="fk:h-4 fk:w-16" />
+          <Skeleton className="fk:min-h-48 fk:flex-1 fk:rounded-md" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -568,7 +410,7 @@ function SkillContentPane({
           <TooltipTrigger asChild>
             <button
               aria-label="About skill content"
-              className="fk:rounded-sm fk:text-muted-foreground hover:fk:text-foreground"
+              className="fk:rounded-sm fk:text-muted-foreground hover:fk:text-foreground fk:corner-squircle"
               type="button"
             >
               <Info className="fk:size-3.5" />
@@ -581,7 +423,7 @@ function SkillContentPane({
         </Tooltip>
       </div>
       <div
-        className={`fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:ml-0.75 fk:overflow-hidden fk:rounded-md fk:border ${showContentError ? 'fk:border-destructive' : ''}`}
+        className={`fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:ml-0.75 fk:overflow-hidden fk:rounded-md fk:border ${showContentError ? 'fk:border-destructive' : ''} fk:corner-squircle`}
       >
         <div className="fk:flex fk:shrink-0 fk:items-center fk:justify-between fk:gap-2 fk:border-b fk:px-2.5 fk:py-1">
           <Tabs
@@ -623,7 +465,6 @@ function SkillContentPane({
             ariaInvalid={showContentError}
             ariaLabelledBy="skill-content-label"
             className="fk:h-full fk:min-h-0 fk:min-w-0 fk:w-full fk:overflow-hidden"
-            placeholder={'# Product description guidelines\n\n## Tone\n\n- ...\n\n## Structure\n\n1. ...'}
             readOnly={readOnly}
             value={content}
             onBlur={onBlur}
@@ -662,6 +503,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
   const isSavingRef = useRef(false);
   const [message, setMessage] = useState('');
   const [touched, setTouched] = useState({ content: false, description: false, name: false });
+  const navigate = useNavigate();
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
   const [, auth] = useAuth();
   const canMutate = useCanMutate();
@@ -744,13 +586,46 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
     await save();
   }
 
+  async function deleteSkill(): Promise<void> {
+    if (!skill || !canMutate || isSavingRef.current) {
+      return;
+    }
+
+    isSavingRef.current = true;
+    setIsSaving(true);
+    setMessage('');
+
+    try {
+      const result = await api.deleteSkill(skill.id);
+
+      if (!result.success) {
+        setMessage(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
+
+        return;
+      }
+
+      navigate('..', { relative: 'path' });
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to delete skill.');
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
+    }
+  }
+
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:overflow-hidden fk:gap-3 fk:pb-3">
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:gap-3 fk:pb-3">
       <SkillPageHeader
         actions={
           <div className="fk:flex fk:items-center fk:gap-3">
             {!isValid ? (
               <span className="fk:text-xs fk:text-muted-foreground">Complete the required fields to save</span>
+            ) : null}
+            {mode === 'edit' && skill ? (
+              <Button disabled={isSaving || !canMutate} size="sm" type="button" variant="outline" onClick={() => void deleteSkill()}>
+                <Trash2 />
+                Delete
+              </Button>
             ) : null}
             <PermissionTooltip disabled={!canMutate}>
               <Button disabled={isSaving || !isValid || !canMutate} form="skill-editor-form" size="sm" type="submit">
@@ -762,12 +637,12 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
         title={title}
       />
       {message ? (
-        <div className="fk:shrink-0 fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive">
+        <div className="fk:shrink-0 fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive fk:corner-squircle">
           {message}
         </div>
       ) : null}
       <form
-        className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-6"
+        className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-6 fk:w-full fk:max-w-6xl fk:m-auto fk:gap-8 fk:px-4"
         id="skill-editor-form"
         onSubmit={(event) => void handleSubmit(event)}
       >
@@ -913,38 +788,94 @@ function ReadOnlyCodeSkill({
   }
 
   return (
-    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:overflow-hidden fk:gap-3 fk:pb-3">
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0 fk:flex-col fk:gap-3 fk:pb-3">
       <SkillPageHeader
         actions={
           <div className="fk:flex fk:items-center fk:gap-2">
             <Badge variant="secondary">{skill.source === 'plugin' ? 'Plugin' : 'Code'}</Badge>
-            {skill.source === 'plugin' && <Button type="button" disabled={forking || !canMutate} onClick={() => void fork()}>Edit a copy</Button>}
+            {skill.source === 'plugin' && <Button type="button" disabled={forking || !canMutate} onClick={() => void fork()} size="sm">Edit a copy</Button>}
           </div>
         }
         title={skill.name}
       />
-      <div className="fk:shrink-0 fk:rounded-md fk:border fk:bg-muted/30 fk:px-3 fk:py-2">
-        <p className="fk:text-sm fk:font-medium">Version-controlled skill</p>
-        <p className="fk:text-sm fk:text-muted-foreground">
-          {skill.source === 'plugin' ? 'This skill is managed by its plugin. Edit a copy to create a personal Studio skill.' : 'Edit this skill in your repository and re-sync it from the Custom Tools settings.'}
-        </p>
+      <div className="fk:flex fk:flex-col fk:h-full fk:px-4 fk:gap-3 fk:max-w-6xl fk:m-auto">
+        <div className="fk:shrink-0 fk:rounded-md fk:border fk:bg-muted/30 fk:px-3 fk:py-2 fk:corner-squircle">
+          <p className="fk:text-sm fk:font-medium">Version-controlled skill</p>
+          <p className="fk:text-sm fk:text-muted-foreground">
+            {skill.source === 'plugin' ? 'This skill is managed by its plugin. Edit a copy to create a personal Studio skill.' : 'Edit this skill in your repository and re-sync it from the Custom Tools settings.'}
+          </p>
+        </div>
+        <div className="fk:grid fk:min-w-0 fk:shrink-0 fk:gap-3 fk:lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
+          <div>
+            <FieldHintLabel hint="Identifying label for this skill" htmlFor="skill-name">
+              Name
+            </FieldHintLabel>
+            <Input
+              className="fk:opacity-100!"
+              disabled={true}
+              id="skill-name"
+              value={skill.name}
+            />
+          </div>
+          <div>
+            <FieldHintLabel
+              hint="One or two sentences describing when to use this skill. Agents rely on it to decide whether the skill applies to their current task."
+              htmlFor="skill-description"
+            >
+              Description
+            </FieldHintLabel>
+            <Input
+              className="fk:opacity-100!"
+              disabled={true}
+              id="skill-description"
+              placeholder="e.g. Rules for writing product descriptions in our brand voice"
+              value={skill.description}
+            />
+          </div>
+          <div>
+            <FieldHintLabel
+              hint="Who can see and use this skill. Space skills are only visible to members of the selected space and only usable by automations in that space; personal skills are private to you."
+              htmlFor="skill-visibility"
+            >
+              Visibility
+            </FieldHintLabel>
+            <div className="fk:flex fk:items-center fk:gap-2">
+              <Select
+                disabled={true}
+                value={skill.visibility}
+              >
+                <SelectTrigger aria-label="Visibility" className="fk:w-fit fk:min-w-26 fk:opacity-100!" id="skill-visibility">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectItem value="project">Project</SelectItem>
+                  <SelectItem disabled={!skill.spaceId} value="space">
+                    Space
+                  </SelectItem>
+                  <SelectItem value="personal">Personal</SelectItem>
+                </SelectContent>
+              </Select>
+              {skill.visibility === 'space' ? (
+                <Select
+                  disabled={true}
+                  value={skill.spaceId ?? ''}
+                >
+                  <SelectTrigger aria-label="Space" className="fk:w-fit fk:min-w-34 fk:opacity-100!">
+                    <SelectValue placeholder="Select a space" />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectItem value={skill.spaceId ?? ''}>
+                      {getSkillVisibilityLabel(skill, spaceLabelById)}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        {forkError && <p role="alert">{forkError}</p>}
+        <SkillContentPane content={skill.content} readOnly />
       </div>
-      <div className="fk:grid fk:min-w-0 fk:shrink-0 fk:gap-3 fk:lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
-        <div>
-          <Label className="fk:mb-1">Name</Label>
-          <p className="fk:truncate fk:text-sm">{skill.name}</p>
-        </div>
-        <div>
-          <Label className="fk:mb-1">Description</Label>
-          <p className="fk:line-clamp-2 fk:text-sm fk:text-muted-foreground">{skill.description}</p>
-        </div>
-        <div>
-          <Label className="fk:mb-1">Visibility</Label>
-          <Badge variant="outline">{getSkillVisibilityLabel(skill, spaceLabelById)}</Badge>
-        </div>
-      </div>
-      {forkError && <p role="alert">{forkError}</p>}
-      <SkillContentPane content={skill.content} readOnly />
     </div>
   );
 }
@@ -980,7 +911,7 @@ export function SkillDetailPage(): JSX.Element {
   }
 
   if (isLoading || !data?.skill) {
-    return <PageMessage>Loading skill...</PageMessage>;
+    return <SkillDetailSkeleton />;
   }
 
   const spaceLabelById = new Map((spacesData?.spaces ?? []).map((space) => [space.id, space.label]));

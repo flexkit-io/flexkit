@@ -58,6 +58,7 @@ export interface Skill {
   createdBy: string;
   description: string;
   id: string;
+  logoUrl: string | null;
   name: string;
   projectId: string;
   source: 'code' | 'studio' | 'plugin';

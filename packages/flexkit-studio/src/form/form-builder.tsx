@@ -344,11 +344,11 @@ function FormBuilder(
         {visibleGroups.length > 0 ? (
           <Tabs onValueChange={setActiveGroup} value={activeGroup}>
             <div className="fk:sticky fk:top-0 fk:z-10 fk:bg-background fk:py-1 fk:mb-6">
-              <ScrollArea className="fk:w-full fk:**:data-[slot=scroll-area-viewport]:h-auto fk:[&_[data-slot=scroll-area-scrollbar][data-orientation=vertical]]:hidden">
-                <TabsList className="fk:h-9 fk:w-max fk:flex-nowrap fk:justify-start fk:border fk:border-border">
+              <ScrollArea className="fk:w-full fk:**:data-[slot=scroll-area-viewport]:h-auto fk:[&_[data-slot=scroll-area-scrollbar][data-orientation=vertical]]:hidden fk:**:data-[slot=scroll-area-viewport]:p-1 fk:**:data-[slot=scroll-area-viewport]:-ml-1 fk:**:data-[slot=scroll-area-viewport]:-mt-1">
+                <TabsList className="fk:h-9 fk:w-max fk:flex-nowrap fk:justify-start">
                   {visibleGroups.map((group) => (
                     <TabsTrigger
-                      className="fk:shrink-0 fk:px-4 fk:dark:data-[state=active]:border-transparent! fk:dark:data-[state=active]:bg-background"
+
                       key={group.name}
                       value={group.name}
                     >

@@ -45,7 +45,7 @@ export const LinkSelector = ({ open, onOpenChange }: LinkSelectorProps) => {
   return (
     <Popover.Root modal={true} open={open} onOpenChange={onOpenChange}>
       <Popover.Trigger asChild>
-        <Button size="sm" variant="ghost" className="fk:gap-2 fk:rounded-none fk:border-none">
+        <Button size="sm" variant="ghost" className="fk:gap-2 fk:rounded-none fk:border-none fk:corner-squircle">
           <p className="fk:text-base">↗</p>
           <p
             className={cn('fk:underline fk:decoration-stone-400 fk:underline-offset-4', {
@@ -82,7 +82,7 @@ export const LinkSelector = ({ open, onOpenChange }: LinkSelectorProps) => {
               size="icon"
               variant="outline"
               type="button"
-              className="fk:flex fk:h-8 fk:items-center fk:rounded-xs fk:p-1 fk:text-red-600 fk:transition-all fk:hover:bg-red-100 fk:dark:hover:bg-red-800"
+              className="fk:flex fk:h-8 fk:items-center fk:rounded-xs fk:p-1 fk:text-red-600 fk:transition-all fk:hover:bg-red-100 fk:dark:hover:bg-red-800 fk:corner-squircle"
               onClick={() => {
                 editor.chain().focus().unsetLink().run();
                 if (inputRef.current) inputRef.current.value = '';

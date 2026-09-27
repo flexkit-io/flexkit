@@ -48,7 +48,7 @@ export function Asset({ value }: { value: AssetUrlFields }): JSX.Element | null 
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="fk:w-7 fk:h-7 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
+              <div className="fk:w-7 fk:h-7 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto fk:corner-squircle">
                 <FileTypeIconCompat extension={ext} {...(style || {})} />
               </div>
             </TooltipTrigger>
@@ -79,7 +79,7 @@ export function Asset({ value }: { value: AssetUrlFields }): JSX.Element | null 
             <img
               src={thumbnailUrl}
               alt="asset"
-              className={`fk:w-12 fk:h-12 fk:cursor-zoom-in fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
+              className={`fk:w-12 fk:h-12 fk:cursor-zoom-in fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground} fk:corner-squircle`}
               onClick={handleThumbnailClick}
             />
           </TooltipTrigger>
@@ -88,7 +88,7 @@ export function Asset({ value }: { value: AssetUrlFields }): JSX.Element | null 
               <img
                 src={fullUrl}
                 alt="asset"
-                className={`fk:w-52 fk:h-52 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground}`}
+                className={`fk:w-52 fk:h-52 fk:overflow-hidden fk:rounded-md fk:object-contain ${transparentImageBackground} fk:corner-squircle`}
               />
             </TooltipContent>
           </TooltipPortal>
@@ -102,7 +102,7 @@ export function Asset({ value }: { value: AssetUrlFields }): JSX.Element | null 
             <img
               src={url}
               alt="asset"
-              className={`fk:max-h-[85vh] fk:w-full fk:overflow-hidden fk:rounded-md fk:object-contain`}
+              className={`fk:max-h-[85vh] fk:w-full fk:overflow-hidden fk:rounded-md fk:object-contain fk:corner-squircle`}
             />
           </DialogContent>
         </Dialog>

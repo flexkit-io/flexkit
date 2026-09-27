@@ -379,7 +379,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        'fk:flex fk:h-8 fk:shrink-0 fk:items-center fk:rounded-md fk:px-2 fk:text-xs fk:font-medium fk:text-sidebar-foreground/70 fk:ring-sidebar-ring fk:outline-hidden fk:transition-[margin,opacity] fk:duration-200 fk:ease-linear fk:focus-visible:ring-2 fk:[&>svg]:size-4 fk:[&>svg]:shrink-0',
+        'fk:flex fk:h-8 fk:shrink-0 fk:items-center fk:rounded-md fk:px-2 fk:text-xs fk:font-medium fk:text-sidebar-foreground/70 fk:ring-sidebar-ring fk:outline-hidden fk:transition-[margin,opacity] fk:duration-200 fk:ease-linear fk:focus-visible:ring-2 fk:[&>svg]:size-4 fk:[&>svg]:shrink-0 fk:corner-squircle',
         'fk:group-data-[collapsible=icon]:-mt-8 fk:group-data-[collapsible=icon]:opacity-0',
         className
       )}
@@ -400,7 +400,7 @@ function SidebarGroupAction({
       data-slot="sidebar-group-action"
       data-sidebar="group-action"
       className={cn(
-        'fk:absolute fk:top-3.5 fk:right-3 fk:flex fk:aspect-square fk:w-5 fk:items-center fk:justify-center fk:rounded-md fk:p-0 fk:text-sidebar-foreground fk:ring-sidebar-ring fk:outline-hidden fk:transition-transform fk:hover:bg-sidebar-accent fk:hover:text-sidebar-accent-foreground fk:focus-visible:ring-2 fk:[&>svg]:size-4 fk:[&>svg]:shrink-0',
+        'fk:absolute fk:top-3.5 fk:right-3 fk:flex fk:aspect-square fk:w-5 fk:items-center fk:justify-center fk:rounded-md fk:p-0 fk:text-sidebar-foreground fk:ring-sidebar-ring fk:outline-hidden fk:transition-transform fk:hover:bg-sidebar-accent fk:hover:text-sidebar-accent-foreground fk:focus-visible:ring-2 fk:[&>svg]:size-4 fk:[&>svg]:shrink-0 fk:corner-squircle',
         // Increases the hit area of the button on mobile.
         'fk:after:absolute fk:after:-inset-2 fk:md:after:hidden',
         'fk:group-data-[collapsible=icon]:hidden',
@@ -445,7 +445,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  'fk:peer/menu-button fk:flex fk:w-full fk:items-center fk:gap-2 fk:overflow-hidden fk:rounded-md fk:p-2 fk:text-left fk:text-sm fk:ring-sidebar-ring fk:outline-hidden fk:transition-[width,height,padding] fk:group-has-data-[sidebar=menu-action]/menu-item:pr-8 fk:group-data-[collapsible=icon]:size-8! fk:group-data-[collapsible=icon]:p-2! fk:hover:bg-sidebar-accent fk:hover:text-sidebar-accent-foreground fk:focus-visible:ring-2 fk:active:bg-sidebar-accent fk:active:text-sidebar-accent-foreground fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:aria-disabled:pointer-events-none fk:aria-disabled:opacity-50 fk:data-[active=true]:bg-sidebar-accent fk:data-[active=true]:font-medium fk:data-[active=true]:text-sidebar-accent-foreground fk:data-[state=open]:hover:bg-sidebar-accent fk:data-[state=open]:hover:text-sidebar-accent-foreground fk:[&>span:last-child]:truncate fk:[&>svg]:size-4 fk:[&>svg]:shrink-0',
+  'fk:peer/menu-button fk:flex fk:w-full fk:items-center fk:gap-2 fk:overflow-hidden fk:rounded-md fk:p-2 fk:text-left fk:text-sm fk:ring-sidebar-ring fk:outline-hidden fk:transition-[width,height,padding] fk:group-has-data-[sidebar=menu-action]/menu-item:pr-8 fk:group-data-[collapsible=icon]:size-8! fk:group-data-[collapsible=icon]:p-2! fk:hover:bg-sidebar-accent fk:hover:text-sidebar-accent-foreground fk:focus-visible:ring-2 fk:active:bg-sidebar-accent fk:active:text-sidebar-accent-foreground fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:aria-disabled:pointer-events-none fk:aria-disabled:opacity-50 fk:data-[active=true]:bg-sidebar-accent fk:data-[active=true]:font-medium fk:data-[active=true]:text-sidebar-accent-foreground fk:data-[state=open]:hover:bg-sidebar-accent fk:data-[state=open]:hover:text-sidebar-accent-foreground fk:[&>span:last-child]:truncate fk:[&>svg]:size-4 fk:[&>svg]:shrink-0 fk:corner-squircle',
   {
     variants: {
       variant: {
@@ -527,7 +527,7 @@ function SidebarMenuAction({
       data-slot="sidebar-menu-action"
       data-sidebar="menu-action"
       className={cn(
-        'fk:absolute fk:top-1.5 fk:right-1 fk:flex fk:aspect-square fk:w-5 fk:items-center fk:justify-center fk:rounded-md fk:p-0 fk:text-sidebar-foreground fk:ring-sidebar-ring fk:outline-hidden fk:transition-transform fk:peer-hover/menu-button:text-sidebar-accent-foreground fk:hover:bg-sidebar-accent fk:hover:text-sidebar-accent-foreground fk:focus-visible:ring-2 fk:[&>svg]:size-4 fk:[&>svg]:shrink-0',
+        'fk:absolute fk:top-1.5 fk:right-1 fk:flex fk:aspect-square fk:w-5 fk:items-center fk:justify-center fk:rounded-md fk:p-0 fk:text-sidebar-foreground fk:ring-sidebar-ring fk:outline-hidden fk:transition-transform fk:peer-hover/menu-button:text-sidebar-accent-foreground fk:hover:bg-sidebar-accent fk:hover:text-sidebar-accent-foreground fk:focus-visible:ring-2 fk:[&>svg]:size-4 fk:[&>svg]:shrink-0 fk:corner-squircle',
         // Increases the hit area of the button on mobile.
         'fk:after:absolute fk:after:-inset-2 fk:md:after:hidden',
         'fk:peer-data-[size=sm]/menu-button:top-1',
@@ -549,7 +549,7 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<'div'>) 
       data-slot="sidebar-menu-badge"
       data-sidebar="menu-badge"
       className={cn(
-        'fk:pointer-events-none fk:absolute fk:right-1 fk:flex fk:h-5 fk:min-w-5 fk:items-center fk:justify-center fk:rounded-md fk:px-1 fk:text-xs fk:font-medium fk:text-sidebar-foreground fk:tabular-nums fk:select-none',
+        'fk:pointer-events-none fk:absolute fk:right-1 fk:flex fk:h-5 fk:min-w-5 fk:items-center fk:justify-center fk:rounded-md fk:px-1 fk:text-xs fk:font-medium fk:text-sidebar-foreground fk:tabular-nums fk:select-none fk:corner-squircle',
         'fk:peer-hover/menu-button:text-sidebar-accent-foreground fk:peer-data-[active=true]/menu-button:text-sidebar-accent-foreground',
         'fk:peer-data-[size=sm]/menu-button:top-1',
         'fk:peer-data-[size=default]/menu-button:top-1.5',
@@ -578,10 +578,10 @@ function SidebarMenuSkeleton({
     <div
       data-slot="sidebar-menu-skeleton"
       data-sidebar="menu-skeleton"
-      className={cn('fk:flex fk:h-8 fk:items-center fk:gap-2 fk:rounded-md fk:px-2', className)}
+      className={cn('fk:flex fk:h-8 fk:items-center fk:gap-2 fk:rounded-md fk:px-2 fk:corner-squircle', className)}
       {...props}
     >
-      {showIcon && <Skeleton className="fk:size-4 fk:rounded-md" data-sidebar="menu-skeleton-icon" />}
+      {showIcon && <Skeleton className="fk:size-4 fk:rounded-md fk:corner-squircle" data-sidebar="menu-skeleton-icon" />}
       <Skeleton
         className="fk:h-4 fk:max-w-(--skeleton-width) fk:flex-1"
         data-sidebar="menu-skeleton-text"
@@ -641,7 +641,7 @@ function SidebarMenuSubButton({
       data-size={size}
       data-active={isActive}
       className={cn(
-        'fk:flex fk:h-7 fk:min-w-0 fk:-translate-x-px fk:items-center fk:gap-2 fk:overflow-hidden fk:rounded-md fk:px-2 fk:text-sidebar-foreground fk:ring-sidebar-ring fk:outline-hidden fk:hover:bg-sidebar-accent fk:hover:text-sidebar-accent-foreground fk:focus-visible:ring-2 fk:active:bg-sidebar-accent fk:active:text-sidebar-accent-foreground fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:aria-disabled:pointer-events-none fk:aria-disabled:opacity-50 fk:[&>span:last-child]:truncate fk:[&>svg]:size-4 fk:[&>svg]:shrink-0 fk:[&>svg]:text-sidebar-accent-foreground',
+        'fk:flex fk:h-7 fk:min-w-0 fk:-translate-x-px fk:items-center fk:gap-2 fk:overflow-hidden fk:rounded-md fk:px-2 fk:text-sidebar-foreground fk:ring-sidebar-ring fk:outline-hidden fk:hover:bg-sidebar-accent fk:hover:text-sidebar-accent-foreground fk:focus-visible:ring-2 fk:active:bg-sidebar-accent fk:active:text-sidebar-accent-foreground fk:disabled:pointer-events-none fk:disabled:opacity-50 fk:aria-disabled:pointer-events-none fk:aria-disabled:opacity-50 fk:[&>span:last-child]:truncate fk:[&>svg]:size-4 fk:[&>svg]:shrink-0 fk:[&>svg]:text-sidebar-accent-foreground fk:corner-squircle',
         'fk:data-[active=true]:bg-sidebar-accent fk:data-[active=true]:text-sidebar-accent-foreground',
         size === 'sm' && 'fk:text-xs',
         size === 'md' && 'fk:text-sm',

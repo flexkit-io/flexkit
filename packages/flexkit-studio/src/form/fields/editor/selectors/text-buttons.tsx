@@ -84,7 +84,7 @@ export const TextButtons = () => {
             item.command(editor);
           }}
         >
-          <Button size="sm" className="fk:rounded-none" onClick={(e) => e.preventDefault()} variant="ghost">
+          <Button size="sm" className="fk:rounded-none fk:corner-squircle" onClick={(e) => e.preventDefault()} variant="ghost">
             <item.icon
               className={cn('fk:h-4 fk:w-4', {
                 'fk:text-blue-500': item.isActive(editor),

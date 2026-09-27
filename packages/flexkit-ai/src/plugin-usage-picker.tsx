@@ -39,12 +39,12 @@ function PluginToolSelection({
   };
 
   return (
-    <fieldset disabled={disabled || !plugin.enabled} className="fk:space-y-2 fk:rounded-md fk:border fk:p-3">
+    <fieldset disabled={disabled || !plugin.enabled} className="fk:space-y-2 fk:rounded-md fk:border fk:p-3 fk:corner-squircle">
       <legend className="fk:px-1 fk:font-medium">{plugin.name}</legend>
       <label className="fk:flex fk:items-center fk:gap-2">
         Connection
         <select
-          className="fk:rounded-md fk:border fk:bg-background fk:p-2"
+          className="fk:rounded-md fk:border fk:bg-background fk:p-2 fk:corner-squircle"
           value={connection?.id ?? ''}
           onChange={(event) => {
             const next = connections.find((entry) => entry.id === event.target.value);
@@ -78,7 +78,7 @@ function PluginToolSelection({
         <p className="fk:text-sm fk:text-muted-foreground">Using your connection makes this automation personal.</p>
       )}
       {!connections.length && (
-        <p className="fk:text-sm fk:text-muted-foreground">Connect this plugin in Marketplace first.</p>
+        <p className="fk:text-sm fk:text-muted-foreground">Connect this plugin in Plugins first.</p>
       )}
       {error && <p role="alert">Unable to load tools. Reconnect or try again.</p>}
       {data?.servers.map((server) => (

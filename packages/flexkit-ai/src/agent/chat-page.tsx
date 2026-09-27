@@ -250,7 +250,7 @@ function UserBubble({
     <div className="fk:group fk:ml-auto fk:flex fk:w-fit fk:max-w-[70%] fk:flex-col fk:items-end fk:gap-1">
       <MessageAttachments attachments={attachments} />
       {hasText ? (
-        <div className="fk:whitespace-pre-wrap fk:rounded-xl fk:bg-muted fk:dark:bg-white/20 fk:px-3.5 fk:py-2 fk:text-base">
+        <div className="fk:whitespace-pre-wrap fk:rounded-xl fk:bg-muted fk:dark:bg-white/20 fk:px-3.5 fk:py-2 fk:text-base fk:corner-squircle">
           {text}
         </div>
       ) : null}
@@ -365,7 +365,7 @@ function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMe
         />
       ))}
       {message.error && !hasTurnErrorPart ? (
-        <div className="fk:flex fk:items-start fk:gap-2 fk:rounded-xl fk:border fk:border-red-700/40 fk:bg-destructive/5 fk:px-3.5 fk:py-3 fk:text-sm">
+        <div className="fk:flex fk:items-start fk:gap-2 fk:rounded-xl fk:border fk:border-red-700/40 fk:bg-destructive/5 fk:px-3.5 fk:py-3 fk:text-sm fk:corner-squircle">
           <XCircleIcon className="fk:mt-0.5 fk:size-3.5 fk:shrink-0 fk:text-red-700" />
           <span className="fk:whitespace-pre-wrap fk:text-xs">{message.error}</span>
         </div>

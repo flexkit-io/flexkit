@@ -32,13 +32,13 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          'fk:z-50 fk:w-fit fk:origin-(--radix-tooltip-content-transform-origin) fk:animate-in fk:rounded-md fk:bg-foreground fk:px-3 fk:py-1.5 fk:text-xs fk:text-balance fk:text-background fk:fade-in-0 fk:zoom-in-95 fk:data-[side=bottom]:slide-in-from-top-2 fk:data-[side=left]:slide-in-from-right-2 fk:data-[side=right]:slide-in-from-left-2 fk:data-[side=top]:slide-in-from-bottom-2 fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95',
+          'fk:z-50 fk:w-fit fk:origin-(--radix-tooltip-content-transform-origin) fk:animate-in fk:rounded-md fk:bg-foreground fk:px-3 fk:py-1.5 fk:text-xs fk:text-balance fk:text-background fk:fade-in-0 fk:zoom-in-95 fk:data-[side=bottom]:slide-in-from-top-2 fk:data-[side=left]:slide-in-from-right-2 fk:data-[side=right]:slide-in-from-left-2 fk:data-[side=top]:slide-in-from-bottom-2 fk:data-[state=closed]:animate-out fk:data-[state=closed]:fade-out-0 fk:data-[state=closed]:zoom-out-95 fk:corner-squircle',
           className
         )}
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="fk:z-50 fk:size-2.5 fk:translate-y-[calc(-50%-2px)] fk:rotate-45 fk:rounded-[2px] fk:bg-foreground fk:fill-foreground" />
+        <TooltipPrimitive.Arrow className="fk:z-50 fk:size-2.5 fk:translate-y-[calc(-50%-2px)] fk:rotate-45 fk:rounded-[2px] fk:bg-foreground fk:fill-foreground fk:corner-squircle" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );

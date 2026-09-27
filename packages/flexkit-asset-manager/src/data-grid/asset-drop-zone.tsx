@@ -91,7 +91,7 @@ export function AssetDropZone({ children, disabled = false, onDropFiles }: Asset
       {isDragActive ? (
         <div
           aria-hidden
-          className="fk:pointer-events-none fk:absolute fk:inset-0 fk:z-30 fk:flex fk:items-center fk:justify-center fk:rounded-md fk:border-2 fk:border-dashed fk:border-primary fk:bg-background/80"
+          className="fk:pointer-events-none fk:absolute fk:inset-0 fk:z-30 fk:flex fk:items-center fk:justify-center fk:rounded-md fk:border-2 fk:border-dashed fk:border-primary fk:bg-background/80 fk:corner-squircle"
         >
           <p className="fk:text-sm fk:font-medium fk:text-foreground">Drop files to upload</p>
         </div>

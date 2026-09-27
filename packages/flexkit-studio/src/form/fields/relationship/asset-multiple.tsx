@@ -384,7 +384,7 @@ export default function AssetMultipleRelationship({
               aria-expanded={isOpen}
               className={`fk:relative fk:flex fk:w-full fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:border-input fk:bg-background fk:px-2.5 fk:py-0.5 fk:focus-visible:outline-hidden fk:ring-offset-background fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:focus-visible:ring-offset-2 ${
                 isOpen ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
-              }`}
+              } fk:corner-squircle`}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -408,7 +408,7 @@ export default function AssetMultipleRelationship({
                         <AssetThumbnail asset={asset} key={asset._id} />
                       ))}
                       {!isOpen && previewTotal > 8 ? (
-                        <div className="fk:flex fk:h-9 fk:w-9 fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted fk:text-xs fk:text-muted-foreground">
+                        <div className="fk:flex fk:h-9 fk:w-9 fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted fk:text-xs fk:text-muted-foreground fk:corner-squircle">
                           +{previewTotal - 8}
                         </div>
                       ) : null}
@@ -423,7 +423,7 @@ export default function AssetMultipleRelationship({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk:absolute fk:right-0.75 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                          className="fk:absolute fk:right-0.75 fk:top-0.75 fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                           id={fieldId}
                           onClick={(event) => {
                             event.preventDefault();
@@ -518,7 +518,7 @@ function AssetThumbnail({ asset }: { asset: OrderedAssetValue }): JSX.Element {
 
   if (!isImage) {
     return (
-      <div className="fk:flex fk:h-9 fk:w-9 fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted">
+      <div className="fk:flex fk:h-9 fk:w-9 fk:items-center fk:justify-center fk:rounded-sm fk:bg-muted fk:corner-squircle">
         <ImageIcon className="fk:h-4 fk:w-4 fk:text-muted-foreground" />
       </div>
     );
@@ -527,7 +527,7 @@ function AssetThumbnail({ asset }: { asset: OrderedAssetValue }): JSX.Element {
   return (
     <img
       alt={asset.originalFilename || 'Asset'}
-      className="fk:h-9 fk:w-9 fk:rounded-sm fk:bg-muted fk:object-cover"
+      className="fk:h-9 fk:w-9 fk:rounded-sm fk:bg-muted fk:object-cover fk:corner-squircle"
       src={`${IMAGES_BASE_URL}${asset.path}?w=128&h=128&f=webp`}
     />
   );
@@ -551,8 +551,8 @@ function SelectedAssetCard({
   removeAsset: (assetId: string) => void;
 }): JSX.Element {
   return (
-    <div className="fk:relative fk:rounded-md fk:border fk:border-input fk:bg-background fk:p-2">
-      <div className="fk:aspect-square fk:overflow-hidden fk:rounded-sm fk:bg-muted">
+    <div className="fk:relative fk:rounded-md fk:border fk:border-input fk:bg-background fk:p-2 fk:corner-squircle">
+      <div className="fk:aspect-square fk:overflow-hidden fk:rounded-sm fk:bg-muted fk:corner-squircle">
         {isImageAsset(asset) ? (
           <img
             alt={asset.originalFilename || 'Asset'}

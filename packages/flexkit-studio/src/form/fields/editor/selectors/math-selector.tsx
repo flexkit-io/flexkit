@@ -12,7 +12,7 @@ export const MathSelector = () => {
     <Button
       variant="ghost"
       size="sm"
-      className="fk:rounded-none fk:w-12"
+      className="fk:rounded-none fk:w-12 fk:corner-squircle"
       onClick={(evt) => {
         if (editor.isActive('math')) {
           editor.chain().focus().unsetLatex().run();

@@ -303,7 +303,7 @@ export const SpeechInput = ({
           {isListening
             ? [0, 1, 2].map((index) => (
                 <span
-                  className="fk:absolute fk:inset-0 fk:animate-ping fk:rounded-full fk:border-2 fk:border-red-400/30"
+                  className="fk:absolute fk:inset-0 fk:animate-ping fk:rounded-full fk:border-2 fk:border-red-400/30 fk:corner-squircle"
                   key={index}
                   style={{
                     animationDelay: `${String(index * 0.3)}s`,
@@ -318,7 +318,7 @@ export const SpeechInput = ({
             size={size}
             variant={isListening ? 'destructive' : variant}
             {...props}
-            className={cn('fk:relative fk:z-10 fk:rounded-full fk:dark:hover:bg-accent', className)}
+            className={cn('fk:relative fk:z-10 fk:rounded-full fk:dark:hover:bg-accent fk:corner-squircle', className)}
             disabled={isDisabled}
             onClick={handleClick}
             type="button"

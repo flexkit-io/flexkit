@@ -306,7 +306,7 @@ export function Uploader({
               aria-expanded={isOpen}
               className={`fk:relative fk:flex fk:w-full fk:items-start fk:space-x-2 fk:rounded-md fk:border fk:overflow-hidden fk:focus-visible:outline-hidden fk:ring-offset-background fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:focus-visible:ring-offset-2 ${
                 isOpen ? 'fk:outline-hidden fk:ring-2 fk:ring-ring fk:ring-offset-2' : ''
-              } ${dragActive ? 'fk:border-dashed fk:border-2 fk:border-emerald-500 fk:bg-green-50' : 'fk:border-input fk:bg-background'}`}
+              } ${dragActive ? 'fk:border-dashed fk:border-2 fk:border-emerald-500 fk:bg-green-50' : 'fk:border-input fk:bg-background'} fk:corner-squircle`}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -378,7 +378,7 @@ export function Uploader({
                       <ImageIcon className="fk:mr-2 fk:h-4 fk:w-4" /> Drag or paste file here
                     </div>
                     <Button
-                      className="fk:ml-auto fk:h-7 fk:rounded-sm fk:text-muted-foreground"
+                      className="fk:ml-auto fk:h-7 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                       disabled={readOnly}
                       id={id}
                       onClick={handleUpload}
@@ -388,7 +388,7 @@ export function Uploader({
                       Upload
                     </Button>
                     <Button
-                      className="fk:ml-2 fk:h-7 fk:rounded-sm fk:text-muted-foreground"
+                      className="fk:ml-2 fk:h-7 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                       disabled={readOnly}
                       onClick={handleSelectAsset}
                       variant="ghost"
@@ -412,7 +412,7 @@ export function Uploader({
                       if (isImage) {
                         return (
                           <img
-                            className="fk:w-8 fk:h-8 fk:mr-2 fk:rounded-sm fk:object-scale-down"
+                            className="fk:w-8 fk:h-8 fk:mr-2 fk:rounded-sm fk:object-scale-down fk:corner-squircle"
                             src={`${IMAGES_BASE_URL}${value.path}?w=128&h=128&f=webp`}
                             alt="Uploaded"
                           />
@@ -425,7 +425,7 @@ export function Uploader({
                       )[ext];
 
                       return (
-                        <div className="fk:w-8 fk:h-8 fk:mr-2 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
+                        <div className="fk:w-8 fk:h-8 fk:mr-2 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto fk:corner-squircle">
                           <FileTypeIcon extension={ext} {...(style || {})} />
                         </div>
                       );
@@ -446,14 +446,14 @@ export function Uploader({
                     <img
                       src={base64PreviewImage}
                       alt="Preview"
-                      className="fk:mr-2 fk:mt-0.5 fk:rounded-sm fk:h-7 fk:w-7 rounded-md object-cover"
+                      className="fk:mr-2 fk:mt-0.5 fk:rounded-sm fk:h-7 fk:w-7 rounded-md object-cover fk:corner-squircle"
                     />
                     Loading image...
                   </div>
                 )}
                 {!(field.value?.value as ImageValue)?.path && !base64PreviewImage && saving ? (
                   <div className="fk:flex fk:h-9 fk:w-full fk:px-3 fk:pt-0.5 fk:items-center">
-                    <div className="fk:w-7 fk:h-7 fk:mr-2 fk:rounded-sm fk:bg-muted fk:flex fk:items-center fk:justify-center">
+                    <div className="fk:w-7 fk:h-7 fk:mr-2 fk:rounded-sm fk:bg-muted fk:flex fk:items-center fk:justify-center fk:corner-squircle">
                       <FileOutlineIcon className="fk:h-4 fk:w-4 fk:text-muted-foreground" />
                     </div>
                     Uploading file...
@@ -468,7 +468,7 @@ export function Uploader({
                           <TooltipTrigger asChild>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                className="fk:h-8 fk:w-8 fk:ml-auto fk:mt-[0.1875rem] fk:rounded-sm"
+                                className="fk:h-8 fk:w-8 fk:ml-auto fk:mt-[0.1875rem] fk:rounded-sm fk:corner-squircle"
                                 onClick={(event) => {
                                   event.stopPropagation();
                                 }}
@@ -524,7 +524,7 @@ export function Uploader({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
-                            className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                            className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 wrapperRef.current?.focus();
@@ -549,7 +549,7 @@ export function Uploader({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground"
+                          className="fk:absolute fk:right-[0.1875rem] fk:top-[0.1875rem] fk:h-8 fk:w-8 fk:rounded-sm fk:text-muted-foreground fk:corner-squircle"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -596,7 +596,7 @@ export function Uploader({
                           if (isImage) {
                             return (
                               <img
-                                className="fk:w-full fk:rounded-md fk:object-scale-down"
+                                className="fk:w-full fk:rounded-md fk:object-scale-down fk:corner-squircle"
                                 src={`${IMAGES_BASE_URL}${value.path}?w=624&h=624&f=webp`}
                                 alt="Uploaded"
                               />
@@ -609,8 +609,8 @@ export function Uploader({
                           )[ext];
 
                           return (
-                            <div className="fk:w-full fk:h-full fk:rounded-md fk:bg-muted/40 fk:flex fk:flex-col fk:items-center fk:justify-center fk:text-muted-foreground">
-                              <div className="fk:w-16 fk:h-16 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto">
+                            <div className="fk:w-full fk:h-full fk:rounded-md fk:bg-muted/40 fk:flex fk:flex-col fk:items-center fk:justify-center fk:text-muted-foreground fk:corner-squircle">
+                              <div className="fk:w-16 fk:h-16 fk:rounded-sm fk:bg-transparent fk:flex fk:items-center fk:justify-center fk:[&>svg]:h-full fk:[&>svg]:w-auto fk:corner-squircle">
                                 <FileTypeIcon extension={ext} {...(style || {})} />
                               </div>
                               <div className="fk:mt-3 fk:text-sm">

@@ -28,13 +28,13 @@ export function UserNav({ projectId }: Props): JSX.Element {
   const [isLoading, auth] = useAuth();
 
   if (isLoading) {
-    return <Skeleton className="fk:h-8 fk:w-8 fk:rounded-full" />;
+    return <Skeleton className="fk:h-8 fk:w-8 fk:rounded-full fk:corner-squircle" />;
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="fk:relative fk:h-8 fk:w-8 fk:rounded-full" variant="ghost">
+        <Button className="fk:relative fk:h-8 fk:w-8 fk:rounded-full fk:corner-squircle" variant="ghost">
           <Avatar className="fk:h-8 fk:w-8">
             {auth.user?.avatar_url ? <AvatarImage alt={auth.user.display_name} src={auth.user.avatar_url} /> : null}
             <AvatarFallback className="fk:bg-transparent">

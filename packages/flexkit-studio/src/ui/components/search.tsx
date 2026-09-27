@@ -159,7 +159,7 @@ export function Search({
       <Select onValueChange={handleEntityChange} value={resolvedCollection}>
         <SelectTrigger
           aria-label="Filter search by entity"
-          className="fk:w-36 fk:h-9 fk:py-1 fk:rounded-r-none fk:border-border fk:shadow-none"
+          className="fk:w-36 fk:h-9 fk:py-1 fk:rounded-r-none fk:border-border fk:shadow-none fk:corner-squircle"
         >
           <SelectValue />
         </SelectTrigger>
@@ -173,7 +173,7 @@ export function Search({
         </SelectContent>
       </Select>
       <Command
-        className="fk:relative fk:overflow-visible fk:h-auto fk:justify-center fk:rounded-none fk:bg-transparent"
+        className="fk:relative fk:overflow-visible fk:h-auto fk:justify-center fk:rounded-none fk:bg-transparent fk:corner-squircle"
         onBlur={() => {
           // close after a delay to allow any click event from the results list to be handled
           setTimeout(() => {
@@ -190,7 +190,7 @@ export function Search({
       >
         <div
           className={cn(
-            'fk:flex fk:items-center fk:border-y fk:border-r fk:border-border fk:rounded-r-md fk:bg-background fk:pl-3 fk:pr-2 fk:h-9 fk:md:w-25 fk:lg:w-75',
+            'fk:flex fk:items-center fk:border-y fk:border-r fk:border-border fk:rounded-r-md fk:bg-background fk:pl-3 fk:pr-2 fk:h-9 fk:md:w-25 fk:lg:w-75 fk:corner-squircle',
             'fk:outline-none fk:transition-[color,box-shadow] fk:has-[input:focus-visible]:border-ring fk:has-[input:focus-visible]:ring-[3px] fk:has-[input:focus-visible]:ring-ring/50'
           )}
         >
@@ -201,7 +201,7 @@ export function Search({
           )}
           <CommandPrimitive.Input
             className={cn(
-              'fk:flex fk:h-9 fk:w-full fk:rounded-none fk:bg-transparent fk:py-1 fk:text-sm fk:outline-hidden fk:placeholder:text-muted-foreground fk:disabled:cursor-not-allowed fk:disabled:opacity-50',
+              'fk:flex fk:h-9 fk:w-full fk:rounded-none fk:bg-transparent fk:py-1 fk:text-sm fk:outline-hidden fk:placeholder:text-muted-foreground fk:disabled:cursor-not-allowed fk:disabled:opacity-50 fk:corner-squircle',
               className
             )}
             placeholder={searchPlaceholder}
@@ -215,7 +215,7 @@ export function Search({
           {inputValue && (
             <Button
               aria-label="Clear search"
-              className="fk:flex fk:items-center fk:justify-center fk:ml-2 fk:h-6 fk:w-6 fk:text-muted-foreground fk:hover:text-foreground fk:hover:bg-foreground/10 fk:cursor-pointer fk:rounded-full fk:bg-transparent"
+              className="fk:flex fk:items-center fk:justify-center fk:ml-2 fk:h-6 fk:w-6 fk:text-muted-foreground fk:hover:text-foreground fk:hover:bg-foreground/10 fk:cursor-pointer fk:rounded-full fk:bg-transparent fk:corner-squircle"
               onClick={handleClear}
               type="button"
             >
@@ -226,7 +226,7 @@ export function Search({
         <div className="fk:relative fk:max-w-150">
           <div
             className={cn(
-              'fk:mt-1 fk:animate-in fk:fade-in-0 fk:zoom-in-95 fk:absolute fk:top-0 fk:z-50 fk:w-full fk:rounded-md fk:bg-popover fk:outline-hidden fk:drop-shadow-md fk:border fk:border-border',
+              'fk:mt-1 fk:animate-in fk:fade-in-0 fk:zoom-in-95 fk:absolute fk:top-0 fk:z-50 fk:w-full fk:rounded-md fk:bg-popover fk:outline-hidden fk:drop-shadow-md fk:border fk:border-border fk:corner-squircle',
               showDropdown ? 'fk:block' : 'fk:hidden'
             )}
           >
