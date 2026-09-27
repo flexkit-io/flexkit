@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { isBuiltin } from 'node:module';
 import path from 'node:path';
 import * as esbuild from 'esbuild';
 import { fileNameSymbol } from '../types';
@@ -10,6 +11,18 @@ import { isErrnoException } from './error-utils';
 
 const candidates = ['flexkit.config.js', 'flexkit.config.jsx', 'flexkit.config.ts', 'flexkit.config.tsx'];
 let config: FlexkitConfig | undefined;
+
+function removeTempOutput(tempOutputPath: string | undefined): void {
+  if (!tempOutputPath) {
+    return;
+  }
+
+  try {
+    fs.rmSync(tempOutputPath, { force: true });
+  } catch {
+    // A failed bundle never writes this file. Ignore cleanup errors so the original failure is returned.
+  }
+}
 
 export default async function getConfig(
   output: Output,
@@ -87,7 +100,7 @@ export default async function getConfig(
 
 async function getProjectConfig(configFilePath: string): Promise<ProjectConfig | InvalidProjectConfig> {
   const contextFolder = path.dirname(configFilePath);
-  let tempOutputPath;
+  let tempOutputPath: string | undefined;
 
   try {
     tempOutputPath = path.resolve(contextFolder, `${generateRandomFilename()}-temp.mjs`);
@@ -105,17 +118,15 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
       },
       banner: {
         js: `
-          import { createRequire } from 'module';
+          import { createRequire as __flexkitCreateRequire } from 'module';
           import __flexkitReact from 'react';
-          const require = createRequire(import.meta.url);
+          const require = __flexkitCreateRequire(import.meta.url);
           globalThis.React = __flexkitReact;
-          globalThis.__require = require;
-          globalThis.__util = require('util');
         `,
       },
       plugins: [
         {
-          name: 'handle-node-builtins',
+          name: 'externalize-runtime-deps',
           setup(build) {
             build.onResolve({ filter: /^react(?:\/jsx-runtime|\/jsx-dev-runtime)?$/ }, (args) => ({
               path: args.path,
@@ -127,39 +138,20 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
               external: true,
             }));
 
-            build.onResolve({ filter: /^util$/ }, () => ({
-              path: 'util-stub',
-              namespace: 'node-builtin',
-            }));
+            // Keep Node builtins as real imports so named exports such as
+            // `Readable` survive. `isBuiltin` follows the running Node version,
+            // including `node:` prefixes and subpaths. The banner's `require`
+            // serves CommonJS `require("stream")` calls inside the ESM bundle.
+            build.onResolve({ filter: /.*/ }, (args) => {
+              if (!isBuiltin(args.path)) {
+                return undefined;
+              }
 
-            build.onResolve({ filter: /^(?:tty|os|path|fs|stream|events|assert|process)$/ }, (args) => ({
-              path: args.path,
-              namespace: 'node-builtin',
-            }));
-
-            build.onLoad({ filter: /^util-stub$/, namespace: 'node-builtin' }, () => ({
-              contents: `
-                const util = globalThis.__util;
-                export default util;
-                export const {
-                  deprecate,
-                  format,
-                  inspect,
-                  promisify,
-                  types,
-                  // Add other util exports you need
-                } = util;
-              `,
-              loader: 'js',
-            }));
-
-            build.onLoad({ filter: /.*/, namespace: 'node-builtin' }, (args) => ({
-              contents: `
-                export default globalThis.__require('${args.path}');
-                export * from '${args.path}';
-              `,
-              loader: 'js',
-            }));
+              return {
+                path: args.path,
+                external: true,
+              };
+            });
           },
         },
         {
@@ -198,8 +190,7 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
     // Import the bundled config
     const tempConfigFile = await import(tempOutputPath);
 
-    // Clean up
-    fs.unlinkSync(tempOutputPath);
+    removeTempOutput(tempOutputPath);
 
     // Get the config and transform it to keep only needed fields
     const rawConfig: ProjectConfig = (tempConfigFile as { default: ProjectConfig }).default;
@@ -209,10 +200,7 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
   } catch (error) {
     const normalizedError = error instanceof Error ? error : new Error(error as string);
 
-    // Clean up the temporary file
-    if (tempOutputPath) {
-      fs.unlinkSync(tempOutputPath);
-    }
+    removeTempOutput(tempOutputPath);
 
     return new InvalidProjectConfig(normalizedError.message, configFilePath);
   }
