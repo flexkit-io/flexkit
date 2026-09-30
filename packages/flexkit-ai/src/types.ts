@@ -245,6 +245,8 @@ export interface AutomationToolConfigInput {
   enabled: boolean;
   connectionMode: 'project' | 'personal';
   connectionId: string | null;
+  /** Every tool of the plugin, including ones added later; `selectedTools` applies only when false. */
+  allTools?: boolean;
   selectedTools: string[];
   deliveryEnabled: boolean;
   channels: AutomationToolChannel[];

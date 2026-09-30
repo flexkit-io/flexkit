@@ -1,7 +1,10 @@
-import { PluginUsagePicker } from './plugin-usage-picker';
+import { PluginAccountSelect, PluginUsagePicker, resolvePluginConnection } from './plugin-usage-picker';
+import type { Marketplace } from './plugin-types';
 import type { FormEvent, JSX } from 'react';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
+import { connectPluginPopup } from './plugin-oauth';
+import { AttachCombobox } from './attach-combobox';
 import { CronExpressionParser } from 'cron-parser';
 import {
   Badge,
@@ -41,7 +44,6 @@ import {
   GraduationCapIcon,
   KeyRoundIcon,
   LoaderCircleIcon,
-  LockIcon,
   PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
@@ -1080,8 +1082,23 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [message, setMessage] = useState('');
   const [touched, setTouched] = useState({ instructions: false, name: false });
   const [toolsFormData, setToolsFormData] = useState<AutomationToolsFormData | null>(null);
+  const [connectingProvider, setConnectingProvider] = useState<AutomationToolProvider | null>(null);
+  const { mutate: revalidateKey } = useSWRConfig();
+  // Pinned delivery workspace per provider; null = the provider's primary project account.
+  const [deliveryConnectionIds, setDeliveryConnectionIds] = useState<{ [provider in AutomationToolProvider]: string | null }>(
+    () => ({
+      slack: automation?.toolConfigs?.find((entry) => entry.pluginId === 'slack')?.connectionId ?? null,
+      teams: automation?.toolConfigs?.find((entry) => entry.pluginId === 'teams')?.connectionId ?? null,
+    })
+  );
+  const channelRequestRef = useRef<{ [provider in AutomationToolProvider]?: string | null }>({});
+  const { data: marketplaceData, error: marketplaceError } = useSWR<Marketplace>(
+    `/api/flexkit/${projectId}/plugins`,
+    fetcher
+  );
+  const marketplaceSettled = Boolean(marketplaceData || marketplaceError);
   const toolsUrl = paths(projectId).tools(automation?.id);
-  const { data: toolsData } = useSWR<ToolsResponse>(toolsUrl, fetcher);
+  const { data: toolsData, error: toolsError } = useSWR<ToolsResponse>(toolsUrl, fetcher);
   const { data: entitiesData } = useSWR<{ entities: string[] }>(paths(projectId).entities, fetcher);
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
   // Catalog for the attach picker. The API caps a page at 100, so attached
@@ -1269,8 +1286,29 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     setToolsFormData(getInitialToolsFormData(toolsData.tools, mode));
   }, [automation?.id, mode, toolsData?.tools]);
 
+  const deliveryPlugins = useMemo(
+    () => ({
+      slack: marketplaceData?.plugins.find((plugin) => plugin.id === 'slack') ?? null,
+      teams: marketplaceData?.plugins.find((plugin) => plugin.id === 'teams') ?? null,
+    }),
+    [marketplaceData]
+  );
+  const resolvedDeliveryConnectionIds = useMemo(() => {
+    const resolve = (provider: AutomationToolProvider): string | null => {
+      const plugin = deliveryPlugins[provider];
+
+      return plugin
+        ? (resolvePluginConnection(plugin, { connectionMode: 'project', connectionId: deliveryConnectionIds[provider] })
+            ?.id ?? null)
+        : null;
+    };
+
+    return { slack: resolve('slack'), teams: resolve('teams') };
+  }, [deliveryConnectionIds, deliveryPlugins]);
   const loadProviderChannels = useCallback(
-    async (provider: AutomationToolProvider): Promise<void> => {
+    async (provider: AutomationToolProvider, connectionId: string | null): Promise<void> => {
+      channelRequestRef.current[provider] = connectionId;
+
       setToolsFormData((current) => {
         if (!current) {
           return current;
@@ -1287,7 +1325,13 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       });
 
       try {
-        const result = await api.listChannels(provider);
+        const result = await api.listChannels(provider, connectionId);
+
+        // A newer request for another account superseded this one.
+        if (channelRequestRef.current[provider] !== connectionId) {
+          return;
+        }
+
         const loadErrorMessage = result.success
           ? undefined
           : (result.errorMessage ?? `Failed to load ${provider === 'slack' ? 'Slack' : 'Teams'} channels.`);
@@ -1309,6 +1353,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           };
         });
       } catch (error) {
+        if (channelRequestRef.current[provider] !== connectionId) {
+          return;
+        }
+
         const loadErrorMessage = error instanceof Error ? error.message : 'Failed to load integration channels.';
 
         setToolsFormData((current) => {
@@ -1335,7 +1383,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     // Viewers cannot edit the channel selection and the channels endpoint
     // requires write access; the saved channels already render from the
     // automation's own tool config.
-    if (!toolsFormData || !canMutate) {
+    // Wait for the plugin catalog so channels load from the selected account.
+    if (!toolsFormData || !canMutate || !marketplaceSettled) {
       return;
     }
 
@@ -1343,10 +1392,42 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       const tool = toolsFormData[provider];
 
       if (tool.connected && !tool.channelsLoaded && !tool.loadingChannels) {
-        void loadProviderChannels(provider);
+        void loadProviderChannels(provider, resolvedDeliveryConnectionIds[provider]);
       }
     }
-  }, [canMutate, loadProviderChannels, toolsFormData]);
+  }, [canMutate, loadProviderChannels, marketplaceSettled, resolvedDeliveryConnectionIds, toolsFormData]);
+
+  // Connects the project workspace in a popup so unsaved edits stay on screen, then adds the destination.
+  async function handleConnectDelivery(provider: AutomationToolProvider): Promise<void> {
+    const plugin = deliveryPlugins[provider];
+
+    if (!plugin) {
+      return;
+    }
+
+    setConnectingProvider(provider);
+
+    try {
+      await connectPluginPopup(api, plugin.id, 'project');
+      const catalog = (await revalidateKey(`/api/flexkit/${projectId}/plugins`)) as Marketplace | undefined;
+      const primary = catalog?.plugins
+        .find((entry) => entry.id === plugin.id)
+        ?.connections.find(
+          (connection) => connection.scope === 'project' && connection.isPrimary && connection.status === 'connected'
+        );
+      updateTool(provider, {
+        connected: true,
+        enabled: true,
+        workspaceName: primary?.displayName ?? null,
+        channelsLoaded: false,
+        channelsLoadError: undefined,
+      });
+    } catch (failure) {
+      toast.error(failure instanceof Error ? failure.message : `Unable to connect ${plugin.name}.`);
+    } finally {
+      setConnectingProvider(null);
+    }
+  }
 
   function updateTool(provider: AutomationToolProvider, value: Partial<AutomationProviderToolFormData>): void {
     setToolsFormData((current) => {
@@ -1361,6 +1442,22 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           ...value,
         },
       };
+    });
+  }
+
+  function handleDeliveryAccountChange(provider: AutomationToolProvider, connectionId: string | null): void {
+    if (deliveryConnectionIds[provider] === connectionId) {
+      return;
+    }
+
+    setDeliveryConnectionIds((current) => ({ ...current, [provider]: connectionId }));
+    // Channels belong to a workspace; reload them for the newly selected account.
+    updateTool(provider, {
+      availableChannels: [],
+      channels: [],
+      channelsLoaded: false,
+      channelsLoadError: undefined,
+      loadingChannels: false,
     });
   }
 
@@ -1415,7 +1512,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         enabled: providerTools?.enabled ?? false,
         pluginId: provider,
         connectionMode: 'project',
-        connectionId: null,
+        connectionId: deliveryConnectionIds[provider],
         selectedTools: [],
         deliveryEnabled: providerTools?.enabled ?? false,
       };
@@ -1646,6 +1743,13 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             <SelectItem value="auto_approve">Auto-approve</SelectItem>
           </SelectContent>
         </Select>
+        {mutationPolicy === 'auto_approve' && pluginUsages.some((usage) => usage.enabled) ? (
+          <p className="fk:flex fk:items-start fk:gap-1 fk:text-xs fk:text-warning" role="status">
+            <TriangleAlertIcon className="fk:mt-px fk:size-3.5 fk:shrink-0" />
+            Plugin tools will run without review. Content the agent reads, such as emails or documents, could lead it to
+            act on your connected accounts.
+          </p>
+        ) : null}
       </div>
 
       <div className="fk:space-y-4">
@@ -1672,6 +1776,129 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               </Badge>
             </div>
           </div>
+          <Separator/>
+
+          {toolsFormData ? (
+            TOOL_PROVIDERS.map((provider) => {
+              const tool = toolsFormData[provider];
+              const providerLabel = provider === 'slack' ? 'Send to Slack' : 'Send to Microsoft Teams';
+              const Icon = provider === 'slack' ? SlackIcon : TeamsIcon;
+              const deliveryPlugin = deliveryPlugins[provider];
+
+              return (
+                <Fragment key={provider}>
+                  <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:p-1.5 fk:hover:bg-muted fk:corner-squircle">
+                    <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
+                      <div className="fk:flex fk:gap-3">
+                        <Icon />
+                        <div>
+                          <div className="fk:text-sm fk:font-medium">{providerLabel}</div>
+                          {tool.connected && tool.workspaceName ? (
+                            <p className="fk:text-xs fk:text-muted-foreground">Connected to {tool.workspaceName}</p>
+                          ) : null}
+                          {!tool.connected ? (
+                            <p className="fk:text-xs fk:text-muted-foreground">
+                              {marketplaceData?.canManage === false
+                                ? 'Not connected. Ask a project owner or developer to connect it.'
+                                : 'Not connected'}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      {tool.connected ? (
+                        tool.enabled ? (
+                          <Button
+                            aria-label={`Remove ${provider === 'slack' ? 'Slack' : 'Microsoft Teams'} from automation`}
+                            size="icon"
+                            type="button"
+                            variant="ghost"
+                            onClick={() => handleRemoveTool(provider)}
+                          >
+                            <Trash2Icon className="fk:size-4 fk:text-muted-foreground" />
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                            onClick={() => updateTool(provider, { enabled: true })}
+                          >
+                            Add
+                          </Button>
+                        )
+                      ) : (
+                        <Button
+                          disabled={
+                            !canMutate ||
+                            !deliveryPlugin?.enabled ||
+                            !marketplaceData?.canManage ||
+                            connectingProvider !== null
+                          }
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                          onClick={() => void handleConnectDelivery(provider)}
+                        >
+                          {connectingProvider === provider ? 'Connecting…' : 'Connect'}
+                        </Button>
+                      )}
+                    </div>
+                    {tool.connected && tool.enabled ? (
+                      <div className="fk:space-y-2 fk:pl-7">
+                        {deliveryPlugin &&
+                        deliveryPlugin.connections.filter(
+                          (connection) => connection.scope === 'project' && connection.status === 'connected'
+                        ).length > 1 ? (
+                          <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-3">
+                            <Label className="fk:text-xs fk:font-medium">Workspace</Label>
+                            <PluginAccountSelect
+                              ariaLabel={`${provider === 'slack' ? 'Slack' : 'Microsoft Teams'} workspace`}
+                              disabled={!canMutate}
+                              plugin={deliveryPlugin}
+                              scopes={['project']}
+                              value={{ connectionMode: 'project', connectionId: deliveryConnectionIds[provider] }}
+                              onChange={(choice) => handleDeliveryAccountChange(provider, choice.connectionId)}
+                            />
+                          </div>
+                        ) : null}
+                        <Label className="fk:mr-3 fk:text-xs fk:font-medium">Channels</Label>
+                        <ChannelPicker
+                          channels={tool.availableChannels}
+                          disabled={tool.loadingChannels || !canMutate}
+                          loading={tool.loadingChannels}
+                          provider={provider}
+                          value={tool.channels}
+                          onChange={(channels) => updateTool(provider, { channels })}
+                          onRefresh={() => {
+                            void loadProviderChannels(provider, resolvedDeliveryConnectionIds[provider]);
+                          }}
+                        />
+                        {tool.channelsLoadError ? (
+                          <p className="fk:flex fk:items-start fk:text-sm fk:text-warning fk:gap-1">
+                            <TriangleAlertIcon className="fk:size-4 fk:shrink-0 fk:mt-0.5" />
+                            {tool.channelsLoadError}
+                          </p>
+                        ) : null}
+                        {!tool.channelsLoadError && validation.toolErrors[provider] ? (
+                          <FieldError message={validation.toolErrors[provider]} />
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                  <Separator/>
+                </Fragment>
+              );
+            })
+          ) : toolsError ? (
+            <p className="fk:m-1.5 fk:p-1.5 fk:text-xs fk:text-warning" role="alert">
+              Unable to load Slack and Microsoft Teams delivery. Reload the page to try again.
+            </p>
+          ) : (
+            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:p-4 fk:text-sm fk:text-muted-foreground">
+              <LoaderCircleIcon className="fk:size-4 fk:animate-spin" />
+              Loading tools...
+            </div>
+          )}
 
           <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted fk:corner-squircle">
             <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
@@ -1685,57 +1912,27 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                   </p>
                 </div>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    disabled={!canMutate || (attachableSkills.length === 0 && lockedSpaceSkills.length === 0)}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    Attach
-                    <ChevronDownIcon className="fk:ml-1 fk:size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="fk:max-h-72 fk:min-w-40 fk:overflow-y-auto">
-                  {attachableSkills.map((skill) => {
-                    const attached = skillIds.includes(skill.id);
-
-                    return (
-                      <DropdownMenuItem
-                        key={skill.id}
-                        onSelect={(event) => {
-                          event.preventDefault();
-                          toggleSkill(skill.id, !attached);
-                        }}
-                      >
-                        <CheckIcon className={attached ? 'fk:size-4' : 'fk:size-4 fk:opacity-0'} />
-                        {skill.name}
-                        {skill.source === 'code' ? (
-                          <Badge className="fk:ml-auto fk:py-0 fk:text-[10px]" variant="secondary">
-                            Code
-                          </Badge>
-                        ) : null}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                  {lockedSpaceSkills.map((skill) => (
-                    <DropdownMenuItem
-                      disabled
-                      key={skill.id}
-                      title={getLockedSpaceSkillHint(skill, spaceLabelById)}
-                    >
-                      <LockIcon className="fk:size-4" />
-                      {skill.name}
-                      {skill.source === 'code' ? (
-                        <Badge className="fk:ml-auto fk:py-0 fk:text-[10px]" variant="secondary">
-                          Code
-                        </Badge>
-                      ) : null}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <AttachCombobox
+                disabled={!canMutate || (attachableSkills.length === 0 && lockedSpaceSkills.length === 0)}
+                emptyText="No skills match."
+                items={[
+                  ...attachableSkills.map((skill) => ({
+                    id: skill.id,
+                    label: skill.name,
+                    attached: skillIds.includes(skill.id),
+                    badge: skill.source === 'code' ? 'Code' : undefined,
+                  })),
+                  ...lockedSpaceSkills.map((skill) => ({
+                    id: skill.id,
+                    label: skill.name,
+                    attached: false,
+                    badge: skill.source === 'code' ? 'Code' : undefined,
+                    lockedHint: getLockedSpaceSkillHint(skill, spaceLabelById),
+                  })),
+                ]}
+                searchPlaceholder="Search skills…"
+                onToggle={toggleSkill}
+              />
             </div>
             {skillsData && attachableSkills.length === 0 && lockedSpaceSkills.length === 0 ? (
               <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
@@ -1773,6 +1970,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               </div>
             ) : null}
           </div>
+          <Separator/>
 
           <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted fk:corner-squircle">
             <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
@@ -1797,37 +1995,17 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                   ) : null}
                 </div>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    disabled={!canMutate || attachableCustomTools.length === 0}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    Attach
-                    <ChevronDownIcon className="fk:ml-1 fk:size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="fk:max-h-72 fk:min-w-40 fk:overflow-y-auto">
-                  {attachableCustomTools.map((tool) => {
-                    const attached = customToolNames.includes(tool.name);
-
-                    return (
-                      <DropdownMenuItem
-                        key={tool.name}
-                        onSelect={(event) => {
-                          event.preventDefault();
-                          toggleCustomTool(tool.name, !attached);
-                        }}
-                      >
-                        <CheckIcon className={attached ? 'fk:size-4' : 'fk:size-4 fk:opacity-0'} />
-                        {tool.name}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <AttachCombobox
+                disabled={!canMutate || attachableCustomTools.length === 0}
+                emptyText="No custom tools match."
+                items={attachableCustomTools.map((tool) => ({
+                  id: tool.name,
+                  label: tool.name,
+                  attached: customToolNames.includes(tool.name),
+                }))}
+                searchPlaceholder="Search custom tools…"
+                onToggle={toggleCustomTool}
+              />
             </div>
             {customToolsCatalog && attachableCustomTools.length === 0 ? (
               <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
@@ -1859,6 +2037,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               </div>
             ) : null}
           </div>
+          <Separator/>
 
           <PluginUsagePicker projectId={projectId} value={pluginUsages} disabled={!canMutate} onChange={(usages) => {
             setPluginUsages(usages);
@@ -1868,106 +2047,6 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               setSpaceId(null);
             }
           }} />
-
-          {toolsFormData ? (
-            TOOL_PROVIDERS.map((provider) => {
-              const tool = toolsFormData[provider];
-              const providerLabel = provider === 'slack' ? 'Send to Slack' : 'Send to Microsoft Teams';
-              const Icon = provider === 'slack' ? SlackIcon : TeamsIcon;
-
-              return (
-                <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:p-1.5 fk:hover:bg-muted fk:corner-squircle" key={provider}>
-                  <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
-                    <div className="fk:flex fk:gap-3">
-                      <Icon />
-                      <div>
-                        <div className="fk:text-sm fk:font-medium">{providerLabel}</div>
-                        {tool.workspaceName ? (
-                          <p className="fk:text-xs fk:text-muted-foreground">Connected to {tool.workspaceName}</p>
-                        ) : null}
-                      </div>
-                    </div>
-                    {tool.connected ? (
-                      tool.enabled ? (
-                        <Button
-                          aria-label={`Remove ${provider === 'slack' ? 'Slack' : 'Microsoft Teams'} from automation`}
-                          size="icon"
-                          type="button"
-                          variant="ghost"
-                          onClick={() => handleRemoveTool(provider)}
-                        >
-                          <Trash2Icon className="fk:size-4 fk:text-muted-foreground" />
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          type="button"
-                          variant="outline"
-                          onClick={() => updateTool(provider, { enabled: true })}
-                        >
-                          Add
-                        </Button>
-                      )
-                    ) : (
-                      <Button
-                        disabled={!toolsData?.tools.teamId}
-                        size="sm"
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          const teamId = toolsData?.tools.teamId;
-
-                          if (!teamId) {
-                            return;
-                          }
-
-                          window.open(window.location.pathname.replace(/\/ai\/.*$/, '/ai/plugins'), '_blank', 'noopener,noreferrer');
-                        }}
-                      >
-                        Manage
-                      </Button>
-                    )}
-                  </div>
-                  {!tool.connected ? (
-                    <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
-                      Connect {provider === 'slack' ? 'Slack' : 'Microsoft Teams'} in Project Integrations before using
-                      it in an automation.
-                    </p>
-                  ) : null}
-                  {tool.connected && tool.enabled ? (
-                    <div className="fk:space-y-2 fk:pl-7">
-                      <Label className="fk:mr-3 fk:text-xs fk:font-medium">Channels</Label>
-                      <ChannelPicker
-                        channels={tool.availableChannels}
-                        disabled={tool.loadingChannels || !canMutate}
-                        loading={tool.loadingChannels}
-                        provider={provider}
-                        value={tool.channels}
-                        onChange={(channels) => updateTool(provider, { channels })}
-                        onRefresh={() => {
-                          void loadProviderChannels(provider);
-                        }}
-                      />
-                      {tool.channelsLoadError ? (
-                        <p className="fk:flex fk:items-start fk:text-sm fk:text-warning fk:gap-1">
-                          <TriangleAlertIcon className="fk:size-4 fk:shrink-0 fk:mt-0.5" />
-                          {tool.channelsLoadError}
-                        </p>
-                      ) : null}
-                      {!tool.channelsLoadError && validation.toolErrors[provider] ? (
-                        <FieldError message={validation.toolErrors[provider]} />
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })
-          ) : (
-            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:p-4 fk:text-sm fk:text-muted-foreground">
-              <LoaderCircleIcon className="fk:size-4 fk:animate-spin" />
-              Loading tools...
-            </div>
-          )}
         </div>
       </div>
 

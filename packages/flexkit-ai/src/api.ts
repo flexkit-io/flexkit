@@ -1,4 +1,4 @@
-import type { PluginScope, PluginTools } from './plugin-types';
+import type { PluginConnection, PluginScope, PluginTools } from './plugin-types';
 import { put } from '@vercel/blob/client';
 import { convertRecordedAudioToPcm } from './agent/dictation';
 import type {
@@ -45,14 +45,18 @@ export class AgentUploadError extends Error {
 }
 
 export interface ApiClient {
+  /** Starts OAuth for a new account, or for `connectionId` to reconnect that specific account. */
   connectPlugins: (_input: {
-    pluginIds: string[];
+    pluginId: string;
     scope: PluginScope;
     studioOrigin: string;
-  }) => Promise<
-    | { connected: true }
-    | { transactionId: string; authorizeUrl: string; completionOrigin: string; launchTicket: string }
-  >;
+    connectionId?: string;
+  }) => Promise<{ transactionId: string; authorizeUrl: string; completionOrigin: string; launchTicket: string }>;
+  /** Renames (label null resets to the provider name) or makes a connection primary. */
+  updatePluginConnection: (
+    _id: string,
+    _input: { label?: string | null; primary?: true }
+  ) => Promise<{ connection: PluginConnection }>;
   pluginOAuthStatus: (_id: string) => Promise<{ id: string; status: 'pending' | 'exchanging' | 'complete' | 'failed'; expires_at: string }>;
   disconnectPlugin: (_id: string) => Promise<{ success: boolean }>;
   installPlugin: (_id: string) => Promise<unknown>;
@@ -80,7 +84,8 @@ export interface ApiClient {
   getArtifactUrl: (_artifactId: string, _options?: { download?: boolean }) => string;
   getRunArtifacts: (_workflowRunId: string) => Promise<AutomationArtifact[]>;
   getStreamUrl: (_workflowRunId: string) => string;
-  listChannels: (_provider: AutomationToolProvider) => Promise<{
+  /** Lists delivery channels of `connectionId`, or of the provider's primary project account when omitted. */
+  listChannels: (_provider: AutomationToolProvider, _connectionId?: string | null) => Promise<{
     channels: AutomationToolChannel[];
     errorMessage?: string;
     success: boolean;
@@ -148,6 +153,8 @@ export function createApiClient(projectId: string): ApiClient {
   return {
     connectPlugins: (input) => request(`${projectBasePath}/plugins/connect`, { method: 'POST', body: JSON.stringify(input) }),
     pluginOAuthStatus: (id) => request(`${projectBasePath}/plugins/oauth-transactions/${encodeURIComponent(id)}`),
+    updatePluginConnection: (id, input) =>
+      request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
     disconnectPlugin: (id) => request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     installPlugin: (id) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/installation`, { method: 'PUT', body: JSON.stringify({}) }),
     setPluginPolicy: (id, input) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/policy`, { method: 'PATCH', body: JSON.stringify(input) }),
@@ -287,8 +294,11 @@ export function createApiClient(projectId: string): ApiClient {
         `${automationsBasePath}/runs/${encodeURIComponent(workflowRunId)}/artifacts`
       ).then((response) => response.artifacts),
     getStreamUrl: (workflowRunId) => `${automationsBasePath}/runs/${encodeURIComponent(workflowRunId)}/stream`,
-    listChannels: async (provider) => {
-      const response = await fetch(`${projectBasePath}/plugins/${provider}/channels`, {
+    listChannels: async (provider, connectionId) => {
+      const url = connectionId
+        ? `${projectBasePath}/plugin-connections/${encodeURIComponent(connectionId)}/channels`
+        : `${projectBasePath}/plugins/${provider}/channels`;
+      const response = await fetch(url, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',

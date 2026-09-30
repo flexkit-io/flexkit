@@ -1,4 +1,4 @@
-import { useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import useSWR, { useSWRConfig } from 'swr';
 import { useConfig } from '@flexkit/studio';
@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
   ScrollArea,
@@ -31,10 +32,28 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@flexkit/studio/ui';
-import { ArrowLeft, CheckIcon, ChevronLeft, ChevronRight, ExternalLink, Plug, Plus, RefreshCw } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckIcon,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  MoreHorizontal,
+  Plug,
+  Plus,
+  RefreshCw,
+  XIcon,
+} from 'lucide-react';
 import { createApiClient, fetcher } from './api';
-import { connectPluginPopup } from './plugin-oauth';
-import type { Marketplace, MarketplacePlugin, PluginDetail, PluginScope, PluginTools } from './plugin-types';
+import { connectPluginPopup, PluginAccountMismatchError } from './plugin-oauth';
+import type {
+  Marketplace,
+  MarketplacePlugin,
+  PluginConnection,
+  PluginDetail,
+  PluginScope,
+  PluginTools,
+} from './plugin-types';
 
 function httpsCatalogUrl(value: string): string | null {
   let url: URL;
@@ -78,7 +97,7 @@ function scopeColorClassname(scopes: PluginScope[]): string {
 }
 
 function isConnected(plugin: MarketplacePlugin): boolean {
-  return plugin.connections.some((connection) => connection.status !== 'revoked');
+  return plugin.connections.length > 0;
 }
 
 function scopeTitle(scope: PluginScope): string {
@@ -97,11 +116,21 @@ function scopePermitted(plugin: MarketplacePlugin, canManage: boolean, scope: Pl
   return canManage;
 }
 
-function activeConnection(plugin: MarketplacePlugin, scope: PluginScope) {
-  return plugin.connections.find((item) => item.scope === scope && item.status !== 'revoked') ?? null;
+function scopeConnections(plugin: MarketplacePlugin, scope: PluginScope): PluginConnection[] {
+  return plugin.connections
+    .filter((connection) => connection.scope === scope)
+    .sort((left, right) => Number(right.isPrimary) - Number(left.isPrimary) || left.createdAt.localeCompare(right.createdAt));
 }
 
-function PluginConnectControl({
+/** Mirrors chat: the personal primary account wins over the project primary. */
+function primaryToolConnection(plugin: MarketplacePlugin): PluginConnection | null {
+  const primaries = plugin.connections.filter((connection) => connection.isPrimary && connection.status === 'connected');
+
+  return primaries.find((connection) => connection.scope === 'personal') ?? primaries.find((connection) => connection.scope === 'project') ?? null;
+}
+
+/** Connect button; asks for the scope when the plugin supports both project and personal accounts. */
+export function PluginConnectControl({
   busy,
   canManage,
   plugin,
@@ -112,7 +141,7 @@ function PluginConnectControl({
   plugin: MarketplacePlugin;
   onConnect: (scope: PluginScope) => void;
 }): JSX.Element | null {
-  const pendingScopes = plugin.scopes.filter((scope) => activeConnection(plugin, scope) === null);
+  const pendingScopes = plugin.scopes.filter((scope) => scopeConnections(plugin, scope).length === 0);
   const [scope] = pendingScopes;
 
   if (!scope) {
@@ -540,6 +569,204 @@ function toolCountLabel(count: number): string {
   return `${count.toString()} tools`;
 }
 
+interface ConnectionActions {
+  onDisconnect: (_connection: PluginConnection) => void;
+  onMakePrimary: (_connection: PluginConnection) => void;
+  onReconnect: (_connection: PluginConnection) => void;
+  onRename: (_connection: PluginConnection, _label: string | null) => Promise<void>;
+}
+
+function connectionSecondaryLine(connection: PluginConnection): string {
+  if (connection.accountName && connection.accountName !== connection.displayName) {
+    return connection.accountName;
+  }
+
+  return connection.scope === 'project' ? 'Shared with this project' : 'Only you can use this account';
+}
+
+function ConnectionRow({
+  actionable,
+  actions,
+  busy,
+  connection,
+  pluginEnabled,
+}: {
+  actionable: boolean;
+  actions: ConnectionActions;
+  busy: boolean;
+  connection: PluginConnection;
+  pluginEnabled: boolean;
+}): JSX.Element {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const needsAuth = connection.status === 'needs_auth';
+  const saveRename = async () => {
+    const label = draft.trim();
+
+    await actions.onRename(connection, label ? label : null);
+    setEditing(false);
+  };
+
+  // The menu restores focus to its trigger as it closes; focus the field afterwards.
+  useEffect(() => {
+    if (!editing) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 0);
+
+    return () => window.clearTimeout(timer);
+  }, [editing]);
+
+  return (
+    <li className="fk:flex fk:min-w-0 fk:items-center fk:gap-3 fk:py-2">
+      <Avatar className="fk:size-8">
+        <AvatarFallback>{connection.displayName.charAt(0).toUpperCase()}</AvatarFallback>
+      </Avatar>
+      {editing ? (
+        <form
+          className="fk:flex fk:min-w-0 fk:flex-1 fk:items-center fk:gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveRename();
+          }}
+        >
+          <Input
+            aria-label="Account name"
+            ref={inputRef}
+            className="fk:h-8 fk:max-w-xs"
+            disabled={busy}
+            placeholder={connection.accountName ?? 'Account name'}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                setEditing(false);
+              }
+            }}
+          />
+          <Button aria-label="Save name" disabled={busy} size="icon" type="submit" variant="ghost">
+            <CheckIcon />
+          </Button>
+          <Button aria-label="Cancel rename" size="icon" type="button" variant="ghost" onClick={() => setEditing(false)}>
+            <XIcon />
+          </Button>
+        </form>
+      ) : (
+        <span className="fk:flex fk:min-w-0 fk:flex-1 fk:flex-col">
+          <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-2">
+            <span className="fk:truncate fk:text-sm fk:font-medium">{connection.displayName}</span>
+            {connection.isPrimary ? <Badge variant="secondary">Primary</Badge> : null}
+            {needsAuth ? <Badge variant="destructive">Needs reconnect</Badge> : null}
+          </span>
+          <span className="fk:truncate fk:text-sm fk:text-muted-foreground">{connectionSecondaryLine(connection)}</span>
+        </span>
+      )}
+      {actionable && !editing ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button aria-label={`Manage ${connection.displayName}`} disabled={busy} size="icon" variant="ghost">
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuGroup>
+              {!connection.isPrimary && !needsAuth ? (
+                <DropdownMenuItem onSelect={() => actions.onMakePrimary(connection)}>Make primary</DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                onSelect={() => {
+                  setDraft(connection.label ?? '');
+                  setEditing(true);
+                }}
+              >
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={!pluginEnabled} onSelect={() => actions.onReconnect(connection)}>
+                Reconnect
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={() => actions.onDisconnect(connection)}>
+              Disconnect
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+    </li>
+  );
+}
+
+function ConnectedAccounts({
+  actions,
+  busy,
+  canManage,
+  onConnect,
+  plugin,
+}: {
+  actions: ConnectionActions;
+  busy: boolean;
+  canManage: boolean;
+  onConnect: (_scope: PluginScope) => void;
+  plugin: MarketplacePlugin;
+}): JSX.Element {
+  const grouped = plugin.scopes.length > 1;
+
+  return (
+    <section className="fk:flex fk:flex-col fk:gap-3">
+      <h2 className="fk:text-xl fk:font-semibold">Connected accounts</h2>
+      {plugin.scopes.map((scope) => {
+        const connections = scopeConnections(plugin, scope);
+        const permitted = scopePermitted(plugin, canManage, scope);
+        // Personal rows are only ever returned for the current user.
+        const actionable = scope === 'personal' || canManage;
+
+        if (connections.length === 0 && !permitted) {
+          return null;
+        }
+
+        return (
+          <div className="fk:flex fk:flex-col" key={scope}>
+            {grouped ? (
+              <h3 className="fk:text-sm fk:font-medium fk:text-muted-foreground">
+                {scope === 'project' ? 'Project accounts' : 'Your accounts'}
+              </h3>
+            ) : null}
+            <ul className="fk:flex fk:flex-col fk:divide-y">
+              {connections.map((connection) => (
+                <ConnectionRow
+                  actionable={actionable}
+                  actions={actions}
+                  busy={busy}
+                  connection={connection}
+                  key={connection.id}
+                  pluginEnabled={plugin.enabled}
+                />
+              ))}
+              {permitted ? (
+                <li>
+                  <button
+                    className="fk:flex fk:w-full fk:items-center fk:gap-3 fk:py-2 fk:text-left fk:text-sm fk:text-muted-foreground fk:transition-colors fk:hover:text-foreground fk:disabled:pointer-events-none fk:disabled:opacity-50"
+                    disabled={busy || !plugin.enabled}
+                    type="button"
+                    onClick={() => onConnect(scope)}
+                  >
+                    <span className="fk:flex fk:size-8 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-full fk:border fk:border-dashed">
+                      <Plus className="fk:size-4" />
+                    </span>
+                    {connections.length > 0 ? 'Connect another account' : 'Connect an account'}
+                  </button>
+                </li>
+              ) : null}
+            </ul>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 export function PluginDetailPage(): JSX.Element {
   const { pluginId } = useParams<{ pluginId: string }>();
   const { api, base } = useMarketplaceApi();
@@ -559,6 +786,12 @@ export function PluginDetailPage(): JSX.Element {
       await action();
       await mutate();
     } catch (failure) {
+      if (failure instanceof PluginAccountMismatchError) {
+        toast.error('You signed in with a different account. Use "Connect another account" to add it.');
+
+        return;
+      }
+
       toast.error(failure instanceof Error ? failure.message : 'Unable to complete this action.');
     } finally {
       setBusy(false);
@@ -609,7 +842,14 @@ export function PluginDetailPage(): JSX.Element {
     );
   }
 
-  const connectedConnections = plugin.connections.filter((connection) => connection.status === 'connected');
+  const toolConnection = primaryToolConnection(plugin);
+  const connectionActions: ConnectionActions = {
+    onDisconnect: (connection) => void perform(() => api.disconnectPlugin(connection.id)),
+    onMakePrimary: (connection) => void perform(() => api.updatePluginConnection(connection.id, { primary: true })),
+    onReconnect: (connection) =>
+      void perform(() => connectPluginPopup(api, plugin.id, connection.scope, { connectionId: connection.id })),
+    onRename: (connection, label) => perform(() => api.updatePluginConnection(connection.id, { label })),
+  };
 
   return (
     <main className="fk:flex fk:min-h-0 fk:flex-1 fk:flex-col">
@@ -645,45 +885,14 @@ export function PluginDetailPage(): JSX.Element {
               ) : null}
             </div>
             <div className="fk:ml-auto fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-end fk:gap-2">
-              {plugin.scopes.map((scope) => {
-                const connection = activeConnection(plugin, scope);
-                const permitted = scopePermitted(plugin, data.canManage, scope);
-
-                if (!connection) {
-                  return null;
-                }
-
-                return (
-                  <div className="fk:flex fk:items-center fk:gap-2" key={scope}>
-                    {plugin.scopes.length > 1 ? (
-                      <span className="fk:text-sm fk:text-muted-foreground">{scopeTitle(scope)}</span>
-                    ) : null}
-                    {permitted ? (
-                      <Button
-                        disabled={busy}
-                        variant="outline"
-                        onClick={() => void perform(() => api.disconnectPlugin(connection.id))}
-                      >
-                        Disconnect
-                      </Button>
-                    ) : null}
-                    <Button
-                      disabled={busy || !plugin.enabled || !permitted}
-                      onClick={() => void perform(() => connectPluginPopup(api, [plugin.id], scope))}
-                      size="sm"
-                    >
-                      <Plug />
-                      Reconnect
-                    </Button>
-                  </div>
-                );
-              })}
-              <PluginConnectControl
-                busy={busy}
-                canManage={data.canManage}
-                plugin={plugin}
-                onConnect={(scope) => void perform(() => connectPluginPopup(api, [plugin.id], scope))}
-              />
+              {isConnected(plugin) ? null : (
+                <PluginConnectControl
+                  busy={busy}
+                  canManage={data.canManage}
+                  plugin={plugin}
+                  onConnect={(scope) => void perform(() => connectPluginPopup(api, plugin.id, scope))}
+                />
+              )}
             </div>
           </div>
           <p className="fk:text-muted-foreground">{plugin.description}</p>
@@ -719,10 +928,19 @@ export function PluginDetailPage(): JSX.Element {
             <AlertDescription>This plugin is disabled by project policy.</AlertDescription>
           </Alert>
         ) : null}
+        {isConnected(plugin) ? (
+          <ConnectedAccounts
+            actions={connectionActions}
+            busy={busy}
+            canManage={data.canManage}
+            plugin={plugin}
+            onConnect={(scope) => void perform(() => connectPluginPopup(api, plugin.id, scope))}
+          />
+        ) : null}
         <section className="fk:flex fk:flex-col fk:gap-3">
           <div className="fk:flex fk:items-center fk:gap-3">
             <h2 className="fk:text-xl fk:font-semibold">Included tools</h2>
-            {plugin.capabilities.agentTools && connectedConnections.length > 0 ? (
+            {plugin.capabilities.agentTools && toolConnection ? (
               <Button
                 className="fk:ml-auto"
                 disabled={busy}
@@ -730,10 +948,8 @@ export function PluginDetailPage(): JSX.Element {
                 variant="ghost"
                 onClick={() =>
                   void perform(async () => {
-                    for (const connection of connectedConnections) {
-                      await api.refreshPluginTools(connection.id);
-                      await revalidateKey(`${base}/plugin-connections/${connection.id}/tools`);
-                    }
+                    await api.refreshPluginTools(toolConnection.id);
+                    await revalidateKey(`${base}/plugin-connections/${toolConnection.id}/tools`);
                   })
                 }
               >
@@ -747,14 +963,15 @@ export function PluginDetailPage(): JSX.Element {
               Automation delivery to selected channels. This plugin does not expose MCP messaging tools.
             </p>
           ) : null}
-          {plugin.capabilities.agentTools && connectedConnections.length === 0 ? (
+          {plugin.capabilities.agentTools && !toolConnection ? (
             <p className="fk:text-sm fk:text-muted-foreground">Connect to discover available tools.</p>
           ) : null}
-          {plugin.capabilities.agentTools
-            ? connectedConnections.map((connection) => (
-                <ConnectionTools base={base} connectionId={connection.id} key={connection.id} />
-              ))
-            : null}
+          {plugin.capabilities.agentTools && toolConnection ? (
+            <>
+              <p className="fk:text-sm fk:text-muted-foreground">Tools · via {toolConnection.displayName}</p>
+              <ConnectionTools base={base} connectionId={toolConnection.id} key={toolConnection.id} />
+            </>
+          ) : null}
         </section>
         <section className="fk:flex fk:flex-col fk:gap-3">
           <h2 className="fk:text-xl fk:font-semibold">Included skills</h2>

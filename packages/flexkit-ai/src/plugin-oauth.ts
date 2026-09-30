@@ -3,6 +3,16 @@ import type { PluginScope } from './plugin-types';
 
 const OAUTH_START_PATH = '/plugins/oauth/start';
 
+/** A Reconnect was completed with a different provider account than the one being reconnected. */
+export class PluginAccountMismatchError extends Error {
+  readonly code = 'account_mismatch';
+
+  constructor() {
+    super('You signed in with a different account. Use "Connect another account" to add it.');
+    this.name = 'PluginAccountMismatchError';
+  }
+}
+
 function httpsUrl(value: string): URL | null {
   let url: URL;
 
@@ -44,7 +54,12 @@ function trustedPluginOAuthTargets(
 }
 
 /** Must be called directly from the click handler so browsers allow the popup. */
-export async function connectPluginPopup(api: ApiClient, pluginIds: string[], scope: PluginScope): Promise<void> {
+export async function connectPluginPopup(
+  api: ApiClient,
+  pluginId: string,
+  scope: PluginScope,
+  options?: { connectionId?: string }
+): Promise<void> {
   const popup = window.open('about:blank', `flexkit-plugin-${crypto.randomUUID()}`, 'popup,width=560,height=720');
 
   if (!popup) {
@@ -54,16 +69,15 @@ export async function connectPluginPopup(api: ApiClient, pluginIds: string[], sc
   let transaction: Awaited<ReturnType<ApiClient['connectPlugins']>>;
 
   try {
-    transaction = await api.connectPlugins({ pluginIds, scope, studioOrigin: window.location.origin });
+    transaction = await api.connectPlugins({
+      pluginId,
+      scope,
+      studioOrigin: window.location.origin,
+      ...(options?.connectionId ? { connectionId: options.connectionId } : {}),
+    });
   } catch (error) {
     popup.close();
     throw error;
-  }
-
-  if (!('authorizeUrl' in transaction)) {
-    popup.close();
-
-    return;
   }
 
   const targets = trustedPluginOAuthTargets(transaction.authorizeUrl, transaction.completionOrigin);
@@ -136,7 +150,7 @@ export async function connectPluginPopup(api: ApiClient, pluginIds: string[], sc
         return;
       }
 
-      const payload = event.data as { type?: string; transactionId?: string };
+      const payload = event.data as { type?: string; transactionId?: string; status?: string; error?: string };
 
       if (payload.type === 'flexkit:plugin-oauth-ready' && payload.transactionId === transaction.transactionId) {
         popup.postMessage(
@@ -152,6 +166,12 @@ export async function connectPluginPopup(api: ApiClient, pluginIds: string[], sc
       }
 
       if (payload.type === 'flexkit:plugin-oauth' && payload.transactionId === transaction.transactionId) {
+        if (payload.status === 'failed' && payload.error === 'account_mismatch') {
+          finish(new PluginAccountMismatchError());
+
+          return;
+        }
+
         void poll();
       }
     };

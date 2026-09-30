@@ -57,6 +57,7 @@ export {
   CommandShortcut,
 } from './ui/primitives/command';
 export { Label } from './ui/primitives/label';
+export { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from './ui/primitives/popover';
 export { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/primitives/resizable';
 export type { PanelImperativeHandle } from 'react-resizable-panels';
 export { Separator } from './ui/primitives/separator';
