@@ -153,6 +153,7 @@ export function PluginConnectControl({
       <Button
         disabled={busy || !plugin.enabled || !scopePermitted(plugin, canManage, scope)}
         size="sm"
+        type="button"
         onClick={() => onConnect(scope)}
       >
         <Plug />
@@ -166,7 +167,7 @@ export function PluginConnectControl({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button disabled={busy || !plugin.enabled || !anyPermitted} size="sm">
+        <Button disabled={busy || !plugin.enabled || !anyPermitted} size="sm" type="button">
           <Plug />
           Connect
         </Button>

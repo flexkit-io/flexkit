@@ -1092,6 +1092,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     })
   );
   const channelRequestRef = useRef<{ [provider in AutomationToolProvider]?: string | null }>({});
+  // Tools form state is seeded once per automation; SWR refetches (e.g. on window focus after
+  // a connect popup) must not discard local edits.
+  const toolsFormKeyRef = useRef<string | null>(null);
   const { data: marketplaceData, error: marketplaceError } = useSWR<Marketplace>(
     `/api/flexkit/${projectId}/plugins`,
     fetcher
@@ -1279,10 +1282,13 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const showInstructionsError = touched.instructions && Boolean(validation.instructions);
 
   useEffect(() => {
-    if (!toolsData?.tools) {
+    const formKey = `${automation?.id ?? ''}:${mode}`;
+
+    if (!toolsData?.tools || toolsFormKeyRef.current === formKey) {
       return;
     }
 
+    toolsFormKeyRef.current = formKey;
     setToolsFormData(getInitialToolsFormData(toolsData.tools, mode));
   }, [automation?.id, mode, toolsData?.tools]);
 
@@ -1415,12 +1421,12 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         ?.connections.find(
           (connection) => connection.scope === 'project' && connection.isPrimary && connection.status === 'connected'
         );
-      updateTool(provider, {
+      // Deliver through the new primary account; any previously pinned account and its channels are stale.
+      setDeliveryConnectionIds((current) => ({ ...current, [provider]: null }));
+      resetProviderChannels(provider, {
         connected: true,
         enabled: true,
         workspaceName: primary?.displayName ?? null,
-        channelsLoaded: false,
-        channelsLoadError: undefined,
       });
     } catch (failure) {
       toast.error(failure instanceof Error ? failure.message : `Unable to connect ${plugin.name}.`);
@@ -1451,8 +1457,17 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     }
 
     setDeliveryConnectionIds((current) => ({ ...current, [provider]: connectionId }));
-    // Channels belong to a workspace; reload them for the newly selected account.
+    resetProviderChannels(provider);
+  }
+
+  // Channels belong to a workspace; drop them and any in-flight load so they reload for the selected account.
+  function resetProviderChannels(
+    provider: AutomationToolProvider,
+    value: Partial<AutomationProviderToolFormData> = {}
+  ): void {
+    channelRequestRef.current[provider] = undefined;
     updateTool(provider, {
+      ...value,
       availableChannels: [],
       channels: [],
       channelsLoaded: false,

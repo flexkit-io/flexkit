@@ -813,7 +813,7 @@ export function MessagePart({
   if (part.type === 'data-plugin-connection') {
     const data = getPartData<ReplayDataParts['plugin-connection']>(part);
 
-    return <PluginConnectionPart connectionId={data.connectionId} pluginId={data.pluginId} />;
+    return <PluginConnectionPart pluginId={data.pluginId} />;
   }
 
   if (part.type === 'data-turn-error') {
@@ -1411,8 +1411,8 @@ function getArtifactLabel(message: ReplayDataParts['run-artifact']): string {
   return 'Artifact';
 }
 
-/** `connectionId` names the account that needs attention; the plugin page lists and reconnects it. */
-function PluginConnectionPart({ pluginId }: { connectionId?: string; pluginId: string }): JSX.Element {
+/** Links to the plugin page, which lists every account and reconnects the one that needs attention. */
+function PluginConnectionPart({ pluginId }: { pluginId: string }): JSX.Element {
   const { pathname } = useLocation();
   const [base] = pathname.split('/ai/');
 
