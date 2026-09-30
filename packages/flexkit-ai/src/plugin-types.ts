@@ -4,8 +4,16 @@ export interface PluginConnection {
   id: string;
   pluginId: string;
   scope: PluginScope;
+  /** Provider account name, e.g. the connected email or workspace. */
   accountName: string | null;
-  status: 'connected' | 'needs_auth' | 'revoked';
+  /** User-chosen label; null falls back to the provider account name. */
+  label: string | null;
+  /** label ?? accountName ?? plugin name. */
+  displayName: string;
+  /** Exactly one connected account per scope is primary; agents use it by default. */
+  isPrimary: boolean;
+  externalAccountId: string;
+  status: 'connected' | 'needs_auth';
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;

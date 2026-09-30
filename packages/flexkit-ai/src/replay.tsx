@@ -17,6 +17,7 @@ import {
   MessageSquareIcon,
   SearchIcon,
   SendIcon,
+  ShieldCheckIcon,
   ShieldIcon,
   TerminalIcon,
   XCircleIcon,
@@ -46,7 +47,7 @@ interface ReplayError {
 }
 
 export interface ReplayDataParts {
-  'plugin-connection': { pluginId: string };
+  'plugin-connection': { pluginId: string; connectionId?: string };
   [key: string]: unknown;
   'bulk-graphql-action': {
     changedItems?: number;
@@ -866,7 +867,13 @@ export function MessagePart({
   }
 
   if (part.type === 'data-mutation-approval') {
-    return <MutationApprovalPart api={api} message={getPartData<ReplayDataParts['mutation-approval']>(part)} />;
+    const approval = getPartData<ReplayDataParts['mutation-approval']>(part);
+
+    return isJevAutoApproved(approval) ? (
+      <AutoApprovedCallPart message={approval} />
+    ) : (
+      <MutationApprovalPart api={api} message={approval} />
+    );
   }
 
   if (part.type === 'data-bulk-graphql-action') {
@@ -1310,6 +1317,31 @@ export function MutationApprovalPart({
   );
 }
 
+const JEV_APPROVAL_REASON_PREFIX = 'Approved by Flexkit Jev policy';
+
+/** Automation plugin calls Jev cleared: nobody was asked, so the run history shows them compactly. */
+function isJevAutoApproved(message: ReplayDataParts['mutation-approval']): boolean {
+  return !message.decidedBy && Boolean(message.reason?.startsWith(JEV_APPROVAL_REASON_PREFIX));
+}
+
+function AutoApprovedCallPart({ message }: { message: ReplayDataParts['mutation-approval'] }): JSX.Element {
+  const summary = message.operationsSummary.replace(/^Call /, '');
+
+  return (
+    <StatusToolPart
+      error={message.status === 'error' ? (message.error?.message ?? 'The call failed.') : undefined}
+      icon={<ShieldCheckIcon className="fk:size-3.5" />}
+      loading={false}
+      message={
+        message.status === 'error'
+          ? `${summary}: ${message.error?.message ?? 'The call failed.'}`
+          : `${summary} · Auto-approved by Jev`
+      }
+      title="Plugin call"
+    />
+  );
+}
+
 function BulkGraphqlActionPart({ message }: { message: ReplayDataParts['bulk-graphql-action'] }): JSX.Element {
   const progress = [
     typeof message.processedItems === 'number' ? `${message.processedItems.toString()} processed` : '',
@@ -1379,6 +1411,7 @@ function getArtifactLabel(message: ReplayDataParts['run-artifact']): string {
   return 'Artifact';
 }
 
+/** Links to the plugin page, which lists every account and reconnects the one that needs attention. */
 function PluginConnectionPart({ pluginId }: { pluginId: string }): JSX.Element {
   const { pathname } = useLocation();
   const [base] = pathname.split('/ai/');

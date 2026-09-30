@@ -205,7 +205,7 @@ function OperationDocuments({
 
 function getChatPluginAction(
   approval: AutomationApproval
-): { action: string; app: string; accountEmail?: string } | null {
+): { action: string; app: string; account?: string; scope?: 'project' | 'personal' } | null {
   if (approval.kind !== 'plugin') {
     return null;
   }
@@ -224,9 +224,22 @@ function getChatPluginAction(
     .replace(/[_-]+/g, ' ')
     .toLowerCase();
   const app = pluginName.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-  const accountEmail = approval.operations[0]?.query.match(/^Connection:.*?([^\s<>]+@[^\s<>]+)\s*$/m)?.[1];
+  const query = approval.operations[0]?.query ?? '';
+  const connection = /^Connection:\s*(Project|Personal)\s+—\s+(.+)$/m.exec(query);
 
-  return { action, app, accountEmail };
+  if (connection?.[1] && connection[2]) {
+    return {
+      action,
+      app,
+      account: connection[2].trim(),
+      scope: connection[1] === 'Project' ? 'project' : 'personal',
+    };
+  }
+
+  // Older approvals only carried the account email.
+  const account = /^Connection:.*?([^\s<>]+@[^\s<>]+)\s*$/m.exec(query)?.[1];
+
+  return { action, app, account };
 }
 
 function getChatActionTitle(approval: AutomationApproval): string {
@@ -536,7 +549,7 @@ function ApprovalCardBody({
         <div className="fk:rounded-md fk:border fk:border-dashed fk:p-3 fk:text-xs fk:text-muted-foreground fk:corner-squircle">
           {chat
             ? pluginAction
-              ? `This action uses your ${pluginAction.app} account${pluginAction.accountEmail ? ` (${pluginAction.accountEmail})` : ''}. Check the details before deciding.`
+              ? `This action uses ${pluginAction.scope === 'project' ? "the project's" : 'your'} ${pluginAction.app} account${pluginAction.account ? ` (${pluginAction.account})` : ''}. Check the details before deciding.`
               : 'The assistant wants to make this change. Check the details before deciding.'
             : approval.kind === 'plugin'
               ? 'Review the account, tool, and arguments before allowing this external call.'
