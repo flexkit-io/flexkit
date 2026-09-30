@@ -1,5 +1,22 @@
 # @flexkit/ai
 
+## 0.0.8
+
+### Patch Changes
+
+- c01435a: Add plugins to an automation from a searchable "+ Plugin tools" menu instead of listing every plugin. Each added plugin is one compact row with its account, tools, status, and a remove button. Plugins and Slack or Microsoft Teams delivery can be connected in place through the sign-in popup, so unsaved automation changes are kept. Delivery rows now sit under Memories, show "Not connected" inline, and report a loading failure instead of spinning indefinitely.
+
+  Export the `Popover` components from `@flexkit/studio/ui`.
+
+- c01435a: Connect several accounts per plugin. The plugin page lists connected accounts, grouped into project and personal accounts, with one Primary account per group. Each account can be made primary, renamed, reconnected, or disconnected, and "Connect another account" adds more. Agents use the primary account unless the user asks for another. Reconnecting an account that is then signed into with a different provider account fails with a clear message instead of replacing it.
+
+  Automations can follow the primary account or pin a specific one, including the Slack or Microsoft Teams workspace used for delivery. Approval requests name the account and say whether it is the user's own or the project's. Requires the matching platform plugins API and database migration.
+
+- c01435a: Plugins added to an automation offer all of their tools by default, including tools the provider adds later. Specific tools can still be chosen by unchecking "All tools". With "Require approval", plugin calls are screened by Jev against the automation instructions: clear, low-risk calls run immediately and appear in the run history as auto-approved, while other calls pause the run for review. A warning is shown when "Auto-approve" is used with plugin tools. Requires the matching platform API and database migration.
+- c01435a: Make the automation Skills and Custom tools "Attach" menus searchable. The list filters by name as you type and stays open while you attach or detach several items. Code skills keep their badge, and skills from spaces you cannot use remain listed as locked.
+- Updated dependencies [c01435a]
+  - @flexkit/studio@0.0.36
+
 ## 0.0.7
 
 ### Patch Changes
