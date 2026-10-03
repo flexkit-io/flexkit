@@ -1074,7 +1074,12 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [mutationPolicy, setMutationPolicy] = useState<AutomationMutationPolicy>(
     automation?.mutationPolicy ?? 'require_approval'
   );
-  const [toolAllowRules, setToolAllowRules] = useState<AutomationToolAllowRule[]>(automation?.toolAllowRules ?? []);
+  // Undefined when the loaded automation did not carry the rules (older API):
+  // the save then omits the field, which the API treats as "keep", so a plain
+  // save can never wipe rules created from the Approvals inbox.
+  const [toolAllowRules, setToolAllowRules] = useState<AutomationToolAllowRule[] | undefined>(
+    automation?.toolAllowRules
+  );
   const [visibility, setVisibility] = useState<AutomationVisibility>(automation?.visibility ?? 'project');
   const [spaceId, setSpaceId] = useState<string | null>(automation?.spaceId ?? null);
   const [skillIds, setSkillIds] = useState<string[]>(automation?.skillIds ?? []);
@@ -1542,7 +1547,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       mutationPolicy,
       name,
       skillIds,
-      toolAllowRules,
+      ...(toolAllowRules !== undefined ? { toolAllowRules } : {}),
       spaceId: visibility === 'space' ? spaceId : null,
       toolConfigs: [...toolConfigs, ...pluginUsages],
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
@@ -1768,7 +1773,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             act on your connected accounts.
           </p>
         ) : null}
-        {mutationPolicy === 'require_approval' && toolAllowRules.length > 0 ? (
+        {mutationPolicy === 'require_approval' && toolAllowRules && toolAllowRules.length > 0 ? (
           <div className="fk:space-y-2">
             <p className="fk:text-xs fk:text-muted-foreground">
               Always allowed plugin tools (approved with &ldquo;always allow&rdquo; from the Approvals inbox):
@@ -1787,7 +1792,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                     size="sm"
                     type="button"
                     variant="ghost"
-                    onClick={() => setToolAllowRules((current) => current.filter((item) => item !== rule))}
+                    onClick={() => setToolAllowRules((current) => (current ?? []).filter((item) => item !== rule))}
                   >
                     Remove
                   </Button>

@@ -1235,12 +1235,21 @@ export function ApprovalsPage(): JSX.Element {
                       {formatDistance(new Date(approval.requestedAt), new Date(), { addSuffix: true })}
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
-                      <Link
-                        className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
-                        to={`../automations/${approval.automationId}/runs/${approval.runId}`}
-                      >
-                        View run
-                      </Link>
+                      {approval.chatId ? (
+                        <Link
+                          className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
+                          to={`../agent/chats/${approval.chatId}`}
+                        >
+                          View chat
+                        </Link>
+                      ) : approval.automationId && approval.runId ? (
+                        <Link
+                          className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
+                          to={`../automations/${approval.automationId}/runs/${approval.runId}`}
+                        >
+                          View run
+                        </Link>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
