@@ -1,10 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import type { JSX } from 'react';
-import type { ReasoningUIPart, TextUIPart, UIMessage, UIMessageChunk } from 'ai';
+import type { TextUIPart, UIMessage, UIMessageChunk } from 'ai';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { parseJsonEventStream, readUIMessageStream, uiMessageChunkSchema } from 'ai';
 import {
-  BrainIcon,
+  BotIcon,
   CheckCircle2Icon,
   CheckIcon,
   CircleSlashIcon,
@@ -15,11 +15,9 @@ import {
   FileTextIcon,
   LoaderCircle,
   MessageSquareIcon,
-  SearchIcon,
   SendIcon,
   ShieldCheckIcon,
   ShieldIcon,
-  TerminalIcon,
   XCircleIcon,
   XIcon,
 } from 'lucide-react';
@@ -29,7 +27,23 @@ import useSWR from 'swr';
 import { createApiClient, fetcher, paths } from './api';
 import { ApprovalCard } from './approval-card';
 import { RunSpecPart } from './spec-renderer';
+import {
+  getPartData,
+  getRollingStatusError,
+  isHiddenReplayPart,
+  isJevAutoApproved,
+  isRollingStatusPartType,
+} from './status-label';
+import type { DataPart } from '@flexkit/agent-protocol';
 import type { AutomationApproval, AutomationRun } from './types';
+
+export {
+  getLiveStatusLabel,
+  getPartData,
+  getRollingStatusError,
+  isHiddenReplayPart,
+  isRollingStatusPartType,
+} from './status-label';
 
 export function useProjectApi(): { api: ReturnType<typeof createApiClient> | null; projectId: string | undefined } {
   const { currentProjectId } = useConfig();
@@ -42,109 +56,12 @@ export interface ReplayMetadata {
   model?: string;
 }
 
-interface ReplayError {
-  message: string;
-}
-
-export interface ReplayDataParts {
-  'plugin-connection': { pluginId: string; connectionId?: string };
+/**
+ * Parts streamed by the platform, derived from the shared protocol schema; the
+ * index signature keeps `UIMessage` happy with parts this build does not know.
+ */
+export interface ReplayDataParts extends DataPart {
   [key: string]: unknown;
-  'bulk-graphql-action': {
-    changedItems?: number;
-    failedItems?: number;
-    jobId?: string;
-    operationName: string;
-    processedItems?: number;
-    status: 'loading' | 'running' | 'done' | 'error';
-    totalItems?: number;
-    error?: ReplayError;
-  };
-  'create-sandbox': {
-    sandboxId?: string;
-    status: 'loading' | 'done' | 'error';
-    error?: ReplayError;
-  };
-  'execute-graphql': {
-    operationType?: 'query' | 'mutation';
-    status: 'loading' | 'done' | 'error';
-    error?: ReplayError;
-  };
-  'mutation-approval': {
-    approvalId: string;
-    affectedCount?: number | null;
-    decidedBy?: string;
-    operationsSummary: string;
-    reason?: string;
-    status: 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled' | 'executed' | 'error';
-    error?: ReplayError;
-  };
-  'generating-files': {
-    paths: string[];
-    status: 'generating' | 'uploading' | 'uploaded' | 'done' | 'error';
-    error?: ReplayError;
-  };
-  'load-skill': {
-    attached?: boolean;
-    skillName?: string;
-    status: 'loading' | 'done' | 'error';
-    error?: ReplayError;
-  };
-  'run-artifact': {
-    artifactId?: string;
-    contentType?: string;
-    filename: string;
-    kind?: 'html' | 'pdf';
-    sizeBytes?: number;
-    status: 'uploading' | 'done' | 'error';
-    /** Persistent public URL of the stored artifact. */
-    url?: string;
-    error?: ReplayError;
-  };
-  'run-command': {
-    args: string[];
-    command: string;
-    commandId?: string;
-    exitCode?: number;
-    sandboxId: string;
-    status: 'executing' | 'running' | 'waiting' | 'done' | 'error';
-    error?: ReplayError;
-  };
-  'run-summary': {
-    status: 'success' | 'skipped' | 'failed';
-    summary: string;
-  };
-  'search-schema': {
-    query?: string;
-    status: 'loading' | 'done' | 'error';
-    error?: ReplayError;
-  };
-  'tool-delivery': {
-    channelId: string;
-    channelName: string;
-    provider: 'slack' | 'teams';
-    status: 'loading' | 'done' | 'error';
-    error?: ReplayError;
-  };
-  'turn-error': {
-    message: string;
-  };
-  'update-memory': {
-    status: 'loading' | 'done' | 'error';
-    error?: ReplayError;
-  };
-  'user-message': {
-    parts: ReplayMessagePart[];
-  };
-  'validate-graphql': {
-    errorCount?: number;
-    status: 'loading' | 'valid' | 'invalid' | 'error';
-    error?: ReplayError;
-  };
-  'web-search': {
-    query: string;
-    status: 'loading' | 'done' | 'error';
-    error?: ReplayError;
-  };
 }
 
 interface ReplayTools {
@@ -185,53 +102,8 @@ function isAbortError(error: unknown): boolean {
   return error.name === 'AbortError' || error.message.toLowerCase().includes('aborted');
 }
 
-function isReasoningPart(part: ReplayMessagePart): part is ReasoningUIPart {
-  return part.type === 'reasoning';
-}
-
-function hasRenderableReasoning(part: ReplayMessagePart): boolean {
-  if (!isReasoningPart(part)) {
-    return false;
-  }
-
-  // Keep streaming indicators, and keep completed rationale for finished /
-  // paused replays so reviewers can still see why the agent acted.
-  return part.state === 'streaming' || part.text.trim().length > 0;
-}
-
 function hasRenderableParts(parts: ReplayMessagePart[]): boolean {
-  return parts.some((part) => {
-    if (part.type === 'step-start') {
-      return false;
-    }
-
-    if (isRollingStatusPartType(part.type)) {
-      return false;
-    }
-
-    if (part.type === 'reasoning') {
-      return hasRenderableReasoning(part);
-    }
-
-    return true;
-  });
-}
-
-function getReasoningLabel(text: string): string {
-  const trimmed = text.trim();
-
-  if (!trimmed || /^reasoning\.?$/i.test(trimmed)) {
-    return 'Reasoning';
-  }
-
-  const firstLine = trimmed.split(/\r?\n/, 1)[0]?.trim() ?? trimmed;
-  const maxLength = 72;
-
-  if (firstLine.length <= maxLength) {
-    return firstLine;
-  }
-
-  return `${firstLine.slice(0, maxLength).trimEnd()}…`;
+  return parts.some((part) => !isHiddenReplayPart(part));
 }
 
 function getMarkerIds(messages: ReplayMessage[]): Set<string> {
@@ -286,7 +158,7 @@ function splitSessionMessages(messages: ReplayMessage[]): ReplayMessage[] {
         flush();
         result.push({
           id: part.id ?? crypto.randomUUID(),
-          parts: data.parts,
+          parts: data.parts as ReplayMessagePart[],
           role: 'user',
         });
 
@@ -304,91 +176,6 @@ function splitSessionMessages(messages: ReplayMessage[]): ReplayMessage[] {
 
 export function useSessionMessages(messages: ReplayMessage[]): ReplayMessage[] {
   return useMemo(() => splitSessionMessages(messages), [messages]);
-}
-
-export function getPartData<T>(part: ReplayMessagePart): T {
-  return (part as { data: T }).data;
-}
-
-const ROLLING_STATUS_PART_TYPES = new Set<string>([
-  'data-execute-graphql',
-  'data-load-skill',
-  'data-search-schema',
-  'data-update-memory',
-  'data-validate-graphql',
-]);
-
-/**
- * These tool events are surfaced as a single transient status line while the
- * call is in flight (see `RollingStatusText`) instead of persistent cards.
- */
-export function isRollingStatusPartType(type: string): boolean {
-  return ROLLING_STATUS_PART_TYPES.has(type);
-}
-
-/** Gerund label for a rolling-status part, or null once the call concluded. */
-function getRollingStatusLabel(part: ReplayMessagePart): string | null {
-  if (part.type === 'data-load-skill') {
-    const data = getPartData<ReplayDataParts['load-skill']>(part);
-
-    if (data.status !== 'loading') {
-      return null;
-    }
-
-    return data.skillName ? `Loading skill "${data.skillName}"` : 'Loading skill';
-  }
-
-  if (part.type === 'data-search-schema') {
-    const data = getPartData<ReplayDataParts['search-schema']>(part);
-
-    return data.status === 'loading' ? 'Searching schema' : null;
-  }
-
-  if (part.type === 'data-validate-graphql') {
-    const data = getPartData<ReplayDataParts['validate-graphql']>(part);
-
-    return data.status === 'loading' ? 'Validating GraphQL query' : null;
-  }
-
-  if (part.type === 'data-execute-graphql') {
-    const data = getPartData<ReplayDataParts['execute-graphql']>(part);
-
-    if (data.status !== 'loading') {
-      return null;
-    }
-
-    return data.operationType === 'mutation' ? 'Executing GraphQL mutation' : 'Executing GraphQL query';
-  }
-
-  if (part.type === 'data-update-memory') {
-    const data = getPartData<ReplayDataParts['update-memory']>(part);
-
-    return data.status === 'loading' ? 'Updating memory' : null;
-  }
-
-  return null;
-}
-
-/**
- * Label of the tool call currently in flight at the tail of the stream, or
- * null when nothing rolling-status-worthy is running.
- */
-export function getActiveRollingStatusLabel(message: ReplayMessage | undefined): string | null {
-  if (!message) {
-    return null;
-  }
-
-  for (let index = message.parts.length - 1; index >= 0; index--) {
-    const part = message.parts[index];
-
-    if (!part || part.type === 'step-start') {
-      continue;
-    }
-
-    return getRollingStatusLabel(part);
-  }
-
-  return null;
 }
 
 export function messageHasPendingMutationApproval(message: ReplayMessage | undefined): boolean {
@@ -771,14 +558,17 @@ export function MessagePart({
   partIndex: number;
   parts: ReplayMessagePart[];
 }): JSX.Element | null {
-  if (part.type === 'step-start') {
+  // Reasoning, step markers, in-flight tool calls, and Jev-cleared plugin
+  // calls only feed the transient status line; nothing to show here.
+  if (isHiddenReplayPart(part)) {
     return null;
   }
 
-  // Rendered as a transient rolling status line while in flight; nothing to
-  // show once the call concluded.
+  // A rolling-status call that is not hidden has failed.
   if (isRollingStatusPartType(part.type)) {
-    return null;
+    const error = getRollingStatusError(part);
+
+    return error ? <ToolErrorLine message={error} /> : null;
   }
 
   if (part.type === 'text') {
@@ -786,12 +576,6 @@ export function MessagePart({
       isCodeFenceOnlyText(part.text) && parts.some((otherPart) => otherPart.type === JSON_RENDER_SPEC_PART_TYPE);
 
     return isStrayFence ? null : <TextPart part={part} />;
-  }
-
-  if (isReasoningPart(part)) {
-    return hasRenderableReasoning(part) ? (
-      <ReasoningPart streaming={part.state === 'streaming'} text={part.text} />
-    ) : null;
   }
 
   if (part.type === 'data-generating-files') {
@@ -808,6 +592,45 @@ export function MessagePart({
 
   if (part.type === 'data-run-summary') {
     return <RunSummaryPart message={getPartData<ReplayDataParts['run-summary']>(part)} />;
+  }
+
+  if (part.type === 'data-subtask') {
+    const data = getPartData<ReplayDataParts['subtask']>(part);
+    const message =
+      data.status === 'running'
+        ? `Running "${data.title}"`
+        : data.status === 'done'
+          ? `Completed "${data.title}"${typeof data.stepsUsed === 'number' ? ` in ${data.stepsUsed.toString()} steps` : ''}`
+          : `"${data.title}" failed: ${data.error?.message ?? 'unknown error'}`;
+
+    return (
+      <ToolMessage>
+        <ToolHeader>
+          <BotIcon className="fk:size-3.5" />
+          Subtask
+        </ToolHeader>
+        <div className="fk:relative fk:min-h-5 fk:pl-6">
+          <span className="fk:absolute fk:left-0 fk:top-0">
+            <StatusIcon isError={data.status === 'error'} loading={data.status === 'running'} />
+          </span>
+          <span className="fk:text-xs">{message}</span>
+          {data.resultPreview ? (
+            <p className="fk:mt-1 fk:text-xs fk:text-muted-foreground">{data.resultPreview}</p>
+          ) : null}
+        </div>
+      </ToolMessage>
+    );
+  }
+
+  if (part.type === 'data-context-compaction') {
+    const data = getPartData<ReplayDataParts['context-compaction']>(part);
+
+    return (
+      <p className="fk:text-xs fk:text-muted-foreground">
+        Earlier messages ({data.summarizedMessageCount.toString()}) were summarized to keep this conversation within
+        the model&apos;s context. Details may need to be re-fetched.
+      </p>
+    );
   }
 
   if (part.type === 'data-plugin-connection') {
@@ -830,42 +653,6 @@ export function MessagePart({
     );
   }
 
-  if (part.type === 'data-run-command') {
-    const data = getPartData<ReplayDataParts['run-command']>(part);
-
-    return (
-      <StatusToolPart
-        error={data.error?.message}
-        icon={<TerminalIcon className="fk:size-3.5" />}
-        loading={['executing', 'running', 'waiting'].includes(data.status)}
-        message={
-          data.status === 'error'
-            ? (data.error?.message ?? `Command failed: ${data.command}`)
-            : `${data.status === 'done' ? 'Ran' : 'Running'} ${data.command} ${data.args.join(' ')}`
-        }
-        title="Run command"
-      />
-    );
-  }
-
-  if (part.type === 'data-web-search') {
-    const data = getPartData<ReplayDataParts['web-search']>(part);
-
-    return (
-      <StatusToolPart
-        error={data.error?.message}
-        icon={<SearchIcon className="fk:size-3.5" />}
-        loading={data.status === 'loading'}
-        message={
-          data.status === 'error'
-            ? (data.error?.message ?? 'Failed to search the web')
-            : `${data.status === 'done' ? 'Searched' : 'Searching'} "${data.query}"`
-        }
-        title="Web search"
-      />
-    );
-  }
-
   if (part.type === 'data-mutation-approval') {
     const approval = getPartData<ReplayDataParts['mutation-approval']>(part);
 
@@ -878,26 +665,6 @@ export function MessagePart({
 
   if (part.type === 'data-bulk-graphql-action') {
     return <BulkGraphqlActionPart message={getPartData<ReplayDataParts['bulk-graphql-action']>(part)} />;
-  }
-
-  if (part.type === 'data-create-sandbox') {
-    const data = getPartData<ReplayDataParts['create-sandbox']>(part);
-
-    return (
-      <StatusToolPart
-        error={data.error?.message}
-        icon={<TerminalIcon className="fk:size-3.5" />}
-        loading={data.status === 'loading'}
-        message={
-          data.status === 'error'
-            ? (data.error?.message ?? 'Failed to create sandbox')
-            : data.status === 'done'
-              ? 'Created sandbox'
-              : 'Creating sandbox'
-        }
-        title="Create sandbox"
-      />
-    );
   }
 
   if (part.type === JSON_RENDER_SPEC_PART_TYPE) {
@@ -928,29 +695,18 @@ function TextPart({ part }: { part: TextUIPart }): JSX.Element {
   );
 }
 
-export function ReasoningPart({ streaming, text }: { streaming: boolean; text: string }): JSX.Element {
-  if (streaming) {
-    return (
-      <p
-        className="fk:shimmer fk:inline-flex fk:items-center fk:gap-1.5 fk:text-sm fk:text-muted-foreground fk:shimmer-duration-1000"
-        role="status"
-      >
-        <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
-        {getReasoningLabel(text)}
-      </p>
-    );
-  }
-
+/** Compact inline error row for a failed tool call or turn. */
+export function ToolErrorLine({ message }: { message: string }): JSX.Element {
   return (
-    <details className="fk:rounded-xl fk:border fk:border-border fk:bg-muted/30 fk:px-3.5 fk:py-3 fk:corner-squircle">
-      <summary className="fk:flex fk:cursor-pointer fk:items-center fk:gap-1.5 fk:text-sm fk:font-medium fk:text-muted-foreground">
-        <BrainIcon aria-hidden className="fk:size-3.5 fk:shrink-0" />
-        Reasoning
-      </summary>
-      <p className="fk:mt-2 fk:whitespace-pre-wrap fk:text-xs fk:text-muted-foreground">{text}</p>
-    </details>
+    <div className="fk:flex fk:items-start fk:gap-2 fk:rounded-xl fk:border fk:border-red-700/40 fk:bg-destructive/5 fk:px-3.5 fk:py-3 fk:text-sm fk:corner-squircle">
+      <XCircleIcon className="fk:mt-0.5 fk:size-3.5 fk:shrink-0 fk:text-red-700" />
+      <span className="fk:whitespace-pre-wrap fk:text-xs">{message}</span>
+    </div>
   );
 }
+
+/** Period of the `fk:shimmer-duration-1000` utility, used to keep the phase across label swaps. */
+const SHIMMER_PERIOD_MS = 1000;
 
 /**
  * Single-line shimmering status indicator that swaps its text with a rolling
@@ -958,10 +714,26 @@ export function ReasoningPart({ streaming, text }: { streaming: boolean; text: s
  * enters from the bottom of an overflow-hidden line.
  */
 export function RollingStatusText({ text }: { text: string }): JSX.Element {
-  const [transition, setTransition] = useState<{ current: string; key: number; previous: string | null }>({
+  // The shimmer utility restarts its animation whenever the keyed label span
+  // remounts. A negative delay anchored to one origin resumes it in phase.
+  const phaseOriginRef = useRef<number>(typeof performance === 'undefined' ? 0 : performance.now());
+  const getPhaseDelayMs = (): number => {
+    const now = typeof performance === 'undefined' ? 0 : performance.now();
+
+    return -((now - phaseOriginRef.current) % SHIMMER_PERIOD_MS);
+  };
+  const [transition, setTransition] = useState<{
+    current: string;
+    currentDelayMs: number;
+    key: number;
+    previous: string | null;
+    previousDelayMs: number;
+  }>({
     current: text,
+    currentDelayMs: 0,
     key: 0,
     previous: null,
+    previousDelayMs: 0,
   });
 
   useEffect(() => {
@@ -970,7 +742,13 @@ export function RollingStatusText({ text }: { text: string }): JSX.Element {
         return state;
       }
 
-      return { current: text, key: state.key + 1, previous: state.current };
+      return {
+        current: text,
+        currentDelayMs: getPhaseDelayMs(),
+        key: state.key + 1,
+        previous: state.current,
+        previousDelayMs: state.currentDelayMs,
+      };
     });
   }, [text]);
 
@@ -984,7 +762,12 @@ export function RollingStatusText({ text }: { text: string }): JSX.Element {
           className="fk:absolute fk:inset-x-0 fk:top-0 fk:block fk:animate-roll-up-out"
           key={`previous-${transition.key.toString()}`}
         >
-          <span className="fk:block fk:truncate fk:shimmer fk:shimmer-duration-1000">{transition.previous}</span>
+          <span
+            className="fk:block fk:truncate fk:shimmer fk:shimmer-duration-1000"
+            style={{ animationDelay: `${transition.previousDelayMs.toString()}ms` }}
+          >
+            {transition.previous}
+          </span>
         </span>
       ) : null}
       <span
@@ -992,9 +775,74 @@ export function RollingStatusText({ text }: { text: string }): JSX.Element {
         key={`current-${transition.key.toString()}`}
         role="status"
       >
-        <span className="fk:block fk:truncate fk:shimmer fk:shimmer-duration-1000">{transition.current}</span>
+        <span
+          className="fk:block fk:truncate fk:shimmer fk:shimmer-duration-1000"
+          style={{ animationDelay: `${transition.currentDelayMs.toString()}ms` }}
+        >
+          {transition.current}
+        </span>
       </span>
     </span>
+  );
+}
+
+const STATUS_LABEL_MIN_DWELL_MS = 1000;
+
+/**
+ * Holds each displayed label for at least `minDwellMs` so a burst of label
+ * changes (e.g. a reasoning heading followed by its first sentence) still
+ * reads as distinct rolls. The latest pending label wins once the window
+ * elapses; A → B → A inside the window collapses to no change.
+ */
+export function useStableStatusLabel(label: string, options?: { minDwellMs?: number }): string {
+  const minDwellMs = options?.minDwellMs ?? STATUS_LABEL_MIN_DWELL_MS;
+  const [displayed, setDisplayed] = useState(label);
+  const shownAtRef = useRef(Date.now());
+  const pendingRef = useRef(label);
+  pendingRef.current = label;
+
+  useEffect(() => {
+    if (label === displayed) {
+      return;
+    }
+
+    const wait = Math.max(0, minDwellMs - (Date.now() - shownAtRef.current));
+    const timeoutId = window.setTimeout(() => {
+      shownAtRef.current = Date.now();
+      setDisplayed(pendingRef.current);
+    }, wait);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [displayed, label, minDwellMs]);
+
+  return displayed;
+}
+
+export interface TurnStatus {
+  label: string;
+  visible: boolean;
+}
+
+/**
+ * The one transient status slot of an in-flight turn or run. It keeps its
+ * height for the whole turn and only fades while response text streams, so
+ * the conversation never shifts when the label appears or disappears.
+ * Parents unmount it once the turn reached a terminal state.
+ */
+export function TurnStatusLine({ label, visible }: TurnStatus): JSX.Element {
+  const stableLabel = useStableStatusLabel(label);
+
+  return (
+    <div
+      aria-hidden={!visible}
+      className={`fk:flex fk:h-9 fk:items-center fk:text-sm fk:text-muted-foreground fk:transition-[opacity,visibility] fk:duration-200 ${
+        visible ? 'fk:visible fk:opacity-100' : 'fk:invisible fk:opacity-0'
+      }`}
+    >
+      <RollingStatusText text={stableLabel} />
+    </div>
   );
 }
 
@@ -1317,13 +1165,7 @@ export function MutationApprovalPart({
   );
 }
 
-const JEV_APPROVAL_REASON_PREFIX = 'Approved by Flexkit Jev policy';
-
-/** Automation plugin calls Jev cleared: nobody was asked, so the run history shows them compactly. */
-function isJevAutoApproved(message: ReplayDataParts['mutation-approval']): boolean {
-  return !message.decidedBy && Boolean(message.reason?.startsWith(JEV_APPROVAL_REASON_PREFIX));
-}
-
+/** Only reached for a Jev-cleared call that failed; successful ones are hidden. */
 function AutoApprovedCallPart({ message }: { message: ReplayDataParts['mutation-approval'] }): JSX.Element {
   const summary = message.operationsSummary.replace(/^Call /, '');
 
