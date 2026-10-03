@@ -1,0 +1,54 @@
+{
+  "name": "@flexkit/agent-protocol",
+  "version": "0.1.0",
+  "description": "Schemas and types shared between the Flexkit agent platform and its Studio UI: streamed data parts, run, approval and chat DTOs.",
+  "keywords": [
+    "flexkit",
+    "agent",
+    "automations",
+    "protocol"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flexkit-io/flexkit",
+    "directory": "packages/agent-protocol"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --sourcemap",
+    "dev": "tsup src/index.ts --format esm --dts --watch src",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "tsup --config tests/tsup.config.ts && node --test build/tests/data-parts.test.js",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist && rm -rf build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.2",
+    "eslint": "^9.0.0",
+    "eslint-config-custom": "workspace:*",
+    "tsconfig": "workspace:*",
+    "tsup": "8.5.1",
+    "typescript": "^5.3.3",
+    "zod": "4.4.3"
+  },
+  "peerDependencies": {
+    "zod": "^4.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -36,6 +36,7 @@
     "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup src/index.tsx --format esm --dts --external react",
     "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch=always & tsup src/index.tsx --format esm --watch src --dts --external react",
     "lint": "eslint \"src/**/*.ts*\"",
+    "test": "tsup --config tests/tsup.config.ts && node --test build/tests/status-label.test.js",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
   },
   "devDependencies": {
@@ -56,6 +57,7 @@
   },
   "dependencies": {
     "@codemirror/commands": "6.11.0",
+    "@flexkit/agent-protocol": "workspace:^",
     "@codemirror/lang-markdown": "6.5.2",
     "@codemirror/language": "6.12.4",
     "@codemirror/language-data": "6.5.2",

@@ -1,10 +1,11 @@
 import type { JSX } from 'react';
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { format, formatDistance } from 'date-fns';
 import { ArrowRightIcon, CheckIcon, LoaderCircle, MoveRightIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
 import {
   Badge,
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -177,15 +178,17 @@ function OperationDocuments({
   operations,
   plugin,
   chat,
+  title,
 }: {
   operations: AutomationApprovalOperation[];
   plugin: boolean;
   chat: boolean;
+  title?: string;
 }): JSX.Element {
   return (
     <details className="fk:rounded-md fk:border fk:border-border fk:corner-squircle">
       <summary className="fk:cursor-pointer fk:px-3 fk:py-2 fk:text-xs fk:font-medium fk:text-muted-foreground">
-        {chat ? 'Action details' : plugin ? 'Plugin tool and arguments' : `GraphQL documents (${operations.length})`}
+        {title ?? (chat ? 'Action details' : plugin ? 'Plugin tool and arguments' : `GraphQL documents (${operations.length})`)}
       </summary>
       <div className="fk:space-y-3 fk:border-t fk:border-border fk:p-3">
         {operations.map((operation, index) => (
@@ -249,6 +252,10 @@ function getChatActionTitle(approval: AutomationApproval): string {
     return `${pluginAction.action.charAt(0).toUpperCase()}${pluginAction.action.slice(1)} in ${pluginAction.app}`;
   }
 
+  if (approval.kind === 'exec') {
+    return 'Run a sandbox command';
+  }
+
   return approval.kind === 'plugin' ? 'Use a connected app' : approval.operationsSummary;
 }
 
@@ -279,7 +286,7 @@ function useApprovalDecision({
   onDecided?: (_approval: AutomationApproval) => void;
 }): {
   approval: AutomationApproval;
-  decide: (_options: { approved: boolean; force?: boolean; reason?: string }) => void;
+  decide: (_options: { approved: boolean; force?: boolean; reason?: string; remember?: boolean }) => void;
   errorMessage: string;
   isDeciding: boolean;
   isPending: boolean;
@@ -321,12 +328,22 @@ function useApprovalDecision({
     onDecided?.(nextApproval);
   }
 
-  function decide({ approved, force = false, reason }: { approved: boolean; force?: boolean; reason?: string }): void {
+  function decide({
+    approved,
+    force = false,
+    reason,
+    remember = false,
+  }: {
+    approved: boolean;
+    force?: boolean;
+    reason?: string;
+    remember?: boolean;
+  }): void {
     startDecideTransition(async () => {
       setErrorMessage('');
 
       try {
-        const result = await api.decideApproval(approval.id, { approved, force, reason });
+        const result = await api.decideApproval(approval.id, { approved, force, reason, remember });
 
         if (result.errorCode === 'stale_preview') {
           setIsStale(true);
@@ -387,6 +404,7 @@ function useApprovalDecision({
 }
 
 function ApprovalDecisionActions({
+  allowRemember = false,
   askForRejectionReason,
   decide,
   isDeciding,
@@ -397,8 +415,10 @@ function ApprovalDecisionActions({
   setRejectReason,
   variant,
 }: {
+  /** Offer "always allow this tool for this automation" alongside Approve. */
+  allowRemember?: boolean;
   askForRejectionReason: boolean;
-  decide: (_options: { approved: boolean; force?: boolean; reason?: string }) => void;
+  decide: (_options: { approved: boolean; force?: boolean; reason?: string; remember?: boolean }) => void;
   isDeciding: boolean;
   isRejectDialogOpen: boolean;
   isStale: boolean;
@@ -410,6 +430,8 @@ function ApprovalDecisionActions({
   const isHeader = variant === 'header';
   const buttonClassName = isHeader ? 'fk:px-8 fk:min-w-32' : undefined;
   const buttonSize = isHeader ? 'default' : 'sm';
+  const [remember, setRemember] = useState(false);
+  const rememberId = useId();
 
   return (
     <>
@@ -418,7 +440,7 @@ function ApprovalDecisionActions({
           className={buttonClassName}
           disabled={isDeciding}
           size={buttonSize}
-          onClick={() => decide({ approved: true, force: isStale })}
+          onClick={() => decide({ approved: true, force: isStale, remember: allowRemember && remember })}
         >
           {isDeciding ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : <CheckIcon className="fk:size-4" />}
           {isStale ? 'Approve anyway' : 'Approve'}
@@ -440,6 +462,15 @@ function ApprovalDecisionActions({
           <XIcon className="fk:size-4" />
           Reject
         </Button>
+        {allowRemember ? (
+          <label
+            className="fk:ml-1 fk:flex fk:cursor-pointer fk:items-center fk:gap-1.5 fk:whitespace-nowrap fk:text-xs fk:text-muted-foreground"
+            htmlFor={rememberId}
+          >
+            <Checkbox checked={remember} id={rememberId} onCheckedChange={(checked) => setRemember(checked === true)} />
+            Always allow this tool for this automation
+          </label>
+        ) : null}
       </div>
 
       {askForRejectionReason ? (
@@ -553,11 +584,18 @@ function ApprovalCardBody({
               : 'The assistant wants to make this change. Check the details before deciding.'
             : approval.kind === 'plugin'
               ? 'Review the account, tool, and arguments before allowing this external call.'
-              : 'No structured preview is available for this proposal. Review the raw GraphQL documents below.'}
+              : approval.kind === 'exec'
+                ? 'This command runs inside the run\'s ephemeral sandbox but may send data out or reach other hosts. Review the command line before allowing it.'
+                : 'No structured preview is available for this proposal. Review the raw GraphQL documents below.'}
         </div>
       )}
 
-      <OperationDocuments operations={approval.operations} plugin={approval.kind === 'plugin'} chat={chat} />
+      <OperationDocuments
+        chat={chat}
+        operations={approval.operations}
+        plugin={approval.kind === 'plugin' || approval.kind === 'exec'}
+        title={approval.kind === 'exec' ? 'Command and options' : undefined}
+      />
 
       {approval.reason ? (
         <div className="fk:text-sm">
@@ -616,6 +654,7 @@ export function ApprovalCard({
       {isPending ? (
         <div className="fk:mt-4">
           <ApprovalDecisionActions
+            allowRemember={!chat && approval.kind === 'plugin' && Boolean(approval.automationId)}
             askForRejectionReason={!chat}
             decide={decide}
             isDeciding={isDeciding}
@@ -661,6 +700,7 @@ export function ApprovalDrawer({
       actions={
         isPending ? (
           <ApprovalDecisionActions
+            allowRemember={approval.kind === 'plugin' && Boolean(approval.automationId)}
             askForRejectionReason
             decide={decide}
             isDeciding={isDeciding}

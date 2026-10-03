@@ -59,6 +59,7 @@ import type {
   AutomationEntityTrigger,
   AutomationInput,
   AutomationMutationPolicy,
+  AutomationToolAllowRule,
   AutomationScheduleTrigger,
   AutomationCustomTools,
   AutomationTools,
@@ -1073,6 +1074,12 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [mutationPolicy, setMutationPolicy] = useState<AutomationMutationPolicy>(
     automation?.mutationPolicy ?? 'require_approval'
   );
+  // Undefined when the loaded automation did not carry the rules (older API):
+  // the save then omits the field, which the API treats as "keep", so a plain
+  // save can never wipe rules created from the Approvals inbox.
+  const [toolAllowRules, setToolAllowRules] = useState<AutomationToolAllowRule[] | undefined>(
+    automation?.toolAllowRules
+  );
   const [visibility, setVisibility] = useState<AutomationVisibility>(automation?.visibility ?? 'project');
   const [spaceId, setSpaceId] = useState<string | null>(automation?.spaceId ?? null);
   const [skillIds, setSkillIds] = useState<string[]>(automation?.skillIds ?? []);
@@ -1540,6 +1547,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       mutationPolicy,
       name,
       skillIds,
+      ...(toolAllowRules !== undefined ? { toolAllowRules } : {}),
       spaceId: visibility === 'space' ? spaceId : null,
       toolConfigs: [...toolConfigs, ...pluginUsages],
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
@@ -1764,6 +1772,34 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             Plugin tools will run without review. Content the agent reads, such as emails or documents, could lead it to
             act on your connected accounts.
           </p>
+        ) : null}
+        {mutationPolicy === 'require_approval' && toolAllowRules && toolAllowRules.length > 0 ? (
+          <div className="fk:space-y-2">
+            <p className="fk:text-xs fk:text-muted-foreground">
+              Always allowed plugin tools (approved with &ldquo;always allow&rdquo; from the Approvals inbox):
+            </p>
+            <ul className="fk:space-y-1">
+              {toolAllowRules.map((rule) => (
+                <li
+                  className="fk:flex fk:items-center fk:justify-between fk:gap-2 fk:rounded-md fk:border fk:border-border fk:px-2.5 fk:py-1.5 fk:text-xs fk:corner-squircle"
+                  key={`${rule.pluginId}/${rule.server}/${rule.tool}`}
+                >
+                  <code>
+                    {rule.pluginId}: {rule.tool}
+                  </code>
+                  <Button
+                    aria-label={`Remove allow rule for ${rule.pluginId} ${rule.tool}`}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setToolAllowRules((current) => (current ?? []).filter((item) => item !== rule))}
+                  >
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </div>
 
