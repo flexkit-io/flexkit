@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckIcon, CopyIcon, LoaderCircle, PencilIcon, XCircleIcon } from 'lucide-react';
+import { CheckIcon, CopyIcon, CornerDownRightIcon, LoaderCircle, PencilIcon } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useSWR, { useSWRConfig } from 'swr';
 import {
@@ -28,11 +28,6 @@ import {
   SpeechInput,
   SidebarTrigger,
   Separator,
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -43,12 +38,13 @@ import {
   ChatApprovalContext,
   MessagePart,
   MutationApprovalPart,
-  RollingStatusText,
   RunReplayActionsContext,
   STREAM_RETRY_DELAY_MS,
-  getActiveRollingStatusLabel,
+  ToolErrorLine,
+  TurnStatusLine,
+  getLiveStatusLabel,
   getMutationApprovalIds,
-  isRollingStatusPartType,
+  isHiddenReplayPart,
   messageHasPendingMutationApproval,
   toMutationApprovalPartData,
   useProjectApi,
@@ -57,6 +53,7 @@ import {
   type ReplayMessagePart,
   type RunRecordStatus,
   type RunReplayActions,
+  type TurnStatus,
 } from '../replay';
 import type {
   AgentChat,
@@ -79,6 +76,16 @@ import {
 } from './attachments';
 import { useAgentBasePath } from './chat-list';
 import { appendDictatedText } from './dictation';
+import {
+  AUTO_MODEL_KEY,
+  coerceEffort,
+  findModelByKey,
+  formatModelSelection,
+  getEffortOptions,
+  getModelKey,
+  parseModelSelection,
+  type ModelSelection,
+} from '../model-selection';
 
 interface ToolsResponse {
   tools: AutomationTools;
@@ -294,6 +301,36 @@ function UserBubble({
   );
 }
 
+/** The follow-up the turn offered, if the model was confident enough to offer one. */
+function getSuggestedPrompt(parts: ReadonlyArray<{ data?: unknown; type: string }>): string | null {
+  const part = parts.find((candidate) => candidate.type === 'data-suggested-prompt');
+  const prompt = (part?.data as { prompt?: unknown } | undefined)?.prompt;
+
+  return typeof prompt === 'string' && prompt.trim() ? prompt : null;
+}
+
+/**
+ * One subtle chip under the latest reply. Clicking fills the composer and
+ * nothing more: the user edits or sends it.
+ */
+function SuggestedPromptChip({ prompt }: { prompt: string }): JSX.Element {
+  const { textInput } = usePromptInputController();
+
+  return (
+    <div className="fk:flex fk:justify-start">
+      <button
+        className="fk:inline-flex fk:max-w-full fk:items-center fk:gap-1.5 fk:rounded-full fk:border fk:border-border/70 fk:bg-muted/40 fk:px-3 fk:py-1.5 fk:text-left fk:text-sm fk:text-muted-foreground fk:transition-colors fk:hover:border-border fk:hover:bg-muted fk:hover:ext-foreground fk:corner-squircle"
+        title="Use as your next message"
+        type="button"
+        onClick={() => textInput.setInput(prompt)}
+      >
+        <CornerDownRightIcon className="fk:size-3 fk:shrink-0" />
+        <span className="fk:truncate">{prompt}</span>
+      </button>
+    </div>
+  );
+}
+
 /**
  * Finished turns are stored as UIMessage-shaped parts. Reuse the live replay
  * renderer for `data-*` events (approvals, turn errors, tool status, artifacts,
@@ -311,20 +348,10 @@ function PersistedPart({
   partIndex: number;
   parts: AgentChatPart[];
 }): JSX.Element | null {
+  // The live stream never showed a card for these calls, so history does not
+  // either. Only a failed call leaves a trace.
   if (part.type.startsWith('tool-')) {
-    const state = (part.state === 'output-available' ? 'output-available' : 'input-available') as
-      | 'output-available'
-      | 'input-available';
-
-    return (
-      <Tool>
-        <ToolHeader state={state} type={part.type as `tool-${string}`} />
-        <ToolContent>
-          <ToolInput input={part.input} />
-          <ToolOutput errorText={part.errorText} output={part.output} />
-        </ToolContent>
-      </Tool>
-    );
+    return part.state === 'output-error' ? <ToolErrorLine message={part.errorText ?? 'The tool call failed.'} /> : null;
   }
 
   return (
@@ -337,7 +364,16 @@ function PersistedPart({
   );
 }
 
-function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMessage }): JSX.Element | null {
+function HistoryMessage({
+  api,
+  message,
+  showSuggestion = false,
+}: {
+  api: ApiClient;
+  message: AgentChatMessage;
+  /** Only the latest reply offers its follow-up; older ones would compete with it. */
+  showSuggestion?: boolean;
+}): JSX.Element | null {
   if (message.role === 'user') {
     return <UserBubble attachments={getAttachmentsFromParts(message.parts)} text={message.textContent} />;
   }
@@ -345,9 +381,10 @@ function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMe
   // Reasoning stays persisted for debugging, but is never displayed in chat.
   // Rolling-status tool parts are only meaningful while the call is in flight.
   const parts = (Array.isArray(message.parts) ? message.parts : []).filter(
-    (part) => part.type !== 'reasoning' && part.type !== 'step-start' && !isRollingStatusPartType(part.type)
+    (part) => !isHiddenReplayPart(part as ReplayMessagePart) && !(part.type.startsWith('tool-') && part.state !== 'output-error')
   );
   const hasTurnErrorPart = parts.some((part) => part.type === 'data-turn-error');
+  const suggestedPrompt = showSuggestion && !message.error ? getSuggestedPrompt(parts) : null;
 
   if (parts.length === 0 && !message.error) {
     return null;
@@ -364,12 +401,8 @@ function HistoryMessage({ api, message }: { api: ApiClient; message: AgentChatMe
           parts={parts}
         />
       ))}
-      {message.error && !hasTurnErrorPart ? (
-        <div className="fk:flex fk:items-start fk:gap-2 fk:rounded-xl fk:border fk:border-red-700/40 fk:bg-destructive/5 fk:px-3.5 fk:py-3 fk:text-sm fk:corner-squircle">
-          <XCircleIcon className="fk:mt-0.5 fk:size-3.5 fk:shrink-0 fk:text-red-700" />
-          <span className="fk:whitespace-pre-wrap fk:text-xs">{message.error}</span>
-        </div>
-      ) : null}
+      {message.error && !hasTurnErrorPart ? <ToolErrorLine message={message.error} /> : null}
+      {suggestedPrompt ? <SuggestedPromptChip prompt={suggestedPrompt} /> : null}
     </div>
   );
 }
@@ -383,12 +416,14 @@ function LiveTurn({
   chatId,
   detail,
   message,
+  onStatusChange,
   onTurnUpdated,
 }: {
   api: ApiClient;
   chatId: string;
   detail: AgentChatDetail;
   message: AgentChatMessage;
+  onStatusChange: (_status: TurnStatus) => void;
   onTurnUpdated: () => void;
 }): JSX.Element {
   const recordStatus = getTurnRecordStatus(message.status);
@@ -405,14 +440,14 @@ function LiveTurn({
   // reasoning-only message cannot leave an empty wrapper and extra spacing.
   const rawMessages = useMemo(
     () =>
-      streamMessage
-        ? [{ ...streamMessage, parts: streamMessage.parts.filter((part) => part.type !== 'reasoning') }]
-        : [],
+      streamMessage ? [{ ...streamMessage, parts: streamMessage.parts.filter((part) => !isHiddenReplayPart(part)) }] : [],
     [streamMessage]
   );
   const sessionMessages = useSessionMessages(rawMessages);
   const onTurnUpdatedRef = useRef(onTurnUpdated);
   onTurnUpdatedRef.current = onTurnUpdated;
+  const onStatusChangeRef = useRef(onStatusChange);
+  onStatusChangeRef.current = onStatusChange;
   const replayActions = useMemo<RunReplayActions>(
     () => ({
       onApprovalDecided: (approvalId) => {
@@ -463,14 +498,31 @@ function LiveTurn({
   const streamApprovalIds = useMemo(() => new Set(getMutationApprovalIds(streamMessage)), [streamMessage]);
   const fallbackApproval =
     detail.pendingApproval && !streamApprovalIds.has(detail.pendingApproval.id) ? detail.pendingApproval : null;
-  // Growing text shows its own progress. Reasoning uses the same rolling
-  // Thinking indicator as the gaps between tool calls, without a separate card.
+  // Growing text shows its own progress, so the status line fades while the
+  // response streams. Between steps it names the activity: the model's own
+  // reasoning, a tool call ("Searching schema"), or plain "Thinking".
   const lastPart = streamMessage?.parts[streamMessage.parts.length - 1];
   const contentIsStreaming = lastPart?.type === 'text' && lastPart.state === 'streaming';
-  const showRunningSpinner = status === 'streaming' && !isAwaitingApproval && !contentIsStreaming;
-  // While a tool call is in flight the indicator names the activity
-  // ("Searching schema", ...) and rolls back to "Thinking..." once it ends.
-  const activityLabel = getActiveRollingStatusLabel(streamMessage);
+  const statusLabel = isAwaitingApproval ? 'Awaiting approval' : (getLiveStatusLabel(streamMessage) ?? 'Thinking');
+  const statusVisible = isAwaitingApproval
+    ? status !== 'finished' && status !== 'error'
+    : status === 'streaming' && !contentIsStreaming;
+
+  // The status line itself lives in ChatConversation so it keeps one stable
+  // slot from "Sending" through the whole turn; LiveTurn only reports to it.
+  useEffect(() => {
+    onStatusChangeRef.current({ label: statusLabel, visible: statusVisible });
+  }, [statusLabel, statusVisible]);
+
+  const showFallbackApproval = Boolean(fallbackApproval) && isAwaitingApproval;
+  const liveSuggestedPrompt =
+    status === 'finished' ? getSuggestedPrompt(sessionMessages.flatMap((sessionMessage) => sessionMessage.parts)) : null;
+
+  // Render no wrapper until there is content: an empty div still collects the
+  // parent's vertical spacing and would shift the status line at mount.
+  if (sessionMessages.length === 0 && !showFallbackApproval) {
+    return <RunReplayActionsContext.Provider value={replayActions}>{null}</RunReplayActionsContext.Provider>;
+  }
 
   return (
     <RunReplayActionsContext.Provider value={replayActions}>
@@ -482,20 +534,10 @@ function LiveTurn({
             ))}
           </div>
         ))}
-        {fallbackApproval && isAwaitingApproval ? (
+        {fallbackApproval && showFallbackApproval ? (
           <MutationApprovalPart api={api} message={toMutationApprovalPartData(fallbackApproval)} />
         ) : null}
-        {showRunningSpinner ? (
-          <div className="fk:flex fk:items-center fk:gap-2 fk:py-2 fk:text-sm fk:text-muted-foreground">
-            <RollingStatusText text={activityLabel ?? 'Thinking'} />
-          </div>
-        ) : null}
-        {isAwaitingApproval && status !== 'finished' && status !== 'error' ? (
-          <div className="fk:flex fk:items-center fk:gap-2 fk:py-2 fk:text-sm fk:text-muted-foreground">
-            <LoaderCircle className="fk:size-4 fk:animate-spin" />
-            <span>Awaiting approval...</span>
-          </div>
-        ) : null}
+        {liveSuggestedPrompt ? <SuggestedPromptChip prompt={liveSuggestedPrompt} /> : null}
       </div>
     </RunReplayActionsContext.Provider>
   );
@@ -503,9 +545,11 @@ function LiveTurn({
 
 function ChatComposer({
   api,
-  modelId,
+  effort,
+  modelKey,
   modelPending,
   models,
+  onEffortChange,
   onError,
   onModelChange,
   onSend,
@@ -514,11 +558,13 @@ function ChatComposer({
   streaming,
 }: {
   api: ApiClient;
-  modelId: string | null;
+  effort: string | null;
+  modelKey: string | null;
   modelPending: boolean;
   models: AutomationTools['models'];
+  onEffortChange: (_effort: string) => void;
   onError: (_message: string | null) => void;
-  onModelChange: (_modelId: string) => void;
+  onModelChange: (_modelKey: string) => void;
   onSend: (_text: string, _attachments: AgentChatAttachment[]) => Promise<void>;
   onStop: () => Promise<void>;
   sending: boolean;
@@ -529,7 +575,10 @@ function ChatComposer({
   // `sending` only flips on the next render, so track the in-flight send
   // synchronously to reject a duplicate submit before it clears the text.
   const submittingRef = useRef(false);
-  const selectableModels = models.filter((model) => !model.deprecated || model.id === modelId);
+  const selectableModels = models.filter((model) => !model.deprecated || getModelKey(model) === modelKey);
+  const selectedModel = findModelByKey(models, modelKey);
+  const effortOptions = getEffortOptions(selectedModel);
+  const effectiveEffort = coerceEffort(selectedModel, effort);
   const status = streaming ? ('streaming' as const) : sending ? ('submitted' as const) : undefined;
   const isBusy = sending || streaming;
   const hasDraft = textInput.value.trim().length > 0 || attachments.files.length > 0;
@@ -575,9 +624,13 @@ function ChatComposer({
           });
       }}
     >
-      <PromptInputHeader>
-        <ComposerAttachments uploads={uploads} />
-      </PromptInputHeader>
+      {attachments.files.length > 0 ? (
+        // The header addon carries its own padding, so it is only mounted
+        // while there is an attachment strip to show.
+        <PromptInputHeader>
+          <ComposerAttachments uploads={uploads} />
+        </PromptInputHeader>
+      ) : null}
       <PromptInputBody>
         <PromptInputTextarea disabled={isBusy} placeholder="Ask the agent anything about your project..." />
       </PromptInputBody>
@@ -590,14 +643,28 @@ function ChatComposer({
             </PromptInputActionMenuContent>
           </PromptInputActionMenu>
           {selectableModels.length > 0 ? (
-            <PromptInputSelect value={modelId ?? undefined} onValueChange={onModelChange}>
-              <PromptInputSelectTrigger className="fk:min-w-36">
+            <PromptInputSelect value={modelKey ?? undefined} onValueChange={onModelChange}>
+              <PromptInputSelectTrigger aria-label="Model" className="fk:min-w-44">
                 <PromptInputSelectValue placeholder="Model" />
               </PromptInputSelectTrigger>
               <PromptInputSelectContent>
                 {selectableModels.map((model) => (
-                  <PromptInputSelectItem key={model.id} value={model.id}>
+                  <PromptInputSelectItem key={getModelKey(model)} value={getModelKey(model)}>
                     {model.name}
+                  </PromptInputSelectItem>
+                ))}
+              </PromptInputSelectContent>
+            </PromptInputSelect>
+          ) : null}
+          {effortOptions.length > 1 && effectiveEffort ? (
+            <PromptInputSelect value={effectiveEffort} onValueChange={onEffortChange}>
+              <PromptInputSelectTrigger aria-label="Reasoning effort" className="fk:min-w-28">
+                <PromptInputSelectValue placeholder="Effort" />
+              </PromptInputSelectTrigger>
+              <PromptInputSelectContent>
+                {effortOptions.map((option) => (
+                  <PromptInputSelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </PromptInputSelectItem>
                 ))}
               </PromptInputSelectContent>
@@ -630,17 +697,6 @@ interface PendingMessage {
   text: string;
 }
 
-function PendingChatMessage({ message }: { message: PendingMessage }): JSX.Element {
-  return (
-    <>
-      <UserBubble attachments={message.attachments} text={message.text} />
-      <div className="fk:flex fk:items-center fk:gap-2 fk:py-2 fk:text-sm fk:text-muted-foreground" role="status">
-        <RollingStatusText text="Sending" />
-      </div>
-    </>
-  );
-}
-
 function ChatConversation({
   api,
   chatId,
@@ -649,7 +705,8 @@ function ChatConversation({
   resolveDetail,
 }: {
   api: ApiClient;
-  chatId: string;
+  /** Null while the first message of a new chat is being sent. */
+  chatId: string | null;
   projectId: string;
   pendingMessage?: PendingMessage;
   resolveDetail: (_detail: AgentChatDetail | undefined) => AgentChatDetail | undefined;
@@ -661,25 +718,27 @@ function ChatConversation({
   // noticed a finished turn until a tab refocus revalidated it. The inline
   // arrow changes identity on every render, re-arming the timer whenever new
   // data (e.g. an active turn) arrives.
-  const { data: rawDetail, mutate } = useSWR<AgentChatDetail>(paths(projectId).agentChat(chatId), fetcher, {
-    refreshInterval: (latestData) => getChatDetailRefreshInterval(resolveDetail(latestData)),
-  });
+  const { data: rawDetail, mutate } = useSWR<AgentChatDetail>(
+    chatId ? paths(projectId).agentChat(chatId) : null,
+    fetcher,
+    {
+      refreshInterval: (latestData) => getChatDetailRefreshInterval(resolveDetail(latestData)),
+    }
+  );
   const data = resolveDetail(rawDetail);
+  const messages = data?.messages ?? [];
+  const lastMessage = messages[messages.length - 1];
+  const liveMessage =
+    lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status) ? lastMessage : null;
+  const historyMessages = liveMessage ? messages.slice(0, -1) : messages;
+  // Reported by LiveTurn; owned here so the status line keeps one stable slot
+  // from "Sending" (no turn yet) through the live turn, rolling between labels
+  // instead of remounting. Keyed by turn so a new turn never shows the
+  // previous turn's last state.
+  const [reportedStatus, setReportedStatus] = useState<{ messageId: string; status: TurnStatus } | null>(null);
+  const liveStatus = liveMessage && reportedStatus?.messageId === liveMessage.id ? reportedStatus.status : null;
 
-  if (!data && pendingMessage) {
-    return (
-      <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
-        <ConversationContent className="fk:gap-0 fk:p-0">
-          <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
-            <PendingChatMessage message={pendingMessage} />
-          </div>
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
-    );
-  }
-
-  if (!data) {
+  if (chatId && !data && !pendingMessage) {
     return (
       <div className="fk:flex fk:flex-1 fk:items-center fk:justify-center fk:gap-2 fk:text-sm fk:text-muted-foreground">
         <LoaderCircle className="fk:size-4 fk:animate-spin" />
@@ -688,28 +747,37 @@ function ChatConversation({
     );
   }
 
-  const lastMessage = data.messages[data.messages.length - 1];
-  const liveMessage =
-    lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status) ? lastMessage : null;
-  const historyMessages = liveMessage ? data.messages.slice(0, -1) : data.messages;
+  const turnActive = Boolean(pendingMessage) || Boolean(liveMessage);
+  const latestAssistantId = [...historyMessages].reverse().find((message) => message.role === 'assistant')?.id ?? null;
+  const statusLabel = liveMessage ? (liveStatus?.label ?? 'Thinking') : 'Sending';
+  const statusVisible = liveMessage ? (liveStatus?.visible ?? true) : true;
 
   return (
     <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
       <ConversationContent className="fk:gap-0 fk:p-0">
         <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
           {historyMessages.map((message) => (
-            <HistoryMessage api={api} key={message.id} message={message} />
+            <HistoryMessage
+              api={api}
+              key={message.id}
+              message={message}
+              showSuggestion={!turnActive && message.id === latestAssistantId}
+            />
           ))}
-          {liveMessage ? (
+          {liveMessage && chatId && data ? (
             <LiveTurn
               api={api}
               chatId={chatId}
               detail={data}
               message={liveMessage}
+              onStatusChange={(status) => setReportedStatus({ messageId: liveMessage.id, status })}
               onTurnUpdated={() => void mutate()}
             />
           ) : null}
-          {pendingMessage ? <PendingChatMessage message={pendingMessage} /> : null}
+          {pendingMessage && !liveMessage ? (
+            <UserBubble attachments={pendingMessage.attachments} text={pendingMessage.text} />
+          ) : null}
+          {turnActive ? <TurnStatusLine label={statusLabel} visible={statusVisible} /> : null}
         </div>
       </ConversationContent>
       <ConversationScrollButton />
@@ -735,8 +803,9 @@ function pickGreeting(preferredName: string | null): string {
 }
 
 const LAST_AGENT_MODEL_STORAGE_KEY = 'flexkit-ai:lastModelId';
+const LAST_AGENT_EFFORT_STORAGE_KEY = 'flexkit-ai:lastEffort';
 
-function readLastAgentModelId(): string | null {
+function readLastAgentModel(): ModelSelection | null {
   if (typeof localStorage === 'undefined') {
     return null;
   }
@@ -748,39 +817,58 @@ function readLastAgentModelId(): string | null {
       return null;
     }
 
-    return stored;
+    // The stored value is a model key, which on an older API is the composite
+    // model id. Older builds also remembered whatever was last sent, which
+    // predates Auto and explicit picks; the catalog lookup in `lastUsed` drops
+    // any key it no longer lists, so a new chat starts on Auto in that case.
+    return { effort: localStorage.getItem(LAST_AGENT_EFFORT_STORAGE_KEY), modelKey: stored };
   } catch {
     return null;
   }
 }
 
-function resolveComposerModelId(input: {
+function resolveComposerSelection(input: {
   awaitingChatModel: boolean;
-  chatModelId: string | null;
-  defaultModelId: string | null;
-  lastUsedModelId: string | null;
-  selectedModelId: string | null;
-}): string | null {
-  if (input.selectedModelId) {
-    return input.selectedModelId;
+  chatSelection: ModelSelection | null;
+  defaultModelKey: string | null;
+  lastUsed: ModelSelection | null;
+  selectedEffort: string | null;
+  selectedModelKey: string | null;
+}): { effort: string | null; modelKey: string | null } {
+  if (input.selectedModelKey) {
+    return { effort: input.selectedEffort, modelKey: input.selectedModelKey };
   }
 
   // The chat detail request has not returned yet, so its model is unknown.
   // Falling through to the remembered model would display and send that one.
   if (input.awaitingChatModel) {
-    return null;
+    return { effort: null, modelKey: null };
   }
 
-  return input.chatModelId ?? input.lastUsedModelId ?? input.defaultModelId;
+  if (input.chatSelection) {
+    return { effort: input.selectedEffort ?? input.chatSelection.effort, modelKey: input.chatSelection.modelKey };
+  }
+
+  if (input.lastUsed) {
+    return { effort: input.selectedEffort ?? input.lastUsed.effort, modelKey: input.lastUsed.modelKey };
+  }
+
+  return { effort: input.selectedEffort, modelKey: input.defaultModelKey };
 }
 
-function writeLastAgentModelId(modelId: string): void {
+function writeLastAgentModel(selection: ModelSelection): void {
   if (typeof localStorage === 'undefined') {
     return;
   }
 
   try {
-    localStorage.setItem(LAST_AGENT_MODEL_STORAGE_KEY, modelId);
+    localStorage.setItem(LAST_AGENT_MODEL_STORAGE_KEY, selection.modelKey);
+
+    if (selection.effort) {
+      localStorage.setItem(LAST_AGENT_EFFORT_STORAGE_KEY, selection.effort);
+    } else {
+      localStorage.removeItem(LAST_AGENT_EFFORT_STORAGE_KEY);
+    }
   } catch {
     // Ignore storage access errors (private mode, blocked storage, etc.)
   }
@@ -828,8 +916,12 @@ export function AgentChatPage(): JSX.Element {
 
   const chatDetail = resolveDetail(rawChatDetail);
   const models = useMemo(() => toolsData?.tools.models ?? [], [toolsData]);
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
-  const [rememberedModelId, setRememberedModelId] = useState<string | null>(readLastAgentModelId);
+  const [selectedModelKey, setSelectedModelKey] = useState<string | null>(null);
+  const [selectedEffort, setSelectedEffort] = useState<string | null>(null);
+  // The chat's model id when Auto was last picked, so the selector only leaves
+  // Auto once the chat reports a model the routed turn chose.
+  const autoPickedOnModelIdRef = useRef<string | null>(null);
+  const [rememberedModel, setRememberedModel] = useState<ModelSelection | null>(readLastAgentModel);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
   const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(
@@ -839,42 +931,76 @@ export function AgentChatPage(): JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
   const awaitingChatModel = Boolean(chatId) && chatDetail === undefined;
-  const defaultModelId = useMemo(() => models.find((model) => !model.deprecated)?.id ?? null, [models]);
-  const lastUsedModelId = useMemo(() => {
-    if (!rememberedModelId) {
-      return null;
-    }
+  // A stored id the catalog no longer lists is kept as-is so the chat keeps sending it.
+  const chatSelection = useMemo(
+    () => parseModelSelection(chatModelId, models) ?? (chatModelId ? { effort: null, modelKey: chatModelId } : null),
+    [chatModelId, models]
+  );
+  // The API lists Auto first, so a new chat starts on Auto.
+  const defaultModelKey = useMemo(() => {
+    const model = models.find((item) => !item.deprecated);
 
-    const model = models.find((item) => item.id === rememberedModelId);
+    return model ? getModelKey(model) : null;
+  }, [models]);
+  const lastUsed = useMemo(() => {
+    const model = findModelByKey(models, rememberedModel?.modelKey ?? null);
 
-    if (!model || model.deprecated) {
-      return null;
-    }
-
-    return rememberedModelId;
-  }, [models, rememberedModelId]);
-  const modelId = resolveComposerModelId({
+    return rememberedModel && model && !model.deprecated ? rememberedModel : null;
+  }, [models, rememberedModel]);
+  const { effort, modelKey } = resolveComposerSelection({
     awaitingChatModel,
-    chatModelId,
-    defaultModelId,
-    lastUsedModelId,
-    selectedModelId,
+    chatSelection,
+    defaultModelKey,
+    lastUsed,
+    selectedEffort,
+    selectedModelKey,
   });
-  const modelPending = awaitingChatModel && !selectedModelId;
+  const modelId = modelKey ? formatModelSelection({ effort, modelKey }, models) : null;
+  const modelPending = awaitingChatModel && !selectedModelKey;
 
   useEffect(() => {
-    setSelectedModelId(null);
+    autoPickedOnModelIdRef.current = null;
+    setSelectedModelKey(null);
+    setSelectedEffort(null);
     setSendError(null);
   }, [chatId]);
 
-  function rememberModel(nextModelId: string): void {
-    setRememberedModelId(nextModelId);
-    writeLastAgentModelId(nextModelId);
+  // Auto resolves to a concrete model on the next routed turn and the chat
+  // keeps it; once the chat reports that choice, the selector shows it
+  // instead of staying on Auto. The chat's model at the time Auto was picked
+  // is not that choice: an existing chat already reports its stored model, and
+  // snapping back to it would make Auto impossible to pick for later turns.
+  useEffect(() => {
+    if (
+      selectedModelKey === AUTO_MODEL_KEY &&
+      chatModelId &&
+      chatModelId !== AUTO_MODEL_KEY &&
+      chatModelId !== autoPickedOnModelIdRef.current
+    ) {
+      setSelectedModelKey(null);
+      setSelectedEffort(null);
+    }
+  }, [chatModelId, selectedModelKey]);
+
+  function rememberModel(next: ModelSelection): void {
+    setRememberedModel(next);
+    writeLastAgentModel(next);
   }
 
-  function handleModelChange(nextModelId: string): void {
-    setSelectedModelId(nextModelId);
-    rememberModel(nextModelId);
+  function handleModelChange(nextModelKey: string): void {
+    autoPickedOnModelIdRef.current = nextModelKey === AUTO_MODEL_KEY ? chatModelId : null;
+    setSelectedModelKey(nextModelKey);
+    // The new model's default effort applies until the user picks one.
+    setSelectedEffort(null);
+    rememberModel({ effort: null, modelKey: nextModelKey });
+  }
+
+  function handleEffortChange(nextEffort: string): void {
+    setSelectedEffort(nextEffort);
+
+    if (modelKey) {
+      rememberModel({ effort: nextEffort, modelKey });
+    }
   }
 
   if (!projectId || !api) {
@@ -908,10 +1034,8 @@ export function AgentChatPage(): JSX.Element {
     setPendingMessage({ attachments, chatId, text });
     setSendError(null);
 
-    if (modelId) {
-      rememberModel(modelId);
-    }
-
+    // Only explicit picks in the selector are remembered (see handleModelChange);
+    // what a chat happened to run on, including a routed Auto choice, is not.
     try {
       const chat = chatId ? null : (await chatApi.createAgentChat({ modelId })).chat;
       const targetChatId = chatId ?? chat!.id;
@@ -940,11 +1064,13 @@ export function AgentChatPage(): JSX.Element {
         },
         { revalidate: false }
       );
-      setPendingMessage(null);
-
+      // Navigate before clearing the pending message so the conversation is
+      // never left without a chat or a pending turn between the two updates.
       if (chat) {
         navigate(`${agentBase}/chats/${chat.id}`);
       }
+
+      setPendingMessage(null);
     } catch (error) {
       setPendingMessage(null);
       setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
@@ -988,24 +1114,18 @@ export function AgentChatPage(): JSX.Element {
         </div>
         <div className="fk:flex fk:min-h-0 fk:flex-1 fk:gap-4">
           <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-3">
-            {chatId ? (
+            {chatId || visiblePendingMessage ? (
+              // One element type for the pending and the loaded chat, so the
+              // status line survives the navigation after the chat is created.
               <ChatApprovalContext.Provider value>
                 <ChatConversation
                   api={chatApi}
-                  chatId={chatId}
+                  chatId={chatId ?? null}
                   pendingMessage={visiblePendingMessage}
                   projectId={projectId}
                   resolveDetail={resolveDetail}
                 />
               </ChatApprovalContext.Provider>
-            ) : visiblePendingMessage ? (
-              <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
-                <ConversationContent className="fk:gap-0 fk:p-0">
-                  <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
-                    <PendingChatMessage message={visiblePendingMessage} />
-                  </div>
-                </ConversationContent>
-              </Conversation>
             ) : (
               <EmptyConversation projectId={chatProjectId} />
             )}
@@ -1015,11 +1135,13 @@ export function AgentChatPage(): JSX.Element {
               ) : null}
               <ChatComposer
                 api={chatApi}
-                modelId={modelId}
+                effort={effort}
+                modelKey={modelKey}
                 modelPending={modelPending}
                 models={models}
                 sending={sending}
                 streaming={turnInProgress}
+                onEffortChange={handleEffortChange}
                 onError={setSendError}
                 onModelChange={handleModelChange}
                 onSend={handleSend}

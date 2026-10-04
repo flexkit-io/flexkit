@@ -1,11 +1,53 @@
-export type AutomationRunStatus = 'running' | 'awaiting_approval' | 'success' | 'skipped' | 'failed' | 'cancelled';
-export type AutomationTriggerType = 'entity' | 'manual' | 'schedule' | 'webhook';
+import type {
+  AgentChat,
+  AgentChatAttachment,
+  AgentChatMessage,
+  AgentChatMessageRole,
+  AgentChatMessageStatus,
+  AgentChatPart,
+  AgentChatTurn,
+  AutomationApproval,
+  AutomationApprovalKind,
+  AutomationApprovalOperation,
+  AutomationApprovalPreview,
+  AutomationApprovalPreviewKind,
+  AutomationApprovalPreviewOperation,
+  AutomationApprovalPreviewRow,
+  AutomationApprovalStatus,
+  AutomationMutationPolicy,
+  AutomationRun,
+  AutomationRunStatus,
+  AutomationToolAllowRule,
+  AutomationTriggerType,
+} from '@flexkit/agent-protocol';
+
+// Shared with the platform through @flexkit/agent-protocol; re-exported so
+// the rest of this package keeps importing from './types'.
+export type {
+  AgentChat,
+  AgentChatAttachment,
+  AgentChatMessage,
+  AgentChatMessageRole,
+  AgentChatMessageStatus,
+  AgentChatPart,
+  AgentChatTurn,
+  AutomationApproval,
+  AutomationApprovalKind,
+  AutomationApprovalOperation,
+  AutomationApprovalPreview,
+  AutomationApprovalPreviewKind,
+  AutomationApprovalPreviewOperation,
+  AutomationApprovalPreviewRow,
+  AutomationApprovalStatus,
+  AutomationMutationPolicy,
+  AutomationRun,
+  AutomationRunStatus,
+  AutomationToolAllowRule,
+  AutomationTriggerType,
+};
+
 export type AutomationTriggerEvent = 'create' | 'update' | 'delete';
 export type AutomationToolProvider = 'slack' | 'teams';
-export type AutomationMutationPolicy = 'require_approval' | 'auto_approve';
-export type AutomationApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
-export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin';
-export type AutomationApprovalPreviewKind = 'create' | 'update' | 'delete' | 'unknown';
 export type AutomationVisibility = 'project' | 'space' | 'personal';
 
 export interface AutomationScheduleTrigger {
@@ -40,9 +82,18 @@ export interface AutomationToolChannel {
 }
 
 export interface AutomationModel {
+  /** Price/quality band the Auto router may pick this model from; null when never auto-picked. */
+  autoTier?: 'fast' | 'balanced' | 'strong' | null;
+  defaultEffort?: string | null;
   deprecated: boolean;
+  /** Legacy label of the default effort ("Medium"). */
   effort: string | null;
+  /** Reasoning efforts the model supports, ascending; empty for Auto. Absent on older APIs. */
+  efforts?: string[];
+  gatewayModelId?: string | null;
+  /** `auto`, or `<gatewayModelId>:<defaultEffort>`. Any `<gatewayModelId>:<effort>` may be sent back. */
   id: string;
+  kind?: 'auto' | 'model';
   name: string;
 }
 
@@ -97,6 +148,8 @@ export interface Automation {
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
   projectId: string;
+  /** Plugin tools a reviewer chose to always allow in this automation. */
+  toolAllowRules?: AutomationToolAllowRule[];
   /** Attached skill ids. Only populated by the detail endpoint. */
   skillIds?: string[];
   /** Space the automation belongs to when visibility is "space". */
@@ -108,71 +161,10 @@ export interface Automation {
   visibility?: AutomationVisibility;
 }
 
-export interface AutomationApprovalOperation {
-  query: string;
-  variables: { [key: string]: unknown } | null;
-}
-
-export interface AutomationApprovalPreviewRow {
-  after: { [key: string]: unknown } | null;
-  before: { [key: string]: unknown } | null;
-  id: string | null;
-}
-
-export interface AutomationApprovalPreviewOperation {
-  affectedCount: number | null;
-  columns: string[];
-  /** Read-only fields shown alongside the changed columns for reviewer context. */
-  contextColumns?: string[];
-  entity: string | null;
-  kind: AutomationApprovalPreviewKind;
-  rows: AutomationApprovalPreviewRow[];
-  truncated: boolean;
-}
-
-export interface AutomationApprovalPreview {
-  operations: AutomationApprovalPreviewOperation[];
-}
-
-export interface AutomationApproval {
-  affectedCount: number | null;
-  automationId: string;
-  automationName: string;
-  decidedAt: string | null;
-  decidedBy: string | null;
-  error: string | null;
-  executedAt: string | null;
-  expiresAt: string;
-  id: string;
-  kind: AutomationApprovalKind;
-  operations: AutomationApprovalOperation[];
-  operationsSummary: string;
-  preview: AutomationApprovalPreview | null;
-  projectId: string;
-  reason: string | null;
-  requestedAt: string;
-  runId: string;
-  status: AutomationApprovalStatus;
-}
-
 export interface AutomationApprovals {
   approvals: AutomationApproval[];
   hasMore: boolean;
   pendingCount: number;
-}
-
-export interface AutomationRun {
-  automationId: string;
-  completedAt: string | null;
-  error: string | null;
-  id: string;
-  projectId: string;
-  startedAt: string;
-  status: AutomationRunStatus;
-  summary: string | null;
-  triggerPayload: unknown;
-  triggerType: AutomationTriggerType;
-  workflowRunId: string | null;
 }
 
 export interface RunHistoryRun extends AutomationRun {
@@ -260,6 +252,8 @@ export interface AutomationInput {
   modelId: string;
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
+  /** Omitted keeps the stored rules; an array replaces them. */
+  toolAllowRules?: AutomationToolAllowRule[];
   /** Skills that are always loaded into the agent context on every run. */
   skillIds: string[];
   /** Space id required when visibility is "space". */
@@ -275,60 +269,9 @@ export interface MutationResult {
   success: boolean;
 }
 
-export type AgentChatMessageRole = 'user' | 'assistant';
-export type AgentChatMessageStatus = 'pending' | 'streaming' | 'awaiting_approval' | 'complete' | 'failed';
-
-export interface AgentChat {
-  createdAt: string;
-  id: string;
-  lastMessageAt: string | null;
-  modelId: string | null;
-  title: string | null;
-  updatedAt: string;
-}
-
 export interface AgentChatsList {
   chats: AgentChat[];
   hasMore: boolean;
-}
-
-/** A file the user uploaded for a chat message. */
-export interface AgentChatAttachment {
-  filename: string;
-  mediaType: string;
-  sizeBytes: number;
-  url: string;
-}
-
-/** UIMessage-shaped part persisted for finished turns. */
-export interface AgentChatPart {
-  data?: unknown;
-  errorText?: string;
-  /** `file` parts: original filename of a user attachment. */
-  filename?: string;
-  input?: unknown;
-  /** `file` parts: IANA media type of a user attachment. */
-  mediaType?: string;
-  output?: unknown;
-  /** `file` parts: byte size of a user attachment. */
-  sizeBytes?: number;
-  state?: string;
-  text?: string;
-  toolCallId?: string;
-  type: string;
-  /** `file` parts: public URL of a user attachment. */
-  url?: string;
-}
-
-export interface AgentChatMessage {
-  createdAt: string;
-  error: string | null;
-  id: string;
-  parts: AgentChatPart[] | null;
-  role: AgentChatMessageRole;
-  status: AgentChatMessageStatus;
-  textContent: string;
-  workflowRunId: string | null;
 }
 
 export interface AgentChatDetail {
@@ -346,8 +289,3 @@ export interface AgentChatSearchResult {
   snippet: string;
 }
 
-export interface AgentChatTurn {
-  assistantMessage: AgentChatMessage;
-  userMessage: AgentChatMessage;
-  workflowRunId: string;
-}

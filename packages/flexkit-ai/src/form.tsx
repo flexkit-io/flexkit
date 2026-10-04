@@ -54,11 +54,20 @@ import {
 } from 'lucide-react';
 import { useAuth, useCanMutate } from '@flexkit/studio';
 import { fetcher, FetcherError, getWebhookTriggerUrl, paths, type ApiClient } from './api';
+import {
+  coerceEffort,
+  findModelByKey,
+  formatModelSelection,
+  getEffortOptions,
+  getModelKey,
+  parseModelSelection,
+} from './model-selection';
 import type {
   Automation,
   AutomationEntityTrigger,
   AutomationInput,
   AutomationMutationPolicy,
+  AutomationToolAllowRule,
   AutomationScheduleTrigger,
   AutomationCustomTools,
   AutomationTools,
@@ -287,27 +296,30 @@ function getCronError(cron: string, timezone: string): string | null {
 function getModelOptions(
   models: AutomationTools['models'],
   mode: AutomationFormProps['mode'],
-  selectedModelId: string
+  selectedModelKey: string
 ): AutomationTools['models'] {
   const activeModels = models.filter((model) => !model.deprecated);
 
-  if (mode !== 'edit' || !selectedModelId) {
+  if (mode !== 'edit' || !selectedModelKey) {
     return activeModels;
   }
 
-  const selectedModel = models.find((model) => model.id === selectedModelId);
+  const selectedModel = findModelByKey(models, selectedModelKey);
 
   if (selectedModel?.deprecated) {
-    return [selectedModel, ...activeModels.filter((model) => model.id !== selectedModelId)];
+    return [selectedModel, ...activeModels.filter((model) => getModelKey(model) !== selectedModelKey)];
   }
 
-  if (!selectedModel && !activeModels.some((model) => model.id === selectedModelId)) {
+  if (!selectedModel) {
+    // A stored id the catalog no longer lists stays selectable and is sent back unchanged.
     return [
       {
         deprecated: true,
         effort: null,
-        id: selectedModelId,
-        name: selectedModelId,
+        efforts: [],
+        id: selectedModelKey,
+        kind: 'model',
+        name: selectedModelKey,
       },
       ...activeModels,
     ];
@@ -1069,9 +1081,17 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [name, setName] = useState(automation?.name ?? '');
   const [instructions, setInstructions] = useState(automation?.instructions ?? '');
   const [enabled, setEnabled] = useState(automation?.enabled ?? false);
-  const [modelId, setModelId] = useState(automation?.modelId ?? '');
+  // Null until the user picks; until then the stored id, parsed once the catalog arrives, applies.
+  const [modelKey, setModelKey] = useState<string | null>(null);
+  const [effort, setEffort] = useState<string | null>(null);
   const [mutationPolicy, setMutationPolicy] = useState<AutomationMutationPolicy>(
     automation?.mutationPolicy ?? 'require_approval'
+  );
+  // Undefined when the loaded automation did not carry the rules (older API):
+  // the save then omits the field, which the API treats as "keep", so a plain
+  // save can never wipe rules created from the Approvals inbox.
+  const [toolAllowRules, setToolAllowRules] = useState<AutomationToolAllowRule[] | undefined>(
+    automation?.toolAllowRules
   );
   const [visibility, setVisibility] = useState<AutomationVisibility>(automation?.visibility ?? 'project');
   const [spaceId, setSpaceId] = useState<string | null>(automation?.spaceId ?? null);
@@ -1113,11 +1133,29 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   // Only spaces the caller belongs to are offered; the server rejects
   // bindings to spaces outside the caller's membership anyway.
   const selectableSpaces = (spacesData?.spaces ?? []).filter((space) => userSpaceCodes.includes(space.code));
+  const models = toolsData?.tools.models;
+  const storedSelection = useMemo(() => {
+    const stored = automation?.modelId ?? '';
+
+    if (!stored) {
+      return null;
+    }
+
+    return parseModelSelection(stored, models ?? []) ?? { effort: null, modelKey: stored };
+  }, [automation?.modelId, models]);
+  const selectedModelKey = modelKey ?? storedSelection?.modelKey ?? '';
   const modelOptions = useMemo(
-    () => getModelOptions(toolsData?.tools.models ?? [], mode, modelId || automation?.modelId || ''),
-    [automation?.modelId, mode, modelId, toolsData?.tools.models]
+    () => getModelOptions(models ?? [], mode, selectedModelKey),
+    [mode, models, selectedModelKey]
   );
-  const effectiveModelId = modelId || modelOptions[0]?.id || '';
+  // The API lists Auto first, so a new automation starts on Auto.
+  const effectiveModelKey = selectedModelKey || (modelOptions[0] ? getModelKey(modelOptions[0]) : '');
+  const selectedModel = findModelByKey(modelOptions, effectiveModelKey);
+  const effectiveEffort = coerceEffort(selectedModel, effort ?? (modelKey === null ? (storedSelection?.effort ?? null) : null));
+  const effortOptions = getEffortOptions(selectedModel);
+  const effectiveModelId = effectiveModelKey
+    ? formatModelSelection({ effort: effectiveEffort, modelKey: effectiveModelKey }, modelOptions)
+    : '';
   const listedSkillIds = useMemo(
     () => new Set((skillsData?.skills ?? []).map((skill) => skill.id)),
     [skillsData?.skills]
@@ -1540,6 +1578,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       mutationPolicy,
       name,
       skillIds,
+      ...(toolAllowRules !== undefined ? { toolAllowRules } : {}),
       spaceId: visibility === 'space' ? spaceId : null,
       toolConfigs: [...toolConfigs, ...pluginUsages],
       triggers: triggers.map(({ key: _key, ...trigger }) => trigger),
@@ -1711,23 +1750,50 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           <div
             className={`fk:rounded-b-md fk:border-x fk:border-b fk:bg-muted/60 fk:dark:bg-muted/30 fk:px-2 fk:py-2 ${showInstructionsError ? 'fk:border-destructive' : 'fk:border-input'} fk:corner-squircle`}
           >
-            <Select value={effectiveModelId} onValueChange={setModelId}>
-              <SelectTrigger
-                aria-label="Model"
-                className="fk:w-fit fk:border-transparent fk:bg-background/90 fk:px-2.5 fk:py-0 fk:text-xs fk:shadow-sm hover:fk:border-border"
-                size="sm"
+            <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
+              <Select
+                value={effectiveModelKey}
+                onValueChange={(nextModelKey) => {
+                  setModelKey(nextModelKey);
+                  // The new model's default effort applies until the user picks one.
+                  setEffort(null);
+                }}
               >
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent align="start">
-                {modelOptions.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    {model.name}
-                    {model.deprecated ? ' (Legacy)' : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  aria-label="Model"
+                  className="fk:w-fit fk:border-transparent fk:bg-background/90 fk:px-2.5 fk:py-0 fk:text-xs fk:shadow-sm hover:fk:border-border"
+                  size="sm"
+                >
+                  <SelectValue placeholder="Select a model" />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  {modelOptions.map((model) => (
+                    <SelectItem key={getModelKey(model)} value={getModelKey(model)}>
+                      {model.name}
+                      {model.deprecated ? ' (Legacy)' : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {effortOptions.length > 1 && effectiveEffort ? (
+                <Select value={effectiveEffort} onValueChange={setEffort}>
+                  <SelectTrigger
+                    aria-label="Reasoning effort"
+                    className="fk:w-fit fk:border-transparent fk:bg-background/90 fk:px-2.5 fk:py-0 fk:text-xs fk:shadow-sm hover:fk:border-border"
+                    size="sm"
+                  >
+                    <SelectValue placeholder="Effort" />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    {effortOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+            </div>
           </div>
         </div>
         {showInstructionsError ? (
@@ -1764,6 +1830,34 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             Plugin tools will run without review. Content the agent reads, such as emails or documents, could lead it to
             act on your connected accounts.
           </p>
+        ) : null}
+        {mutationPolicy === 'require_approval' && toolAllowRules && toolAllowRules.length > 0 ? (
+          <div className="fk:space-y-2">
+            <p className="fk:text-xs fk:text-muted-foreground">
+              Always allowed plugin tools (approved with &ldquo;always allow&rdquo; from the Approvals inbox):
+            </p>
+            <ul className="fk:space-y-1">
+              {toolAllowRules.map((rule) => (
+                <li
+                  className="fk:flex fk:items-center fk:justify-between fk:gap-2 fk:rounded-md fk:border fk:border-border fk:px-2.5 fk:py-1.5 fk:text-xs fk:corner-squircle"
+                  key={`${rule.pluginId}/${rule.server}/${rule.tool}`}
+                >
+                  <code>
+                    {rule.pluginId}: {rule.tool}
+                  </code>
+                  <Button
+                    aria-label={`Remove allow rule for ${rule.pluginId} ${rule.tool}`}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setToolAllowRules((current) => (current ?? []).filter((item) => item !== rule))}
+                  >
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </div>
 

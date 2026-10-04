@@ -49,17 +49,19 @@ import {
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
+import { useRevalidateApprovalsCount } from './approvals-count';
 import { ApprovalDrawer, ApprovalStatusBadge } from './approval-card';
 import { AutomationsDataTableToolbar } from './data-table-toolbar';
 import { AutomationForm } from './form';
 import {
   MessagePart,
   MutationApprovalPart,
-  RollingStatusText,
   RunReplayActionsContext,
   STREAM_RETRY_DELAY_MS,
-  getActiveRollingStatusLabel,
+  TurnStatusLine,
+  getLiveStatusLabel,
   getMutationApprovalIds,
+  isHiddenReplayPart,
   getPendingMutationApprovalIds,
   isTerminalRunStatus,
   messageHasPendingMutationApproval,
@@ -755,7 +757,7 @@ export function AutomationDetailPage(): JSX.Element {
           <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">{data.automation.name}</h1>
         </div>
       </div>
-      <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3">
+      <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3 fk:pr-4">
         <Button asChild size="sm" variant="ghost">
           <Link to="../automations">
             <ArrowLeft className="fk:mr-2 fk:size-4" />
@@ -880,7 +882,7 @@ export function RunsPage(): JSX.Element {
           </h1>
         </div>
       </div>
-      <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3">
+      <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3 fk:pr-4">
         <Button asChild size="sm" variant="ghost">
           <Link to="../automations">
             <ArrowLeft className="fk:mr-2 fk:size-4" />
@@ -1154,6 +1156,15 @@ export function ApprovalsPage(): JSX.Element {
   } = useSWRInfinite<AutomationApprovals>(getApprovalsKey, fetcher, { refreshInterval: 30_000 });
   const approvals = approvalPages?.flatMap((page) => page.approvals) ?? [];
   const pendingCount = approvalPages?.[0]?.pendingCount ?? 0;
+  const firstPage = approvalPages?.[0];
+  const revalidateApprovalsCount = useRevalidateApprovalsCount();
+
+  // The inbox response carries the pending count; keep the sidebar badge in step with it.
+  useEffect(() => {
+    if (firstPage) {
+      revalidateApprovalsCount(firstPage);
+    }
+  }, [firstPage, revalidateApprovalsCount]);
   const lastPage = approvalPages?.[approvalPages.length - 1];
   const hasMore = lastPage?.hasMore ?? false;
   const isLoadingMore = approvalPages !== undefined && size > approvalPages.length;
@@ -1234,12 +1245,21 @@ export function ApprovalsPage(): JSX.Element {
                       {formatDistance(new Date(approval.requestedAt), new Date(), { addSuffix: true })}
                     </TableCell>
                     <TableCell onClick={(event) => event.stopPropagation()}>
-                      <Link
-                        className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
-                        to={`../automations/${approval.automationId}/runs/${approval.runId}`}
-                      >
-                        View run
-                      </Link>
+                      {approval.chatId ? (
+                        <Link
+                          className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
+                          to={`../agent/chats/${approval.chatId}`}
+                        >
+                          View chat
+                        </Link>
+                      ) : approval.automationId && approval.runId ? (
+                        <Link
+                          className="fk:text-xs fk:text-muted-foreground hover:fk:underline"
+                          to={`../automations/${approval.automationId}/runs/${approval.runId}`}
+                        >
+                          View run
+                        </Link>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1343,7 +1363,7 @@ export function RunDetailPage(): JSX.Element {
           </h1>
         </div>
       </div>
-      <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-start fk:justify-between fk:gap-3">
+      <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-start fk:justify-between fk:gap-3 fk:pr-4">
         <div>
           <Button asChild size="sm" variant="ghost">
             <Link relative="path" to="..">
@@ -1358,11 +1378,20 @@ export function RunDetailPage(): JSX.Element {
             {run ? <StatusBadge status={run.status} /> : null}
           </div>
         </div>
-        {showCancel ? (
-          <Button disabled={isCancelling} size="sm" variant="destructive" onClick={handleCancel}>
-            {isCancelling ? 'Cancelling...' : 'Cancel run'}
-          </Button>
-        ) : null}
+        <div className="fk:flex fk:items-center fk:gap-2">
+          {run && isTerminalRunStatus(run.status) ? (
+            <Button asChild size="sm" variant="outline">
+              <a href={runApi.getTranscriptUrl(selectedRunId)} rel="noreferrer" target="_blank">
+                Transcript
+              </a>
+            </Button>
+          ) : null}
+          {showCancel ? (
+            <Button disabled={isCancelling} size="sm" variant="destructive" onClick={handleCancel}>
+              {isCancelling ? 'Cancelling...' : 'Cancel run'}
+            </Button>
+          ) : null}
+        </div>
       </div>
       <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
         <ConversationContent className="fk:gap-0 fk:p-0">
@@ -1380,23 +1409,13 @@ export function RunDetailPage(): JSX.Element {
   );
 }
 
-function getRunReplayEmptyLabel({
-  isAwaitingApproval,
-  status,
-}: {
-  isAwaitingApproval: boolean;
-  status: RunStreamStatus;
-}): string {
+function getRunReplayEmptyLabel(status: RunStreamStatus): string {
   if (status === 'unavailable') {
     return 'No replay events were recorded.';
   }
 
   if (status === 'error') {
     return 'Unable to load run replay.';
-  }
-
-  if (isAwaitingApproval || status === 'paused') {
-    return 'Awaiting approval...';
   }
 
   return 'Loading run replay...';
@@ -1465,6 +1484,16 @@ function RunReplay({
     run.status !== 'running' &&
     !isTerminalRunStatus(run.status) &&
     (status === 'paused' || run.status === 'awaiting_approval' || messageHasPendingMutationApproval(message));
+  const revalidateApprovalsCount = useRevalidateApprovalsCount();
+  const runEnded = isTerminalRunStatus(run.status);
+
+  // The sidebar badge learns about a new proposal, or a run that ended with
+  // its proposals cancelled, as soon as this page does.
+  useEffect(() => {
+    if (isAwaitingApproval || runEnded) {
+      revalidateApprovalsCount();
+    }
+  }, [isAwaitingApproval, revalidateApprovalsCount, runEnded]);
   // When the durable stream has no pending data-mutation-approval part
   // (empty replay, or earlier tool/text parts only), MutationApprovalPart
   // never mounts — load pending proposals for this run as a fallback.
@@ -1484,7 +1513,12 @@ function RunReplay({
   // produce two cards for the same proposal.
   const streamApprovalIds = useMemo(() => new Set(getMutationApprovalIds(message)), [message]);
   const fallbackApprovals = stickyFallbackApprovals.filter((approval) => !streamApprovalIds.has(approval.id));
-  const hasReplayContent = messages.length > 0 || fallbackApprovals.length > 0;
+  const isRunActive = !isTerminalRunStatus(run.status);
+  const streamIsOpen = isRunActive && (status === 'streaming' || status === 'paused');
+  // An open stream counts as content so the container (and its status line)
+  // exists before the first part arrives, instead of swapping the empty-state
+  // box for the content box mid-run.
+  const hasReplayContent = messages.length > 0 || fallbackApprovals.length > 0 || streamIsOpen;
 
   useEffect(() => {
     setResumeToken(0);
@@ -1591,8 +1625,16 @@ function RunReplay({
     return <PageMessage>The run has not started streaming yet.</PageMessage>;
   }
 
-  const showAwaitingSpinner = isAwaitingApproval && status !== 'finished' && status !== 'error';
-  const emptyLabel = getRunReplayEmptyLabel({ isAwaitingApproval, status });
+  const awaitingDecision = isAwaitingApproval && status !== 'finished' && status !== 'error';
+  // A run that died without closing its stream keeps the reader in
+  // `streaming` forever; the run record is authoritative once it reaches a
+  // terminal status, which is why the line is gated on `isRunActive`.
+  const showStatusLine = streamIsOpen || awaitingDecision;
+  const lastPart = message?.parts[message.parts.length - 1];
+  const contentIsStreaming = lastPart?.type === 'text' && lastPart.state === 'streaming';
+  const statusLabel = isAwaitingApproval ? 'Awaiting approval' : (getLiveStatusLabel(message) ?? 'Thinking');
+  const statusVisible = isAwaitingApproval || !contentIsStreaming;
+  const emptyLabel = getRunReplayEmptyLabel(status);
 
   return (
     <RunReplayActionsContext.Provider value={replayActions}>
@@ -1620,21 +1662,7 @@ function RunReplay({
             {fallbackApprovals.map((approval) => (
               <MutationApprovalPart api={api} key={approval.id} message={toMutationApprovalPartData(approval)} />
             ))}
-            {/* A run that died without closing its stream keeps the reader in
-                `streaming` forever; the run record is authoritative once it
-                reaches a terminal status. */}
-            {status === 'streaming' && !isAwaitingApproval && !isTerminalRunStatus(run.status) ? (
-              <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
-                <LoaderCircle className="fk:size-4 fk:animate-spin" />
-                <RollingStatusText text={getActiveRollingStatusLabel(message) ?? 'Running...'} />
-              </div>
-            ) : null}
-            {showAwaitingSpinner ? (
-              <div className="fk:flex fk:items-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
-                <LoaderCircle className="fk:size-4 fk:animate-spin" />
-                <span>Awaiting approval...</span>
-              </div>
-            ) : null}
+            {showStatusLine ? <TurnStatusLine label={statusLabel} visible={statusVisible} /> : null}
           </div>
         ) : (
           <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:rounded-md fk:border fk:border-dashed fk:p-8 fk:font-mono fk:text-sm fk:text-muted-foreground fk:corner-squircle">
@@ -1657,8 +1685,15 @@ function ReplayMessageView({
 }: {
   api: ReturnType<typeof createApiClient>;
   message: ReplayMessage;
-}): JSX.Element {
+}): JSX.Element | null {
   const isUser = message.role === 'user';
+  // Reasoning, in-flight tool calls, and Jev-cleared plugin calls only feed
+  // the transient status line; the replay shows what the agent produced.
+  const parts = message.parts.filter((part) => !isHiddenReplayPart(part));
+
+  if (parts.length === 0) {
+    return null;
+  }
 
   return (
     <div className={isUser ? 'fk:ml-auto fk:w-full fk:max-w-[70%]' : 'fk:w-full fk:min-w-0'}>
@@ -1676,8 +1711,8 @@ function ReplayMessageView({
         )}
       </div>
       <div className="fk:space-y-8 fk:min-w-0">
-        {message.parts.map((part, index) => (
-          <MessagePart api={api} key={index} part={part} partIndex={index} parts={message.parts} />
+        {parts.map((part, index) => (
+          <MessagePart api={api} key={index} part={part} partIndex={index} parts={parts} />
         ))}
       </div>
     </div>

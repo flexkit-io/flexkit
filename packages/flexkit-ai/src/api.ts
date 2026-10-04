@@ -20,6 +20,8 @@ import type {
 } from './types';
 
 export interface DecideApprovalInput {
+  /** Approve and always allow this plugin tool for the automation. */
+  remember?: boolean;
   approved: boolean;
   force?: boolean;
   reason?: string;
@@ -84,6 +86,8 @@ export interface ApiClient {
   getArtifactUrl: (_artifactId: string, _options?: { download?: boolean }) => string;
   getRunArtifacts: (_workflowRunId: string) => Promise<AutomationArtifact[]>;
   getStreamUrl: (_workflowRunId: string) => string;
+  /** JSON transcript of a finished run (owners and developers). */
+  getTranscriptUrl: (_runId: string) => string;
   /** Lists delivery channels of `connectionId`, or of the provider's primary project account when omitted. */
   listChannels: (_provider: AutomationToolProvider, _connectionId?: string | null) => Promise<{
     channels: AutomationToolChannel[];
@@ -294,6 +298,7 @@ export function createApiClient(projectId: string): ApiClient {
         `${automationsBasePath}/runs/${encodeURIComponent(workflowRunId)}/artifacts`
       ).then((response) => response.artifacts),
     getStreamUrl: (workflowRunId) => `${automationsBasePath}/runs/${encodeURIComponent(workflowRunId)}/stream`,
+    getTranscriptUrl: (runId) => `${automationsBasePath}/runs/${encodeURIComponent(runId)}/transcript`,
     listChannels: async (provider, connectionId) => {
       const url = connectionId
         ? `${projectBasePath}/plugin-connections/${encodeURIComponent(connectionId)}/channels`
