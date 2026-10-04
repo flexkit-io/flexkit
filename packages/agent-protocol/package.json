@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/agent-protocol",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Schemas and types shared between the Flexkit agent platform and its Studio UI: streamed data parts, run, approval and chat DTOs.",
   "keywords": [
     "flexkit",
