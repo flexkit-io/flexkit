@@ -817,13 +817,10 @@ function readLastAgentModel(): ModelSelection | null {
       return null;
     }
 
-    // Older builds remembered whatever was last sent, as a composite id. That
-    // predates Auto and explicit picks, so it is dropped: a new chat starts on
-    // Auto until the user picks a model here.
-    if (stored !== AUTO_MODEL_KEY && stored.includes(':')) {
-      return null;
-    }
-
+    // The stored value is a model key, which on an older API is the composite
+    // model id. Older builds also remembered whatever was last sent, which
+    // predates Auto and explicit picks; the catalog lookup in `lastUsed` drops
+    // any key it no longer lists, so a new chat starts on Auto in that case.
     return { effort: localStorage.getItem(LAST_AGENT_EFFORT_STORAGE_KEY), modelKey: stored };
   } catch {
     return null;
@@ -921,6 +918,9 @@ export function AgentChatPage(): JSX.Element {
   const models = useMemo(() => toolsData?.tools.models ?? [], [toolsData]);
   const [selectedModelKey, setSelectedModelKey] = useState<string | null>(null);
   const [selectedEffort, setSelectedEffort] = useState<string | null>(null);
+  // The chat's model id when Auto was last picked, so the selector only leaves
+  // Auto once the chat reports a model the routed turn chose.
+  const autoPickedOnModelIdRef = useRef<string | null>(null);
   const [rememberedModel, setRememberedModel] = useState<ModelSelection | null>(readLastAgentModel);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
@@ -959,20 +959,28 @@ export function AgentChatPage(): JSX.Element {
   const modelPending = awaitingChatModel && !selectedModelKey;
 
   useEffect(() => {
+    autoPickedOnModelIdRef.current = null;
     setSelectedModelKey(null);
     setSelectedEffort(null);
     setSendError(null);
   }, [chatId]);
 
-  // Auto resolves to a concrete model on the first routed turn and the chat
+  // Auto resolves to a concrete model on the next routed turn and the chat
   // keeps it; once the chat reports that choice, the selector shows it
-  // instead of staying on Auto.
+  // instead of staying on Auto. The chat's model at the time Auto was picked
+  // is not that choice: an existing chat already reports its stored model, and
+  // snapping back to it would make Auto impossible to pick for later turns.
   useEffect(() => {
-    if (selectedModelKey === AUTO_MODEL_KEY && chatSelection && chatSelection.modelKey !== AUTO_MODEL_KEY) {
+    if (
+      selectedModelKey === AUTO_MODEL_KEY &&
+      chatModelId &&
+      chatModelId !== AUTO_MODEL_KEY &&
+      chatModelId !== autoPickedOnModelIdRef.current
+    ) {
       setSelectedModelKey(null);
       setSelectedEffort(null);
     }
-  }, [chatSelection, selectedModelKey]);
+  }, [chatModelId, selectedModelKey]);
 
   function rememberModel(next: ModelSelection): void {
     setRememberedModel(next);
@@ -980,6 +988,7 @@ export function AgentChatPage(): JSX.Element {
   }
 
   function handleModelChange(nextModelKey: string): void {
+    autoPickedOnModelIdRef.current = nextModelKey === AUTO_MODEL_KEY ? chatModelId : null;
     setSelectedModelKey(nextModelKey);
     // The new model's default effort applies until the user picks one.
     setSelectedEffort(null);
