@@ -373,6 +373,11 @@ export function useRunStream(
 
       const messageStream = readUIMessageStream<ReplayMessage>({
         onError: (error) => {
+          // Unmounting aborts the fetch on purpose; only a real chunk error is worth a log.
+          if (abortController.signal.aborted) {
+            return;
+          }
+
           console.error('Run stream chunk error', error);
         },
         stream: chunkStream,
@@ -637,6 +642,11 @@ export function MessagePart({
     const data = getPartData<ReplayDataParts['plugin-connection']>(part);
 
     return <PluginConnectionPart pluginId={data.pluginId} />;
+  }
+
+  // Rendered by the chat page under the latest reply, where the composer is in reach.
+  if (part.type === 'data-suggested-prompt') {
+    return null;
   }
 
   if (part.type === 'data-turn-error') {

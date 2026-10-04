@@ -160,6 +160,10 @@ export const dataPartSchema = z.object({
   'turn-error': z.object({
     message: z.string(),
   }),
+  /** One follow-up instruction offered under a finished chat reply; clicking it fills the composer. */
+  'suggested-prompt': z.object({
+    prompt: z.string(),
+  }),
 });
 
 export type DataPart = z.infer<typeof dataPartSchema>;

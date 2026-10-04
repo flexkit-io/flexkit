@@ -13,7 +13,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
       data-slot="input-group"
       role="group"
       className={cn(
-        'fk:group/input-group fk:border-input fk:dark:bg-input/30 fk:shadow-xs fk:relative fk:flex fk:w-full fk:items-center fk:rounded-md fk:border fk:outline-none fk:transition-[color,box-shadow] fk:corner-squircle',
+        'fk:group/input-group fk:border-input fk:dark:bg-input/30 fk:shadow-xs fk:relative fk:flex fk:w-full fk:items-center fk:rounded-lg fk:border fk:outline-none fk:transition-[color,box-shadow] fk:corner-squircle',
         'fk:h-9 fk:has-[>textarea]:h-auto',
         'fk:has-[>[data-align=inline-start]]:[&>input]:pl-2',
         'fk:has-[>[data-align=inline-end]]:[&>input]:pr-2',
@@ -76,7 +76,7 @@ const inputGroupButtonVariants = cva('fk:flex fk:items-center fk:gap-2 fk:text-s
   variants: {
     size: {
       xs: 'fk:h-6 fk:gap-1 fk:rounded-[calc(var(--radius)-5px)] fk:px-2 fk:has-[>svg]:px-2 fk:[&>svg:not([class*=size-])]:size-3.5 fk:corner-squircle',
-      sm: 'fk:h-8 fk:gap-1.5 fk:rounded-md fk:px-2.5 fk:has-[>svg]:px-2.5 fk:corner-squircle',
+      sm: 'fk:h-8 fk:gap-1.5 fk:rounded-lg fk:px-2.5 fk:has-[>svg]:px-2.5 fk:corner-squircle',
       'icon-xs': 'fk:size-6 fk:rounded-[calc(var(--radius)-5px)] fk:p-0 fk:has-[>svg]:p-0 fk:corner-squircle',
       'icon-sm': 'fk:size-8 fk:p-0 fk:has-[>svg]:p-0',
     },

@@ -215,8 +215,15 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
 }
 
 /** Error text for a failed rolling-status part, or null when it did not fail. */
+/**
+ * Schema lookups and GraphQL validation or query failures are the agent's own
+ * missteps: it reads the error and corrects the next call. Showing them would
+ * only tell the user about a problem they cannot act on.
+ */
+const AGENT_INTERNAL_ERROR_PART_TYPES = new Set<string>(['data-execute-graphql', 'data-search-schema', 'data-validate-graphql']);
+
 export function getRollingStatusError(part: ReplayMessagePart): string | null {
-  if (!isRollingStatusPartType(part.type) || part.type === 'data-plan') {
+  if (!isRollingStatusPartType(part.type) || part.type === 'data-plan' || AGENT_INTERNAL_ERROR_PART_TYPES.has(part.type)) {
     return null;
   }
 
@@ -239,12 +246,6 @@ export function getRollingStatusError(part: ReplayMessagePart): string | null {
       return 'Failed to create sandbox';
     case 'data-load-skill':
       return 'Failed to load skill';
-    case 'data-search-schema':
-      return 'Failed to search the schema';
-    case 'data-validate-graphql':
-      return 'Failed to validate the GraphQL query';
-    case 'data-execute-graphql':
-      return `Failed to execute the GraphQL ${String(data.operationType ?? 'query')}`;
     case 'data-update-memory':
       return 'Failed to update memory';
     case 'data-plugin-call':

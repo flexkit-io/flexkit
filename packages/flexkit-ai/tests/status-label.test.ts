@@ -185,6 +185,15 @@ describe('isHiddenReplayPart and getRollingStatusError', () => {
     assert.equal(isHiddenReplayPart(dataPart('data-plugin-call', { pluginId: 'gmail', status: 'done', tool: 't' })), true);
   });
 
+  it('hides GraphQL and schema failures, which the agent corrects on its own', () => {
+    const graphqlError = { error: { message: 'GraphQL request failed with status 400' }, operationType: 'query', status: 'error' };
+
+    assert.equal(getRollingStatusError(dataPart('data-execute-graphql', graphqlError)), null);
+    assert.equal(getRollingStatusError(dataPart('data-validate-graphql', { query: 'q', status: 'error' })), null);
+    assert.equal(getRollingStatusError(dataPart('data-search-schema', { query: 'q', status: 'error' })), null);
+    assert.equal(isHiddenReplayPart(dataPart('data-execute-graphql', graphqlError)), true);
+  });
+
   it('shows failed rolling-status calls with their error', () => {
     const failed = dataPart('data-run-command', { args: [], command: 'npm test', sandboxId: 's', status: 'error' });
 

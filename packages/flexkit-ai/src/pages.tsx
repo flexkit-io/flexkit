@@ -49,6 +49,7 @@ import {
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
+import { useRevalidateApprovalsCount } from './approvals-count';
 import { ApprovalDrawer, ApprovalStatusBadge } from './approval-card';
 import { AutomationsDataTableToolbar } from './data-table-toolbar';
 import { AutomationForm } from './form';
@@ -1155,6 +1156,15 @@ export function ApprovalsPage(): JSX.Element {
   } = useSWRInfinite<AutomationApprovals>(getApprovalsKey, fetcher, { refreshInterval: 30_000 });
   const approvals = approvalPages?.flatMap((page) => page.approvals) ?? [];
   const pendingCount = approvalPages?.[0]?.pendingCount ?? 0;
+  const firstPage = approvalPages?.[0];
+  const revalidateApprovalsCount = useRevalidateApprovalsCount();
+
+  // The inbox response carries the pending count; keep the sidebar badge in step with it.
+  useEffect(() => {
+    if (firstPage) {
+      revalidateApprovalsCount(firstPage);
+    }
+  }, [firstPage, revalidateApprovalsCount]);
   const lastPage = approvalPages?.[approvalPages.length - 1];
   const hasMore = lastPage?.hasMore ?? false;
   const isLoadingMore = approvalPages !== undefined && size > approvalPages.length;
@@ -1474,6 +1484,16 @@ function RunReplay({
     run.status !== 'running' &&
     !isTerminalRunStatus(run.status) &&
     (status === 'paused' || run.status === 'awaiting_approval' || messageHasPendingMutationApproval(message));
+  const revalidateApprovalsCount = useRevalidateApprovalsCount();
+  const runEnded = isTerminalRunStatus(run.status);
+
+  // The sidebar badge learns about a new proposal, or a run that ended with
+  // its proposals cancelled, as soon as this page does.
+  useEffect(() => {
+    if (isAwaitingApproval || runEnded) {
+      revalidateApprovalsCount();
+    }
+  }, [isAwaitingApproval, revalidateApprovalsCount, runEnded]);
   // When the durable stream has no pending data-mutation-approval part
   // (empty replay, or earlier tool/text parts only), MutationApprovalPart
   // never mounts — load pending proposals for this run as a fallback.

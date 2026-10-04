@@ -82,9 +82,18 @@ export interface AutomationToolChannel {
 }
 
 export interface AutomationModel {
+  /** Price/quality band the Auto router may pick this model from; null when never auto-picked. */
+  autoTier?: 'fast' | 'balanced' | 'strong' | null;
+  defaultEffort?: string | null;
   deprecated: boolean;
+  /** Legacy label of the default effort ("Medium"). */
   effort: string | null;
+  /** Reasoning efforts the model supports, ascending; empty for Auto. Absent on older APIs. */
+  efforts?: string[];
+  gatewayModelId?: string | null;
+  /** `auto`, or `<gatewayModelId>:<defaultEffort>`. Any `<gatewayModelId>:<effort>` may be sent back. */
   id: string;
+  kind?: 'auto' | 'model';
   name: string;
 }
 

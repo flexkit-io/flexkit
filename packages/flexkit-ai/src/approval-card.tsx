@@ -22,6 +22,7 @@ import {
   Textarea,
 } from '@flexkit/studio/ui';
 import type { ApiClient } from './api';
+import { useRevalidateApprovalsCount } from './approvals-count';
 import type {
   AutomationApproval,
   AutomationApprovalOperation,
@@ -309,6 +310,7 @@ function useApprovalDecision({
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isStale, setIsStale] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const revalidateApprovalsCount = useRevalidateApprovalsCount();
 
   if (initialApproval !== prevInitialApproval) {
     setPrevInitialApproval(initialApproval);
@@ -325,6 +327,8 @@ function useApprovalDecision({
 
   function applyResult(nextApproval: AutomationApproval): void {
     setApproval(nextApproval);
+    // The sidebar badge counts pending approvals; a decision changes it now.
+    revalidateApprovalsCount();
     onDecided?.(nextApproval);
   }
 
