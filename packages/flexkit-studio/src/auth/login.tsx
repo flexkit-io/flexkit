@@ -36,16 +36,19 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
   );
   const selectedProjectHref = useHref(`/${selectedProjectId}`);
   const [isEmailLogin, setIsEmailLogin] = useState(false);
-  const { data, error, isLoading } = useSWR(apiPaths(projectId).authProviders, (url: string) =>
+  // Providers and the OTP flow belong to the project picked in the selector, not the one in the URL.
+  const { data, error, isLoading } = useSWR(apiPaths(selectedProjectId).authProviders, (url: string) =>
     fetch(url, { mode: 'cors' }).then((res) => res.json() as Promise<{ providers: Provider[] }>)
   );
   const [isAuthLoading, auth] = useAuth();
   const copyrightYear = new Date().getFullYear();
   const currentRouterLocation = useLocation();
+  // Router pathnames omit the basename; useHref puts it back so the redirect lands on the mounted Studio.
   const referal: string = currentRouterLocation.state?.from?.pathname ?? currentRouterLocation.pathname;
+  const referalHref = useHref(referal);
 
   const fromPath = referal.includes(selectedProjectId)
-    ? `${location.origin}${referal}`
+    ? `${location.origin}${referalHref}`
     : `${location.origin}${selectedProjectHref}`;
 
   if (error) {
@@ -95,7 +98,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
               </div>
             ) : null}
             {isEmailLogin ? (
-              <EmailLogin projectId={projectId} setIsEmailLogin={setIsEmailLogin} />
+              <EmailLogin key={selectedProjectId} projectId={selectedProjectId} setIsEmailLogin={setIsEmailLogin} />
             ) : (
               <>
                 <p className="fk:mt-2 fk:mb-2 fk:text-sm fk:text-left fk:text-muted-foreground">
