@@ -22,12 +22,14 @@
     "build": "tsup src/index.ts --format cjs --dts",
     "dev": "tsup src/index.ts --format cjs --watch --dts --sourcemap",
     "lint": "eslint \"src/**/*.ts*\"",
-    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "test": "tsup --config tests/tsup.config.ts && node --test build/tests/*.test.mjs"
   },
   "bin": {
     "flexkit": "./dist/index.js"
   },
   "dependencies": {
+    "@flexkit/schema": "workspace:*",
     "esbuild": "0.23.1"
   },
   "devDependencies": {

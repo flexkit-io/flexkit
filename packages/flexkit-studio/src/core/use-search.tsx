@@ -6,7 +6,6 @@ import { find, propEq } from 'ramda';
 import { apiPaths } from './api-paths';
 import { useAppContext } from './app-context';
 import { useConfig } from './config/config-context';
-import type { SingleProject } from './config/types';
 import { getDisplayAttribute } from './get-display-attribute';
 import type { Entity, RawResultItem, RawSearchResultItems, SearchRequestProps, SearchResultItem } from './types';
 
@@ -15,8 +14,9 @@ export function useSearch(
   searchRequest: SearchRequestProps | null
 ): { results: SearchResultItem[] | []; error: Error; isLoading: boolean } {
   const { scope } = useAppContext();
-  const { projects, currentProjectId } = useConfig();
-  const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { currentProject } = useConfig();
+  const schema = useMemo(() => currentProject?.schema ?? [], [currentProject]);
+  const scopes = currentProject?.scopes;
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const swrKey = searchRequest?.commonParams.q ? JSON.stringify(searchRequest) : null;
   const { data, error, isLoading } = useSWR(swrKey, () =>

@@ -1,16 +1,44 @@
 import fs from 'node:fs';
-import { isBuiltin } from 'node:module';
+import { createRequire, isBuiltin } from 'node:module';
 import path from 'node:path';
 import * as esbuild from 'esbuild';
+import { SchemaSerializationError, serializeConfig } from '@flexkit/schema';
+import type { Config, UiProjectSchema } from '@flexkit/schema';
 import { fileNameSymbol } from '../types';
-import type { FlexkitConfig, ProjectConfig } from '../types';
+import type { FlexkitConfig } from '../types';
 import { InvalidProjectConfig, CantFindConfig, WorkingDirectoryDoesNotExist } from './error-types';
 import humanizePath from './humanize-path';
 import type { Output } from './output';
 import { isErrnoException } from './error-utils';
 
-const candidates = ['flexkit.config.js', 'flexkit.config.jsx', 'flexkit.config.ts', 'flexkit.config.tsx'];
+const candidates = ['flexkit.config.ts', 'flexkit.config.js', 'flexkit.config.mjs'];
+/** Config files from the JSX era. They are refused with migration guidance instead of bundled. */
+const legacyCandidates = ['flexkit.config.tsx', 'flexkit.config.jsx'];
+const legacyConfigMessage =
+  'flexkit.config.tsx is no longer supported. Rename it to flexkit.config.ts, replace icon components with lucide icon names (e.g. icon: "Tag"), use booleans for hidden/readOnly, and remove extensions, basePath and commands. See https://flexkit.io/docs/schema/schema-configuration.';
 let config: FlexkitConfig | undefined;
+
+/**
+ * Resolves `@flexkit/schema` from the CLI's own installation so a config file
+ * bundles even when the user's project does not list the package (it may only
+ * have `@flexkit/studio`, which re-exports it). Works for the published CJS
+ * build (`require`) and the ESM test build (`import.meta.url`).
+ */
+function resolveOwnSchemaPackage(): string | undefined {
+  try {
+    if (typeof require === 'function') {
+      return require.resolve('@flexkit/schema');
+    }
+  } catch {
+    // fall through
+  }
+
+  try {
+    return createRequire(import.meta.url).resolve('@flexkit/schema');
+  } catch {
+    return undefined;
+  }
+}
 
 function removeTempOutput(tempOutputPath: string | undefined): void {
   if (!tempOutputPath) {
@@ -53,57 +81,75 @@ export default async function getConfig(
       return new CantFindConfig([humanizePath(localFilePath)]);
     }
 
-    output.debug(`Found config in provided --local-config path ${localFilePath}`);
-
-    const projectConfig = await getProjectConfig(localFilePath);
-
-    if (projectConfig instanceof InvalidProjectConfig) {
-      return projectConfig;
+    if (isLegacyConfigPath(localFilePath)) {
+      return new InvalidProjectConfig(legacyConfigMessage, localFilePath);
     }
 
-    const normalizedConfig = Array.isArray(projectConfig) ? projectConfig : [projectConfig];
+    output.debug(`Found config in provided --local-config path ${localFilePath}`);
+
+    const projects = await getProjectConfig(localFilePath);
+
+    if (projects instanceof InvalidProjectConfig) {
+      return projects;
+    }
 
     config = {
-      [fileNameSymbol]: configFile,
-      projects: normalizedConfig,
+      [fileNameSymbol]: localFilePath,
+      projects,
     };
 
     return config;
   }
 
-  // Then try with `flexkit.config.[js|ts|jsx|tsx]` in the same directory
-  const configFilePath =
-    candidates.map((candidate) => path.join(localPath, candidate)).find((candidate) => fs.existsSync(candidate)) ??
-    'not-found';
+  // Then try with `flexkit.config.[ts|js|mjs]` in the same directory
+  const configFilePath = candidates
+    .map((candidate) => path.join(localPath, candidate))
+    .find((candidate) => fs.existsSync(candidate));
 
-  if (configFilePath === 'not-found') {
+  if (!configFilePath) {
+    const legacyConfigPath = legacyCandidates
+      .map((candidate) => path.join(localPath, candidate))
+      .find((candidate) => fs.existsSync(candidate));
+
+    if (legacyConfigPath) {
+      return new InvalidProjectConfig(legacyConfigMessage, legacyConfigPath);
+    }
+
     return new CantFindConfig([humanizePath(localPath)]);
   }
 
   output.debug(`Attempting to read config from ${configFilePath}`);
 
-  const projectConfig = await getProjectConfig(configFilePath);
+  const projects = await getProjectConfig(configFilePath);
 
-  if (projectConfig instanceof InvalidProjectConfig) {
-    return projectConfig;
+  if (projects instanceof InvalidProjectConfig) {
+    return projects;
   }
 
-  const normalizedConfig = Array.isArray(projectConfig) ? projectConfig : [projectConfig];
-
   config = {
-    [fileNameSymbol]: configFile,
-    projects: normalizedConfig,
+    [fileNameSymbol]: configFilePath,
+    projects,
   };
 
   return config;
 }
 
-async function getProjectConfig(configFilePath: string): Promise<ProjectConfig | InvalidProjectConfig> {
+function isLegacyConfigPath(filePath: string): boolean {
+  return /\.(tsx|jsx)$/.test(filePath);
+}
+
+/** Test seam: forget the cached config so another file can be loaded. */
+export function resetConfigCache(): void {
+  config = undefined;
+}
+
+async function getProjectConfig(configFilePath: string): Promise<UiProjectSchema[] | InvalidProjectConfig> {
   const contextFolder = path.dirname(configFilePath);
   let tempOutputPath: string | undefined;
 
   try {
     tempOutputPath = path.resolve(contextFolder, `${generateRandomFilename()}-temp.mjs`);
+    const ownSchemaPackage = resolveOwnSchemaPackage();
 
     await esbuild.build({
       entryPoints: [configFilePath],
@@ -111,32 +157,38 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
       outfile: tempOutputPath,
       format: 'esm',
       platform: 'node',
-      target: 'node16',
+      target: 'node18',
       ignoreAnnotations: true,
-      loader: {
-        '.css': 'empty',
-      },
       banner: {
         js: `
           import { createRequire as __flexkitCreateRequire } from 'module';
-          import __flexkitReact from 'react';
           const require = __flexkitCreateRequire(import.meta.url);
-          globalThis.React = __flexkitReact;
         `,
       },
       plugins: [
         {
-          name: 'externalize-runtime-deps',
+          name: 'flexkit-config-resolution',
           setup(build) {
-            build.onResolve({ filter: /^react(?:\/jsx-runtime|\/jsx-dev-runtime)?$/ }, (args) => ({
-              path: args.path,
-              external: true,
-            }));
+            // `defineConfig` / `defineEntity` live in @flexkit/schema. Configs
+            // written against @flexkit/studio keep working without pulling the
+            // browser bundle (CSS, React) into a Node process.
+            build.onResolve({ filter: /^@flexkit\/(schema|studio)$/ }, async (args) => {
+              if (args.pluginData === 'flexkit-config-resolution') {
+                return undefined;
+              }
 
-            build.onResolve({ filter: /^react-dom(?:\/client|\/server|\/test-utils)?$/ }, (args) => ({
-              path: args.path,
-              external: true,
-            }));
+              if (ownSchemaPackage) {
+                return { path: ownSchemaPackage };
+              }
+
+              const resolved = await build.resolve('@flexkit/schema', {
+                kind: args.kind,
+                resolveDir: args.resolveDir,
+                pluginData: 'flexkit-config-resolution',
+              });
+
+              return resolved.errors.length > 0 ? { errors: resolved.errors } : { path: resolved.path };
+            });
 
             // Keep Node builtins as real imports so named exports such as
             // `Readable` survive. `isBuiltin` follows the running Node version,
@@ -152,20 +204,6 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
                 external: true,
               };
             });
-          },
-        },
-        {
-          name: 'handle-css',
-          setup(build) {
-            build.onResolve({ filter: /\.css$/ }, () => ({
-              path: 'empty-css',
-              namespace: 'css-stub',
-            }));
-
-            build.onLoad({ filter: /.*/, namespace: 'css-stub' }, () => ({
-              contents: `export default {};`,
-              loader: 'js',
-            }));
           },
         },
       ],
@@ -188,35 +226,27 @@ async function getProjectConfig(configFilePath: string): Promise<ProjectConfig |
     });
 
     // Import the bundled config
-    const tempConfigFile = await import(tempOutputPath);
+    const tempConfigFile = (await import(tempOutputPath)) as { default?: Config };
 
     removeTempOutput(tempOutputPath);
 
-    // Get the config and transform it to keep only needed fields
-    const rawConfig: ProjectConfig = (tempConfigFile as { default: ProjectConfig }).default;
-    const transformedConfig = transformConfig(rawConfig) as ProjectConfig;
+    if (!tempConfigFile.default) {
+      return new InvalidProjectConfig('The config file must export the result of defineConfig() as default.', configFilePath);
+    }
 
-    return transformedConfig;
+    // Serialize to pure data: validation becomes JSON Schema, anything else is dropped or rejected.
+    return serializeConfig(tempConfigFile.default);
   } catch (error) {
-    const normalizedError = error instanceof Error ? error : new Error(error as string);
+    const normalizedError = error instanceof Error ? error : new Error(String(error));
 
     removeTempOutput(tempOutputPath);
+
+    if (error instanceof SchemaSerializationError) {
+      return new InvalidProjectConfig(error.message, configFilePath);
+    }
 
     return new InvalidProjectConfig(normalizedError.message, configFilePath);
   }
-}
-
-function transformConfig(rawConfig: ProjectConfig | ProjectConfig[]): ProjectConfig | ProjectConfig[] {
-  const transform = (item: ProjectConfig): ProjectConfig => {
-    if (Array.isArray(item)) {
-      return item;
-    }
-
-    const { title, projectId, schema, scopes, spaces, basePath = '' } = item;
-    return { title, projectId, schema, scopes, spaces, basePath };
-  };
-
-  return Array.isArray(rawConfig) ? rawConfig.map(transform) : transform(rawConfig);
 }
 
 function generateRandomFilename(length = 8): string {

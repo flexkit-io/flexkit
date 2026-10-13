@@ -12,10 +12,7 @@
   "dependencies": {
     "@astrojs/react": "^6.0.2",
     "@astrojs/vercel": "^11.0.4",
-    "@flexkit/asset-manager": "workspace:*",
-    "@flexkit/ai": "workspace:*",
-    "@flexkit/desk": "workspace:*",
-    "@flexkit/explorer": "workspace:*",
+    "@flexkit/schema": "workspace:*",
     "@flexkit/studio": "workspace:*",
     "astro": "7.3.2",
     "demo-schemas": "workspace:*",

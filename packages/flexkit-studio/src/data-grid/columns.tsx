@@ -5,7 +5,6 @@ import type { Attribute, InputType, SelectOptions } from '../core/types';
 import type { AttributeValue } from '../graphql-client/types';
 import { useAuth } from '../auth/auth-context';
 import { filterAttributesForSpaces } from '../core/spaces';
-import { useConfig } from '../core/config/config-context';
 import { Checkbox } from '../ui/primitives/checkbox';
 import { Boolean as BooleanPrefiewField } from './preview-components/boolean';
 import { Text as TextPreviewField } from './preview-components/text';
@@ -14,6 +13,7 @@ import { Asset as AssetPreviewField } from './preview-components/asset';
 import { DateTime as DateTimePreviewField } from './preview-components/datetime';
 import { Select as SelectPreviewField } from './preview-components/select';
 import { Tags as TagsPreviewField } from './preview-components/tags';
+import { Asset as AssetManagerAssetPreviewField } from '../apps/asset-manager/data-grid/preview-components/asset';
 import { DataTableColumnHeader } from './data-table-column-header';
 
 const SORTABLE_INPUT_TYPES = new Set<InputType>([
@@ -39,7 +39,6 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
   actionsComponent,
   enableColumnSorting = false,
 }: Props<TData>): ColumnDefinition<TData, TValue>[] {
-  const { getContributionPointConfig } = useConfig();
   const [, auth] = useAuth();
   // Space-bound attributes are filtered out for non-members; their values are
   // null-ed by the server anyway, this just avoids rendering empty columns.
@@ -68,6 +67,8 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     'text': TextPreviewField,
     'textarea': TextPreviewField,
     'tags': TagsPreviewField,
+    // Asset Manager rows render the whole record (path, mime type, ...).
+    'assetPreviewField': AssetManagerAssetPreviewField,
   };
 
   const cols = visibleAttributesSchema
@@ -81,12 +82,11 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
         (attribute.inputType === 'relationship' && attribute.relationship?.entity === '_asset' ? 'asset' : undefined) ??
         attribute.previewType ??
         inputTypeToPreviewFieldMap[attribute.inputType as keyof typeof inputTypeToPreviewFieldMap];
+      // Unknown preview types (e.g. custom ones from older configs) fall back to text.
       const previewComponent =
-        (getContributionPointConfig('previewFields', [previewType])?.[0]?.component as unknown as
+        (previewFieldComponentsMap[previewType as keyof typeof previewFieldComponentsMap] as
           | ComponentType<{ value: TData }>
-          | undefined) ??
-        previewFieldComponentsMap[previewType as keyof typeof previewFieldComponentsMap] ??
-        previewFieldComponentsMap['text'];
+          | undefined) ?? previewFieldComponentsMap['text'];
 
       if (attribute.hidden === true) {
         return null;

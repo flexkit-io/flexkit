@@ -2,15 +2,15 @@
 
 import { JSX, useState } from 'react';
 import useSWR from 'swr';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useHref, useLocation } from 'react-router-dom';
 import { Button } from '../ui/primitives/button';
 import { DarkModeSwitch } from '../ui/components/dark-mode-switch';
 import { Loading } from '../ui/components/loading';
 import { Label } from '../ui/primitives/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { apiPaths } from '../core/api-paths';
-import { joinBasePath } from '../core/base-path';
 import { useConfig } from '../core/config/config-context';
+import { getProjectLabel } from '../ui/components/project-selector';
 import { useAuth } from './auth-context';
 import EmailLogin from './email';
 
@@ -29,22 +29,27 @@ type Provider = {
 };
 
 export function Login({ projectId }: { projectId: string }): JSX.Element {
-  const { projects } = useConfig();
-  const [selectedProject, setSelectedProject] = useState(
-    projects.find((project) => project.projectId === projectId) ?? projects[0]
+  // Before login only the ids are known: project schemas (and titles) need a session.
+  const { projectIds, projects } = useConfig();
+  const [selectedProjectId, setSelectedProjectId] = useState(
+    projectIds.includes(projectId) ? projectId : (projectIds[0] ?? projectId)
   );
+  const selectedProjectHref = useHref(`/${selectedProjectId}`);
   const [isEmailLogin, setIsEmailLogin] = useState(false);
-  const { data, error, isLoading } = useSWR(apiPaths(projectId).authProviders, (url: string) =>
+  // Providers and the OTP flow belong to the project picked in the selector, not the one in the URL.
+  const { data, error, isLoading } = useSWR(apiPaths(selectedProjectId).authProviders, (url: string) =>
     fetch(url, { mode: 'cors' }).then((res) => res.json() as Promise<{ providers: Provider[] }>)
   );
   const [isAuthLoading, auth] = useAuth();
   const copyrightYear = new Date().getFullYear();
   const currentRouterLocation = useLocation();
+  // Router pathnames omit the basename; useHref puts it back so the redirect lands on the mounted Studio.
   const referal: string = currentRouterLocation.state?.from?.pathname ?? currentRouterLocation.pathname;
+  const referalHref = useHref(referal);
 
-  const fromPath = referal.includes(selectedProject.projectId)
-    ? `${location.origin}${referal}`
-    : `${location.origin}${joinBasePath(selectedProject.basePath, selectedProject.projectId)}`;
+  const fromPath = referal.includes(selectedProjectId)
+    ? `${location.origin}${referalHref}`
+    : `${location.origin}${selectedProjectHref}`;
 
   if (error) {
     throw new Error('Error fetching auth providers');
@@ -55,7 +60,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
   }
 
   if (auth.user?.id) {
-    return <Navigate replace state={{ from: currentRouterLocation }} to={selectedProject.basePath} />;
+    return <Navigate replace state={{ from: currentRouterLocation }} to="/" />;
   }
 
   return (
@@ -66,24 +71,26 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
             <h1 className="fk:mb-4 fk:text-2xl fk:text-center fk:font-medium fk:tracking-tight">
               Login to Flexkit Studio
             </h1>
-            {projects.length > 1 ? (
+            {projectIds.length > 1 ? (
               <div className="fk:flex-col fk:space-y-2 fk:mb-3">
                 <Label className="fk:text-sm fk:font-normal fk:text-left fk:text-muted-foreground" htmlFor="project">
                   Select project
                 </Label>
                 <Select
-                  defaultValue={selectedProject.projectId}
+                  defaultValue={selectedProjectId}
                   onValueChange={(id) => {
-                    setSelectedProject(projects.find((project) => project.projectId === id) ?? projects[0]);
+                    setSelectedProjectId(id);
                   }}
                 >
                   <SelectTrigger className="fk:mb-4 fk:w-full fk:h-9 fk:py-1" id="project">
-                    <SelectValue aria-label={selectedProject.title}>{selectedProject.title}</SelectValue>
+                    <SelectValue aria-label={getProjectLabel(selectedProjectId, projects)}>
+                      {getProjectLabel(selectedProjectId, projects)}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.projectId} value={project.projectId}>
-                        {project.title}
+                    {projectIds.map((id) => (
+                      <SelectItem key={id} value={id}>
+                        {getProjectLabel(id, projects)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -91,7 +98,12 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
               </div>
             ) : null}
             {isEmailLogin ? (
-              <EmailLogin projectId={projectId} setIsEmailLogin={setIsEmailLogin} />
+              <EmailLogin
+                key={selectedProjectId}
+                projectId={selectedProjectId}
+                redirectTo={fromPath}
+                setIsEmailLogin={setIsEmailLogin}
+              />
             ) : (
               <>
                 <p className="fk:mt-2 fk:mb-2 fk:text-sm fk:text-left fk:text-muted-foreground">
@@ -109,7 +121,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                       <a
                         href={composeLoginHref({
                           url: provider.url,
-                          projectId: selectedProject.projectId,
+                          projectId: selectedProjectId,
                           basePath: '/api/flexkit/get-token',
                           fromPath,
                         })}

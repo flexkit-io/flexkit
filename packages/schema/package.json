@@ -1,0 +1,52 @@
+{
+  "name": "@flexkit/schema",
+  "version": "0.0.0",
+  "description": "Flexkit project configuration: schema types, defineConfig/defineEntity, and the serializer that turns a flexkit.config.ts into the deployable JSON schema.",
+  "keywords": [
+    "flexkit",
+    "schema",
+    "config"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flexkit-io/flexkit",
+    "directory": "packages/schema"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --sourcemap",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch src",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "tsup --config tests/tsup.config.ts && node --test build/tests/*.test.js && tsc --noEmit -p tests/tsconfig.json",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist && rm -rf build"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.2",
+    "eslint": "^9.0.0",
+    "eslint-config-custom": "workspace:*",
+    "tsconfig": "workspace:*",
+    "tsup": "8.5.1",
+    "typescript": "^5.3.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

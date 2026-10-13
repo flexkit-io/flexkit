@@ -9,10 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@flexkit/ai": "workspace:*",
-    "@flexkit/asset-manager": "workspace:*",
-    "@flexkit/desk": "workspace:*",
-    "@flexkit/explorer": "workspace:*",
+    "@flexkit/schema": "workspace:*",
     "@flexkit/studio": "workspace:*",
     "demo-schemas": "workspace:*",
     "next": "16.3.5",

@@ -12,36 +12,42 @@ export { ProjectDisabled } from './core/error/project-disabled';
 export { SchemaError } from './core/error/schema-error';
 export { useGraphQLError } from './graphql-client/graphql-context';
 export { useSearch } from './core/use-search';
-export { defineConfig } from './core/config/define-config';
-export { defineExtension } from './core/config/define-extension';
-export { defineEntity } from './core/config/define-entity';
+export { defineConfig, defineEntity } from '@flexkit/schema';
 export { canAccessSpaces, filterAttributesForSpaces, filterEntitiesForSpaces } from './core/spaces';
 export { canMutateData, useCanMutate } from './core/permissions';
 export { ALL_FIELDS_GROUP, ALL_FIELDS_GROUP_NAME } from './core/field-groups';
 
 // Core types
-export type {
-  AppOptions,
-  FormFieldProps,
-  LogoProps,
-  StudioExtension,
-  StudioContributions,
-  SingleProject,
-} from './core/config/types';
+export type { FlexkitStudioProps, ProjectSchemaError, ProjectUiConfig } from './core/config/types';
 export type {
   Attribute,
-  ConditionalFieldContext,
-  ConditionalFlag,
   DefaultValue,
   DefaultValueByDataType,
   Entity,
+  EntityMenu,
   FieldGroup,
   DataType,
+  MenuGroup,
   Schema,
   ScopeType,
   SearchRequestProps,
   SearchResultItem,
 } from './core/types';
+// Authoring types for flexkit.config.ts (validation as Zod functions).
+export type {
+  Config,
+  ProjectConfig,
+  ProjectSchemaResponse,
+  UiAttribute,
+  UiEntity,
+  UiProjectSchema,
+  ZodValidation,
+  Attribute as ConfigAttribute,
+  Entity as ConfigEntity,
+} from '@flexkit/schema';
+
+// Built-in AI app types (formerly @flexkit/ai)
+export type * from './apps/ai/public-types';
 
 // Auth
 export { useAuth } from './auth/auth-context';

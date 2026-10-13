@@ -1,0 +1,874 @@
+import { Children, Fragment, useCallback, useState, useEffect, useMemo, useRef } from 'react';
+import type {
+  ComponentProps,
+  ComponentType,
+  MouseEventHandler,
+  PropsWithChildren,
+  ReactNode,
+  ReactElement,
+} from 'react';
+import {
+  Button as GraphiQLButton,
+  ButtonGroup,
+  CopyIcon,
+  Dialog,
+  ExecuteButton,
+  GraphiQLProvider,
+  KeyboardShortcutIcon,
+  MergeIcon,
+  PlusIcon,
+  PrettifyIcon,
+  QueryEditor,
+  ReloadIcon,
+  ResponseEditor,
+  SettingsIcon,
+  Spinner,
+  Tabs as GraphiQlTabs,
+  Tab as GraphiQlTab,
+  ToolbarButton,
+  Tooltip as GraphiQLTooltip,
+  UnStyledButton,
+  useCopyQuery,
+  useEditorContext,
+  useExecutionContext,
+  useMergeQuery,
+  usePluginContext,
+  usePrettifyEditors,
+  useSchemaContext,
+  useStorageContext,
+  useTheme,
+  VariableEditor,
+  isMacOs,
+} from '@graphiql/react';
+import type {
+  Theme,
+  UseHeaderEditorArgs,
+  UseQueryEditorArgs,
+  UseResponseEditorArgs,
+  UseVariableEditorArgs,
+  WriteableEditorProps,
+} from '@graphiql/react';
+import { HISTORY_PLUGIN, HistoryContextProvider } from '@graphiql/plugin-history';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+import {
+  Button,
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+  ScrollArea,
+  ScrollBar,
+  Separator,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../../../ui';
+import type { PanelImperativeHandle } from '../../../ui';
+import type { TabState } from './types';
+
+export type GraphiQLToolbarConfig = {
+  /**
+   * This content will be rendered after the built-in buttons of the toolbar.
+   * Note that this will not apply if you provide a completely custom toolbar
+   * (by passing `GraphiQL.Toolbar` as child to the `GraphiQL` component).
+   */
+  additionalContent?: React.ReactNode;
+
+  /**
+   * same as above, except a component with access to context
+   */
+  additionalComponent?: React.JSXElementConstructor<unknown>;
+};
+
+/**
+ * API docs for this live here:
+ *
+ * https://graphiql-test.netlify.app/typedoc/modules/graphiql.html#graphiqlprops
+ */
+export type GraphiQLProps = Omit<ComponentProps<typeof GraphiQLProvider>, 'children'> &
+  GraphiQLInterfaceProps & {
+    /**
+     * The maximum number of executed operations to store in history.
+     *
+     * GraphiQL v0.31 extracted the history functionality into `@graphiql/plugin-history`,
+     * so this is no longer a prop on `@graphiql/react`'s `GraphiQLProvider`.
+     */
+    maxHistoryLength?: number;
+  };
+
+/**
+ * The top-level React component for GraphiQL, intended to encompass the entire
+ * browser viewport.
+ *
+ * @see https://github.com/graphql/graphiql#usage
+ */
+export function GraphiQL({
+  dangerouslyAssumeSchemaIsValid,
+  confirmCloseTab,
+  defaultQuery,
+  defaultTabs,
+  externalFragments,
+  fetcher,
+  getDefaultFieldNames,
+  headers,
+  inputValueDeprecation,
+  introspectionQueryName,
+  maxHistoryLength,
+  onEditOperationName,
+  onSchemaChange,
+  onTabChange,
+  onTogglePluginVisibility,
+  operationName,
+  plugins,
+  query,
+  response,
+  schema,
+  schemaDescription,
+  shouldPersistHeaders,
+  storage,
+  validationRules,
+  variables,
+  visiblePlugin,
+  defaultHeaders,
+  ...props
+}: GraphiQLProps): ReactElement {
+  // Ensure props are correct
+  if (typeof fetcher !== 'function') {
+    throw new TypeError('The `GraphiQL` component requires a `fetcher` function to be passed as prop.');
+  }
+
+  const mergedPlugins = useMemo(() => {
+    const userPlugins = plugins ?? [];
+
+    if (userPlugins.some((plugin) => plugin.title === HISTORY_PLUGIN.title)) {
+      return userPlugins;
+    }
+
+    return [HISTORY_PLUGIN, ...userPlugins];
+  }, [plugins]);
+
+  return (
+    <GraphiQLProvider
+      getDefaultFieldNames={getDefaultFieldNames}
+      dangerouslyAssumeSchemaIsValid={dangerouslyAssumeSchemaIsValid}
+      defaultQuery={defaultQuery}
+      defaultHeaders={defaultHeaders}
+      defaultTabs={defaultTabs}
+      externalFragments={externalFragments}
+      fetcher={fetcher}
+      headers={headers}
+      inputValueDeprecation={inputValueDeprecation}
+      introspectionQueryName={introspectionQueryName}
+      onEditOperationName={onEditOperationName}
+      onSchemaChange={onSchemaChange}
+      onTabChange={onTabChange}
+      onTogglePluginVisibility={onTogglePluginVisibility}
+      plugins={mergedPlugins}
+      visiblePlugin={visiblePlugin}
+      operationName={operationName}
+      query={query}
+      response={response}
+      schema={schema}
+      schemaDescription={schemaDescription}
+      shouldPersistHeaders={shouldPersistHeaders}
+      storage={storage}
+      validationRules={validationRules}
+      variables={variables}
+    >
+      <HistoryContextProvider maxHistoryLength={maxHistoryLength}>
+        <GraphiQLInterface
+          confirmCloseTab={confirmCloseTab}
+          showPersistHeadersSettings={shouldPersistHeaders !== false}
+          disableTabs={props.disableTabs ?? false}
+          forcedTheme={props.forcedTheme}
+          {...props}
+        />
+      </HistoryContextProvider>
+    </GraphiQLProvider>
+  );
+}
+
+// Export main windows/panes to be used separately if desired.
+GraphiQL.Toolbar = GraphiQLToolbar;
+GraphiQL.Footer = GraphiQLFooter;
+
+type AddSuffix<Obj extends { [key: string]: unknown }, Suffix extends string> = {
+  [Key in keyof Obj as `${string & Key}${Suffix}`]: Obj[Key];
+};
+
+export type GraphiQLInterfaceProps = WriteableEditorProps &
+  AddSuffix<Pick<UseQueryEditorArgs, 'onEdit'>, 'Query'> &
+  Pick<UseQueryEditorArgs, 'onCopyQuery'> &
+  AddSuffix<Pick<UseVariableEditorArgs, 'onEdit'>, 'Variables'> &
+  AddSuffix<Pick<UseHeaderEditorArgs, 'onEdit'>, 'Headers'> &
+  Pick<UseResponseEditorArgs, 'responseTooltip'> & {
+    children?: ReactNode;
+    /**
+     * Set the default state for the editor tools.
+     * - `false` hides the editor tools
+     * - `true` shows the editor tools
+     * - `'variables'` specifically shows the variables editor
+     * - `'headers'` specifically shows the headers editor
+     * By default the editor tools are initially shown when at least one of the
+     * editors has contents.
+     */
+    defaultEditorToolsVisibility?: boolean | 'variables' | 'headers';
+    /**
+     * Toggle if the headers editor should be shown inside the editor tools.
+     */
+    isHeadersEditorEnabled?: boolean;
+    /**
+     * An object that allows configuration of the toolbar next to the query
+     * editor.
+     */
+    toolbar?: GraphiQLToolbarConfig;
+    /**
+     * Indicates if settings for persisting headers should appear in the
+     * settings modal.
+     */
+    showPersistHeadersSettings?: boolean;
+    defaultTheme?: Theme;
+    disableTabs?: boolean;
+    /**
+     * `forcedTheme` allows enforcement of a specific theme for GraphiQL.
+     * This is useful when you want to make sure that GraphiQL is always
+     * rendered with a specific theme.
+     */
+    forcedTheme?: (typeof THEMES)[number];
+    /**
+     * Additional class names which will be appended to the container element.
+     */
+    className?: string;
+    /**
+     * When the user clicks a close tab button, this function is invoked with
+     * the index of the tab that is about to be closed. It can return a promise
+     * that should resolve to `true` (meaning the tab may be closed) or `false`
+     * (meaning the tab may not be closed).
+     */
+    confirmCloseTab?: (index: number) => Promise<boolean> | boolean;
+  };
+
+const THEMES = ['light', 'dark', 'system'] as const;
+
+const TAB_CLASS_PREFIX = 'graphiql-session-tab-';
+const EXPLORER_LAYOUT_STORAGE_KEY = 'flexkit-explorer:layout';
+
+/** Matches `collapsedSize` on the explorer sidebar panel (see `PanelSize.asPercentage` in react-resizable-panels v4). */
+const EXPLORER_SIDEBAR_COLLAPSED_SIZE_PCT = 3;
+
+function panelResizeArgAsPercentage(panelSize: unknown): number | undefined {
+  if (typeof panelSize === 'number') {
+    return panelSize;
+  }
+
+  if (typeof panelSize !== 'object' || panelSize === null) {
+    return undefined;
+  }
+
+  if (!('asPercentage' in panelSize)) {
+    return undefined;
+  }
+
+  const pct = (panelSize as { asPercentage: unknown }).asPercentage;
+
+  if (typeof pct !== 'number') {
+    return undefined;
+  }
+
+  return pct;
+}
+
+type ResizableLayout = {
+  [panelId: string]: number;
+};
+
+function isResizableLayout(value: unknown): value is ResizableLayout {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  return Object.values(value).every((item) => typeof item === 'number');
+}
+
+function getStoredResizableLayout(storageKey: string): ResizableLayout | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  const value = window.localStorage.getItem(storageKey);
+
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+
+    if (isResizableLayout(parsed)) {
+      return parsed;
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+function storeResizableLayout(storageKey: string, layout: ResizableLayout): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(layout));
+  } catch {
+    // Ignore storage failures so resizing still works in restricted browsing modes.
+  }
+}
+
+export function GraphiQLInterface(props: GraphiQLInterfaceProps): ReactElement {
+  const editorContext = useEditorContext({ nonNull: true });
+  const executionContext = useExecutionContext({ nonNull: true });
+  const schemaContext = useSchemaContext({ nonNull: true });
+  const storageContext = useStorageContext();
+  const pluginContext = usePluginContext();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const sidebarPanel = useRef<PanelImperativeHandle | null>(null);
+  const explorerDefaultLayout = useMemo(() => getStoredResizableLayout(EXPLORER_LAYOUT_STORAGE_KEY), []);
+  const forcedTheme = useMemo(
+    () => (props.forcedTheme && THEMES.includes(props.forcedTheme) ? props.forcedTheme : undefined),
+    [props.forcedTheme]
+  );
+
+  const copy = useCopyQuery({ onCopyQuery: props.onCopyQuery });
+  const merge = useMergeQuery();
+  const prettify = usePrettifyEditors();
+
+  const { setTheme } = useTheme(props.defaultTheme);
+
+  useEffect(() => {
+    if (forcedTheme === 'system') {
+      setTheme(null);
+    } else if (forcedTheme === 'light' || forcedTheme === 'dark') {
+      setTheme(forcedTheme);
+    }
+  }, [forcedTheme, setTheme]);
+
+  useEffect(() => {
+    pluginContext?.setVisiblePlugin(pluginContext.plugins[0]);
+  }, [pluginContext]);
+
+  const [showDialog, setShowDialog] = useState<'settings' | 'short-keys' | null>(null);
+  const [clearStorageStatus, setClearStorageStatus] = useState<'success' | 'error' | null>(null);
+
+  const children = Children.toArray(props.children);
+
+  const toolbar = children.find((child) => isChildComponentType(child, GraphiQL.Toolbar)) ?? (
+    <>
+      <ToolbarButton onClick={prettify} label="Prettify query (Shift-Ctrl-P)">
+        <PrettifyIcon className="fk:w-6 fk:h-6 fk:block" aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton onClick={merge} label="Merge fragments into query (Shift-Ctrl-M)">
+        <MergeIcon className="fk:w-6 fk:h-6 fk:block" aria-hidden="true" />
+      </ToolbarButton>
+      <ToolbarButton onClick={copy} label="Copy query (Shift-Ctrl-C)">
+        <CopyIcon className="fk:w-6 fk:h-6 fk:block" aria-hidden="true" />
+      </ToolbarButton>
+      {props.toolbar?.additionalContent}
+      {props.toolbar?.additionalComponent && <props.toolbar.additionalComponent />}
+    </>
+  );
+
+  const footer = children.find((child) => isChildComponentType(child, GraphiQL.Footer));
+
+  const handleClearData = useCallback(() => {
+    try {
+      storageContext?.clear();
+      setClearStorageStatus('success');
+    } catch {
+      setClearStorageStatus('error');
+    }
+  }, [storageContext]);
+
+  const handlePersistHeaders: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (event) => {
+      editorContext.setShouldPersistHeaders(event.currentTarget.dataset.value === 'true');
+    },
+    [editorContext]
+  );
+
+  const handleAddTab = (): void => {
+    editorContext.addTab();
+  };
+  const handleRefetchSchema = (): void => {
+    schemaContext.introspect();
+  };
+  const handleReorder = (newOrder: TabState[]): void => {
+    editorContext.moveTab(newOrder);
+  };
+
+  const handleShowDialog: MouseEventHandler<HTMLButtonElement> = useCallback((event) => {
+    setShowDialog(event.currentTarget.dataset.value as 'short-keys' | 'settings');
+  }, []);
+
+  const handlePluginClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (event) => {
+      const context = pluginContext;
+      const pluginIndex = Number(event.currentTarget.dataset.index);
+
+      if (!context) return;
+
+      const plugin = context.plugins.find((_, index) => pluginIndex === index) ?? null;
+      const isVisible = plugin === context.visiblePlugin;
+
+      if (isVisible) {
+        context.setVisiblePlugin(null);
+
+        return;
+      }
+
+      context.setVisiblePlugin(plugin);
+    },
+    [pluginContext]
+  );
+
+  const handleOpenShortKeysDialog = useCallback((isOpen: boolean) => {
+    if (!isOpen) {
+      setShowDialog(null);
+    }
+  }, []);
+
+  const handleOpenSettingsDialog = useCallback((isOpen: boolean) => {
+    if (!isOpen) {
+      setShowDialog(null);
+      setClearStorageStatus(null);
+    }
+  }, []);
+
+  const addTab = (
+    <GraphiQLTooltip label="Add tab">
+      <UnStyledButton type="button" className="graphiql-tab-add" onClick={handleAddTab} aria-label="Add tab">
+        <PlusIcon aria-hidden="true" />
+      </UnStyledButton>
+    </GraphiQLTooltip>
+  );
+
+  const className = props.className ? ` ${props.className}` : '';
+  const confirmClose = props.confirmCloseTab;
+
+  const handleTabClose: MouseEventHandler<HTMLButtonElement> = useCallback(
+    async (event) => {
+      const tabButton = event.currentTarget.previousSibling as HTMLButtonElement;
+      const index = Number(tabButton.id.replace(TAB_CLASS_PREFIX, ''));
+
+      /** TODO:
+       * Move everything after into `editorContext.closeTab` once zustand will be used instead of
+       * React context, since now we can't use execution context inside editor context, since editor
+       * context is used in execution context.
+       */
+      const shouldCloseTab = confirmClose ? await confirmClose(index) : true;
+
+      if (!shouldCloseTab) {
+        return;
+      }
+
+      if (editorContext.activeTabIndex === index) {
+        executionContext.stop();
+      }
+      editorContext.closeTab(index);
+    },
+    [confirmClose, editorContext, executionContext]
+  );
+
+  const handleTabClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (event) => {
+      const index = Number(event.currentTarget.id.replace(TAB_CLASS_PREFIX, ''));
+      /** TODO:
+       * Move everything after into `editorContext.changeTab` once zustand will be used instead of
+       * React context, since now we can't use execution context inside editor context, since editor
+       * context is used in execution context.
+       */
+      executionContext.stop();
+      editorContext.changeTab(index);
+    },
+    [editorContext, executionContext]
+  );
+
+  const handleExplorerLayoutChanged = useCallback((layout: ResizableLayout) => {
+    storeResizableLayout(EXPLORER_LAYOUT_STORAGE_KEY, layout);
+  }, []);
+
+  return (
+    <GraphiQLTooltip.Provider>
+      <div className={`graphiql-container${className}`}>
+        <ResizablePanelGroup
+          className="fk:h-full fk:max-h-full"
+          defaultLayout={explorerDefaultLayout}
+          id="explorer"
+          onLayoutChanged={handleExplorerLayoutChanged}
+          orientation="horizontal"
+        >
+          <ResizablePanel
+            collapsible
+            collapsedSize={`${EXPLORER_SIDEBAR_COLLAPSED_SIZE_PCT}%`}
+            defaultSize="22%"
+            id="explorer-sidebar"
+            minSize="10%"
+            onResize={(panelSize) => {
+              const panel = sidebarPanel.current;
+
+              if (panel) {
+                setIsSidebarCollapsed(panel.isCollapsed());
+
+                return;
+              }
+
+              const percentage = panelResizeArgAsPercentage(panelSize);
+
+              if (percentage !== undefined) {
+                setIsSidebarCollapsed(percentage <= EXPLORER_SIDEBAR_COLLAPSED_SIZE_PCT);
+              }
+            }}
+            panelRef={sidebarPanel}
+          >
+            <div className="fk:flex fk:w-full fk:h-full fk:pb-6">
+              <Tabs className="fk:w-full" defaultValue={pluginContext?.plugins[0].title}>
+                <div className={`fk:flex fk:items-center fk:py-1 ${isSidebarCollapsed ? '' : 'fk:px-3'}`}>
+                  <TabsList className={isSidebarCollapsed ? 'fk:hidden' : ''}>
+                    {pluginContext?.plugins.map((plugin, index) => {
+                      const isVisible = plugin === pluginContext.visiblePlugin;
+                      const label = `${isVisible ? 'Hide' : 'Show'} ${plugin.title}`;
+                      return (
+                        <TabsTrigger
+                          aria-label={label}
+                          className="fk:text-muted-foreground"
+                          data-index={index}
+                          key={plugin.title}
+                          onClick={handlePluginClick}
+                          value={plugin.title}
+                        >
+                          <plugin.icon aria-hidden="true" />
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        className={isSidebarCollapsed ? 'fk:ml-1.5' : 'fk:ml-auto'}
+                        onClick={() => {
+                          const panel = sidebarPanel.current;
+
+                          isSidebarCollapsed ? panel?.expand() : panel?.collapse();
+                        }}
+                        size="icon"
+                        variant="ghost"
+                      >
+                        {isSidebarCollapsed ? (
+                          <>
+                            <ChevronsRight className="fk:w-4 fk:h-4" />
+                            <span className="fk:sr-only">Expand</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronsLeft className="fk:w-4 fk:h-4" />
+                            <span className="fk:sr-only">Collapse</span>
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{isSidebarCollapsed ? 'Expand' : 'Collapse'}</TooltipContent>
+                  </Tooltip>
+                </div>
+                {isSidebarCollapsed ? null : <Separator />}
+                {pluginContext?.plugins.map((plugin) => (
+                  <TabsContent
+                    className={`fk:flex fk:w-full fk:max-h-full fk:mt-0 ${isSidebarCollapsed ? 'fk:hidden' : ''}`}
+                    key={plugin.title}
+                    value={plugin.title}
+                  >
+                    <ScrollArea className="fk:flex fk:w-full fk:max-h-full fk:overflow-auto fk:pl-3 fk:pr-6 fk:pt-3 fk:pb-6 fk:mb-3 fk:[&>div>div]:block!">
+                      <plugin.content />
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </div>
+            <GraphiQLTooltip label="Re-fetch GraphQL schema">
+              <UnStyledButton
+                type="button"
+                disabled={schemaContext.isFetching}
+                onClick={handleRefetchSchema}
+                aria-label="Re-fetch GraphQL schema"
+              >
+                <ReloadIcon className={schemaContext.isFetching ? 'graphiql-spin' : ''} aria-hidden="true" />
+              </UnStyledButton>
+            </GraphiQLTooltip>
+            <GraphiQLTooltip label="Open short keys dialog">
+              <UnStyledButton
+                type="button"
+                data-value="short-keys"
+                onClick={handleShowDialog}
+                aria-label="Open short keys dialog"
+              >
+                <KeyboardShortcutIcon aria-hidden="true" />
+              </UnStyledButton>
+            </GraphiQLTooltip>
+            <GraphiQLTooltip label="Open settings dialog">
+              <UnStyledButton
+                type="button"
+                data-value="settings"
+                onClick={handleShowDialog}
+                aria-label="Open settings dialog"
+              >
+                <SettingsIcon aria-hidden="true" />
+              </UnStyledButton>
+            </GraphiQLTooltip>
+          </ResizablePanel>
+
+          <ResizableHandle className="fk:hover:bg-blue-500 fk:transition-colors" withHandle />
+          {/* Center column */}
+          <ResizablePanel className="fk:bg-muted" defaultSize="40%" id="explorer-editor">
+            <div className="fk:flex fk:flex-col fk:h-full">
+              <div className="fk:flex fk:items-center fk:py-1 fk:px-4 fk:gap-6 fk:bg-muted">
+                {!props.disableTabs && (
+                  <GraphiQlTabs
+                    aria-label="Select active operation"
+                    className="fk:p-1! fk:bg-muted fk:rounded-md"
+                    onReorder={handleReorder}
+                    values={editorContext.tabs}
+                  >
+                    {editorContext.tabs.length > 0 && (
+                      <>
+                        {editorContext.tabs.map((tab, index) => (
+                          <GraphiQlTab isActive={index === editorContext.activeTabIndex} key={tab.id} value={tab}>
+                            <GraphiQlTab.Button
+                              aria-controls="graphiql-session"
+                              id={`${TAB_CLASS_PREFIX}${index.toString()}`}
+                              onClick={handleTabClick}
+                            >
+                              {tab.title}
+                            </GraphiQlTab.Button>
+                            <GraphiQlTab.Close onClick={handleTabClose} />
+                          </GraphiQlTab>
+                        ))}
+                      </>
+                    )}
+                  </GraphiQlTabs>
+                )}
+                {addTab}
+              </div>
+
+              {/* Query editor */}
+              <div
+                role="tabpanel"
+                id="graphiql-session" // used by aria-controls="graphiql-session"
+                className="graphiql-session"
+                aria-labelledby={`${TAB_CLASS_PREFIX}${editorContext.activeTabIndex}`}
+              >
+                <div className={`graphiql-editors${editorContext.tabs.length === 1 ? ' full-height' : ''}`}>
+                  <ResizablePanelGroup orientation="vertical">
+                    <ResizablePanel className="fk:flex fk:w-full fk:gap-x-4 fk:px-4 fk:py-2" defaultSize="80%">
+                      <QueryEditor
+                        editorTheme={props.editorTheme}
+                        keyMap={props.keyMap}
+                        onCopyQuery={props.onCopyQuery}
+                        onEdit={props.onEditQuery}
+                        readOnly={props.readOnly}
+                      />
+                      <div className="graphiql-toolbar" role="toolbar" aria-label="Editor Commands">
+                        <ExecuteButton />
+                        {toolbar}
+                      </div>
+                    </ResizablePanel>
+                    <ResizableHandle className="fk:hover:bg-blue-500 fk:transition-colors" withHandle />
+                    <ResizablePanel className="fk:bg-muted fk:px-4 fk:pt-2" defaultSize="20%">
+                      <div className="fk:text-sm fk:font-medium fk:text-muted-foreground">Variables</div>
+                      <VariableEditor
+                        editorTheme={props.editorTheme}
+                        isHidden={false}
+                        keyMap={props.keyMap}
+                        onEdit={props.onEditVariables}
+                        readOnly={props.readOnly}
+                      />
+                    </ResizablePanel>
+                  </ResizablePanelGroup>
+                </div>
+              </div>
+            </div>
+          </ResizablePanel>
+          <ResizableHandle className="fk:hover:bg-blue-500 fk:transition-colors" withHandle />
+          <ResizablePanel className="fk:px-5 fk:pt-10 fk:relative" defaultSize="38%" id="explorer-response">
+            <div className="graphiql-response fk:h-full">
+              {executionContext.isFetching ? <Spinner /> : null}
+              <ResponseEditor
+                editorTheme={props.editorTheme}
+                responseTooltip={props.responseTooltip}
+                keyMap={props.keyMap}
+              />
+              {footer}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+        <Dialog open={showDialog === 'short-keys'} onOpenChange={handleOpenShortKeysDialog}>
+          <div className="graphiql-dialog-header">
+            <Dialog.Title className="graphiql-dialog-title">Short Keys</Dialog.Title>
+            <Dialog.Close />
+          </div>
+          <div className="graphiql-dialog-section">
+            <ShortKeys keyMap={props.keyMap || 'sublime'} />
+          </div>
+        </Dialog>
+        <Dialog open={showDialog === 'settings'} onOpenChange={handleOpenSettingsDialog}>
+          <div className="graphiql-dialog-header">
+            <Dialog.Title className="graphiql-dialog-title">Settings</Dialog.Title>
+            <Dialog.Close />
+          </div>
+          {props.showPersistHeadersSettings ? (
+            <div className="graphiql-dialog-section">
+              <div>
+                <div className="graphiql-dialog-section-title">Persist headers</div>
+                <div className="graphiql-dialog-section-caption">
+                  Save headers upon reloading.{' '}
+                  <span className="graphiql-warning-text">Only enable if you trust this device.</span>
+                </div>
+              </div>
+              <ButtonGroup>
+                <GraphiQLButton
+                  type="button"
+                  id="enable-persist-headers"
+                  className={editorContext.shouldPersistHeaders ? 'active' : ''}
+                  data-value="true"
+                  onClick={handlePersistHeaders}
+                >
+                  On
+                </GraphiQLButton>
+                <GraphiQLButton
+                  type="button"
+                  id="disable-persist-headers"
+                  className={editorContext.shouldPersistHeaders ? '' : 'active'}
+                  onClick={handlePersistHeaders}
+                >
+                  Off
+                </GraphiQLButton>
+              </ButtonGroup>
+            </div>
+          ) : null}
+
+          {storageContext ? (
+            <div className="graphiql-dialog-section">
+              <div>
+                <div className="graphiql-dialog-section-title">Clear storage</div>
+                <div className="graphiql-dialog-section-caption">Remove all locally stored data and start fresh.</div>
+              </div>
+              <GraphiQLButton
+                type="button"
+                state={clearStorageStatus || undefined}
+                disabled={clearStorageStatus === 'success'}
+                onClick={handleClearData}
+              >
+                {{
+                  success: 'Cleared data',
+                  error: 'Failed',
+                }[clearStorageStatus!] || 'Clear data'}
+              </GraphiQLButton>
+            </div>
+          ) : null}
+        </Dialog>
+      </div>
+    </GraphiQLTooltip.Provider>
+  );
+}
+
+const modifier = isMacOs ? '⌘' : 'Ctrl';
+
+const SHORT_KEYS = Object.entries({
+  'Search in editor': [modifier, 'F'],
+  'Search in documentation': [modifier, 'K'],
+  'Execute query': [modifier, 'Enter'],
+  'Prettify editors': ['Ctrl', 'Shift', 'P'],
+  'Merge fragments definitions into operation definition': ['Ctrl', 'Shift', 'M'],
+  'Copy query': ['Ctrl', 'Shift', 'C'],
+  'Re-fetch schema using introspection': ['Ctrl', 'Shift', 'R'],
+});
+
+function ShortKeys({ keyMap }: { keyMap: string }): ReactElement {
+  return (
+    <div>
+      <table className="graphiql-table">
+        <thead>
+          <tr>
+            <th>Short Key</th>
+            <th>Function</th>
+          </tr>
+        </thead>
+        <tbody>
+          {SHORT_KEYS.map(([title, keys]) => (
+            <tr key={title}>
+              <td>
+                {keys.map((key, index, array) => (
+                  <Fragment key={key}>
+                    <code className="graphiql-key">{key}</code>
+                    {index !== array.length - 1 && ' + '}
+                  </Fragment>
+                ))}
+              </td>
+              <td>{title}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        The editors use{' '}
+        <a href="https://codemirror.net/5/doc/manual.html#keymaps" target="_blank" rel="noopener noreferrer">
+          CodeMirror Key Maps
+        </a>{' '}
+        that add more short keys. This instance of Graph<em>i</em>QL uses <code>{keyMap}</code>.
+      </p>
+    </div>
+  );
+}
+
+// Configure the UI by providing this Component as a child of GraphiQL.
+function GraphiQLToolbar<TProps>(props: PropsWithChildren<TProps>): ReactElement {
+  return <>{props.children}</>;
+}
+
+GraphiQLToolbar.displayName = 'GraphiQLToolbar';
+
+// Configure the UI by providing this Component as a child of GraphiQL.
+function GraphiQLFooter<TProps>(props: PropsWithChildren<TProps>): ReactElement {
+  return <div className="graphiql-footer">{props.children}</div>;
+}
+
+GraphiQLFooter.displayName = 'GraphiQLFooter';
+
+// Determines if the React child is of the same type of the provided React component
+function isChildComponentType<T extends ComponentType>(
+  child: ReactNode,
+  component: T
+): child is ReactElement<unknown, T> {
+  const element = typeof child === 'object' && child !== null ? (child as ReactElement) : null;
+
+  if (!element) {
+    return false;
+  }
+
+  const childType = element.type as unknown;
+
+  if (
+    typeof childType === 'object' &&
+    childType !== null &&
+    'displayName' in childType &&
+    typeof (childType as { displayName?: unknown }).displayName === 'string' &&
+    (childType as { displayName: string }).displayName === component.displayName
+  ) {
+    return true;
+  }
+
+  return element.type === component;
+}

@@ -11,10 +11,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@flexkit/ai": "workspace:*",
-    "@flexkit/asset-manager": "workspace:*",
-    "@flexkit/desk": "workspace:*",
-    "@flexkit/explorer": "workspace:*",
+    "@flexkit/schema": "workspace:*",
     "@flexkit/studio": "workspace:*",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.7.0",

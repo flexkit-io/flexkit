@@ -1,6 +1,6 @@
 # @flexkit/agent-protocol
 
-Schemas and types shared between the Flexkit agent platform and the Studio UI (`@flexkit/ai`):
+Schemas and types shared between the Flexkit agent platform and the Studio UI (`@flexkit/studio`):
 
 - `dataPartSchema`: the custom `data-*` parts the platform streams while a chat turn or automation run executes, as zod schemas. The server validates what it writes against them; the UI derives its part types from them.
 - Run, approval and chat DTO types returned by the automations and agent chat APIs.

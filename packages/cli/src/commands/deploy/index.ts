@@ -257,12 +257,18 @@ function formatProjectLabel(projectIds: string[]): { projectsLabel: string; proj
   return { projectsLabel, projectWord };
 }
 
+type DeployPayload = {
+  title?: string;
+  menuGroups?: unknown;
+  schema: unknown;
+  scopes: unknown;
+  spaces: unknown;
+};
+
 async function startDeployJob(
   client: Client,
   projectId: string,
-  schema: unknown,
-  scopes: unknown,
-  spaces: unknown,
+  payload: DeployPayload,
   forceDeploy: boolean,
   allowBreakingChanges: boolean
 ): Promise<DeployProjectResult> {
@@ -273,9 +279,11 @@ async function startDeployJob(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        schema,
-        scopes,
-        spaces,
+        ...(payload.title !== undefined ? { title: payload.title } : {}),
+        ...(payload.menuGroups !== undefined ? { menuGroups: payload.menuGroups } : {}),
+        schema: payload.schema,
+        scopes: payload.scopes,
+        spaces: payload.spaces,
         ...(allowBreakingChanges ? { allowBreakingChanges: true } : {}),
         ...(forceDeploy ? { forceDeploy: true } : {}),
       }),
@@ -569,8 +577,7 @@ export default async function main(client: Client): Promise<number> {
   if (client.flexkitConfig === undefined) {
     output.error(
       `No Flexkit configuration file found in the current directory. ` +
-        `Please ensure you are executing the command from the correct folder, or ` +
-        `run ${getCommandName('init')} to create a new Flexkit project in this directory.`
+        `Run the command from the folder containing your flexkit.config.ts, or pass --local-config <file>.`
     );
 
     return 1;
@@ -596,17 +603,17 @@ export default async function main(client: Client): Promise<number> {
         break;
       }
 
-      const schema = project.schema ?? [];
-      const scopes = project.scopes ?? [];
-      const spaces = project.spaces ?? [];
-
       try {
         const job = await startDeployJob(
           client,
           project.projectId,
-          schema,
-          scopes,
-          spaces,
+          {
+            title: project.title,
+            menuGroups: project.menuGroups,
+            schema: project.schema,
+            scopes: project.scopes ?? [],
+            spaces: project.spaces ?? [],
+          },
           argv.flags['--force'] ?? false,
           argv.flags['--allow-breaking-changes'] ?? false
         );

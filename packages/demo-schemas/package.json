@@ -2,12 +2,10 @@
   "name": "demo-schemas",
   "version": "0.0.1",
   "private": true,
+  "dependencies": {
+    "@flexkit/schema": "workspace:*"
+  },
   "devDependencies": {
-    "@flexkit/studio": "workspace:*",
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
-    "lucide-react": "0.577.0",
-    "react": "19.2.5",
     "tsconfig": "workspace:*",
     "typescript": "^5.3.3"
   }

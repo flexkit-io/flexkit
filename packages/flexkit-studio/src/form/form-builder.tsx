@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { equals, find, propEq } from 'ramda';
 import { AlertTriangle } from 'lucide-react';
+import { Icon } from '../ui/components/icon';
 import { Alert, AlertDescription, AlertTitle } from '../ui/primitives/alert';
 import { Form } from '../ui/primitives/form';
 import { ScrollArea, ScrollBar } from '../ui/primitives/scroll-area';
@@ -14,7 +15,6 @@ import type { Attribute, Entity, Schema } from '../core/types';
 import type { FormEntityItem, FormFieldValue } from '../graphql-client/types';
 import { useAuth } from '../auth/auth-context';
 import { filterAttributesForSpaces } from '../core/spaces';
-import { useConfig } from '../core/config/config-context';
 import { Text as TextField } from './fields/text';
 import { Switch as SwitchField } from './fields/switch';
 import { Uploader as UploaderField } from './fields/uploader';
@@ -24,7 +24,6 @@ import EditorField from './fields/editor';
 import { Textarea as TextareaField } from './fields/textarea';
 import RelationshipField from './fields/relationship';
 import { Select as SelectField } from './fields/select';
-import UndefinedFieldTypeError from './fields/undefined-field-type-error';
 import type { FormFieldParams } from './types';
 import {
   attributeBelongsToGroup,
@@ -32,7 +31,9 @@ import {
   isAttributeVisibleInGroups,
   resolveVisibleFieldGroups,
 } from './field-groups';
-import { resolveConditionalFlag, unwrapFormRecord } from './resolve-conditional-flag';
+import { jsonSchemaToZod, toFieldValidator } from './json-schema-to-zod';
+
+const warnedInputTypes = new Set<string>();
 
 export type SubmitHandle = {
   submit: () => void;
@@ -94,31 +95,15 @@ function FormBuilder(
       {}
     );
   }, [defaultScope, formData, formSchema]);
-  const resolver: Resolver<FormEntityItem> = async (values, context, options) => {
-    const record = unwrapFormRecord(values);
-    const visibleGroupsForValidation = resolveVisibleFieldGroups(entitySchema?.groups, {
-      record,
-      value: record,
-      currentUser: auth.user,
-    });
+  // Validators are compiled once per schema, not on every blur: the deployed
+  // JSON Schema of each attribute is converted back to Zod and wrapped so the
+  // form shows a single label-based message per field.
+  const validators = useMemo(() => {
+    const visibleGroupsForValidation = resolveVisibleFieldGroups(entitySchema?.groups);
     const shape: { [fieldName: string]: z.ZodType } = {};
 
     for (const fieldSchema of formSchema) {
-      if (typeof fieldSchema.validation === 'undefined') {
-        continue;
-      }
-
-      const fieldContext = {
-        record,
-        value: record[fieldSchema.name],
-        currentUser: auth.user,
-      };
-
-      if (resolveConditionalFlag(fieldSchema.hidden, fieldContext)) {
-        continue;
-      }
-
-      if (resolveConditionalFlag(fieldSchema.readOnly, fieldContext)) {
+      if (fieldSchema.validation === undefined || fieldSchema.hidden === true || fieldSchema.readOnly === true) {
         continue;
       }
 
@@ -126,19 +111,16 @@ function FormBuilder(
         continue;
       }
 
+      const label = fieldSchema.label || fieldSchema.name;
+
       shape[fieldSchema.name] = z.object({
-        value: fieldSchema.validation(z).or(
-          z.any().refine(() => false, {
-            error: fieldSchema.label ? `${fieldSchema.label} is required` : 'Required field',
-          })
-        ),
+        value: toFieldValidator(jsonSchemaToZod(fieldSchema.validation, label), label),
       });
     }
 
-    const validate = zodResolver(z.object(shape)) as Resolver<FormEntityItem>;
-
-    return validate(values, context, options);
-  };
+    return zodResolver(z.object(shape)) as Resolver<FormEntityItem>;
+  }, [entitySchema?.groups, formSchema]);
+  const resolver: Resolver<FormEntityItem> = (values, context, options) => validators(values, context, options);
 
   const form = useForm<FormEntityItem>({
     defaultValues: initialFormValues,
@@ -149,19 +131,10 @@ function FormBuilder(
   });
 
   const { control, getValues, handleSubmit, setValue, watch, trigger } = form;
-  const formValues = watch();
-  const record = unwrapFormRecord(formValues);
-  const visibleGroups = useMemo(
-    () =>
-      resolveVisibleFieldGroups(entitySchema?.groups, {
-        record,
-        value: record,
-        currentUser: auth.user,
-      }),
-    [auth.user, entitySchema?.groups, record]
-  );
+  // Subscribe to value changes so dirty tracking below re-renders with the form.
+  watch();
+  const visibleGroups = useMemo(() => resolveVisibleFieldGroups(entitySchema?.groups), [entitySchema?.groups]);
   const [activeGroup, setActiveGroup] = useState(() => getDefaultFieldGroupName(visibleGroups));
-  const { getContributionPointConfig } = useConfig();
   // Baseline for dirty checks. Updated on successful save so relationship-field
   // noise / stale formData props cannot keep reporting dirty after Save.
   const baselineRef = useRef<FormEntityItem | undefined>(formData);
@@ -293,43 +266,41 @@ function FormBuilder(
       return null;
     }
 
-    const fieldContext = {
-      record,
-      value: record[field.name],
-      currentUser: auth.user,
-    };
-
-    if (resolveConditionalFlag(field.hidden, fieldContext)) {
+    if (field.hidden === true) {
       return null;
     }
 
-    const readOnly = resolveConditionalFlag(field.readOnly, fieldContext);
-    const fieldComponent =
-      (getContributionPointConfig('formFields', [field.inputType])?.[0]?.component as unknown as
-        | ComponentType<FormFieldParams<typeof field.inputType>>
-        | undefined) ?? formFieldComponentsMap[field.inputType as keyof typeof formFieldComponentsMap];
+    const readOnly = field.readOnly === true;
+    const knownComponent = formFieldComponentsMap[field.inputType as keyof typeof formFieldComponentsMap] as
+      | ComponentType<FormFieldParams<typeof field.inputType>>
+      | undefined;
 
-    return fieldComponent ? (
-      createElement(
-        fieldComponent as ComponentType<FormFieldParams<typeof field.inputType>>,
-        {
-          key: field.name,
-          control,
-          defaultScope,
-          defaultValue: initialFormValues[field.name],
-          entityId,
-          entityName,
-          entityNamePlural,
-          fieldSchema: field,
-          getValues,
-          readOnly,
-          schema,
-          scope: currentScope,
-          setValue,
-        } as FormFieldParams<typeof field.inputType>
-      )
-    ) : (
-      <UndefinedFieldTypeError inputType={field.inputType} key={field.name} label={field.label} />
+    if (!knownComponent && !warnedInputTypes.has(field.inputType)) {
+      // Custom input types from the extension era render as text now.
+      warnedInputTypes.add(field.inputType);
+      console.warn(`[flexkit] Unknown inputType "${field.inputType}" on "${field.name}"; rendering a text field.`);
+    }
+
+    const fieldComponent =
+      knownComponent ?? (TextField as unknown as ComponentType<FormFieldParams<typeof field.inputType>>);
+
+    return createElement(
+      fieldComponent as ComponentType<FormFieldParams<typeof field.inputType>>,
+      {
+        key: field.name,
+        control,
+        defaultScope,
+        defaultValue: initialFormValues[field.name],
+        entityId,
+        entityName,
+        entityNamePlural,
+        fieldSchema: field,
+        getValues,
+        readOnly,
+        schema,
+        scope: currentScope,
+        setValue,
+      } as FormFieldParams<typeof field.inputType>
     );
   };
 
@@ -347,12 +318,8 @@ function FormBuilder(
               <ScrollArea className="fk:w-full fk:**:data-[slot=scroll-area-viewport]:h-auto fk:[&_[data-slot=scroll-area-scrollbar][data-orientation=vertical]]:hidden fk:**:data-[slot=scroll-area-viewport]:p-1 fk:**:data-[slot=scroll-area-viewport]:-ml-1 fk:**:data-[slot=scroll-area-viewport]:-mt-1">
                 <TabsList className="fk:h-9 fk:w-max fk:flex-nowrap fk:justify-start">
                   {visibleGroups.map((group) => (
-                    <TabsTrigger
-
-                      key={group.name}
-                      value={group.name}
-                    >
-                      {group.icon}
+                    <TabsTrigger key={group.name} value={group.name}>
+                      {group.icon ? <Icon name={group.icon} /> : null}
                       {group.title}
                     </TabsTrigger>
                   ))}

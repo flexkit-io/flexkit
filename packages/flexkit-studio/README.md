@@ -26,6 +26,67 @@ Build production-ready internal tools, PIMs, CRMs, and complex admin interfaces 
 
 Visit [https://flexkit.io/docs](https://flexkit.io/docs) to view the full documentation.
 
+### Define your schema
+
+`flexkit.config.ts` is pure data: no React, no JSX. Icons are [Lucide](https://lucide.dev) icon names in PascalCase and validation is a function that receives Zod.
+
+```ts
+// flexkit.config.ts
+import { defineConfig, defineEntity } from '@flexkit/schema';
+
+const products = defineEntity({
+  name: 'product',
+  plural: 'products',
+  display: 'name',
+  menu: { label: 'Products', group: 'catalog', icon: 'Tag' },
+  attributes: [
+    {
+      name: 'name',
+      label: 'Name',
+      scope: 'local',
+      dataType: 'string',
+      inputType: 'text',
+      searchable: true,
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'stock',
+      label: 'Stock',
+      scope: 'global',
+      dataType: 'int',
+      inputType: 'number',
+      validation: (z) => z.number().int().min(0),
+      defaultValue: 0,
+    },
+  ],
+});
+
+export default defineConfig({
+  projectId: 'your-project-id',
+  title: 'Atlas Commerce',
+  menuGroups: [{ name: 'catalog', title: 'Catalog' }],
+  scopes: [{ name: 'default', label: 'Default', isDefault: true }],
+  spaces: [{ code: 'mkt', label: 'Marketing' }],
+  schema: [products],
+});
+```
+
+### Mount the Studio
+
+The Studio renders the deployed schema; run `flexkit deploy` after editing `flexkit.config.ts`. The host app never imports the config, it only passes the project ids:
+
+```tsx
+import { FlexkitStudio } from '@flexkit/studio';
+import '@flexkit/studio/styles.css';
+
+export default function Studio() {
+  return <FlexkitStudio projectIds={['your-project-id']} basename="/studio" />;
+}
+```
+
+`basename` is the path the Studio is mounted under; omit it when the Studio lives at `/`.
+
 ## Contributing
 
 Contributions to Flexkit are welcome and highly appreciated. However, before you jump right into it, we would like you to review our [Contribution Guidelines](/CONTRIBUTING.md) to make sure you have a smooth experience contributing to Flexkit.

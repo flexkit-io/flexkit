@@ -1,29 +1,7 @@
-import type { ComponentType, JSX, ReactNode } from 'react';
-import type { AttributeOptions, Scopes, Spaces } from '../types';
-import type { FormFieldParams } from '../../form/types';
-import type { Entity } from '../types';
-export interface LogoProps {
-  theme: string | undefined;
-  title: string;
-}
+import type { JSX, ReactNode } from 'react';
+import type { ProjectSchemaResponse } from '@flexkit/schema';
 
-interface ProjectSelectorProps {
-  projectId: string;
-  projects: ProjectOptions[];
-}
-
-interface SearchProps {
-  onSelect: (item: { entityName: string; entityNamePlural: string; entityId: string }) => void;
-  projectId: string;
-  schema: Entity[];
-}
-
-export interface FormFieldProps extends FormFieldParams<keyof AttributeOptions> {}
-
-type UserNavProps = {
-  projectId: string;
-};
-
+/** A built-in Studio app (Desk, Asset Manager, Explorer, AI). */
 export interface AppOptions {
   name: string;
   title: string;
@@ -38,69 +16,23 @@ export interface AppRoute {
   children?: AppRoute[];
 }
 
-type PreviewComponent<T = unknown> = React.ComponentType<{ value: T }>;
-
-export interface StudioExtension {
-  /** Stable machine-readable identity, independent of the optional display label. */
-  id: string;
-  name?: string;
-  contributes: StudioContributions;
-  extensions?: StudioExtension[];
-}
-
-export interface StudioContributions {
-  apps?: AppOptions[];
-  formFields?: {
-    [key: string]: {
-      component: (Props: FormFieldProps) => JSX.Element;
-      description?: string;
-    };
-  };
-  previewFields?: {
-    [key: string]: {
-      component: ({ value }: { value: string | boolean | number | null | Date | Image }) => JSX.Element | null;
-      description?: string;
-    };
-  };
-  commands?: CommandOptions[];
-  navbar?: {
-    logo?: {
-      component: (Props: LogoProps) => JSX.Element;
-    };
-    projectSelector?: {
-      component: (Props: ProjectSelectorProps) => JSX.Element;
-    };
-    search?: {
-      component: (Props: SearchProps) => JSX.Element;
-    };
-  };
-}
-
-export interface ProjectOptions {
-  title?: string;
-  projectId: string;
-  basePath: string;
-  icon?: ComponentType;
-  menuGroups?: {
-    title: string;
-    name: string;
-  }[];
-  extensions?: StudioExtension[];
-  scopes?: Scopes;
-  /**
-   * Permission spaces for this project. Spaces scope access to entities,
-   * attributes and app resources (automations, skills, agents). Membership is
-   * assigned to project members in the Flexkit Dashboard after deploy.
-   */
-  spaces?: Spaces;
-  schema: Entity[];
-}
-
 /**
- * If a single project is used, not specifying a basePath is acceptable
+ * A project as the Studio renders it: the deployed schema fetched from
+ * `GET /<projectId>/api/schema`, plus the reserved asset and tag entities the
+ * Studio appends itself.
  */
-export type SingleProject = Omit<ProjectOptions, 'basePath'> & {
-  basePath?: string;
+export type ProjectUiConfig = ProjectSchemaResponse;
+
+/** Why a project's schema could not be loaded. */
+export type ProjectSchemaError = {
+  /** HTTP status, or 0 when the request itself failed. */
+  status: number;
+  message: string;
 };
 
-export type Config = SingleProject | ProjectOptions[];
+export interface FlexkitStudioProps {
+  /** Ids of the projects this Studio can open. The first one is the default. */
+  projectIds: string[];
+  /** Path the host mounts the Studio under, e.g. `/studio`. Defaults to `/`. */
+  basename?: string;
+}
