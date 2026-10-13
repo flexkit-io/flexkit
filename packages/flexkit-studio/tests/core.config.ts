@@ -5,5 +5,5 @@ export default defineConfig({
   format: ['esm'],
   outDir: 'build/tests',
   removeNodeProtocol: false,
-  external: ['react', 'react-dom', 'react-router-dom', 'fuse.js', 'swr', 'zod', '@flexkit/schema'],
+  external: ['react', 'react-dom', 'react-router-dom', 'swr', 'zod', '@flexkit/schema'],
 });
