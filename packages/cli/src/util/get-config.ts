@@ -15,7 +15,7 @@ const candidates = ['flexkit.config.ts', 'flexkit.config.js', 'flexkit.config.mj
 /** Config files from the JSX era. They are refused with migration guidance instead of bundled. */
 const legacyCandidates = ['flexkit.config.tsx', 'flexkit.config.jsx'];
 const legacyConfigMessage =
-  'flexkit.config.tsx is no longer supported. Rename it to flexkit.config.ts, replace icon components with lucide icon names (e.g. icon: "Tag"), use booleans for hidden/readOnly, and remove extensions, basePath and commands. See https://flexkit.io/docs/config.';
+  'flexkit.config.tsx is no longer supported. Rename it to flexkit.config.ts, replace icon components with lucide icon names (e.g. icon: "Tag"), use booleans for hidden/readOnly, and remove extensions, basePath and commands. See https://flexkit.io/docs/schema/schema-configuration.';
 let config: FlexkitConfig | undefined;
 
 /**

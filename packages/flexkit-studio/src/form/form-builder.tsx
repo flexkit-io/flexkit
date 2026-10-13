@@ -24,7 +24,6 @@ import EditorField from './fields/editor';
 import { Textarea as TextareaField } from './fields/textarea';
 import RelationshipField from './fields/relationship';
 import { Select as SelectField } from './fields/select';
-import UndefinedFieldTypeError from './fields/undefined-field-type-error';
 import type { FormFieldParams } from './types';
 import {
   attributeBelongsToGroup,
@@ -33,6 +32,8 @@ import {
   resolveVisibleFieldGroups,
 } from './field-groups';
 import { jsonSchemaToZod, toFieldValidator } from './json-schema-to-zod';
+
+const warnedInputTypes = new Set<string>();
 
 export type SubmitHandle = {
   submit: () => void;
@@ -270,31 +271,36 @@ function FormBuilder(
     }
 
     const readOnly = field.readOnly === true;
-    const fieldComponent = formFieldComponentsMap[field.inputType as keyof typeof formFieldComponentsMap] as
+    const knownComponent = formFieldComponentsMap[field.inputType as keyof typeof formFieldComponentsMap] as
       | ComponentType<FormFieldParams<typeof field.inputType>>
       | undefined;
 
-    return fieldComponent ? (
-      createElement(
-        fieldComponent as ComponentType<FormFieldParams<typeof field.inputType>>,
-        {
-          key: field.name,
-          control,
-          defaultScope,
-          defaultValue: initialFormValues[field.name],
-          entityId,
-          entityName,
-          entityNamePlural,
-          fieldSchema: field,
-          getValues,
-          readOnly,
-          schema,
-          scope: currentScope,
-          setValue,
-        } as FormFieldParams<typeof field.inputType>
-      )
-    ) : (
-      <UndefinedFieldTypeError inputType={field.inputType} key={field.name} label={field.label} />
+    if (!knownComponent && !warnedInputTypes.has(field.inputType)) {
+      // Custom input types from the extension era render as text now.
+      warnedInputTypes.add(field.inputType);
+      console.warn(`[flexkit] Unknown inputType "${field.inputType}" on "${field.name}"; rendering a text field.`);
+    }
+
+    const fieldComponent =
+      knownComponent ?? (TextField as unknown as ComponentType<FormFieldParams<typeof field.inputType>>);
+
+    return createElement(
+      fieldComponent as ComponentType<FormFieldParams<typeof field.inputType>>,
+      {
+        key: field.name,
+        control,
+        defaultScope,
+        defaultValue: initialFormValues[field.name],
+        entityId,
+        entityName,
+        entityNamePlural,
+        fieldSchema: field,
+        getValues,
+        readOnly,
+        schema,
+        scope: currentScope,
+        setValue,
+      } as FormFieldParams<typeof field.inputType>
     );
   };
 
@@ -312,11 +318,7 @@ function FormBuilder(
               <ScrollArea className="fk:w-full fk:**:data-[slot=scroll-area-viewport]:h-auto fk:[&_[data-slot=scroll-area-scrollbar][data-orientation=vertical]]:hidden fk:**:data-[slot=scroll-area-viewport]:p-1 fk:**:data-[slot=scroll-area-viewport]:-ml-1 fk:**:data-[slot=scroll-area-viewport]:-mt-1">
                 <TabsList className="fk:h-9 fk:w-max fk:flex-nowrap fk:justify-start">
                   {visibleGroups.map((group) => (
-                    <TabsTrigger
-
-                      key={group.name}
-                      value={group.name}
-                    >
+                    <TabsTrigger key={group.name} value={group.name}>
                       {group.icon ? <Icon name={group.icon} /> : null}
                       {group.title}
                     </TabsTrigger>
