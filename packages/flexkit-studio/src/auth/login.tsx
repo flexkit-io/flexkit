@@ -98,7 +98,12 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
               </div>
             ) : null}
             {isEmailLogin ? (
-              <EmailLogin key={selectedProjectId} projectId={selectedProjectId} setIsEmailLogin={setIsEmailLogin} />
+              <EmailLogin
+                key={selectedProjectId}
+                projectId={selectedProjectId}
+                redirectTo={fromPath}
+                setIsEmailLogin={setIsEmailLogin}
+              />
             ) : (
               <>
                 <p className="fk:mt-2 fk:mb-2 fk:text-sm fk:text-left fk:text-muted-foreground">

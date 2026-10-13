@@ -1,6 +1,6 @@
 'use client';
 
-import { JSX, useEffect, useState } from 'react';
+import { JSX, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useForm } from 'react-hook-form';
@@ -19,11 +19,26 @@ const formSchema = z.object({
 
 export default function EmailLogin({
   projectId,
+  redirectTo,
   setIsEmailLogin,
 }: {
   projectId: string;
+  /** Absolute URL to open once the session cookie is set; defaults to reloading the current page. */
+  redirectTo?: string;
   setIsEmailLogin: Dispatch<SetStateAction<boolean>>;
 }): JSX.Element {
+  const redirectToRef = useRef(redirectTo);
+  redirectToRef.current = redirectTo;
+
+  // The picked project may differ from the one in the URL, so land on it explicitly.
+  function finishLogin(): void {
+    if (redirectToRef.current) {
+      window.location.assign(redirectToRef.current);
+    } else {
+      window.location.reload();
+    }
+  }
+
   const [hasOtpExpired, setHasOtpExpired] = useState(false);
   const [shouldSendOtp, setShouldSendOtp] = useState(false);
   const { mutate } = useSWRConfig();
@@ -86,7 +101,7 @@ export default function EmailLogin({
                   body: JSON.stringify({ sid: confirmationResponse.sid }),
                 })
                   .then(() => {
-                    window.location.reload();
+                    finishLogin();
                   })
                   .catch(() => {
                     // TODO: inform the user about the error, maybe the /set-token route is not available or properly configured
@@ -124,7 +139,7 @@ export default function EmailLogin({
             <Button
               className="fk:p-0 fk:hover:underline fk:text-link"
               onClick={() => {
-                window.location.reload();
+                finishLogin();
               }}
               variant="link"
             >
@@ -159,7 +174,7 @@ export default function EmailLogin({
                   <Button
                     className="fk:p-0 fk:hover:underline"
                     onClick={() => {
-                      window.location.reload();
+                      finishLogin();
                     }}
                     variant="link"
                   >
@@ -176,7 +191,7 @@ export default function EmailLogin({
                   <Button
                     className="fk:p-0 fk:hover:underline"
                     onClick={() => {
-                      window.location.reload();
+                      finishLogin();
                     }}
                     variant="link"
                   >
