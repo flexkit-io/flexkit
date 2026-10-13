@@ -15,7 +15,7 @@ export const deployCommand: Command = {
     {
       name: 'force',
       shorthand: null,
-      type: String,
+      type: Boolean,
       description: 'Force deployment when the schema has not changed',
       deprecated: false,
     },

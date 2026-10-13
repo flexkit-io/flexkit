@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { find, propEq } from 'ramda';
@@ -9,7 +9,6 @@ import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
 import { Loader2 } from 'lucide-react';
 import { useAppContext } from '../core/app-context';
-import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
 import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import { useConfig } from '../core/config/config-context';
@@ -38,8 +37,9 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
   const ref = useRef<SubmitHandle>(null);
   const canMutate = useCanMutate();
   const [, auth] = useAuth();
-  const { projects, currentProjectId } = useConfig();
-  const { schema, scopes } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { currentProject } = useConfig();
+  const schema = useMemo(() => currentProject?.schema ?? [], [currentProject]);
+  const scopes = currentProject?.scopes;
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const entityNamePlural = entitySchema?.plural ?? entityName;

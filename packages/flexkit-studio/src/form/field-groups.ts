@@ -1,6 +1,5 @@
 import { ALL_FIELDS_GROUP, ALL_FIELDS_GROUP_NAME } from '../core/field-groups';
-import type { Attribute, ConditionalFieldContext, FieldGroup } from '../core/types';
-import { resolveConditionalFlag } from './resolve-conditional-flag';
+import type { Attribute, FieldGroup } from '../core/types';
 
 export function getAttributeGroupNames(attribute: Attribute): string[] {
   if (typeof attribute.group === 'string') {
@@ -30,10 +29,7 @@ export function isAttributeVisibleInGroups(attribute: Attribute, groups: FieldGr
   return groups.some((group) => attributeBelongsToGroup(attribute, group.name));
 }
 
-export function resolveVisibleFieldGroups(
-  groups: FieldGroup[] | undefined,
-  context: ConditionalFieldContext
-): FieldGroup[] {
+export function resolveVisibleFieldGroups(groups: FieldGroup[] | undefined): FieldGroup[] {
   if (!groups || groups.length === 0) {
     return [];
   }
@@ -46,7 +42,7 @@ export function resolveVisibleFieldGroups(
   };
   const resolvedGroups = [allFieldsGroup, ...namedGroups];
 
-  return resolvedGroups.filter((group) => !resolveConditionalFlag(group.hidden, context));
+  return resolvedGroups.filter((group) => group.hidden !== true);
 }
 
 export function getDefaultFieldGroupName(groups: FieldGroup[]): string {

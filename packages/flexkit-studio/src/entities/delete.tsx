@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import type { JSX } from 'react';
-import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
@@ -12,7 +11,6 @@ import { getEntityListQueryName, scheduleEntityListRemoval } from '../graphql-cl
 import AlertDialog from '../ui/components/alert-dialog';
 import { useConfig } from '../core/config/config-context';
 import { useDispatch } from './actions-context';
-import type { SingleProject } from '../core/config/types';
 import type { ActionDeleteEntity } from './types';
 
 type Props = {
@@ -20,8 +18,8 @@ type Props = {
 };
 
 export default function Delete({ action }: Props): JSX.Element {
-  const { projects, currentProjectId } = useConfig();
-  const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { currentProject } = useConfig();
+  const schema = currentProject?.schema ?? [];
   const apolloClient = useApolloClient();
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const dispatch = useDispatch();

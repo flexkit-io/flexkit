@@ -1,0 +1,45 @@
+import { defineEntity } from '@flexkit/schema';
+
+export const promoTags = defineEntity({
+  name: 'promoTag',
+  plural: 'promoTags',
+  display: 'name',
+  menu: {
+    label: 'Promo Tags',
+    group: 'catalog',
+    icon: 'Tags',
+  },
+  attributes: [
+    {
+      name: 'name',
+      label: 'Name',
+      scope: 'local',
+      options: {
+        size: 500,
+        comment: 'A promotional tag of a product (i.e. black-friday)',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      searchable: true,
+      validation: (z) => z.string().min(1, { error: 'Name is required' }),
+      defaultValue: '',
+    },
+    {
+      name: 'products',
+      label: 'Products',
+      scope: 'relationship',
+      options: {
+        size: 260,
+        comment: 'Products related to this promo tag',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'name',
+        entity: 'product',
+      },
+    },
+  ],
+});

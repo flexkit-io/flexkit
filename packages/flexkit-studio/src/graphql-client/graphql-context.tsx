@@ -87,7 +87,7 @@ function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): A
         message = serverError.bodyText;
       }
 
-      setSchemaErrorMessage(message ?? 'There is an error in your Flexkit schema (flexkit.config.ts).');
+      setSchemaErrorMessage(message ?? 'There is an error in the deployed Flexkit schema. Fix flexkit.config.ts and run flexkit deploy.');
     }
 
     if (serverError) {

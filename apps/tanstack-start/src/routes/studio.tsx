@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
+import type { JSX } from 'react';
 import { FlexkitStudio } from '@flexkit/studio';
-import config from '../../flexkit.config';
 
 export const Route = createFileRoute('/studio')({
   ssr: false,
@@ -8,5 +8,5 @@ export const Route = createFileRoute('/studio')({
 });
 
 function StudioPage(): JSX.Element {
-  return <FlexkitStudio config={config} />;
+  return <FlexkitStudio projectIds={['abcdefghij', 'uwerfsxskp']} basename="/studio" />;
 }

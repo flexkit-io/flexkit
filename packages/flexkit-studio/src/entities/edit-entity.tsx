@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
 import { useAppContext, useAppDispatch } from '../core/app-context';
-import type { SingleProject } from '../core/config/types';
 import DrawerModal from '../ui/components/drawer-modal';
 import { useDrawerModalContext } from '../ui/drawer-modal-context';
 import { useConfig } from '../core/config/config-context';
@@ -37,11 +36,9 @@ type Props = {
 export default function EditEntity({ action, depth, isFocused }: Props): JSX.Element {
   const { entityId, entityNamePlural } = action.payload;
   const ref = useRef<SubmitHandle>(null);
-  const { projects, currentProjectId } = useConfig();
-  const { schema, scopes } = useCallback(
-    () => find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject,
-    [currentProjectId, projects]
-  )();
+  const { currentProject, currentProjectId } = useConfig();
+  const schema = useMemo(() => currentProject?.schema ?? [], [currentProject]);
+  const scopes = currentProject?.scopes;
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const entityName = entitySchema?.name ?? entityNamePlural;

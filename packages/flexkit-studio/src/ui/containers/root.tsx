@@ -1,25 +1,25 @@
 import type { JSX } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider } from '../../auth/auth-context';
 import { ConfigProvider } from '../../core/config/config-context';
 import { GraphQLProvider } from '../../graphql-client/graphql-context';
 import { ActionsManager } from '../../entities/actions-manager';
-import type { ProjectOptions } from '../../core/config/types';
-import { joinBasePath, normalizeBasePath } from '../../core/base-path';
 import { DrawerModalProvider } from '../drawer-modal-context';
 
-export function Root({ config }: { config: ProjectOptions[] }): JSX.Element {
-  const [defaultApp] = config;
-  const { basePath, projectId } = defaultApp;
-  const normalizedBasePath = normalizeBasePath(basePath);
+const NavigateCompat = Navigate as unknown as React.ComponentType<{ replace?: boolean; to: string }>;
 
-  if (window.location.pathname === normalizedBasePath) {
-    window.location.href = joinBasePath(normalizedBasePath, projectId);
+export function Root({ projectIds }: { projectIds: string[] }): JSX.Element {
+  const location = useLocation();
+  const [defaultProjectId] = projectIds;
+
+  // `/` (relative to the router basename) opens the first project.
+  if (location.pathname === '/' && defaultProjectId) {
+    return <NavigateCompat replace to={`/${defaultProjectId}`} />;
   }
 
   return (
     <AuthProvider>
-      <ConfigProvider config={config}>
+      <ConfigProvider projectIds={projectIds}>
         <GraphQLProvider>
           <DrawerModalProvider>
             <ActionsManager />

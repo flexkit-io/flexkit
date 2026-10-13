@@ -1,6 +1,4 @@
-import type { JSX } from 'react';
-import type { z } from 'zod';
-import type { User } from '../auth/types';
+import type { UiAttribute } from '@flexkit/schema';
 import type {
   AttributeValue,
   EntityItem,
@@ -76,263 +74,39 @@ export type ActionSetRelationship = {
   };
 };
 
-export type ScopeType = 'local' | 'global' | 'relationship';
-
-export type DataType =
-  | 'cartesianpoint'
-  | 'bigint'
-  | 'boolean'
-  | 'date'
-  | 'datetime'
-  | 'duration'
-  | 'float'
-  | 'id'
-  | 'int'
-  | 'point'
-  | 'string'
-  | 'time'
-  | 'asset';
-
-export type DefaultValueByDataType = {
-  asset: '';
-  bigint: string;
-  boolean: boolean | '';
-  cartesianpoint: string;
-  date: string;
-  datetime: string;
-  duration: string;
-  float: number | '';
-  id: string;
-  int: number | '';
-  point: string;
-  string: string;
-  time: string;
-};
-
-export type DefaultValue<T extends DataType = DataType> = DefaultValueByDataType[T];
-
-export type InputType =
-  | 'datetime'
-  | 'editor'
-  | 'asset'
-  | 'number'
-  | 'relationship'
-  | 'select'
-  | 'switch'
-  | 'text'
-  | 'textarea'
-  | (string & NonNullable<unknown>);
-
-export type PreviewType =
-  | 'boolean'
-  | 'text'
-  | 'number'
-  | 'date'
-  | 'datetime'
-  | 'editor'
-  | 'select'
-  | 'relationship'
-  | 'swtich'
-  | 'textarea'
-  | (string & NonNullable<unknown>);
-
-type SelectList = {
-  label: string;
-  value: string;
-};
-
-type GroupedSelectList = {
-  groupLabel: string;
-  items: SelectList[];
-};
-
-type ZodNamespace = typeof z;
-
-export type CommonOptions = {
-  comment?: string;
-  size?: number;
-  placeholder?: string;
-};
-
-export type SelectOptions = CommonOptions & {
-  list: SelectList[] | GroupedSelectList[];
-};
-
-export type AssetOptions = CommonOptions & {
-  accept?: string;
-};
-
-export type RelationshipOptions = CommonOptions & {
-  accept?: string;
-};
-
-export type DateTimeOptions = CommonOptions & {
-  format?: string;
-};
-
-export type NumberOptions = CommonOptions & {
-  min?: number;
-  max?: number;
-};
-
-export type AttributeOptions = {
-  select: SelectOptions;
-  asset: AssetOptions;
-  datetime: DateTimeOptions;
-  number: NumberOptions;
-  relationship: RelationshipOptions;
-  text: CommonOptions;
-  textarea: CommonOptions;
-  switch: CommonOptions;
-  [key: string]: CommonOptions;
-};
-
 /**
- * Context passed to `hidden` and `readOnly` callbacks. `record` is the current
- * form values unwrapped from `FormFieldValue` wrappers (use `record.status`,
- * not `record.status.value`).
+ * Schema types come from `@flexkit/schema`. Inside the Studio, `Entity` and
+ * `Attribute` are the deployed (UI) shapes: validation is JSON Schema, icons
+ * are lucide names, and `hidden` / `readOnly` are booleans.
  */
-export type ConditionalFieldContext = {
-  record: { [attributeName: string]: unknown };
-  value: unknown;
-  currentUser: User | undefined;
-};
+export type {
+  AssetOptions,
+  AttributeOptions,
+  CommonOptions,
+  DataType,
+  DateTimeOptions,
+  DefaultValue,
+  DefaultValueByDataType,
+  EntityMenu,
+  FieldGroup,
+  GroupedSelectList,
+  InputType,
+  JsonSchemaObject,
+  MenuGroup,
+  NumberOptions,
+  PreviewType,
+  RelationshipOptions,
+  Scope,
+  ScopeType,
+  Scopes,
+  SelectList,
+  SelectOptions,
+  Space,
+  Spaces,
+} from '@flexkit/schema';
+export type { UiAttribute as Attribute, UiEntity as Entity, UiSchema as Schema } from '@flexkit/schema';
 
-export type ConditionalFlag = boolean | ((context: ConditionalFieldContext) => boolean);
-
-type AttributeBase = {
-  inputType: InputType;
-  previewType?: PreviewType;
-  /**
-   * Hide the field in the form. A static `true` also hides the list column.
-   * Callbacks are form-only and re-evaluate as `record` / `currentUser` change.
-   * Distinct from `entity.menu.hidden`.
-   */
-  hidden?: ConditionalFlag;
-  /**
-   * Make the field read-only in the form. Callbacks re-evaluate as `record` /
-   * `currentUser` change. Currently-read-only attributes are omitted from
-   * create/update mutations and skipped during form validation.
-   */
-  readOnly?: ConditionalFlag;
-  /**
-   * Marks uniqueness intent. Enforced at deploy for global non-asset attributes.
-   */
-  unique?: boolean;
-  /**
-   * Include this attribute in search indexing and the global search UI.
-   */
-  searchable?: boolean;
-  /**
-   * Field group name(s) this attribute belongs to. Distinct from
-   * `entity.menu.group`, which is the sidebar section.
-   */
-  group?: string | string[];
-  label: string;
-  name: string;
-  options?: AttributeOptions[InputType];
-  relationship?: {
-    entity: string;
-    mode: 'single' | 'multiple';
-    field: string;
-  };
-  validation?: (zod: ZodNamespace) => z.ZodType;
-};
-
-/**
- * Space codes that can read/write this attribute. Members of any listed
- * space have access; users outside all listed spaces cannot see the value.
- *
- * Not allowed on relationship attributes (`scope: 'relationship'`): bind the
- * related entity to the space instead.
- */
-type AttributeSpaces = {
-  spaces?: string[];
-};
-
-type AttributeScopeAndSpaces =
-  | {
-      scope: 'relationship';
-      spaces?: never;
-    }
-  | ({
-      scope: 'local' | 'global';
-    } & AttributeSpaces);
-
-type AttributeByDataType<T extends DataType> = AttributeBase & {
-  dataType: T;
-  defaultValue?: DefaultValueByDataType[T];
-} & (T extends 'asset' ? { scope?: 'global' } & AttributeSpaces : AttributeScopeAndSpaces);
-
-export type Attribute = {
-  [T in DataType]: AttributeByDataType<T>;
-}[DataType];
-
-/**
- * Form-only tab that groups attributes in the edit/add drawer.
- * Distinct from `entity.menu.group` (sidebar section).
- */
-export type FieldGroup = {
-  name: string;
-  /**
-   * Tab label. Required for custom groups. Optional for the reserved
-   * `all` tab; Studio uses `All fields` when it is omitted.
-   */
-  title?: string;
-  icon?: JSX.Element;
-  default?: boolean;
-  hidden?: ConditionalFlag;
-};
-
-export type Entity = {
-  name: string;
-  plural: string;
-  /**
-   * Attribute name used as the human-readable label in relationship previews,
-   * search hits, and edit-drawer titles. Must match an attribute `name`.
-   * Falls back to the first attribute when omitted. The effective display
-   * attribute cannot be space-bound.
-   */
-  display?: string;
-  menu?:
-    | { hidden: true; label?: string }
-    | {
-        label?: string;
-        group?: string;
-        icon?: JSX.Element;
-      };
-  /**
-   * Space codes that can access this entity. Members of any listed space have
-   * access; users outside all listed spaces cannot see the entity at all.
-   */
-  spaces?: string[];
-  /**
-   * Form field groups rendered as tabs. Does not change storage.
-   * Distinct from `menu.group` (sidebar section).
-   */
-  groups?: FieldGroup[];
-  attributes: Attribute[];
-};
-
-export type Schema = Entity[];
-
-type Scope = {
-  name: string;
-  label: string;
-  isDefault?: boolean;
-  sortOrder?: number;
-};
-
-export type Scopes = Scope[];
-
-export type Space = {
-  code: string;
-  label: string;
-};
-
-export type Spaces = Space[];
-
-export type FormFieldSchema = Attribute;
+export type FormFieldSchema = UiAttribute;
 
 export type GridEntityRow = {
   [attributeName: string]: string;

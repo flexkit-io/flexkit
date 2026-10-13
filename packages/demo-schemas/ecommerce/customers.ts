@@ -1,0 +1,142 @@
+import { defineEntity } from '@flexkit/schema';
+
+export const customers = defineEntity({
+  name: 'customer',
+  plural: 'customers',
+  display: 'email',
+  menu: {
+    label: 'Customers',
+    group: 'operations',
+    icon: 'User',
+  },
+  attributes: [
+    {
+      name: 'email',
+      label: 'Email',
+      scope: 'global',
+      options: {
+        size: 260,
+        comment: 'The email of the customer',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      searchable: true,
+      validation: (z) => z.email({ error: 'Invalid email address' }),
+      defaultValue: '',
+    },
+    {
+      name: 'firstName',
+      label: 'First Name',
+      scope: 'global',
+      options: {
+        size: 200,
+        comment: 'The first name of the customer',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      searchable: true,
+      defaultValue: '',
+    },
+    {
+      name: 'lastName',
+      label: 'Last Name',
+      scope: 'global',
+      options: {
+        size: 200,
+        comment: 'The last name of the customer',
+      },
+      dataType: 'string',
+      inputType: 'text',
+      searchable: true,
+      defaultValue: '',
+    },
+    {
+      name: 'channel',
+      label: 'Channel',
+      scope: 'relationship',
+      options: {
+        size: 150,
+        comment: 'Channel the customer registered on',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      searchable: true,
+      defaultValue: '',
+      relationship: {
+        mode: 'single',
+        field: 'name',
+        entity: 'channel',
+      },
+    },
+    {
+      name: 'registrationDate',
+      label: 'Registration Date',
+      scope: 'global',
+      options: {
+        size: 180,
+        comment: 'Date and time the customer registered',
+      },
+      dataType: 'datetime',
+      inputType: 'datetime',
+      defaultValue: '',
+    },
+    {
+      name: 'isActive',
+      label: 'Active',
+      scope: 'global',
+      options: {
+        size: 100,
+        comment: 'Whether the customer account is active',
+      },
+      dataType: 'boolean',
+      inputType: 'switch',
+      defaultValue: '',
+    },
+    {
+      name: 'isTester',
+      label: 'Tester',
+      scope: 'global',
+      options: {
+        size: 100,
+        comment: 'Whether the customer is a tester account',
+      },
+      dataType: 'boolean',
+      inputType: 'switch',
+      defaultValue: '',
+    },
+    {
+      name: 'addresses',
+      label: 'Addresses',
+      scope: 'relationship',
+      options: {
+        size: 260,
+        comment: 'Addresses of the customer',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'name',
+        entity: 'customerAddress',
+      },
+    },
+    {
+      name: 'orders',
+      label: 'Orders',
+      scope: 'relationship',
+      options: {
+        size: 160,
+        comment: 'Orders of the customer',
+      },
+      dataType: 'string',
+      inputType: 'relationship',
+      defaultValue: '',
+      relationship: {
+        mode: 'multiple',
+        field: 'orderNumber',
+        entity: 'salesOrder',
+      },
+    },
+  ],
+});

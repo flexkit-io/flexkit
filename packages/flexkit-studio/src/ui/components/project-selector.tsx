@@ -1,39 +1,39 @@
 import type { JSX } from 'react';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { joinBasePath } from '../../core/base-path';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../primitives/select';
-import type { ProjectOptions } from '../../core/config/types';
+import type { ProjectUiConfig } from '../../core/config/types';
 
 type Props = {
   projectId: string;
-  projects: ProjectOptions[];
+  /** Every project the host passed, loaded or not. */
+  projectIds: string[];
+  /** Projects whose schema has loaded; used for titles. */
+  projects: ProjectUiConfig[];
 };
 
-export function ProjectSelector({ projectId, projects }: Props): JSX.Element {
-  const [selectedProject, setSelectedProject] = useState(
-    projects.find((project) => project.projectId === projectId) ?? projects[0]
-  );
+/** Title of a project, or its id until the schema has loaded. */
+export function getProjectLabel(projectId: string, projects: ProjectUiConfig[]): string {
+  return projects.find((project) => project.projectId === projectId)?.title ?? projectId;
+}
+
+export function ProjectSelector({ projectId, projectIds, projects }: Props): JSX.Element {
   const navigate = useNavigate();
+  const label = getProjectLabel(projectId, projects);
 
   return (
     <Select
-      defaultValue={selectedProject.projectId}
       onValueChange={(id) => {
-        const currentProject = projects.find((project) => project.projectId === id) ?? projects[0];
-        const { basePath } = currentProject;
-
-        setSelectedProject(currentProject);
-        navigate(joinBasePath(basePath, currentProject.projectId));
+        navigate(`/${id}`);
       }}
+      value={projectId}
     >
       <SelectTrigger className="fk:w-48! fk:h-9 fk:py-1" id="project">
-        <SelectValue aria-label={selectedProject.title}>{selectedProject.title}</SelectValue>
+        <SelectValue aria-label={label}>{label}</SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {projects.map((project) => (
-          <SelectItem key={project.projectId} value={project.projectId}>
-            {project.title}
+        {projectIds.map((id) => (
+          <SelectItem key={id} value={id}>
+            {getProjectLabel(id, projects)}
           </SelectItem>
         ))}
       </SelectContent>

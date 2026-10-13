@@ -1,0 +1,13 @@
+import { JSX } from 'react';
+import { useParams } from 'react-router-dom';
+
+export function EditEntity(): JSX.Element {
+  const { entity, id } = useParams();
+
+  // Not used, left here as an example of how to nest routes in extensions (see ./index.tsx file)
+  return (
+    <div className="flex flex-col">
+      Edit {entity} with id: {id}
+    </div>
+  );
+}

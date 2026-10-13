@@ -75,7 +75,7 @@ const globalCommandOptions: CommandOption[] = [
     shorthand: 'A',
     type: String,
     argument: 'FILE',
-    description: 'Path to the local `flexkit.config.ts` file of your project',
+    description: 'Path to the local `flexkit.config.[js|ts]` file of your project',
     deprecated: false,
   },
   {

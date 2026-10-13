@@ -1,40 +1,42 @@
 import { useNavigate } from 'react-router-dom';
-import { Suspense, startTransition } from 'react';
+import { Suspense, lazy, startTransition } from 'react';
 import type { JSX } from 'react';
 import { useTheme } from '../theme-context';
-import type { ProjectOptions } from '../../core/config/types';
-import { joinBasePath } from '../../core/base-path';
-import { useContributedComponent } from '../../core/use-contributed-component';
+import type { ProjectUiConfig } from '../../core/config/types';
+
+const Logo = lazy(() => import('../components/logo.js').then(({ Logo: Component }) => ({ 'default': Component })));
+const ProjectSelector = lazy(() =>
+  import('../components/project-selector.js').then(({ ProjectSelector: Component }) => ({ 'default': Component }))
+);
+const Search = lazy(() => import('../components/search.js').then(({ Search: Component }) => ({ 'default': Component })));
+const UserNav = lazy(() => import('../components/user-nav.js').then(({ UserNav: Component }) => ({ 'default': Component })));
 
 type Props = {
   projectId: string;
-  projects: ProjectOptions[];
+  projectIds: string[];
+  projects: ProjectUiConfig[];
 };
 
-export function Navbar({ projectId, projects }: Props): JSX.Element {
+export function Navbar({ projectId, projectIds, projects }: Props): JSX.Element {
   const { resolvedTheme } = useTheme();
-  const Logo = useContributedComponent('navbar.logo');
-  const ProjectSelector = useContributedComponent('navbar.projectSelector');
-  const Search = useContributedComponent('navbar.search');
-  const UserNav = useContributedComponent('navbar.userNav');
-  const currentProject = projects.find((project) => project.projectId === projectId) ?? projects[0];
-  const { basePath, schema } = currentProject;
+  const currentProject = projects.find((project) => project.projectId === projectId);
+  const schema = currentProject?.schema ?? [];
   const navigate = useNavigate();
 
   function handleSearchSelection(item: { entityName: string; entityNamePlural: string; entityId: string }) {
     startTransition(() => {
-      navigate(joinBasePath(basePath, projectId, 'desk', 'list', item.entityNamePlural) + `?id=${item.entityId}`);
+      navigate(`/${projectId}/desk/list/${item.entityNamePlural}?id=${item.entityId}`);
     });
   }
 
   return (
     <div className="fk:flex fk:basis-14 fk:min-h-14 fk:px-3 fk:gap-x-4 fk:border-b fk:border-border fk:z-30">
       <Suspense fallback={null}>
-        <Logo theme={resolvedTheme} title="Flexkit Studio" />
+        <Logo theme={resolvedTheme} title={currentProject?.title ?? 'Flexkit Studio'} />
       </Suspense>
       <div className="fk:flex fk:grow fk:shrink fk:items-center fk:gap-x-4 px-4">
         <Suspense fallback={null}>
-          <ProjectSelector projectId={projectId} projects={projects} />
+          <ProjectSelector projectId={projectId} projectIds={projectIds} projects={projects} />
         </Suspense>
         <Suspense fallback={null}>
           <Search key={projectId} onSelect={handleSearchSelection} projectId={projectId} schema={schema} />

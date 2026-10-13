@@ -1,4 +1,3 @@
-import { joinBasePath } from './base-path';
 import { flexkitDomain } from './domains';
 
 const domain = flexkitDomain;
@@ -13,7 +12,10 @@ interface ApiPaths {
   currentUser: string;
   loginOtpConfirm: string;
   loginOtpSend: string;
-  logout: (basePath: string) => string;
+  /** `redirectPath` is the absolute in-app path to return to after logout. */
+  logout: (redirectPath: string) => string;
+  /** Deployed project schema, scopes, spaces, title and menu groups. */
+  schema: string;
   search: string;
   sessionId: string;
 }
@@ -28,13 +30,12 @@ export function apiPaths(projectId = ''): ApiPaths {
     currentUser: `/api/flexkit/${projectId}/users/me`,
     loginOtpConfirm: `${baseProjectApiUrl(projectId)}/auth/otp/confirm`,
     loginOtpSend: `${baseProjectApiUrl(projectId)}/auth/otp/send`,
-    logout: (basePath: string) => {
-      const params = new URLSearchParams({
-        redirect: joinBasePath(basePath, projectId),
-      });
+    logout: (redirectPath: string) => {
+      const params = new URLSearchParams({ redirect: redirectPath });
 
       return `/api/flexkit/${projectId}/auth/logout?${params.toString()}`;
     },
+    schema: `/api/flexkit/${projectId}/schema`,
     search: `/api/flexkit/${projectId}/search`,
     sessionId: `${baseProjectApiUrl(projectId)}/api/auth/login/session`,
   };

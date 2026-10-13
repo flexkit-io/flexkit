@@ -5,7 +5,7 @@ import type { FlexkitConfig } from '../types';
 type ConfiguredProject = FlexkitConfig['projects'][number];
 
 /**
- * Resolves the target project from the local flexkit.config file. When the
+ * Resolves the target project from the local flexkit.config.ts file. When the
  * config defines several projects, --project selects one of them.
  */
 export function resolveProject(client: Client, projectFlag: string | undefined): ConfiguredProject | null {
@@ -14,7 +14,7 @@ export function resolveProject(client: Client, projectFlag: string | undefined):
 
   if (projects.length === 0) {
     output.error(
-      `No project configuration found. Run this command from a directory with a flexkit.config file or pass --local-config. See ${getCommandName('--help')}.`
+      `No project configuration found. Run this command from a directory with a flexkit.config.ts file or pass --local-config. See ${getCommandName('--help')}.`
     );
 
     return null;

@@ -8,7 +8,6 @@ import { LoaderCircle, Search as SearchIcon, Upload as UploadIcon } from 'lucide
 import { useAppContext, useAppDispatch } from '../core/app-context';
 import DrawerModal from '../ui/components/drawer-modal';
 import { useConfig } from '../core/config/config-context';
-import type { SingleProject } from '../core/config/types';
 import { useEntityQuery } from '../graphql-client/use-entity-query';
 import type { AttributeValue, MappedEntityItem, EntityItem, ImageValue } from '../graphql-client/types';
 import { useGridColumnsDefinition } from '../data-grid/columns';
@@ -62,8 +61,8 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
     mode,
     relationshipId,
   } = action.payload;
-  const { projects, currentProjectId } = useConfig();
-  const { schema } = find(propEq(currentProjectId ?? '', 'projectId'))(projects) as SingleProject;
+  const { currentProject, currentProjectId } = useConfig();
+  const schema = currentProject?.schema ?? [];
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const entityNamePlural = entitySchema?.plural ?? '';
   const relationshipContext = relationships[relationshipId];

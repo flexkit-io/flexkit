@@ -2,47 +2,59 @@
 
 import { createContext, useContext, useMemo } from 'react';
 import type { JSX } from 'react';
-import { has, path } from 'ramda';
 import { useParams } from 'react-router-dom';
+import { useAuth } from '../../auth/auth-context';
 import { assetSchema } from '../../entities/assets-schema';
 import { tagSchema } from '../../entities/tags-schema';
-import type { AppOptions, StudioExtension, StudioContributions, ProjectOptions } from './types';
+import { builtInApps } from '../apps/built-in-apps';
+import type { AppOptions, ProjectSchemaError, ProjectUiConfig } from './types';
 import type { Entity } from '../types';
+import { useProjectSchemas } from './use-project-schemas';
 
 export interface ConfigContext {
+  /** The Studio apps shown in the app bar, in order. */
+  apps: AppOptions[];
+  /** Kept for callers that read `contributions.apps`; same list as `apps`. */
   contributions: {
-    apps: AppOptions[] | [];
+    apps: AppOptions[];
   };
   currentProjectId?: string;
+  /** The project named by the `:projectId` route param, once its schema has loaded. */
+  currentProject?: ProjectUiConfig;
   currentProjectSchema: Entity[];
-  getContributionPointConfig: <T extends keyof StudioContributions>(
-    contributionPoint: T,
-    subPath?: string[]
-  ) => StudioContributions[T][] | [];
-  extensions: StudioExtension[];
-  projects: ProjectOptions[];
+  /** Projects whose schema loaded, in `projectIds` order. */
+  projects: ProjectUiConfig[];
+  /** Every project id the host passed, loaded or not. */
+  projectIds: string[];
+  /** Per project id: why its schema could not be loaded. */
+  schemaErrors: { [projectId: string]: ProjectSchemaError };
+  isLoadingSchemas: boolean;
 }
 
 const ConfigContext = createContext<ConfigContext>({
-  contributions: {
-    apps: [],
-  },
+  apps: builtInApps,
+  contributions: { apps: builtInApps },
   currentProjectId: undefined,
+  currentProject: undefined,
   currentProjectSchema: [],
-  getContributionPointConfig: () => [],
-  extensions: [] as StudioExtension[],
-  projects: [] as ProjectOptions[],
+  projects: [],
+  projectIds: [],
+  schemaErrors: {},
+  isLoadingSchemas: false,
 });
-const hasProjectIdProperty = (configItem: ProjectOptions | StudioExtension): boolean =>
-  Object.prototype.hasOwnProperty.call(configItem, 'projectId');
-const hasContributesProperty = (configItem: ProjectOptions | StudioExtension): boolean =>
-  Object.prototype.hasOwnProperty.call(configItem, 'contributes');
+
+/** Appends the reserved asset and tag entities to a deployed schema. */
+export function upsertReservedEntities(schema: Entity[]): Entity[] {
+  const withoutReserved = schema.filter((entity) => entity.name !== assetSchema.name && entity.name !== tagSchema.name);
+
+  return [...withoutReserved, assetSchema, tagSchema];
+}
 
 export function ConfigProvider({
-  config,
+  projectIds,
   children,
 }: {
-  config: ProjectOptions[];
+  projectIds: string[];
   children: React.ReactNode;
 }): JSX.Element {
   /**
@@ -50,108 +62,36 @@ export function ConfigProvider({
    * every time the URL changes.
    */
   const { projectId: currentProjectId } = useParams<{ projectId: string }>();
-  const enhancedConfig = useMemo(() => {
-    const upsertReservedEntities = (schema: Entity[]): Entity[] => {
-      const withoutReserved = schema.filter(
-        (entity) => entity.name !== assetSchema.name && entity.name !== tagSchema.name
-      );
-
-      return [...withoutReserved, assetSchema, tagSchema];
-    };
-
-    return config.map((project) => ({
-      ...project,
-      schema: upsertReservedEntities(project.schema),
-    }));
-  }, [config]);
-
-  const globalFlattenedConfig = useMemo(
-    () => flattenConfigByProperty(['extensions'], enhancedConfig),
-    [enhancedConfig]
-  );
-  const currentProjectFlattenedConfig = useMemo(
+  const [, auth] = useAuth();
+  const { projects: loadedProjects, errors, isLoading } = useProjectSchemas(projectIds, auth.user?.id);
+  const projects = useMemo(
     () =>
-      flattenConfigByProperty(
-        ['extensions'],
-        enhancedConfig.filter((item) => item.projectId === currentProjectId)
-      ),
-    [enhancedConfig, currentProjectId]
-  );
-  const allExtensions = useMemo(
-    () =>
-      globalFlattenedConfig.filter(
-        (item: ProjectOptions | StudioExtension) => !hasProjectIdProperty(item) && hasContributesProperty(item)
-      ) as StudioExtension[],
-    [globalFlattenedConfig]
-  );
-  const currentProjectExtensions = useMemo(
-    () =>
-      currentProjectFlattenedConfig.filter(
-        (item: ProjectOptions | StudioExtension) => !hasProjectIdProperty(item) && hasContributesProperty(item)
-      ) as StudioExtension[],
-    [currentProjectFlattenedConfig]
+      projectIds
+        .map((projectId) => loadedProjects.find((project) => project.projectId === projectId))
+        .filter((project): project is ProjectUiConfig => project !== undefined)
+        .map((project) => ({ ...project, schema: upsertReservedEntities(project.schema) })),
+    [loadedProjects, projectIds]
   );
 
-  const globalConfig = useMemo(
-    () => ({
-      contributions: {
-        apps: _getContributionPointConfig('apps', [], currentProjectExtensions) as AppOptions[] | [],
-      },
+  const value = useMemo<ConfigContext>(() => {
+    const currentProject = projects.find((project) => project.projectId === currentProjectId);
+
+    return {
+      apps: builtInApps,
+      contributions: { apps: builtInApps },
       currentProjectId,
-      currentProjectSchema: enhancedConfig.find((item) => item.projectId === currentProjectId)?.schema ?? [],
-      getContributionPointConfig: <T extends keyof StudioContributions>(
-        contributionPoint: T,
-        subPath: string[] = []
-      ): StudioContributions[T][] =>
-        _getContributionPointConfig(contributionPoint, subPath, currentProjectExtensions) as StudioContributions[T][],
-      extensions: allExtensions,
-      projects: globalFlattenedConfig.filter((item: ProjectOptions | StudioExtension) =>
-        hasProjectIdProperty(item)
-      ) as ProjectOptions[],
-    }),
-    [allExtensions, currentProjectId, currentProjectExtensions, enhancedConfig, globalFlattenedConfig]
-  );
+      currentProject,
+      currentProjectSchema: currentProject?.schema ?? [],
+      projects,
+      projectIds,
+      schemaErrors: errors,
+      isLoadingSchemas: isLoading,
+    };
+  }, [currentProjectId, errors, isLoading, projectIds, projects]);
 
-  return <ConfigContext.Provider value={globalConfig}>{children}</ConfigContext.Provider>;
+  return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
 }
 
 export function useConfig(): ConfigContext {
   return useContext(ConfigContext);
-}
-
-function flattenConfigByProperty(
-  property: string[],
-  config: (ProjectOptions | StudioExtension)[]
-): (ProjectOptions | StudioExtension)[] | [] {
-  if (!Array.isArray(config)) {
-    return [config];
-  }
-
-  return config.reduce<(ProjectOptions | StudioExtension)[]>((acc, curr) => {
-    if (path(property, curr)) {
-      return [...acc, curr, ...flattenConfigByProperty(property, path(property, curr) ?? [])];
-    }
-
-    return [...acc, curr];
-  }, []);
-}
-
-function _getContributionPointConfig<T extends keyof StudioContributions>(
-  contributionPoint: T,
-  subPath: string[] = [],
-  config: StudioExtension[]
-): StudioContributions[T] {
-  const pathArray = ['contributes', contributionPoint, ...subPath];
-
-  return flattenConfigByProperty(pathArray.flat(), config).filter((item) =>
-    has('component', item)
-  ) as StudioContributions[T];
-}
-
-export function getApps(config: ProjectOptions[]): AppOptions[] | [] {
-  const flattenedConfig = flattenConfigByProperty(['extensions'], config);
-  const extensions = flattenedConfig.filter(
-    (item: ProjectOptions | StudioExtension) => !hasProjectIdProperty(item) && hasContributesProperty(item)
-  ) as StudioExtension[];
-  return _getContributionPointConfig('apps', [], extensions) as AppOptions[] | [];
 }

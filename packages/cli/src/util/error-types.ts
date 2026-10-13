@@ -38,7 +38,7 @@ interface InvalidProjectConfigMeta {
 
 export class InvalidProjectConfig extends CliError<'INVALID_PROJECT_CONFIG', InvalidProjectConfigMeta> {
   constructor(error: string, file: string) {
-    const message = 'Invalid project configuration. Please check your flexkit.config.[js|ts|jsx|tsx] file.';
+    const message = 'Invalid project configuration. Please check your flexkit.config.[js|ts] file.';
     super({
       code: 'INVALID_PROJECT_CONFIG',
       meta: { error, file },

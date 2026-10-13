@@ -1,7 +1,8 @@
-import type { Attribute, FlexkitConfig } from '../../types';
+import type { UiAttribute as Attribute } from '@flexkit/schema';
+import type { FlexkitConfig } from '../../types';
 
 export type ConfiguredProject = FlexkitConfig['projects'][number];
-export type EntitySchema = NonNullable<ConfiguredProject['schema']>[number];
+export type EntitySchema = ConfiguredProject['schema'][number];
 
 export type AttributeKind =
   | 'global'
@@ -41,7 +42,7 @@ export function classifyAttribute(attribute: Attribute): AttributeKind {
 }
 
 export function getEntitySchemas(project: ConfiguredProject): EntitySchema[] {
-  return project.schema ?? [];
+  return project.schema;
 }
 
 /**

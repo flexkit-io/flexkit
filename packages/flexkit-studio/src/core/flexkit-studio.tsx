@@ -10,11 +10,11 @@ import { Layout } from '../ui/containers/layout';
 import { Root } from '../ui/containers/root';
 import { ActionsProvider } from '../entities/actions-context';
 import { AppProvider } from './app-context';
+import { builtInApps } from './apps/built-in-apps';
 import { normalizeBasePath } from './base-path';
-import { getApps } from './config/config-context';
 import { GlobalError } from './error/global-error';
 import { ErrorBoundary } from './error/error-boundary';
-import type { Config, ProjectOptions, SingleProject } from './config/types';
+import type { FlexkitStudioProps } from './config/types';
 
 const RouterProviderCompat = RouterProvider as unknown as ComponentType<RouterProviderProps>;
 type BrowserRoutes = Parameters<typeof createBrowserRouter>[0];
@@ -35,17 +35,13 @@ type BrowserRoutes = Parameters<typeof createBrowserRouter>[0];
  *
  * Query params: sort, filter, page, pageSize
  * Path params: id specific entity
+ *
+ * The Studio renders the schema deployed to each project (`flexkit deploy`);
+ * the host only tells it which projects exist and where it is mounted.
  */
-
-export function FlexkitStudio({ config }: { config: Config }): JSX.Element | null {
+export function FlexkitStudio({ projectIds, basename }: FlexkitStudioProps): JSX.Element | null {
   const [mounted, setMounted] = useState(false);
   const log = debug('core:flexkit-studio');
-  const configArray: ProjectOptions[] = Array.isArray(config)
-    ? config.map((project) => mapConfig(project))
-    : [mapConfig(config)];
-  const [defaultProject] = configArray;
-  const basePath = normalizeBasePath(defaultProject?.basePath);
-  const apps = getApps(configArray);
 
   useEffect(() => {
     // ensure the DOM is available to prevent "document is not defined" error with react-router
@@ -56,16 +52,20 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
     return null;
   }
 
+  if (projectIds.length === 0) {
+    throw new Error('FlexkitStudio needs at least one project id: <FlexkitStudio projectIds={["..."]} />');
+  }
+
   const routes = [
     {
-      path: basePath,
-      element: <Root config={configArray} />,
+      path: '/',
+      element: <Root projectIds={projectIds} />,
       errorElement: <GlobalError />,
       children: [
         {
           path: ':projectId',
           element: <Layout version={{ current: '1.0.0', latest: '1.0.0', isCurrent: true }} />,
-          children: apps.map((app) => ({
+          children: builtInApps.map((app) => ({
             path: app.name,
             element: app.component,
             errorElement: <ErrorBoundary />,
@@ -80,7 +80,7 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
       ],
     },
   ] as unknown as BrowserRoutes;
-  const router = createBrowserRouter(routes);
+  const router = createBrowserRouter(routes, { basename: normalizeBasePath(basename) });
 
   log('Init Studio');
 
@@ -93,17 +93,4 @@ export function FlexkitStudio({ config }: { config: Config }): JSX.Element | nul
       </AppProvider>
     </ThemeProvider>
   );
-}
-
-function mapConfig(project: SingleProject | ProjectOptions): ProjectOptions {
-  return {
-    basePath: normalizeBasePath(project.basePath),
-    menuGroups: project.menuGroups ?? [],
-    icon: project.icon,
-    extensions: project.extensions,
-    projectId: project.projectId,
-    title: project.title,
-    schema: project.schema,
-    scopes: project.scopes,
-  };
 }
