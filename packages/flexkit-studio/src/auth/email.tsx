@@ -139,7 +139,7 @@ export default function EmailLogin({
             <Button
               className="fk:p-0 fk:hover:underline fk:text-link"
               onClick={() => {
-                finishLogin();
+                window.location.reload();
               }}
               variant="link"
             >
@@ -174,7 +174,7 @@ export default function EmailLogin({
                   <Button
                     className="fk:p-0 fk:hover:underline"
                     onClick={() => {
-                      finishLogin();
+                      window.location.reload();
                     }}
                     variant="link"
                   >
@@ -191,7 +191,7 @@ export default function EmailLogin({
                   <Button
                     className="fk:p-0 fk:hover:underline"
                     onClick={() => {
-                      finishLogin();
+                      window.location.reload();
                     }}
                     variant="link"
                   >
