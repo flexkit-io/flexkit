@@ -144,7 +144,6 @@
     "cron-parser": "5.5.0",
     "date-fns": "4.1.0",
     "debug": "^4.3.4",
-    "fuse.js": "7.0.0",
     "graphql": "^16.8.1",
     "graphql-ws": "5.14.2",
     "lexical": "^0.12.2",

@@ -1,5 +1,3 @@
-import Fuse from 'fuse.js';
-
 /** `FolderTree` → `folder-tree`, `Clock10` → `clock-10`, `folder-tree` → `folder-tree`. */
 export function toIconName(name: string): string {
   return name
@@ -10,6 +8,7 @@ export function toIconName(name: string): string {
     .toLowerCase();
 }
 
+/** Shown for entities that declare no icon and whose name is not itself an icon name. */
 export const DEFAULT_ICON_NAME = 'dock';
 
 /** `arrow-down-0-1` → `ArrowDown01`: the component name lucide exports for a kebab icon name. */
@@ -18,10 +17,13 @@ export function toPascalIconName(name: string): string {
 }
 
 /**
- * Builds a resolver over the available icon names. It returns the icon for
- * `name` when it exists (as a kebab name or as lucide's PascalCase component
- * name), otherwise the closest match for `fallbackFor` (an entity name, say),
- * and finally `dock`.
+ * Builds a resolver over the available icon names.
+ *
+ * `name` (from `menu.icon`) is accepted as a kebab name or as lucide's
+ * PascalCase component name. Without one, an entity gets the icon that shares
+ * its name exactly, allowing for a plural `s` either way (`tag` → `tags`,
+ * `languages` → `languages`); anything looser produced unrelated icons, so
+ * everything else falls back to `DEFAULT_ICON_NAME`.
  */
 export function createIconResolver(
   iconNames: readonly string[]
@@ -40,34 +42,40 @@ export function createIconResolver(
     }
   }
 
-  const fuse = new Fuse(
-    iconNames.map((candidate) => ({ name: candidate })),
-    { keys: ['name'], threshold: 0.5 }
-  );
+  const findExact = (value: string): string | undefined => {
+    const trimmed = value.trim();
+
+    if (available.has(trimmed)) {
+      return trimmed;
+    }
+
+    const pascal = byPascalName.get(trimmed);
+
+    if (pascal) {
+      return pascal;
+    }
+
+    const kebab = toIconName(trimmed);
+
+    return available.has(kebab) ? kebab : undefined;
+  };
 
   return (name, fallbackFor) => {
     if (name) {
-      const trimmed = name.trim();
-      const exact = byPascalName.get(trimmed) ?? (available.has(trimmed) ? trimmed : undefined);
+      const exact = findExact(name);
 
       if (exact) {
         return exact;
       }
-
-      const normalized = toIconName(trimmed);
-
-      if (available.has(normalized)) {
-        return normalized;
-      }
     }
 
-    const concept = fallbackFor ?? name;
-
-    if (concept) {
-      const [match] = fuse.search(concept);
+    if (fallbackFor) {
+      const kebab = toIconName(fallbackFor);
+      const candidates = [kebab, `${kebab}s`, kebab.endsWith('s') ? kebab.slice(0, -1) : ''].filter(Boolean);
+      const match = candidates.find((candidate) => available.has(candidate));
 
       if (match) {
-        return match.item.name;
+        return match;
       }
     }
 

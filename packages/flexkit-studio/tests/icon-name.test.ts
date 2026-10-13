@@ -40,13 +40,19 @@ describe('icon names', () => {
     }
   });
 
-  it('resolves exact names, falls back to a fuzzy match for the entity name, then to dock', async () => {
+  it('resolves exact names, then an entity name that is itself an icon, then dock', async () => {
     const resolve = createIconResolver(await loadIconNames());
 
     assert.equal(resolve('Tag'), 'tag');
     assert.equal(resolve('ChartColumnIncreasing'), 'chart-column-increasing');
     assert.equal(resolve('NotAnIcon', 'calendar'), 'calendar');
-    assert.equal(resolve(undefined, 'product').length > 0, true);
-    assert.equal(resolve(undefined, 'zzzzzzzzzz'), 'dock');
+    // Singular/plural forms of an icon name count as exact.
+    assert.equal(resolve(undefined, 'language'), 'languages');
+    assert.equal(resolve(undefined, 'tags'), 'tags');
+    assert.equal(resolve(undefined, 'contact'), 'contact');
+    // Loose matches used to produce unrelated icons; they now fall back.
+    for (const entity of ['brand', 'category', 'product', 'tax', 'shipment', 'customer', 'use']) {
+      assert.equal(resolve(undefined, entity), 'dock', entity);
+    }
   });
 });
