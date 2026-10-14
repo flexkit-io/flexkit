@@ -10,6 +10,7 @@ export default defineConfig({
     'tests/proxy-target.test.ts',
     'tests/project-label.test.ts',
     'tests/hosted-session.test.ts',
+    'tests/bff-session.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',
