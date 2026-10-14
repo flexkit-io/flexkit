@@ -1,5 +1,25 @@
 # @flexkit/studio
 
+## 0.1.0
+
+### Minor Changes
+
+- 8e85705: The Studio renders the schema deployed to each project instead of a bundled config. Breaking:
+  - Mount with `<FlexkitStudio projectIds={['abc']} basename="/studio" />`; the `config` prop is gone and `basePath` moved to the `basename` prop. The Studio fetches each project's schema from `GET /<projectId>/api/schema` after login.
+  - Desk, Asset Manager, Explorer and AI are built in. `@flexkit/desk`, `@flexkit/explorer`, `@flexkit/asset-manager` and `@flexkit/ai` are folded into `@flexkit/studio` (their public types are re-exported from it) and the `extensions`, `contributes`, `defineExtension`, navbar, `formFields` and `previewFields` extension points are removed.
+  - Icons are lucide names (`menu.icon: 'Tag'`, `groups[].icon`), rendered on demand so the icon set no longer ships in the main bundle. `hidden` / `readOnly` are booleans. Form validation runs from the deployed JSON Schema with messages generated from the attribute label.
+  - `defineConfig` and `defineEntity` are re-exported from `@flexkit/schema`.
+
+- 7e9cd0b: Hosted mode. `projectIds` is now optional on `<FlexkitStudio />`: without it the Studio signs the user in once (no project to pick on the login screen), lists every project the account can access across its teams, opens the one used last on this browser, and switches projects from the navbar, grouped by team. Schemas are fetched per visited project. `useConfig()` exposes `mode` and `projectSummaries`. The framework adapters proxy the reserved `/api/flexkit/-/…` segment to the user-level Flexkit API with the session as a bearer token. Passing `projectIds` keeps today's behaviour.
+- af083bf: **Breaking:** custom tools and code skills no longer live in the Studio package. `@flexkit/studio/tools` is removed; import `defineTool`, `defineSkill` and `defineTools` from `@flexkit/tools` and serve them with `createToolsHandler` on their own route. `createFlexkitApiHandler`, `createFlexkitAstroHandler`, `createFlexkitTanStackHandler` and `createFlexkitFetchHandler` take no options any more and only handle Studio auth and the API proxy. The Studio no longer polls a local tools runtime from the page: run `flexkit dev` instead, which works with a self-hosted, hosted or desktop Studio alike.
+
+### Patch Changes
+
+- ec7d261: New built-in `previewType: 'rating'`: numeric attributes render as filled stars in lists, with `options.max` as the star count (default 5).
+- Updated dependencies [8e85705]
+- Updated dependencies [ec7d261]
+  - @flexkit/schema@0.1.0
+
 ## 0.0.36
 
 ### Patch Changes
