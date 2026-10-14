@@ -1,24 +1,33 @@
 import type { JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../primitives/select';
-import type { ProjectUiConfig } from '../../core/config/types';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '../primitives/select';
+import type { ProjectSummary, ProjectUiConfig } from '../../core/config/types';
+import { getProjectLabel, groupProjectIdsByTeam } from './project-label';
+
+export { getProjectLabel } from './project-label';
 
 type Props = {
   projectId: string;
-  /** Every project the host passed, loaded or not. */
+  /** Every project the Studio can open, loaded or not. */
   projectIds: string[];
+  /** Hosted mode: names and teams known before any schema loads. */
+  projectSummaries?: ProjectSummary[];
   /** Projects whose schema has loaded; used for titles. */
   projects: ProjectUiConfig[];
 };
 
-/** Title of a project, or its id until the schema has loaded. */
-export function getProjectLabel(projectId: string, projects: ProjectUiConfig[]): string {
-  return projects.find((project) => project.projectId === projectId)?.title ?? projectId;
-}
-
-export function ProjectSelector({ projectId, projectIds, projects }: Props): JSX.Element {
+export function ProjectSelector({ projectId, projectIds, projectSummaries = [], projects }: Props): JSX.Element {
   const navigate = useNavigate();
-  const label = getProjectLabel(projectId, projects);
+  const label = getProjectLabel(projectId, projects, projectSummaries);
+  const groups = groupProjectIdsByTeam(projectIds, projectSummaries);
 
   return (
     <Select
@@ -31,10 +40,15 @@ export function ProjectSelector({ projectId, projectIds, projects }: Props): JSX
         <SelectValue aria-label={label}>{label}</SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {projectIds.map((id) => (
-          <SelectItem key={id} value={id}>
-            {getProjectLabel(id, projects)}
-          </SelectItem>
+        {groups.map((group, index) => (
+          <SelectGroup key={group.label ?? index}>
+            {group.label ? <SelectLabel>{group.label}</SelectLabel> : null}
+            {group.projectIds.map((id) => (
+              <SelectItem key={id} value={id}>
+                {getProjectLabel(id, projects, projectSummaries)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         ))}
       </SelectContent>
     </Select>

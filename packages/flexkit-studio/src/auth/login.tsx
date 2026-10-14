@@ -8,9 +8,9 @@ import { DarkModeSwitch } from '../ui/components/dark-mode-switch';
 import { Loading } from '../ui/components/loading';
 import { Label } from '../ui/primitives/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
-import { apiPaths } from '../core/api-paths';
+import { apiPaths, userApiPaths } from '../core/api-paths';
 import { useConfig } from '../core/config/config-context';
-import { getProjectLabel } from '../ui/components/project-selector';
+import { getProjectLabel } from '../ui/components/project-label';
 import { useAuth } from './auth-context';
 import EmailLogin from './email';
 
@@ -28,17 +28,26 @@ type Provider = {
   };
 };
 
-export function Login({ projectId }: { projectId: string }): JSX.Element {
+/**
+ * Login screen. With a `projectId` (project mode) providers and the OTP flow
+ * belong to the project picked in the selector; without one (hosted mode) the
+ * user signs in to their account and the Studio lists their projects afterwards.
+ */
+export function Login({ projectId }: { projectId?: string }): JSX.Element {
+  const isHosted = projectId === undefined;
   // Before login only the ids are known: project schemas (and titles) need a session.
   const { projectIds, projects } = useConfig();
   const [selectedProjectId, setSelectedProjectId] = useState(
-    projectIds.includes(projectId) ? projectId : (projectIds[0] ?? projectId)
+    projectId === undefined ? '' : projectIds.includes(projectId) ? projectId : (projectIds[0] ?? projectId)
   );
   const selectedProjectHref = useHref(`/${selectedProjectId}`);
   const [isEmailLogin, setIsEmailLogin] = useState(false);
   // Providers and the OTP flow belong to the project picked in the selector, not the one in the URL.
-  const { data, error, isLoading } = useSWR(apiPaths(selectedProjectId).authProviders, (url: string) =>
-    fetch(url, { mode: 'cors' }).then((res) => res.json() as Promise<{ providers: Provider[] }>)
+  const providersUrl = isHosted ? userApiPaths.authProviders : apiPaths(selectedProjectId).authProviders;
+  const { data, error, isLoading } = useSWR(providersUrl, (url: string) =>
+    fetch(url, { mode: 'cors', credentials: 'same-origin' }).then(
+      (res) => res.json() as Promise<{ providers: Provider[] }>
+    )
   );
   const [isAuthLoading, auth] = useAuth();
   const copyrightYear = new Date().getFullYear();
@@ -47,19 +56,23 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
   const referal: string = currentRouterLocation.state?.from?.pathname ?? currentRouterLocation.pathname;
   const referalHref = useHref(referal);
 
-  const fromPath = referal.includes(selectedProjectId)
-    ? `${location.origin}${referalHref}`
-    : `${location.origin}${selectedProjectHref}`;
+  // Hosted mode returns to the page that asked for login (the root picks the project);
+  // project mode lands on the project picked in the selector.
+  const fromPath =
+    isHosted || referal.includes(selectedProjectId)
+      ? `${location.origin}${referalHref}`
+      : `${location.origin}${selectedProjectHref}`;
 
   if (error) {
     throw new Error('Error fetching auth providers');
   }
 
-  if (isLoading || isAuthLoading || !data) {
+  // Hosted mode renders this screen outside the auth provider: the session check already happened.
+  if (isLoading || (!isHosted && isAuthLoading) || !data) {
     return <Loading />;
   }
 
-  if (auth.user?.id) {
+  if (!isHosted && auth.user?.id) {
     return <Navigate replace state={{ from: currentRouterLocation }} to="/" />;
   }
 
@@ -71,7 +84,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
             <h1 className="fk:mb-4 fk:text-2xl fk:text-center fk:font-medium fk:tracking-tight">
               Login to Flexkit Studio
             </h1>
-            {projectIds.length > 1 ? (
+            {!isHosted && projectIds.length > 1 ? (
               <div className="fk:flex-col fk:space-y-2 fk:mb-3">
                 <Label className="fk:text-sm fk:font-normal fk:text-left fk:text-muted-foreground" htmlFor="project">
                   Select project
@@ -100,7 +113,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
             {isEmailLogin ? (
               <EmailLogin
                 key={selectedProjectId}
-                projectId={selectedProjectId}
+                projectId={isHosted ? undefined : selectedProjectId}
                 redirectTo={fromPath}
                 setIsEmailLogin={setIsEmailLogin}
               />
@@ -121,7 +134,7 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
                       <a
                         href={composeLoginHref({
                           url: provider.url,
-                          projectId: selectedProjectId,
+                          projectId: isHosted ? undefined : selectedProjectId,
                           basePath: '/api/flexkit/get-token',
                           fromPath,
                         })}
@@ -236,7 +249,8 @@ export function Login({ projectId }: { projectId: string }): JSX.Element {
 }
 
 interface CreateHrefForProviderOptions {
-  projectId: string;
+  /** Omitted in hosted mode: the login is for the account, not a project. */
+  projectId?: string;
   url: string;
   basePath: string;
   fromPath: string;
@@ -245,7 +259,11 @@ interface CreateHrefForProviderOptions {
 function composeLoginHref({ projectId, url, basePath, fromPath }: CreateHrefForProviderOptions): string {
   const params = new URLSearchParams();
   params.set('origin', `${location.origin}${basePath}`);
-  params.set('projectId', projectId);
+
+  if (projectId) {
+    params.set('projectId', projectId);
+  }
+
   params.set('redirect', fromPath);
 
   return `${url}?${params.toString()}`;

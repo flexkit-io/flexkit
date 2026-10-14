@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '../ui/primitives/alert';
 import { Button } from '../ui/primitives/button';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '../ui/primitives/form';
 import { Input } from '../ui/primitives/input';
-import { apiPaths, baseApiUrl } from '../core/api-paths';
+import { apiPaths, baseApiUrl, userApiPaths } from '../core/api-paths';
 
 const formSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
@@ -22,7 +22,8 @@ export default function EmailLogin({
   redirectTo,
   setIsEmailLogin,
 }: {
-  projectId: string;
+  /** Omitted in hosted mode: the OTP flow then goes through the Studio's own user-level API route. */
+  projectId?: string;
   /** Absolute URL to open once the session cookie is set; defaults to reloading the current page. */
   redirectTo?: string;
   setIsEmailLogin: Dispatch<SetStateAction<boolean>>;
@@ -48,11 +49,20 @@ export default function EmailLogin({
       email: '',
     },
   });
-  const sendOtpUrl = new URL(apiPaths(projectId).loginOtpSend, baseApiUrl);
+  // Project mode talks to the project API directly (open CORS); hosted mode stays same-origin through the BFF.
+  const sendOtpUrl = projectId === undefined ? userApiPaths.otpSend : new URL(apiPaths(projectId).loginOtpSend, baseApiUrl).href;
+  const confirmOtpUrl =
+    projectId === undefined ? userApiPaths.otpConfirm : new URL(apiPaths(projectId).loginOtpConfirm, baseApiUrl).href;
   const { data, error, isLoading } = useSWR(
-    shouldSendOtp ? sendOtpUrl.href : null,
+    shouldSendOtp ? sendOtpUrl : null,
     (url: string) =>
-      fetch(url, { method: 'POST', mode: 'cors', body: JSON.stringify({ email: form.getValues('email') }) }).then(
+      fetch(url, {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.getValues('email') }),
+      }).then(
         (res) => res.json() as Promise<{ token: string } | { error: { message: string; code: string } } | undefined>
       ),
     {
@@ -82,10 +92,10 @@ export default function EmailLogin({
         return;
       }
 
-      const confirmOtpUrl = new URL(apiPaths(projectId).loginOtpConfirm, baseApiUrl);
       const setTokenUrl = '/api/flexkit/set-token';
       fetch(
-        `${confirmOtpUrl.href}?email=${encodeURIComponent(form.getValues('email'))}&token=${encodeURIComponent(token)}`
+        `${confirmOtpUrl}?email=${encodeURIComponent(form.getValues('email'))}&token=${encodeURIComponent(token)}`,
+        { credentials: 'same-origin' }
       )
         .then((res) => {
           if (res.status === 200) {
@@ -121,12 +131,12 @@ export default function EmailLogin({
     return () => {
       clearInterval(interval);
     };
-  }, [form, hasOtpBeenSent, projectId, token]);
+  }, [confirmOtpUrl, form, hasOtpBeenSent, token]);
 
   function handleEmailLogin(): void {
     setHasOtpExpired(false);
     setShouldSendOtp(true);
-    void mutate(sendOtpUrl.href);
+    void mutate(sendOtpUrl);
   }
 
   return (

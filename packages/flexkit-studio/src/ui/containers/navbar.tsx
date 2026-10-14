@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Suspense, lazy, startTransition } from 'react';
 import type { JSX } from 'react';
 import { useTheme } from '../theme-context';
-import type { ProjectUiConfig } from '../../core/config/types';
+import type { ProjectSummary, ProjectUiConfig } from '../../core/config/types';
 
 const Logo = lazy(() => import('../components/logo.js').then(({ Logo: Component }) => ({ 'default': Component })));
 const ProjectSelector = lazy(() =>
@@ -14,12 +14,15 @@ const UserNav = lazy(() => import('../components/user-nav.js').then(({ UserNav: 
 type Props = {
   projectId: string;
   projectIds: string[];
+  /** Hosted mode: names and teams known before schemas load. */
+  projectSummaries?: ProjectSummary[];
   projects: ProjectUiConfig[];
 };
 
-export function Navbar({ projectId, projectIds, projects }: Props): JSX.Element {
+export function Navbar({ projectId, projectIds, projectSummaries = [], projects }: Props): JSX.Element {
   const { resolvedTheme } = useTheme();
   const currentProject = projects.find((project) => project.projectId === projectId);
+  const currentSummary = projectSummaries.find((project) => project.id === projectId);
   const schema = currentProject?.schema ?? [];
   const navigate = useNavigate();
 
@@ -32,11 +35,16 @@ export function Navbar({ projectId, projectIds, projects }: Props): JSX.Element 
   return (
     <div className="fk:flex fk:basis-14 fk:min-h-14 fk:px-3 fk:gap-x-4 fk:border-b fk:border-border fk:z-30">
       <Suspense fallback={null}>
-        <Logo theme={resolvedTheme} title={currentProject?.title ?? 'Flexkit Studio'} />
+        <Logo theme={resolvedTheme} title={currentProject?.title ?? currentSummary?.name ?? 'Flexkit Studio'} />
       </Suspense>
       <div className="fk:flex fk:grow fk:shrink fk:items-center fk:gap-x-4 px-4">
         <Suspense fallback={null}>
-          <ProjectSelector projectId={projectId} projectIds={projectIds} projects={projects} />
+          <ProjectSelector
+            projectId={projectId}
+            projectIds={projectIds}
+            projectSummaries={projectSummaries}
+            projects={projects}
+          />
         </Suspense>
         <Suspense fallback={null}>
           <Search key={projectId} onSelect={handleSearchSelection} projectId={projectId} schema={schema} />

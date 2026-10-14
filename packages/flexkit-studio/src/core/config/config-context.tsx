@@ -7,11 +7,13 @@ import { useAuth } from '../../auth/auth-context';
 import { assetSchema } from '../../entities/assets-schema';
 import { tagSchema } from '../../entities/tags-schema';
 import { builtInApps } from '../apps/built-in-apps';
-import type { AppOptions, ProjectSchemaError, ProjectUiConfig } from './types';
+import type { AppOptions, ProjectSchemaError, ProjectSummary, ProjectUiConfig, StudioMode } from './types';
 import type { Entity } from '../types';
-import { useProjectSchemas } from './use-project-schemas';
+import { useProjectSchema, useProjectSchemas } from './use-project-schemas';
 
 export interface ConfigContext {
+  /** `projects` when the host passed `projectIds`, `hosted` when the Studio listed the user's projects itself. */
+  mode: StudioMode;
   /** The Studio apps shown in the app bar, in order. */
   apps: AppOptions[];
   /** Kept for callers that read `contributions.apps`; same list as `apps`. */
@@ -24,14 +26,17 @@ export interface ConfigContext {
   currentProjectSchema: Entity[];
   /** Projects whose schema loaded, in `projectIds` order. */
   projects: ProjectUiConfig[];
-  /** Every project id the host passed, loaded or not. */
+  /** Every project id the Studio can open, loaded or not. */
   projectIds: string[];
+  /** Hosted mode: name, avatar, role and team of each project, known before any schema loads. */
+  projectSummaries: ProjectSummary[];
   /** Per project id: why its schema could not be loaded. */
   schemaErrors: { [projectId: string]: ProjectSchemaError };
   isLoadingSchemas: boolean;
 }
 
 const ConfigContext = createContext<ConfigContext>({
+  mode: 'projects',
   apps: builtInApps,
   contributions: { apps: builtInApps },
   currentProjectId: undefined,
@@ -39,6 +44,7 @@ const ConfigContext = createContext<ConfigContext>({
   currentProjectSchema: [],
   projects: [],
   projectIds: [],
+  projectSummaries: [],
   schemaErrors: {},
   isLoadingSchemas: false,
 });
@@ -52,9 +58,16 @@ export function upsertReservedEntities(schema: Entity[]): Entity[] {
 
 export function ConfigProvider({
   projectIds,
+  projectSummaries = [],
+  mode = 'projects',
+  userId,
   children,
 }: {
   projectIds: string[];
+  projectSummaries?: ProjectSummary[];
+  mode?: StudioMode;
+  /** Hosted mode: the signed-in user's id, known before the per-project `/users/me` call. */
+  userId?: string;
   children: React.ReactNode;
 }): JSX.Element {
   /**
@@ -63,7 +76,14 @@ export function ConfigProvider({
    */
   const { projectId: currentProjectId } = useParams<{ projectId: string }>();
   const [, auth] = useAuth();
-  const { projects: loadedProjects, errors, isLoading } = useProjectSchemas(projectIds, auth.user?.id);
+  const schemaUserId = auth.user?.id ?? userId;
+  // Project mode loads every project up front (short, host-defined list); hosted mode only the one open.
+  const allSchemas = useProjectSchemas(mode === 'projects' ? projectIds : [], schemaUserId);
+  const currentSchema = useProjectSchema(
+    mode === 'hosted' && currentProjectId && projectIds.includes(currentProjectId) ? currentProjectId : undefined,
+    schemaUserId
+  );
+  const { projects: loadedProjects, errors, isLoading } = mode === 'hosted' ? currentSchema : allSchemas;
   const projects = useMemo(
     () =>
       projectIds
@@ -77,6 +97,7 @@ export function ConfigProvider({
     const currentProject = projects.find((project) => project.projectId === currentProjectId);
 
     return {
+      mode,
       apps: builtInApps,
       contributions: { apps: builtInApps },
       currentProjectId,
@@ -84,10 +105,11 @@ export function ConfigProvider({
       currentProjectSchema: currentProject?.schema ?? [],
       projects,
       projectIds,
+      projectSummaries,
       schemaErrors: errors,
       isLoadingSchemas: isLoading,
     };
-  }, [currentProjectId, errors, isLoading, projectIds, projects]);
+  }, [currentProjectId, errors, isLoading, mode, projectIds, projectSummaries, projects]);
 
   return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
 }

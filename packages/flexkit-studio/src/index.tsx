@@ -18,7 +18,7 @@ export { canMutateData, useCanMutate } from './core/permissions';
 export { ALL_FIELDS_GROUP, ALL_FIELDS_GROUP_NAME } from './core/field-groups';
 
 // Core types
-export type { FlexkitStudioProps, ProjectSchemaError, ProjectUiConfig } from './core/config/types';
+export type { FlexkitStudioProps, HostedUser, ProjectSchemaError, ProjectSummary, ProjectUiConfig, StudioMode } from './core/config/types';
 export type {
   Attribute,
   DefaultValue,

@@ -1,7 +1,5 @@
-import { flexkitApiDomain } from '../core/domains';
 import { getToken } from './get-token';
-
-const domain = flexkitApiDomain;
+import { resolveProxyTarget } from './proxy-target';
 
 export interface FlexkitHandlerContext {
   request: Request;
@@ -171,10 +169,8 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     };
   }
 
-  // Regular API proxy
-  const [, , , projectId] = pathname.split('/');
-  const apiUrl = `https://${projectId}.${domain}`;
-  const path = pathname.replace(`/api/flexkit/${projectId}`, '');
+  // Regular API proxy: project routes, or the user-level API behind the `-` segment.
+  const target = resolveProxyTarget(pathname, search);
 
   let body: string | ReadableStream<Uint8Array> | null | undefined;
   let forwardContentType = contentType ?? 'application/json';
@@ -209,13 +205,14 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
   const effectiveSessionToken = sessionToken || bearerToken;
 
   forwardHeaders.delete('Authorization');
-
-  if (!effectiveSessionToken) {
-    forwardHeaders.delete('Cookie');
-  }
+  forwardHeaders.delete('Cookie');
 
   if (effectiveSessionToken) {
-    forwardHeaders.set('Cookie', `sessionToken=${effectiveSessionToken}`);
+    if (target.auth === 'bearer') {
+      forwardHeaders.set('Authorization', `Bearer ${effectiveSessionToken}`);
+    } else {
+      forwardHeaders.set('Cookie', `sessionToken=${effectiveSessionToken}`);
+    }
   }
 
   if (method !== 'GET' && method !== 'HEAD') {
@@ -233,7 +230,7 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     requestInit.duplex = 'half';
   }
 
-  const response = await fetch(`${apiUrl}${path}${search}`, requestInit);
+  const response = await fetch(target.url, requestInit);
 
   if (response.status === 204) {
     return { type: 'response', status: 204, body: null };

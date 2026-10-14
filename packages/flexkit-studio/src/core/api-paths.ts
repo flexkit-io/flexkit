@@ -22,6 +22,23 @@ interface ApiPaths {
 
 export const IMAGES_BASE_URL = `${baseApiUrl}/images/`;
 
+/**
+ * Reserved BFF segment for user-level (project-less) Flexkit API calls:
+ * `/api/flexkit/-/me` is proxied to `https://<flexkitDomain>/api/me` with the
+ * session as a bearer token. Project ids are ten characters, so `-` can never
+ * collide with one.
+ */
+export const USER_API_SEGMENT = '-';
+
+export const userApiPaths = {
+  authProviders: `/api/flexkit/${USER_API_SEGMENT}/auth/providers`,
+  logout: `/api/flexkit/${USER_API_SEGMENT}/auth/logout`,
+  /** Signed-in user plus every project they can open. */
+  me: `/api/flexkit/${USER_API_SEGMENT}/me`,
+  otpConfirm: `/api/flexkit/${USER_API_SEGMENT}/auth/otp/confirm`,
+  otpSend: `/api/flexkit/${USER_API_SEGMENT}/auth/otp/send`,
+} as const;
+
 export function apiPaths(projectId = ''): ApiPaths {
   return {
     assets: `/api/flexkit/${projectId}/assets`,
