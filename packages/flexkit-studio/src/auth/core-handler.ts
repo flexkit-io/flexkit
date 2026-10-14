@@ -1,3 +1,4 @@
+import { resolveBffSession } from './bff-session';
 import { getToken } from './get-token';
 import { resolveProxyTarget } from './proxy-target';
 
@@ -50,28 +51,6 @@ const hopByHopHeaders = new Set([
   'transfer-encoding',
   'upgrade',
 ]);
-
-function getBearerToken(authorizationHeader: string | null): string {
-  if (!authorizationHeader) {
-    return '';
-  }
-
-  const [scheme, token, ...rest] = authorizationHeader.trim().split(/\s+/);
-
-  if (rest.length > 0) {
-    return '';
-  }
-
-  if (!scheme || !token) {
-    return '';
-  }
-
-  if (scheme.toLowerCase() !== 'bearer') {
-    return '';
-  }
-
-  return token;
-}
 
 function sanitizeForwardHeaders(headers: Headers): Headers {
   const sanitized = new Headers();
@@ -200,9 +179,14 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     }
   }
 
+  const session = resolveBffSession(sessionToken, request.headers.get('authorization'));
+
+  if (session.error) {
+    return { type: 'json', status: 401, body: { error: session.error } };
+  }
+
   const forwardHeaders = sanitizeForwardHeaders(request.headers);
-  const bearerToken = getBearerToken(request.headers.get('authorization'));
-  const effectiveSessionToken = sessionToken || bearerToken;
+  const effectiveSessionToken = session.token;
 
   forwardHeaders.delete('Authorization');
   forwardHeaders.delete('Cookie');
