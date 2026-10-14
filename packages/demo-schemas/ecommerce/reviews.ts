@@ -65,11 +65,13 @@ export const reviews = defineEntity({
       options: {
         size: 120,
         comment: 'Customer rating from 1 to 5',
+        min: 1,
+        max: 5,
       },
       dataType: 'int',
       inputType: 'number',
-      previewType: 'number',
-      validation: (z) => z.number().min(1).max(5),
+      previewType: 'rating',
+      validation: (z) => z.number().int().min(1).max(5),
       defaultValue: 5,
     },
     {

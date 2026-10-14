@@ -58,6 +58,8 @@ export type PreviewType =
   | 'relationship'
   | 'switch'
   | 'textarea'
+  /** Filled stars for a numeric value; `options.max` sets the star count (default 5). */
+  | 'rating'
   | (string & NonNullable<unknown>);
 
 export type SelectList = {
@@ -94,6 +96,7 @@ export type DateTimeOptions = CommonOptions & {
 
 export type NumberOptions = CommonOptions & {
   min?: number;
+  /** Upper bound; also the number of stars when `previewType` is `'rating'`. */
   max?: number;
 };
 
