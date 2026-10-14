@@ -87,6 +87,26 @@ export default function Studio() {
 
 `basename` is the path the Studio is mounted under; omit it when the Studio lives at `/`.
 
+### Add custom tools (optional)
+
+Tools and code skills let the Flexkit agent call your own server-side code. Define them in `flexkit.tools.ts` with `@flexkit/tools`, serve them from any HTTPS route with `createToolsHandler`, and run `flexkit dev` while developing. See the [custom tools guide](https://flexkit.io/docs/automations/custom-tools).
+
+```ts
+import { defineTool, defineTools } from '@flexkit/tools';
+import { z } from 'zod';
+
+export default defineTools({
+  tools: [
+    defineTool({
+      name: 'ping',
+      description: 'Echo a message from the app runtime.',
+      input: z.object({ message: z.string() }),
+      execute: async ({ message }) => ({ echo: message }),
+    }),
+  ],
+});
+```
+
 ## Contributing
 
 Contributions to Flexkit are welcome and highly appreciated. However, before you jump right into it, we would like you to review our [Contribution Guidelines](/CONTRIBUTING.md) to make sure you have a smooth experience contributing to Flexkit.

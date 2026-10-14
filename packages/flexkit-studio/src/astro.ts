@@ -2,6 +2,5 @@ export { createFlexkitAstroHandler, handleFlexkitAstroRequest } from './auth/ast
 export {
   handleFlexkitRequest,
   type FlexkitHandlerContext,
-  type FlexkitHandlerOptions,
   type FlexkitHandlerResult,
 } from './auth/core-handler';

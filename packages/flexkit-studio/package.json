@@ -28,7 +28,6 @@
     "./nextjs": "./dist/nextjs.js",
     "./astro": "./dist/astro.js",
     "./tanstack-start": "./dist/tanstack-start.js",
-    "./tools": "./dist/tools.js",
     "./icons": "./dist/icons.js",
     "./ui": "./dist/ui.js",
     "./tailwind.config": "./tailwind.config.ts",
@@ -45,9 +44,6 @@
       "tanstack-start": [
         "./dist/tanstack-start.d.ts"
       ],
-      "tools": [
-        "./dist/tools.d.ts"
-      ],
       "icons": [
         "./dist/icons.d.ts"
       ]
@@ -60,8 +56,8 @@
     "dist/**"
   ],
   "scripts": {
-    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts src/tools.ts --format esm --dts --external react --external react-dom --no-config",
-    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch=always & tsup --config tsup.config.ts --watch & tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts src/tools.ts --format esm --dts --external react --external react-dom --no-config --watch",
+    "build": "tailwindcss -i ./src/styles.css -o dist/index.css && tsup --config tsup.config.ts && tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config",
+    "dev": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch=always & tsup --config tsup.config.ts --watch & tsup src/nextjs.ts src/astro.ts src/tanstack-start.ts --format esm --dts --external react --external react-dom --no-config --watch",
     "lint": "eslint \"src/**/*.ts*\"",
     "test:performance": "tsup --config tests/performance.config.ts && node --test build/tests/list-performance.test.js build/tests/editor-preview.test.js",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",

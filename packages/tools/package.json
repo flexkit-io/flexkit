@@ -1,0 +1,66 @@
+{
+  "name": "@flexkit/tools",
+  "version": "0.0.0",
+  "description": "Define, serve and run Flexkit custom tools and code skills from your own server: defineTool, defineSkill, defineTools, createToolsHandler and the local runtime behind `flexkit dev`.",
+  "keywords": [
+    "flexkit",
+    "tools",
+    "skills",
+    "agent"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flexkit-io/flexkit",
+    "directory": "packages/tools"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./dev": {
+      "types": "./dist/dev/index.d.ts",
+      "import": "./dist/dev/index.js",
+      "require": "./dist/dev/index.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "dev": [
+        "./dist/dev/index.d.ts"
+      ]
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist/**"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts src/dev/index.ts --format esm,cjs --dts --sourcemap",
+    "dev": "tsup src/index.ts src/dev/index.ts --format esm,cjs --dts --watch src",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "tsup --config tests/tsup.config.ts && node --test build/tests/*.test.js",
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist && rm -rf build"
+  },
+  "peerDependencies": {
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.2",
+    "eslint": "^9.0.0",
+    "eslint-config-custom": "workspace:*",
+    "tsconfig": "workspace:*",
+    "tsup": "8.5.1",
+    "typescript": "^5.3.3",
+    "zod": "4.4.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

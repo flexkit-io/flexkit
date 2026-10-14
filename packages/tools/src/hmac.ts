@@ -9,7 +9,7 @@ export const CUSTOMER_TOOLS_RESPOND_PATH = '/tools/dev-connect/respond';
 
 const DEFAULT_MAX_SKEW_SECONDS = 300;
 
-function getSubtleCrypto(): SubtleCrypto {
+function getSubtleCrypto(): typeof globalThis.crypto.subtle {
   const subtle = globalThis.crypto?.subtle;
 
   if (!subtle) {

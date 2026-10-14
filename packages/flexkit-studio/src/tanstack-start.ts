@@ -2,6 +2,5 @@ export { createFlexkitTanStackHandler, createFlexkitFetchHandler } from './auth/
 export {
   handleFlexkitRequest,
   type FlexkitHandlerContext,
-  type FlexkitHandlerOptions,
   type FlexkitHandlerResult,
 } from './auth/core-handler';
