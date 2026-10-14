@@ -70,3 +70,22 @@ export function useProjectSchemas(projectIds: string[], userId: string | undefin
 
   return toProjectSchemasState(data, Boolean(key) && (isLoading || data === undefined));
 }
+
+/** State of a single project's schema, in the same shape as the multi-project hook. */
+export function toProjectSchemaState(outcome: FetchOutcome | undefined, isLoading: boolean): ProjectSchemasState {
+  return toProjectSchemasState(outcome ? [outcome] : undefined, isLoading);
+}
+
+/**
+ * Hosted mode: loads only the project currently open. Each project has its own
+ * SWR key, so switching back to a project reuses the schema already fetched.
+ */
+export function useProjectSchema(projectId: string | undefined, userId: string | undefined): ProjectSchemasState {
+  const key = userId && projectId ? ['project-schema', userId, projectId] : null;
+  const { data, isLoading } = useSWR(key, () => fetchProjectSchema(projectId ?? ''), {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+
+  return toProjectSchemaState(data, Boolean(key) && (isLoading || data === undefined));
+}

@@ -44,3 +44,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # The hosted Studio (apps/studio) ships with the npm packages, never with
+      # an ordinary merge: production is deployed only after a successful publish.
+      - name: Deploy hosted Studio
+        if: steps.changesets.outputs.published == 'true'
+        working-directory: apps/studio
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_fqHWhht9oVIr1ZucVdreC4jI
+          VERCEL_PROJECT_ID: prj_8LJVxLBfKhEbWPnLzxzhznF8Aw6l
+        run: |
+          pnpm dlx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+          pnpm dlx vercel@latest build --prod --token="$VERCEL_TOKEN"
+          pnpm dlx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"

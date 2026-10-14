@@ -3,6 +3,7 @@
 import { createContext, JSX, useContext } from 'react';
 import useAuthService from './use-auth-service';
 import type { Auth, AuthService, User } from './types';
+import type { StudioMode } from '../core/config/types';
 
 const AuthContext = createContext([
   true,
@@ -12,8 +13,14 @@ const AuthContext = createContext([
   } as Auth,
 ]);
 
-export function AuthProvider({ children }: { children: React.ReactNode }): JSX.Element {
-  const [isLoading, auth] = useAuthService();
+export function AuthProvider({
+  children,
+  mode = 'projects',
+}: {
+  children: React.ReactNode;
+  mode?: StudioMode;
+}): JSX.Element {
+  const [isLoading, auth] = useAuthService(mode);
 
   return <AuthContext.Provider value={[isLoading, auth]}>{children}</AuthContext.Provider>;
 }

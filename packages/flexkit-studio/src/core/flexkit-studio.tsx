@@ -36,8 +36,9 @@ type BrowserRoutes = Parameters<typeof createBrowserRouter>[0];
  * Query params: sort, filter, page, pageSize
  * Path params: id specific entity
  *
- * The Studio renders the schema deployed to each project (`flexkit deploy`);
- * the host only tells it which projects exist and where it is mounted.
+ * The Studio renders the schema deployed to each project (`flexkit deploy`).
+ * The host either lists the projects (`projectIds`) or omits them, in which
+ * case the Studio signs the user in and lists every project they can access.
  */
 export function FlexkitStudio({ projectIds, basename }: FlexkitStudioProps): JSX.Element | null {
   const [mounted, setMounted] = useState(false);
@@ -52,8 +53,11 @@ export function FlexkitStudio({ projectIds, basename }: FlexkitStudioProps): JSX
     return null;
   }
 
-  if (projectIds.length === 0) {
-    throw new Error('FlexkitStudio needs at least one project id: <FlexkitStudio projectIds={["..."]} />');
+  // `projectIds` omitted = hosted mode (the Studio lists the user's projects); an empty list is a host bug.
+  if (projectIds !== undefined && projectIds.length === 0) {
+    throw new Error(
+      'FlexkitStudio needs at least one project id: <FlexkitStudio projectIds={["..."]} />. Omit the prop for hosted mode.'
+    );
   }
 
   const routes = [
