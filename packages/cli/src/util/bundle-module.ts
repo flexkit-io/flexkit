@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { createRequire, isBuiltin } from 'node:module';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import * as esbuild from 'esbuild';
 
 export interface BundleModuleOptions {
@@ -154,8 +155,9 @@ export async function bundleAndImport<T>(filePath: string, options: BundleModule
       logLevel: 'warning', // Reduce noise in logs
     });
 
-    // Cache-bust so a rebuilt file (watch mode) is imported fresh.
-    return (await import(`${tempOutputPath}?t=${String(Date.now())}`)) as T;
+    // Every call writes a uniquely named file, so the ESM cache never serves a
+    // stale bundle in watch mode. A file URL keeps this working on Windows.
+    return (await import(pathToFileURL(tempOutputPath).href)) as T;
   } finally {
     removeTempOutput(tempOutputPath);
   }

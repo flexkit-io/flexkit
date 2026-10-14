@@ -154,22 +154,35 @@ export default async function main(client: Client): Promise<number> {
   if (!argv.flags['--no-watch']) {
     let reloadTimer: NodeJS.Timeout | undefined;
     let reloading = false;
+    let reloadRequested = false;
 
+    // A save that lands while a bundle is in progress is remembered and
+    // applied right after, so the runtime never keeps stale tools.
     const reload = async (): Promise<void> => {
       if (reloading) {
+        reloadRequested = true;
+
         return;
       }
 
       reloading = true;
 
       try {
-        const next = await loadToolsDefinition(output, toolsFilePath);
-        handle?.update(next);
-        output.log(
-          `Reloaded ${path.basename(toolsFilePath)}: ${String(next.tools.length)} tools, ${String(next.skills.length)} skills`
-        );
-      } catch (error) {
-        output.error(`Reload failed, keeping the previous tools: ${error instanceof Error ? error.message : String(error)}`);
+        do {
+          reloadRequested = false;
+
+          try {
+            const next = await loadToolsDefinition(output, toolsFilePath);
+            handle?.update(next);
+            output.log(
+              `Reloaded ${path.basename(toolsFilePath)}: ${String(next.tools.length)} tools, ${String(next.skills.length)} skills`
+            );
+          } catch (error) {
+            output.error(
+              `Reload failed, keeping the previous tools: ${error instanceof Error ? error.message : String(error)}`
+            );
+          }
+        } while (reloadRequested);
       } finally {
         reloading = false;
       }
