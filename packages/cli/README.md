@@ -29,7 +29,9 @@ Example commands:
 
 ```shell
 flexkit login
-flexkit deploy
+flexkit deploy        # deploy the schema from flexkit.config.ts
+flexkit dev           # run the tools and skills from flexkit.tools.ts as your local runtime
+flexkit tools sync    # re-read the production tool catalog after a deploy (CI friendly)
 ```
 
 ## Documentation

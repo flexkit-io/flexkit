@@ -1,5 +1,4 @@
-import { handleFlexkitRequest, type FlexkitHandlerOptions, type FlexkitHandlerResult } from './core-handler';
-import { assertUniqueSkillNames } from '../tools/define-skill';
+import { handleFlexkitRequest, type FlexkitHandlerResult } from './core-handler';
 
 /**
  * Types for TanStack Start / Nitro / Vinxi event handling
@@ -168,9 +167,7 @@ function applyResultToResponse(result: FlexkitHandlerResult, event: H3Event): st
  * export default eventHandler(createFlexkitTanStackHandler());
  * ```
  */
-export function createFlexkitTanStackHandler(options?: FlexkitHandlerOptions): EventHandler {
-  assertUniqueSkillNames(options?.skills ?? []);
-
+export function createFlexkitTanStackHandler(): EventHandler {
   return async (event: H3Event): Promise<unknown> => {
     const { req } = event.node;
     const method = event.method || req.method || 'GET';
@@ -214,7 +211,6 @@ export function createFlexkitTanStackHandler(options?: FlexkitHandlerOptions): E
       search: url.search,
       sessionToken,
       contentType,
-      options,
     });
 
     if (result.type === 'response') {
@@ -248,9 +244,7 @@ export function createFlexkitTanStackHandler(options?: FlexkitHandlerOptions): E
  * }
  * ```
  */
-export function createFlexkitFetchHandler(options?: FlexkitHandlerOptions): (request: Request) => Promise<Response> {
-  assertUniqueSkillNames(options?.skills ?? []);
-
+export function createFlexkitFetchHandler(): (request: Request) => Promise<Response> {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
     const cookieHeader = request.headers.get('cookie');
@@ -276,7 +270,6 @@ export function createFlexkitFetchHandler(options?: FlexkitHandlerOptions): (req
       search: url.search,
       sessionToken,
       contentType: request.headers.get('content-type'),
-      options,
     });
 
     const headers = new Headers(result.headers);

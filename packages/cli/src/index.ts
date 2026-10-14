@@ -30,11 +30,13 @@ import getConfig from './util/get-config';
 import loginCommand from './commands/login';
 import logoutCommand from './commands/logout';
 import deployCommand from './commands/deploy';
+import devCommand from './commands/dev';
 import projectCommand from './commands/project';
 import whoamiCommand from './commands/whoami';
 import assetsCommand from './commands/assets';
 import importCommand from './commands/import';
 import exportCommand from './commands/export';
+import toolsCommand from './commands/tools';
 import doLoginPrompt from './util/login/prompt';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
@@ -313,6 +315,9 @@ const main = async (): Promise<number | undefined> => {
         case 'deploy':
           func = deployCommand;
           break;
+        case 'dev':
+          func = devCommand;
+          break;
         case 'export':
           func = exportCommand;
           break;
@@ -327,6 +332,9 @@ const main = async (): Promise<number | undefined> => {
           break;
         case 'project':
           func = projectCommand;
+          break;
+        case 'tools':
+          func = toolsCommand;
           break;
         case 'whoami':
           func = whoamiCommand;

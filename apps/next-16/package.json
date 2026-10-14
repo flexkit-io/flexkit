@@ -11,6 +11,7 @@
   "dependencies": {
     "@flexkit/schema": "workspace:*",
     "@flexkit/studio": "workspace:*",
+    "@flexkit/tools": "workspace:*",
     "demo-schemas": "workspace:*",
     "next": "16.3.5",
     "react": "19.2.5",

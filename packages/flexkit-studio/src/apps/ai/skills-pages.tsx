@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/auth-context';
 import { useCanMutate } from '../../core/permissions';
 import { useConfig } from '../../core/config/config-context';
-import { MAX_SKILL_CONTENT_LENGTH } from '../../tools';
+import { MAX_SKILL_CONTENT_LENGTH } from './skill-limits';
 import {
   Alert,
   AlertDescription,

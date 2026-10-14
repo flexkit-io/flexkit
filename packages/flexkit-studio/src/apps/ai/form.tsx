@@ -203,11 +203,11 @@ function getInitialTriggers(automation?: Automation): FormTrigger[] {
 
 function getCustomToolsStatus(customTools: AutomationCustomTools): string {
   if (customTools.connected && customTools.connectionLabel) {
-    return `Manually running this automation on localhost uses custom tools from your local runtime (${customTools.connectionLabel}) so you can test them.`;
+    return `While your local runtime (${customTools.connectionLabel}) is connected, manually running this automation uses its custom tools so you can test them.`;
   }
 
   if (customTools.connected) {
-    return 'Manually running this automation on localhost uses custom tools from your local runtime so you can test them.';
+    return 'While `flexkit dev` is connected, manually running this automation uses the custom tools from your local runtime so you can test them.';
   }
 
   if (customTools.origin) {
@@ -2119,7 +2119,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             </div>
             {customToolsCatalog && attachableCustomTools.length === 0 ? (
               <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
-                No custom tools registered yet. Add them in your app with defineTool, then attach the ones this
+                No custom tools registered yet. Define them in flexkit.tools.ts, run `flexkit dev` or sync them from the Dashboard, then attach the ones this
                 automation needs.
               </p>
             ) : null}

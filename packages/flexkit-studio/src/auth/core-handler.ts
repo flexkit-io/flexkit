@@ -1,18 +1,7 @@
 import { flexkitApiDomain } from '../core/domains';
-import {
-  FLEXKIT_STUDIO_RUNTIME_HEADER,
-  FLEXKIT_STUDIO_RUNTIME_LOCAL,
-  handleDevConnectTick,
-  isCustomerToolsTickPath,
-  shouldHandleDevConnectTick,
-} from '../tools/dev-connect';
-import { handleCustomerToolsRequest, isCustomerToolsPath } from '../tools/serve';
-import type { FlexkitHandlerOptions } from '../tools/types';
 import { getToken } from './get-token';
 
 const domain = flexkitApiDomain;
-
-export type { FlexkitHandlerOptions };
 
 export interface FlexkitHandlerContext {
   request: Request;
@@ -20,7 +9,6 @@ export interface FlexkitHandlerContext {
   search: string;
   sessionToken: string;
   contentType: string | null;
-  options?: FlexkitHandlerOptions;
 }
 
 type FlexkitHandlerHeaders = { [key: string]: string };
@@ -117,10 +105,6 @@ function sanitizeForwardHeaders(headers: Headers): Headers {
       return;
     }
 
-    if (normalizedKey === FLEXKIT_STUDIO_RUNTIME_HEADER.toLowerCase()) {
-      return;
-    }
-
     sanitized.set(key, value);
   });
 
@@ -138,27 +122,8 @@ function headersToObject(headers: Headers): { [key: string]: string } {
 }
 
 export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<FlexkitHandlerResult> {
-  const { request, pathname, search, sessionToken, contentType, options } = ctx;
+  const { request, pathname, search, sessionToken, contentType } = ctx;
   const { body: requestBody, method } = request;
-
-  if (isCustomerToolsPath(pathname)) {
-    return handleCustomerToolsRequest({
-      request,
-      skills: options?.skills,
-      tools: options?.tools ?? [],
-    });
-  }
-
-  if (isCustomerToolsTickPath(pathname)) {
-    const [, , , tickProjectId] = pathname.split('/');
-
-    return handleDevConnectTick({
-      projectId: tickProjectId ?? '',
-      sessionToken,
-      skills: options?.skills,
-      tools: options?.tools ?? [],
-    });
-  }
 
   // Handle get-token endpoint
   if (pathname === '/api/flexkit/get-token') {
@@ -244,8 +209,6 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
   const effectiveSessionToken = sessionToken || bearerToken;
 
   forwardHeaders.delete('Authorization');
-  // Never forward a client-supplied runtime signal. Only this handler may stamp it.
-  forwardHeaders.delete(FLEXKIT_STUDIO_RUNTIME_HEADER);
 
   if (!effectiveSessionToken) {
     forwardHeaders.delete('Cookie');
@@ -253,12 +216,6 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
 
   if (effectiveSessionToken) {
     forwardHeaders.set('Cookie', `sessionToken=${effectiveSessionToken}`);
-  }
-
-  // Only a Studio session may advertise the local runtime. API tokens map to
-  // the creator's userId and must not opt that user into localhost tool routing.
-  if (shouldHandleDevConnectTick() && effectiveSessionToken && !effectiveSessionToken.startsWith('flk-')) {
-    forwardHeaders.set(FLEXKIT_STUDIO_RUNTIME_HEADER, FLEXKIT_STUDIO_RUNTIME_LOCAL);
   }
 
   if (method !== 'GET' && method !== 'HEAD') {

@@ -9,12 +9,14 @@ export const help = (): string => `
 
       assets                           Manage project assets (upload, export)
       deploy                           Deploy the current schema and observe progress in real time
+      dev                              Run the custom tools and code skills from flexkit.tools.ts locally
       export               [dest]      Export the full dataset (entities + assets) to a tarball
       help                 [cmd]       Displays complete help for [cmd]
       import               <input>     Import entities and assets from NDJSON, a directory or a tarball
       login                [email]     Logs into your Flexkit's account
       logout                           Logs out of your account
       project                          Manage projects (ls, add, rm)
+      tools                            Manage the production custom-tools catalog (sync)
       whoami                           Shows the username of the currently logged in user
 
   ${chalk.dim('Global Options:')}

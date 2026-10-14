@@ -1,4 +1,21 @@
-import { defineSkill } from '@flexkit/studio/tools';
+import { defineSkill, defineTool, defineTools } from '@flexkit/tools';
+import { z } from 'zod';
+
+export const ping = defineTool({
+  name: 'ping',
+  description: 'Echo a message from the customer app runtime. Use this to verify that custom tools are connected.',
+  input: z.object({
+    message: z.string().describe('Message to echo back from the Next.js app.'),
+  }),
+  execute: async ({ message }, actor) => {
+    return {
+      actor,
+      echo: message,
+      now: new Date().toISOString(),
+      runtime: 'next-16',
+    };
+  },
+});
 
 export const forecasting = defineSkill({
   name: 'Holt-Winters sales forecasting',
@@ -20,4 +37,10 @@ Use this procedure when an automation needs to forecast sales or product demand.
 ## Result
 
 Summarize the history window, seasonal period, forecast horizon, and tool parameters. Return forecasts with their bucket timestamps and source identifiers, and clearly label confidence limits when the tool provides them.`,
+});
+
+/** Served by `app/api/flexkit/tools/route.ts` in production and by `flexkit dev` locally. */
+export default defineTools({
+  tools: [ping],
+  skills: [forecasting],
 });

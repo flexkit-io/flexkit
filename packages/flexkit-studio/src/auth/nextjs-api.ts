@@ -1,5 +1,4 @@
-import { handleFlexkitRequest, type FlexkitHandlerOptions, type FlexkitHandlerResult } from './core-handler';
-import { assertUniqueSkillNames } from '../tools/define-skill';
+import { handleFlexkitRequest, type FlexkitHandlerResult } from './core-handler';
 
 /**
  * Types for Next.js dependencies
@@ -77,7 +76,10 @@ function resultToNextResponse(result: FlexkitHandlerResultWithResponse, NextResp
 }
 
 /**
- * Creates a Next.js API route handler for Flexkit integration.
+ * Creates a Next.js API route handler for a self-hosted Flexkit Studio: it
+ * stores the session cookie, exchanges login codes and proxies Studio requests
+ * to the project API. Custom tools are served separately by
+ * `createToolsHandler` from `@flexkit/tools`.
  *
  * Compatible with Next.js versions 13, 14, 15, and 16.
  *
@@ -105,9 +107,7 @@ function resultToNextResponse(result: FlexkitHandlerResultWithResponse, NextResp
  * export const { GET, POST, PUT, PATCH, DELETE } = flexkitHandler;
  * ```
  */
-export function createFlexkitApiHandler(dependencies: FlexkitNextDependencies, options?: FlexkitHandlerOptions) {
-  assertUniqueSkillNames(options?.skills ?? []);
-
+export function createFlexkitApiHandler(dependencies: FlexkitNextDependencies) {
   const { NextResponse, cookies, headers } = dependencies;
 
   const handleRequest = async (request: NextRequest): Promise<Response> => {
@@ -138,7 +138,6 @@ export function createFlexkitApiHandler(dependencies: FlexkitNextDependencies, o
       search,
       sessionToken,
       contentType,
-      options,
     })) as FlexkitHandlerResultWithResponse;
 
     return resultToNextResponse(result, NextResponse);
