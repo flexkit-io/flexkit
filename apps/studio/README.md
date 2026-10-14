@@ -21,7 +21,7 @@ Vercel settings to keep in sync with this README:
 - Root Directory: `apps/studio`; Build Command: `cd ../.. && pnpm turbo run build --filter=studio...`
 - Ignored Build Step: `if [ "$VERCEL_ENV" = "production" ]; then exit 0; else exit 1; fi`
 - Environment: `FLEXKIT_DOMAIN=flexkit.io`
-- Domain: `flexkit.studio`
+- Domain: `flexkit.app`
 - GitHub secret `VERCEL_TOKEN` for the release workflow (`VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` are set in the workflow).
 
-Backend: `STUDIO_HOSTED_ORIGINS=https://flexkit.studio` on the Flexkit web project.
+Backend: `STUDIO_HOSTED_ORIGINS=https://flexkit.app` on the Flexkit web project.
