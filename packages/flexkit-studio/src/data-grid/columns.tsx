@@ -1,7 +1,7 @@
 import { ComponentType } from 'react';
 import type { JSX } from 'react';
 import type { CellContext, Column, ColumnDef, Row, Table } from '@tanstack/react-table';
-import type { Attribute, InputType, SelectOptions } from '../core/types';
+import type { Attribute, InputType, NumberOptions, SelectOptions } from '../core/types';
 import type { AttributeValue } from '../graphql-client/types';
 import { useAuth } from '../auth/auth-context';
 import { filterAttributesForSpaces } from '../core/spaces';
@@ -13,6 +13,7 @@ import { Asset as AssetPreviewField } from './preview-components/asset';
 import { DateTime as DateTimePreviewField } from './preview-components/datetime';
 import { Select as SelectPreviewField } from './preview-components/select';
 import { Tags as TagsPreviewField } from './preview-components/tags';
+import { Rating as RatingPreviewField } from './preview-components/rating';
 import { Asset as AssetManagerAssetPreviewField } from '../apps/asset-manager/data-grid/preview-components/asset';
 import { DataTableColumnHeader } from './data-table-column-header';
 
@@ -67,6 +68,7 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
     'text': TextPreviewField,
     'textarea': TextPreviewField,
     'tags': TagsPreviewField,
+    'rating': RatingPreviewField,
     // Asset Manager rows render the whole record (path, mime type, ...).
     'assetPreviewField': AssetManagerAssetPreviewField,
   };
@@ -120,14 +122,15 @@ export function useGridColumnsDefinition<TData extends AttributeValue, TValue>({
         cell: ({ row }: CellContext<TData, TValue>) => {
           const PreviewComponent = previewComponent as ComponentType<{
             value: TData;
-            options?: SelectOptions;
+            options?: SelectOptions | NumberOptions;
           }>;
 
-          if (previewType === 'select') {
+          // Select needs its option list; rating reads the star count from options.max.
+          if (previewType === 'select' || previewType === 'rating') {
             return (
               <PreviewComponent
                 value={row.getValue(attribute.name)}
-                options={attribute.options as SelectOptions | undefined}
+                options={attribute.options as SelectOptions | NumberOptions | undefined}
               />
             );
           }
