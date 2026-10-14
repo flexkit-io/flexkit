@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # Redeploy the hosted Studio from the current main without publishing
+  # (for example after a deploy failure).
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -36,6 +39,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Create Release Pull Request or Publish to npm
+        if: github.event_name == 'push'
         id: changesets
         uses: changesets/action@v1
         with:
@@ -46,10 +50,11 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # The hosted Studio (apps/studio) ships with the npm packages, never with
-      # an ordinary merge: production is deployed only after a successful publish.
+      # an ordinary merge: production is deployed only after a successful publish
+      # (or on a manual run). The commands run from the repository root; the
+      # Vercel project's Root Directory (apps/studio) selects the app.
       - name: Deploy hosted Studio
-        if: steps.changesets.outputs.published == 'true'
-        working-directory: apps/studio
+        if: steps.changesets.outputs.published == 'true' || github.event_name == 'workflow_dispatch'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: team_fqHWhht9oVIr1ZucVdreC4jI

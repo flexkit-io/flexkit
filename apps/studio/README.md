@@ -14,7 +14,7 @@ For day-to-day Studio development keep using `apps/next-16`, which passes explic
 
 ## Deploy
 
-Vercel project `flexkit-studio` (Root Directory `apps/studio`). Production is deployed **only when packages are published**: the `Release` workflow runs `vercel build` + `vercel deploy --prebuilt --prod` after a successful `changeset publish`, so the hosted Studio always matches the versions on npm. Git pushes never build production (Ignored Build Step below); pull requests still get preview deployments.
+Vercel project `flexkit-studio` (Root Directory `apps/studio`). Production is deployed **only when packages are published**: the `Release` workflow runs `vercel build` + `vercel deploy --prebuilt --prod` from the repository root after a successful `changeset publish`, so the hosted Studio always matches the versions on npm. To redeploy without publishing (for example after a failed deploy), run the `Release` workflow manually from the Actions tab. Git pushes never build production (Ignored Build Step below); pull requests still get preview deployments.
 
 Vercel settings to keep in sync with this README:
 
