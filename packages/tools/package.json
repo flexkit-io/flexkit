@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/tools",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Define, serve and run Flexkit custom tools and code skills from your own server: defineTool, defineSkill, defineTools, createToolsHandler and the local runtime behind `flexkit dev`.",
   "keywords": [
     "flexkit",

@@ -1,5 +1,20 @@
 # @flexkit/cli
 
+## 0.1.0
+
+### Minor Changes
+
+- af083bf: New commands for custom tools. `flexkit dev` loads `flexkit.tools.ts` (after `.env.local` / `.env`), registers as your local runtime and executes the tool calls of your own Chat turns and manual runs, reloading when the file changes. `flexkit tools sync [--origin <url>]` re-reads the production tool catalog from the project's tools URL, optionally storing a new URL first, so CI can sync after every deploy. Config and tools files are bundled by a shared helper.
+- 8e85705: `flexkit deploy` now loads `flexkit.config.ts` (or `.js` / `.mjs`) and serializes it through `@flexkit/schema` before sending it: `validation` functions become JSON Schema, and `title` and `menuGroups` are deployed with the schema. Breaking: `flexkit.config.tsx` / `.jsx` files are refused with migration guidance (rename to `.ts`, use lucide icon names such as `icon: 'Tag'`, booleans for `hidden` / `readOnly`, and drop `extensions`, `basePath` and `commands`). A validation that uses `refine()`, `transform()` or an unsupported keyword fails the deploy instead of being silently dropped. `--force` is a boolean flag.
+
+### Patch Changes
+
+- Updated dependencies [8e85705]
+- Updated dependencies [ec7d261]
+- Updated dependencies [af083bf]
+  - @flexkit/schema@0.1.0
+  - @flexkit/tools@0.1.0
+
 ## 0.0.13
 
 ### Patch Changes
