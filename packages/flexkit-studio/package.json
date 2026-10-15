@@ -62,7 +62,7 @@
     "test:performance": "tsup --config tests/performance.config.ts && node --test build/tests/list-performance.test.js build/tests/editor-preview.test.js",
     "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
     "ui:add": "pnpm dlx shadcn@latest add",
-    "test:core": "tsup --config tests/core.config.ts && node --test build/tests/json-schema-to-zod.test.js build/tests/icon-name.test.js build/tests/project-schemas.test.js build/tests/rating-preview.test.js build/tests/last-project.test.js build/tests/proxy-target.test.js build/tests/project-label.test.js build/tests/hosted-session.test.js build/tests/bff-session.test.js build/tests/project-schema-key.test.js",
+    "test:core": "tsup --config tests/core.config.ts && node --test build/tests/json-schema-to-zod.test.js build/tests/icon-name.test.js build/tests/project-schemas.test.js build/tests/rating-preview.test.js build/tests/last-project.test.js build/tests/proxy-target.test.js build/tests/project-label.test.js build/tests/hosted-session.test.js build/tests/bff-session.test.js build/tests/project-schema-key.test.js build/tests/schema-deploy-watch.test.js",
     "test:ai": "tsup --config tests/ai.config.ts && node --test build/tests/ai/*.test.js",
     "test": "pnpm run test:core && pnpm run test:ai && pnpm run test:performance"
   },

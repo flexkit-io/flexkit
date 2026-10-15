@@ -36,7 +36,7 @@ import {
 } from './status-label';
 import type { DataPart } from '@flexkit/agent-protocol';
 import type { AutomationApproval, AutomationRun } from './types';
-import { revalidateProjectSchema } from '../../core/config/use-project-schemas';
+import { watchSchemaDeployment } from './schema-deploy-watch';
 
 export {
   getLiveStatusLabel,
@@ -1087,19 +1087,17 @@ export function MutationApprovalPart({
   );
   const approvalStatus = data?.approval?.status;
   const isPending = (approvalStatus ?? message.status) === 'pending';
-  const schemaDeployed = data?.approval?.kind === 'schema' && message.status === 'executed';
-  const refreshedSchemaRef = useRef(false);
+  const approvedSchemaChange = data?.approval?.kind === 'schema' && data.approval.status === 'approved';
 
-  // An approved schema change was deployed: refetch the project schema so the
-  // new entities appear in the navbar and Desk without a reload.
+  // A schema change approved here or elsewhere deploys in the background:
+  // watch it so the navbar and Desk pick up the new entities without a reload.
   useEffect(() => {
-    if (!schemaDeployed || !projectId || refreshedSchemaRef.current) {
+    if (!approvedSchemaChange || !projectId) {
       return;
     }
 
-    refreshedSchemaRef.current = true;
-    void revalidateProjectSchema(projectId);
-  }, [projectId, schemaDeployed]);
+    watchSchemaDeployment({ approvalId: message.approvalId, approvalUrl: paths(projectId).approval(message.approvalId), projectId });
+  }, [approvedSchemaChange, message.approvalId, projectId]);
 
   // The stream part changes when the proposal is decided or executed; refresh
   // the full approval (preview, result, error) from the API when that happens.

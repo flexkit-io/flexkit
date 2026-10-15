@@ -21,8 +21,9 @@ import {
   TableRow,
   Textarea,
 } from '../../ui';
-import type { ApiClient } from './api';
+import { paths, type ApiClient } from './api';
 import { useRevalidateApprovalsCount } from './approvals-count';
+import { watchSchemaDeployment } from './schema-deploy-watch';
 import type {
   AutomationApproval,
   AutomationApprovalOperation,
@@ -461,6 +462,17 @@ function useApprovalDecision({
     setApproval(nextApproval);
     // The sidebar badge counts pending approvals; a decision changes it now.
     revalidateApprovalsCount();
+
+    // An approved schema change deploys in the background; refresh the
+    // project schema when it lands, wherever the approval came from.
+    if (nextApproval.kind === 'schema' && nextApproval.status === 'approved') {
+      watchSchemaDeployment({
+        approvalId: nextApproval.id,
+        approvalUrl: paths(nextApproval.projectId).approval(nextApproval.id),
+        projectId: nextApproval.projectId,
+      });
+    }
+
     onDecided?.(nextApproval);
   }
 

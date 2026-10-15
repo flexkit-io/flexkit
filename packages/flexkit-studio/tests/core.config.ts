@@ -12,6 +12,7 @@ export default defineConfig({
     'tests/hosted-session.test.ts',
     'tests/bff-session.test.ts',
     'tests/project-schema-key.test.ts',
+    'tests/schema-deploy-watch.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',
