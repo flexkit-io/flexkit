@@ -2,7 +2,7 @@
 export type AutomationRunStatus = 'running' | 'awaiting_approval' | 'success' | 'skipped' | 'failed' | 'cancelled';
 export type AutomationTriggerType = 'entity' | 'manual' | 'schedule' | 'webhook';
 export type AutomationApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
-export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin' | 'exec';
+export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin' | 'exec' | 'schema';
 export type AutomationApprovalPreviewKind = 'create' | 'update' | 'delete' | 'unknown';
 export type AutomationMutationPolicy = 'require_approval' | 'auto_approve';
 
@@ -28,8 +28,18 @@ export interface AutomationApprovalPreviewOperation {
   truncated: boolean;
 }
 
+/** Extra context carried by `kind: 'schema'` approvals (agent-proposed schema deployments). */
+export interface SchemaChangePreviewSummary {
+  /** One line per change, e.g. "Add Review (3 attributes)". */
+  summaryLines: string[];
+  /** Changes that lose access to data; the deployment was proposed with them acknowledged. */
+  breakingChanges: string[];
+  warnings: string[];
+}
+
 export interface AutomationApprovalPreview {
   operations: AutomationApprovalPreviewOperation[];
+  schema?: SchemaChangePreviewSummary;
 }
 
 export interface AutomationApproval {

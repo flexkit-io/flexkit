@@ -14,6 +14,7 @@ export type {
   AutomationApprovalPreview,
   AutomationApprovalPreviewKind,
   AutomationApprovalPreviewOperation,
+  SchemaChangePreviewSummary,
   AutomationApprovalPreviewRow,
   AutomationApprovalStatus,
   AutomationMutationPolicy,

@@ -11,6 +11,7 @@ export default defineConfig({
     'tests/project-label.test.ts',
     'tests/hosted-session.test.ts',
     'tests/bff-session.test.ts',
+    'tests/project-schema-key.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',
