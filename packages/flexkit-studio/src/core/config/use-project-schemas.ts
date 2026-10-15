@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { apiPaths } from '../api-paths';
 import type { ProjectSchemaError, ProjectUiConfig } from './types';
 
@@ -88,4 +88,18 @@ export function useProjectSchema(projectId: string | undefined, userId: string |
   });
 
   return toProjectSchemaState(data, Boolean(key) && (isLoading || data === undefined));
+}
+
+/** True for the SWR keys that hold `projectId`'s schema (single- and multi-project hooks). */
+export function isProjectSchemaKey(key: unknown, projectId: string): boolean {
+  return (
+    Array.isArray(key) &&
+    (key[0] === 'project-schema' || key[0] === 'project-schemas') &&
+    key.slice(2).includes(projectId)
+  );
+}
+
+/** Refetches the deployed schema of `projectId`, e.g. after the agent deployed a schema change. */
+export function revalidateProjectSchema(projectId: string): Promise<unknown> {
+  return mutate((key) => isProjectSchemaKey(key, projectId));
 }

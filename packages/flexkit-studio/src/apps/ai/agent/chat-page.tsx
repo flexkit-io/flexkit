@@ -55,6 +55,7 @@ import {
   type RunReplayActions,
   type TurnStatus,
 } from '../replay';
+import type { DecidedApprovals } from '../approval-parts';
 import type {
   AgentChat,
   AgentChatAttachment,
@@ -430,8 +431,10 @@ function LiveTurn({
   const streamApi = message.workflowRunId ? api.getAgentChatStreamUrl(chatId, message.workflowRunId) : '';
   const [resumeToken, setResumeToken] = useState(0);
   const [suppressApprovalPause, setSuppressApprovalPause] = useState(false);
+  const [decidedApprovals, setDecidedApprovals] = useState<DecidedApprovals>({});
   const lastDecidedApprovalIdRef = useRef<string | null>(null);
   const { message: streamMessage, status } = useRunStream(streamApi, {
+    decidedApprovals,
     recordStatus,
     resumeToken,
     suppressApprovalPause,
@@ -450,7 +453,11 @@ function LiveTurn({
   onStatusChangeRef.current = onStatusChange;
   const replayActions = useMemo<RunReplayActions>(
     () => ({
-      onApprovalDecided: (approvalId) => {
+      onApprovalDecided: (approvalId, decidedStatus) => {
+        if (approvalId && decidedStatus && decidedStatus !== 'pending') {
+          setDecidedApprovals((current) => ({ ...current, [approvalId]: decidedStatus }));
+        }
+
         if (approvalId && lastDecidedApprovalIdRef.current === approvalId) {
           return;
         }
@@ -471,6 +478,7 @@ function LiveTurn({
     setResumeToken(0);
     setSuppressApprovalPause(false);
     lastDecidedApprovalIdRef.current = null;
+    setDecidedApprovals({});
   }, [message.id]);
 
   // Clear the post-decide suppress window once the workflow has resumed.

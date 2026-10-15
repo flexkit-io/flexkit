@@ -21,8 +21,9 @@ import {
   TableRow,
   Textarea,
 } from '../../ui';
-import type { ApiClient } from './api';
+import { paths, type ApiClient } from './api';
 import { useRevalidateApprovalsCount } from './approvals-count';
+import { watchSchemaDeployment } from './schema-deploy-watch';
 import type {
   AutomationApproval,
   AutomationApprovalOperation,
@@ -257,7 +258,139 @@ function getChatActionTitle(approval: AutomationApproval): string {
     return 'Run a sandbox command';
   }
 
+  if (approval.kind === 'schema') {
+    return approval.operationsSummary.replace(/^Schema: /, '');
+  }
+
   return approval.kind === 'plugin' ? 'Use a connected app' : approval.operationsSummary;
+}
+
+
+function SchemaRowsTable({ operation }: { operation: AutomationApprovalPreviewOperation }): JSX.Element | null {
+  if (operation.rows.length === 0) {
+    return null;
+  }
+
+  const isSet = (value: unknown): boolean => value !== null && value !== undefined && value !== false;
+  // Hide columns no row sets; in a change table also hide columns no row changes.
+  const shownColumns = operation.columns.filter((column) => {
+    const anySet = operation.rows.some((row) => isSet(row.before?.[column]) || isSet(row.after?.[column]));
+
+    if (!anySet) return false;
+    if (operation.kind !== 'update') return true;
+
+    return operation.rows.some((row) => formatCellValue(row.before?.[column]) !== formatCellValue(row.after?.[column]));
+  });
+
+  return (
+    <div className="fk:overflow-x-auto fk:rounded-md fk:border fk:border-border fk:corner-squircle">
+      <Table className="fk:text-xs">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="fk:h-8">{operation.entity === 'scopes' || operation.entity === 'spaces' || operation.entity === 'studio' ? 'Setting' : 'Attribute'}</TableHead>
+            {shownColumns.map((column) => (
+              <TableHead className="fk:h-8" key={column}>
+                {column}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {operation.rows.map((row, index) => (
+            <TableRow key={row.id ?? index.toString()}>
+              <TableCell className="fk:py-1.5 fk:font-mono fk:text-[0.7rem]">
+                {operation.kind === 'delete' ? <span className="fk:line-through fk:text-destructive">{row.id}</span> : row.id}
+                {operation.kind === 'update' && row.before === null ? (
+                  <Badge className="fk:ml-2" variant="secondary">
+                    new
+                  </Badge>
+                ) : null}
+                {operation.kind === 'update' && row.after === null ? (
+                  <Badge className="fk:ml-2" variant="destructive">
+                    removed
+                  </Badge>
+                ) : null}
+              </TableCell>
+              {shownColumns.map((column) => (
+                <TableCell className="fk:py-1.5" key={column}>
+                  {operation.kind === 'create' ? (
+                    <span>{formatCellValue(row.after?.[column])}</span>
+                  ) : operation.kind === 'delete' ? (
+                    <span className="fk:text-muted-foreground">{formatCellValue(row.before?.[column])}</span>
+                  ) : (
+                    <DiffCell after={row.after?.[column]} before={row.before?.[column]} />
+                  )}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function getSchemaOperationTitle(operation: AutomationApprovalPreviewOperation): string {
+  const entity = operation.entity ?? 'schema';
+
+  if (entity === 'scopes' || entity === 'spaces' || entity === 'studio') {
+    return `Change ${entity === 'studio' ? 'Studio settings' : entity}`;
+  }
+
+  if (operation.kind === 'create') {
+    return `Add entity ${entity} · ${operation.rows.length.toString()} attribute${operation.rows.length === 1 ? '' : 's'}`;
+  }
+
+  if (operation.kind === 'delete') {
+    return `Remove entity ${entity}`;
+  }
+
+  return `Change entity ${entity}`;
+}
+
+/** Review card body for agent-proposed schema deployments. */
+function SchemaChangePreview({ preview }: { preview: NonNullable<AutomationApproval['preview']> }): JSX.Element {
+  const summary = preview.schema;
+
+  return (
+    <div className="fk:space-y-4">
+      {summary && summary.breakingChanges.length > 0 ? (
+        <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:corner-squircle">
+          <div className="fk:mb-1 fk:flex fk:items-center fk:gap-2 fk:font-medium fk:text-destructive">
+            <TriangleAlertIcon className="fk:size-4" />
+            Breaking changes: existing data becomes inaccessible
+          </div>
+          <ul className="fk:list-disc fk:pl-5 fk:text-destructive">
+            {summary.breakingChanges.map((change) => (
+              <li key={change}>{change}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {summary && summary.warnings.length > 0 ? (
+        <div className="fk:rounded-md fk:border fk:border-amber-500/40 fk:bg-amber-500/10 fk:p-3 fk:text-sm fk:corner-squircle">
+          <ul className="fk:list-disc fk:pl-5">
+            {summary.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {preview.operations.map((operation, index) => (
+        <div className="fk:space-y-2" key={`${operation.entity ?? ''}-${index.toString()}`}>
+          <div className={`fk:text-sm fk:font-medium ${operation.kind === 'delete' ? 'fk:text-destructive' : ''}`}>
+            {getSchemaOperationTitle(operation)}
+          </div>
+          <SchemaRowsTable operation={operation} />
+        </div>
+      ))}
+      {preview.operations.length === 0 ? (
+        <div className="fk:rounded-md fk:border fk:border-dashed fk:p-3 fk:text-xs fk:text-muted-foreground fk:corner-squircle">
+          No visible entity changes. Review the operations below.
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /** Fields the card syncs from parent props; ignores object identity from SWR. */
@@ -329,6 +462,17 @@ function useApprovalDecision({
     setApproval(nextApproval);
     // The sidebar badge counts pending approvals; a decision changes it now.
     revalidateApprovalsCount();
+
+    // An approved schema change deploys in the background; refresh the
+    // project schema when it lands, wherever the approval came from.
+    if (nextApproval.kind === 'schema' && nextApproval.status === 'approved') {
+      watchSchemaDeployment({
+        approvalId: nextApproval.id,
+        approvalUrl: paths(nextApproval.projectId).approval(nextApproval.id),
+        projectId: nextApproval.projectId,
+      });
+    }
+
     onDecided?.(nextApproval);
   }
 
@@ -539,6 +683,7 @@ function ApprovalCardBody({
     <div className="fk:min-w-0 fk:max-w-full fk:space-y-4">
       <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
         <ApprovalStatusBadge status={approval.status} />
+        {approval.kind === 'schema' ? <Badge variant="outline">Schema change</Badge> : null}
         <span className="fk:text-sm fk:font-medium">
           {chat ? getChatActionTitle(approval) : approval.operationsSummary}
         </span>
@@ -560,7 +705,9 @@ function ApprovalCardBody({
         </div>
       ) : null}
 
-      {preview && preview.operations.length > 0 ? (
+      {approval.kind === 'schema' && preview ? (
+        <SchemaChangePreview preview={preview} />
+      ) : preview && preview.operations.length > 0 ? (
         <div className="fk:space-y-4">
           {preview.operations.map((operation, index) => (
             <div className="fk:space-y-2" key={index.toString()}>
@@ -598,7 +745,7 @@ function ApprovalCardBody({
         chat={chat}
         operations={approval.operations}
         plugin={approval.kind === 'plugin' || approval.kind === 'exec'}
-        title={approval.kind === 'exec' ? 'Command and options' : undefined}
+        title={approval.kind === 'exec' ? 'Command and options' : approval.kind === 'schema' ? 'Operations' : undefined}
       />
 
       {approval.reason ? (
