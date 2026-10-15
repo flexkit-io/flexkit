@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Flexkit CLI is the command-line interface for managing Flexkit projects from your terminal.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
