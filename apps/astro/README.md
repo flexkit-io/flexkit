@@ -8,4 +8,4 @@ To get started, run the development server:
 pnpm dev
 ```
 
-Open [http://localhost:3003](http://localhost:3003) with your browser to see the result.
+Open [http://localhost:3006](http://localhost:3006) with your browser to see the result.
