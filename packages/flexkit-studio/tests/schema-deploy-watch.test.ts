@@ -41,7 +41,8 @@ describe('settleSchemaDeployment', () => {
 describe('watchSchemaDeployment', () => {
   it('polls until executed, refreshes once, and ignores a duplicate watch', async () => {
     const { calls, revalidate } = recorder();
-    const states = [approval({}), null, approval({}), approval({ executedAt: 'done' })];
+    // A transient failure on the first poll and in the middle must not end the watch.
+    const states = [null, approval({}), null, approval({}), approval({ executedAt: 'done' })];
     let fetches = 0;
     const settled = new Promise<void>((resolve) => {
       const fetchApproval = async (): Promise<AutomationApproval | null> => {
@@ -60,8 +61,28 @@ describe('watchSchemaDeployment', () => {
 
     await settled;
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.equal(fetches, 4);
+    assert.equal(fetches, 5);
     assert.deepEqual(calls, ['p']);
+  });
+
+  it('stops when the approval does not exist', async () => {
+    const { calls, revalidate } = recorder();
+    let fetches = 0;
+
+    watchSchemaDeployment({
+      approvalId: 'w3',
+      fetchApproval: async () => {
+        fetches += 1;
+
+        return 'missing';
+      },
+      projectId: 'p',
+      revalidate,
+      sleep: async () => undefined,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(fetches, 1);
+    assert.deepEqual(calls, []);
   });
 
   it('does nothing without a way to load the approval', () => {

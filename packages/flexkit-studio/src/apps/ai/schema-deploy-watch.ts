@@ -5,11 +5,16 @@ const POLL_INTERVAL_MS = 5_000;
 const POLL_LIMIT = 150;
 const watching = new Set<string>();
 
-export type ApprovalFetcher = () => Promise<AutomationApproval | null>;
+/** `null` = transient failure (keep polling); `'missing'` = the approval does not exist (stop). */
+export type ApprovalFetcher = () => Promise<AutomationApproval | 'missing' | null>;
 
 function urlFetcher(approvalUrl: string): ApprovalFetcher {
   return async () => {
     const response = await fetch(approvalUrl, { credentials: 'include', mode: 'cors' });
+
+    if (response.status === 404) {
+      return 'missing';
+    }
 
     if (!response.ok) {
       return null;
@@ -17,7 +22,7 @@ function urlFetcher(approvalUrl: string): ApprovalFetcher {
 
     const body = (await response.json()) as { approval?: AutomationApproval };
 
-    return body.approval ?? null;
+    return body.approval ?? 'missing';
   };
 }
 
@@ -77,7 +82,7 @@ export function watchSchemaDeployment({
   void (async () => {
     try {
       for (let attempt = 0; attempt < POLL_LIMIT; attempt += 1) {
-        let approval: AutomationApproval | null = null;
+        let approval: AutomationApproval | 'missing' | null = null;
 
         try {
           approval = await load();
@@ -85,12 +90,13 @@ export function watchSchemaDeployment({
           approval = null;
         }
 
-        // A transient fetch failure keeps the watch alive; a missing approval on
-        // the first poll ends it.
-        if (approval !== null || attempt === 0) {
-          if (!settleSchemaDeployment(approval, projectId, revalidate)) {
-            return;
-          }
+        if (approval === 'missing') {
+          return;
+        }
+
+        // A transient fetch failure (network blip, 5xx) keeps the watch alive.
+        if (approval !== null && !settleSchemaDeployment(approval, projectId, revalidate)) {
+          return;
         }
 
         await sleep(POLL_INTERVAL_MS);
