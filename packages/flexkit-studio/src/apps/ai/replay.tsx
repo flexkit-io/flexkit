@@ -26,6 +26,10 @@ import { Button, MessageResponse } from '../../ui';
 import useSWR from 'swr';
 import { createApiClient, fetcher, paths } from './api';
 import { ApprovalCard } from './approval-card';
+import { type DecidedApprovals, messageHasPendingMutationApproval, settlePendingMutationApprovals } from './approval-parts';
+
+export { getMutationApprovalIds, getPendingMutationApprovalIds, messageHasPendingMutationApproval } from './approval-parts';
+export type { DecidedApprovals } from './approval-parts';
 import { RunSpecPart } from './spec-renderer';
 import {
   getPartData,
@@ -85,7 +89,8 @@ const REPLAY_RENDER_INTERVAL_MS = 120;
 const JSON_RENDER_SPEC_PART_TYPE = 'data-spec';
 
 export interface RunReplayActions {
-  onApprovalDecided: (_approvalId?: string) => void;
+  /** A proposal was decided here or seen decided elsewhere; `status` lets the replay keep its card mounted. */
+  onApprovalDecided: (_approvalId?: string, _status?: AutomationApproval['status']) => void;
 }
 
 export const RunReplayActionsContext = createContext<RunReplayActions | null>(null);
@@ -179,70 +184,8 @@ export function useSessionMessages(messages: ReplayMessage[]): ReplayMessage[] {
   return useMemo(() => splitSessionMessages(messages), [messages]);
 }
 
-export function messageHasPendingMutationApproval(message: ReplayMessage | undefined): boolean {
-  if (!message) {
-    return false;
-  }
-
-  return message.parts.some((part) => {
-    if (part.type !== 'data-mutation-approval') {
-      return false;
-    }
-
-    return getPartData<ReplayDataParts['mutation-approval']>(part).status === 'pending';
-  });
-}
-
-function withoutPendingMutationApprovals(message: ReplayMessage): ReplayMessage {
-  const parts = message.parts.filter((part) => {
-    if (part.type !== 'data-mutation-approval') {
-      return true;
-    }
-
-    return getPartData<ReplayDataParts['mutation-approval']>(part).status !== 'pending';
-  });
-
-  if (parts.length === message.parts.length) {
-    return message;
-  }
-
-  return { ...message, parts };
-}
-
 export function isTerminalRunStatus(status: RunRecordStatus | null | undefined): boolean {
   return status === 'success' || status === 'failed' || status === 'cancelled' || status === 'skipped';
-}
-
-export function getMutationApprovalIds(
-  message: ReplayMessage | undefined,
-  options?: { pendingOnly?: boolean }
-): string[] {
-  if (!message) {
-    return [];
-  }
-
-  const approvalIds: string[] = [];
-  const pendingOnly = options?.pendingOnly ?? false;
-
-  for (const part of message.parts) {
-    if (part.type !== 'data-mutation-approval') {
-      continue;
-    }
-
-    const data = getPartData<ReplayDataParts['mutation-approval']>(part);
-
-    if (pendingOnly && data.status !== 'pending') {
-      continue;
-    }
-
-    approvalIds.push(data.approvalId);
-  }
-
-  return approvalIds;
-}
-
-export function getPendingMutationApprovalIds(message: ReplayMessage | undefined): string[] {
-  return getMutationApprovalIds(message, { pendingOnly: true });
 }
 
 function shouldPauseStreamForApproval({
@@ -282,6 +225,8 @@ function shouldPauseStreamForApproval({
 export function useRunStream(
   streamApi: string,
   options?: {
+    /** Decisions known to this client, applied to stale pending parts while the stream rebuilds. */
+    decidedApprovals?: DecidedApprovals;
     recordStatus?: RunRecordStatus | null;
     resumeToken?: number;
     suppressApprovalPause?: boolean;
@@ -294,6 +239,8 @@ export function useRunStream(
   const [status, setStatus] = useState<RunStreamStatus>('streaming');
   const recordStatus = options?.recordStatus;
   const resumeToken = options?.resumeToken ?? 0;
+  const decidedApprovalsRef = useRef(options?.decidedApprovals ?? {});
+  decidedApprovalsRef.current = options?.decidedApprovals ?? {};
   // Read via ref so clearing the post-decide suppress window does not abort a
   // healthy reconnect the way resetting resumeToken would.
   const suppressApprovalPauseRef = useRef(options?.suppressApprovalPause ?? false);
@@ -318,6 +265,10 @@ export function useRunStream(
     // resumeToken / recordStatus) but the stream identity is unchanged. Keep
     // the in-memory replay while consumeOnce rebuilds from startIndex=0.
     let latestMessage: ReplayMessage | undefined = streamChanged ? undefined : messageRef.current;
+    // While the same stream rebuilds from startIndex=0 the partial replay has
+    // fewer parts than what is on screen; keep showing the previous message
+    // until the rebuild catches up so cards do not blink out and back.
+    const rebuildFloor = streamChanged ? 0 : (latestMessage?.parts.length ?? 0);
 
     if (streamChanged) {
       setMessage(undefined);
@@ -325,7 +276,7 @@ export function useRunStream(
       // Pending data-mutation-approval parts are stale once the run record
       // says execution has resumed. Chat and run UIs treat those parts as
       // still awaiting approval until consumeOnce rebuilds from startIndex=0.
-      const nextMessage = withoutPendingMutationApprovals(latestMessage);
+      const nextMessage = settlePendingMutationApprovals(latestMessage, decidedApprovalsRef.current);
 
       if (nextMessage !== latestMessage) {
         latestMessage = nextMessage;
@@ -390,9 +341,18 @@ export function useRunStream(
       // interval, with a guaranteed final flush after the stream ends.
       let throttleTimer: number | null = null;
 
-      const flushLatestMessage = (): void => {
+      let caughtUp = rebuildFloor === 0;
+      const flushLatestMessage = (force = false): void => {
         if (abortController.signal.aborted || !latestMessage) {
           return;
+        }
+
+        if (!caughtUp) {
+          caughtUp = force || latestMessage.parts.length >= rebuildFloor;
+
+          if (!caughtUp) {
+            return;
+          }
         }
 
         setMessage({ ...latestMessage });
@@ -419,7 +379,7 @@ export function useRunStream(
           throttleTimer = null;
         }
 
-        flushLatestMessage();
+        flushLatestMessage(true);
       }
 
       return sawFinish ? 'finished' : 'incomplete';
@@ -1122,7 +1082,7 @@ export function MutationApprovalPart({
       return;
     }
 
-    replayActions?.onApprovalDecided(data?.approval?.id ?? message.approvalId);
+    replayActions?.onApprovalDecided(data?.approval?.id ?? message.approvalId, approvalStatus);
   }, [approvalStatus, data?.approval?.id, message.approvalId, message.status, replayActions]);
 
   function handleDecided(nextApproval: AutomationApproval): void {
@@ -1135,7 +1095,7 @@ export function MutationApprovalPart({
     void mutate();
     // Revalidate the run record and reconnect the workflow stream so the page
     // reflects resumed execution instead of a stale awaiting_approval/error state.
-    replayActions?.onApprovalDecided(nextApproval.id);
+    replayActions?.onApprovalDecided(nextApproval.id, nextApproval.status);
   }
 
   let body: JSX.Element;

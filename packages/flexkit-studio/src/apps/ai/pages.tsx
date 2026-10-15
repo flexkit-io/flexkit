@@ -58,6 +58,7 @@ import { AutomationForm } from './form';
 import {
   MessagePart,
   MutationApprovalPart,
+  type DecidedApprovals,
   RunReplayActionsContext,
   STREAM_RETRY_DELAY_MS,
   TurnStatusLine,
@@ -1447,8 +1448,10 @@ function RunReplay({
   // empty stream falls back to the loading state until reconnect writes a
   // data-mutation-approval part.
   const [stickyFallbackApprovals, setStickyFallbackApprovals] = useState<AutomationApproval[]>([]);
+  const [decidedApprovals, setDecidedApprovals] = useState<DecidedApprovals>({});
   const lastDecidedApprovalIdRef = useRef<string | null>(null);
   const { message, status } = useRunStream(streamApi, {
+    decidedApprovals,
     recordStatus: run.status,
     resumeToken,
     suppressApprovalPause,
@@ -1461,7 +1464,11 @@ function RunReplay({
   onStreamFinishedRef.current = onStreamFinished;
   const replayActions = useMemo<RunReplayActions>(
     () => ({
-      onApprovalDecided: (approvalId) => {
+      onApprovalDecided: (approvalId, decidedStatus) => {
+        if (approvalId && decidedStatus && decidedStatus !== 'pending') {
+          setDecidedApprovals((current) => ({ ...current, [approvalId]: decidedStatus }));
+        }
+
         // The reconnect below remounts the approval card, which may re-report
         // the same decision; reconnecting again would loop forever.
         if (approvalId && lastDecidedApprovalIdRef.current === approvalId) {
@@ -1527,6 +1534,7 @@ function RunReplay({
     setSuppressApprovalPause(false);
     lastDecidedApprovalIdRef.current = null;
     setStickyFallbackApprovals([]);
+    setDecidedApprovals({});
   }, [run.id]);
 
   useEffect(() => {
