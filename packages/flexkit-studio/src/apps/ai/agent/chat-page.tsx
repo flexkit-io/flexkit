@@ -82,6 +82,14 @@ import { useAgentBasePath } from './chat-list';
 import { getComposerDraftKey, readComposerDraft, writeComposerDraft } from './composer-draft';
 import { appendDictatedText } from './dictation';
 import {
+  getComposerAction,
+  getDeliveredMidTurnMessageIds,
+  getFollowUpLabel,
+  getNextQueuedMessage,
+  isFollowUpStatus,
+  splitLiveTurn,
+} from './follow-ups';
+import {
   AUTO_MODEL_KEY,
   coerceEffort,
   findModelByKey,
@@ -99,18 +107,13 @@ interface ToolsResponse {
 /** Keep fetching an untitled chat after the first turn so the generated title can land. */
 const TITLE_POLL_TIMEOUT_MS = 60_000;
 
-function isActiveTurnStatus(status: AgentChatMessageStatus): boolean {
-  return status === 'pending' || status === 'streaming' || status === 'awaiting_approval';
-}
-
 function getChatDetailRefreshInterval(latestData: AgentChatDetail | undefined): number {
   if (!latestData) {
     return 0;
   }
 
-  const lastMessage = latestData.messages[latestData.messages.length - 1];
-
-  if (lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status)) {
+  // A live turn, or a follow-up waiting to start the next one, keeps polling.
+  if (splitLiveTurn(latestData.messages).live || getNextQueuedMessage(latestData.messages)) {
     return STREAM_RETRY_DELAY_MS;
   }
 
@@ -172,13 +175,23 @@ function getSeedBaseDetail(
 function appendTurnToDetail(detail: AgentChatDetail, turn: AgentChatTurn): AgentChatDetail {
   const turnIds = new Set([turn.userMessage.id, turn.assistantMessage.id]);
 
+  // Sorted: a turn started from a queued follow-up keeps that message's
+  // place, and the assistant placeholder lands right behind it.
   return {
     ...detail,
-    messages: [
+    messages: sortChatMessages([
       ...detail.messages.filter((message) => !turnIds.has(message.id)),
       turn.userMessage,
       turn.assistantMessage,
-    ],
+    ]),
+  };
+}
+
+/** Seeds a follow-up the user sent during a turn, so it shows before the next revalidation. */
+function appendMessageToDetail(detail: AgentChatDetail, message: AgentChatMessage): AgentChatDetail {
+  return {
+    ...detail,
+    messages: sortChatMessages([...detail.messages.filter((item) => item.id !== message.id), message]),
   };
 }
 
@@ -211,7 +224,16 @@ function getTurnRecordStatus(status: AgentChatMessageStatus): RunRecordStatus {
   return 'running';
 }
 
-function UserBubble({ attachments = [], text }: { attachments?: AgentChatAttachment[]; text: string }): JSX.Element {
+function UserBubble({
+  attachments = [],
+  label,
+  text,
+}: {
+  attachments?: AgentChatAttachment[];
+  /** Shown under a message sent during a turn, until it has been delivered. */
+  label?: string | null;
+  text: string;
+}): JSX.Element {
   const { textInput } = usePromptInputController();
   const [copied, setCopied] = useState(false);
   const hasText = text.trim().length > 0;
@@ -229,6 +251,12 @@ function UserBubble({ attachments = [], text }: { attachments?: AgentChatAttachm
         <div className="fk:whitespace-pre-wrap fk:rounded-xl fk:bg-muted fk:dark:bg-white/20 fk:px-3.5 fk:py-2 fk:text-base fk:corner-squircle">
           {text}
         </div>
+      ) : null}
+      {label ? (
+        <span className="fk:inline-flex fk:items-center fk:gap-1 fk:text-xs fk:text-muted-foreground">
+          <CornerDownRightIcon className="fk:size-3 fk:shrink-0" />
+          {label}
+        </span>
       ) : null}
       <div
         className={
@@ -342,7 +370,13 @@ function HistoryMessage({
   showSuggestion?: boolean;
 }): JSX.Element | null {
   if (message.role === 'user') {
-    return <UserBubble attachments={getAttachmentsFromParts(message.parts)} text={message.textContent} />;
+    return (
+      <UserBubble
+        attachments={getAttachmentsFromParts(message.parts)}
+        label={getFollowUpLabel(message.status)}
+        text={message.textContent}
+      />
+    );
   }
 
   // Reasoning stays persisted for debugging, but is never displayed in chat.
@@ -592,10 +626,11 @@ function ChatComposer({
   const selectedModel = findModelByKey(models, modelKey);
   const effortOptions = getEffortOptions(selectedModel);
   const effectiveEffort = coerceEffort(selectedModel, effort);
-  const status = streaming ? ('streaming' as const) : sending ? ('submitted' as const) : undefined;
-  const isBusy = sending || streaming;
   const hasDraft = textInput.value.trim().length > 0 || attachments.files.length > 0;
-  const canSubmit = hasDraft && !uploads.isUploading && !isBusy && !modelPending;
+  // The composer stays open during a turn: with nothing typed the button
+  // stops the turn, with a draft it sends it as a follow-up.
+  const action = getComposerAction({ hasDraft, streaming });
+  const canSubmit = hasDraft && !uploads.isUploading && !sending && !modelPending;
 
   return (
     <PromptInput
@@ -614,7 +649,7 @@ function ChatComposer({
         if (
           (!trimmed && sentAttachments.length === 0) ||
           uploads.isUploading ||
-          isBusy ||
+          sending ||
           submittingRef.current ||
           modelPending
         ) {
@@ -645,7 +680,7 @@ function ChatComposer({
         </PromptInputHeader>
       ) : null}
       <PromptInputBody>
-        <PromptInputTextarea disabled={isBusy} placeholder={placeholder} />
+        <PromptInputTextarea disabled={sending} placeholder={placeholder} />
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
@@ -653,7 +688,7 @@ function ChatComposer({
             <PromptInputActionMenuTrigger
               aria-label="Add attachments"
               className="fk:border-0 fk:bg-border fk:corner-round"
-              disabled={isBusy}
+              disabled={sending}
               tooltip="Add photos or files"
             />
             <PromptInputActionMenuContent>
@@ -691,7 +726,7 @@ function ChatComposer({
         </PromptInputTools>
         <div className="fk:flex fk:items-center fk:gap-3">
           <SpeechInput
-            disabled={isBusy}
+            disabled={sending}
             onAudioRecorded={async (audioBlob, signal) => {
               const { text } = await api.transcribeAgentAudio(audioBlob, signal);
 
@@ -703,7 +738,12 @@ function ChatComposer({
               textInput.setInput(appendDictatedText(textInput.value, transcript));
             }}
           />
-          <PromptInputSubmit className="fk:corner-round" disabled={!isBusy && !canSubmit} status={status} onStop={() => void onStop()} />
+          <PromptInputSubmit
+            className="fk:corner-round"
+            disabled={action === 'stop' ? false : !canSubmit}
+            status={action === 'stop' ? 'streaming' : undefined}
+            onStop={() => void onStop()}
+          />
         </div>
       </PromptInputFooter>
     </PromptInput>
@@ -732,10 +772,14 @@ const EMPTY_CHAT_HISTORY: ChatHistoryState = {
   page: null,
 };
 
+/** Retry a queued follow-up's start no sooner than this after a failed attempt (the turn was still running). */
+const QUEUED_START_RETRY_MS = 3_000;
+
 function ChatConversation({
   api,
   chatId,
   projectId,
+  pendingFollowUp,
   pendingMessage,
   resolveDetail,
 }: {
@@ -743,6 +787,8 @@ function ChatConversation({
   /** Null while the first message of a new chat is being sent. */
   chatId: string | null;
   projectId: string;
+  /** A message sent during the live turn, until the platform has stored it. */
+  pendingFollowUp?: PendingMessage;
   pendingMessage?: PendingMessage;
   resolveDetail: (_detail: AgentChatDetail | undefined) => AgentChatDetail | undefined;
 }): JSX.Element {
@@ -839,10 +885,37 @@ function ChatConversation({
       updateHistory(requestChatId, () => ({ error: 'Could not load earlier messages. Try again.', loading: false }));
     }
   };
-  const lastMessage = messages[messages.length - 1];
-  const liveMessage =
-    lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status) ? lastMessage : null;
-  const historyMessages = liveMessage ? messages.slice(0, -1) : messages;
+  // Follow-ups sent during the turn come after the live assistant message.
+  // Once the agent has received one, the reply shows it where it landed, so
+  // only the ones still waiting are listed here and delivered rows are
+  // dropped from the history.
+  const { after: followUpMessages, before: earlierMessages, live: liveMessage } = splitLiveTurn(messages);
+  const waitingFollowUps = followUpMessages.filter((message) => isFollowUpStatus(message.status));
+  const deliveredIds = getDeliveredMidTurnMessageIds(messages);
+  const historyMessages = earlierMessages.filter((message) => !deliveredIds.has(message.id));
+  // A queued follow-up starts the next turn as soon as the previous one has
+  // ended, whether this tab sent it or it was found on load.
+  const nextQueued = !liveMessage && !pendingMessage ? getNextQueuedMessage(messages) : null;
+  const nextQueuedId = nextQueued?.id ?? null;
+  const queuedStartsRef = useRef<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    if (!chatId || !nextQueuedId) {
+      return;
+    }
+
+    const lastAttempt = queuedStartsRef.current.get(nextQueuedId) ?? 0;
+
+    if (Date.now() - lastAttempt < QUEUED_START_RETRY_MS) {
+      return;
+    }
+
+    queuedStartsRef.current.set(nextQueuedId, Date.now());
+    void api
+      .startQueuedAgentChatMessage(chatId, nextQueuedId)
+      .catch(() => undefined)
+      .then(() => mutate());
+  }, [api, chatId, mutate, nextQueuedId]);
   // Reported by LiveTurn; owned here so the status line keeps one stable slot
   // from "Sending" (no turn yet) through the live turn, rolling between labels
   // instead of remounting. Keyed by turn so a new turn never shows the
@@ -896,6 +969,12 @@ function ChatConversation({
             <UserBubble attachments={pendingMessage.attachments} text={pendingMessage.text} />
           ) : null}
           {turnActive ? <TurnStatusLine label={statusLabel} visible={statusVisible} /> : null}
+          {waitingFollowUps.map((message) => (
+            <HistoryMessage api={api} key={message.id} message={message} />
+          ))}
+          {pendingFollowUp && liveMessage ? (
+            <UserBubble attachments={pendingFollowUp.attachments} text={pendingFollowUp.text} />
+          ) : null}
         </div>
       </ConversationContent>
       <ConversationScrollButton />
@@ -1041,6 +1120,8 @@ export function AgentChatPage(): JSX.Element {
   const sendingRef = useRef(false);
   const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(null);
   const visiblePendingMessage = pendingMessage && pendingMessage.chatId === chatId ? pendingMessage : undefined;
+  const [pendingFollowUp, setPendingFollowUp] = useState<(PendingMessage & { chatId: string }) | null>(null);
+  const visiblePendingFollowUp = pendingFollowUp && pendingFollowUp.chatId === chatId ? pendingFollowUp : undefined;
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
   const awaitingChatModel = Boolean(chatId) && chatDetail === undefined;
@@ -1131,10 +1212,37 @@ export function AgentChatPage(): JSX.Element {
   // A new chat greets in the middle of the page, ChatGPT-style; the first
   // send (a pending message) moves the composer down to its usual place.
   const isNewChat = !chatId && !visiblePendingMessage;
-  const lastMessage = chatDetail?.messages[chatDetail.messages.length - 1];
-  const turnInProgress = Boolean(
-    lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status)
-  );
+  const turnInProgress = Boolean(chatDetail && splitLiveTurn(chatDetail.messages).live);
+
+  async function sendFollowUp(targetChatId: string, text: string, attachments: AgentChatAttachment[]): Promise<void> {
+    setPendingFollowUp({ attachments, chatId: targetChatId, text });
+
+    try {
+      const result = await chatApi.sendAgentChatFollowUp(targetChatId, { attachments, content: text, modelId });
+
+      await globalMutate<AgentChatDetail>(
+        paths(chatProjectId).agentChat(targetChatId),
+        (current) => {
+          const base = getSeedBaseDetail(
+            mergeChatDetail(seededDetailRef.current[targetChatId], current),
+            null,
+            rawChatDetail,
+            targetChatId,
+            modelId,
+            'turn' in result ? result.turn.userMessage.createdAt : result.followUp.message.createdAt
+          );
+          const next =
+            'turn' in result ? appendTurnToDetail(base, result.turn) : appendMessageToDetail(base, result.followUp.message);
+          seededDetailRef.current[targetChatId] = next;
+
+          return next;
+        },
+        { revalidate: false }
+      );
+    } finally {
+      setPendingFollowUp(null);
+    }
+  }
 
   async function handleSend(text: string, attachments: AgentChatAttachment[]): Promise<void> {
     // Reject rather than resolve so the composer does not treat a duplicate
@@ -1149,15 +1257,36 @@ export function AgentChatPage(): JSX.Element {
 
     sendingRef.current = true;
     setSending(true);
-    setPendingMessage({ attachments, chatId, text });
     setSendError(null);
+
+    // During a turn the message is a follow-up: stored at once, then either
+    // steering the running turn or starting the next one.
+    if (chatId && turnInProgress) {
+      try {
+        await sendFollowUp(chatId, text, attachments);
+      } catch (error) {
+        setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
+        throw error;
+      } finally {
+        sendingRef.current = false;
+        setSending(false);
+      }
+
+      return;
+    }
+
+    setPendingMessage({ attachments, chatId, text });
 
     // Only explicit picks in the selector are remembered (see handleModelChange);
     // what a chat happened to run on, including a routed Auto choice, is not.
     try {
-      const chat = chatId ? null : (await chatApi.createAgentChat({ modelId })).chat;
+      // A new chat is created and its first message sent by one request: the
+      // second round trip (and its auth) used to cost about half a second.
+      const started = chatId
+        ? { chat: null, turn: await chatApi.sendAgentChatMessage(chatId, { attachments, content: text, modelId }) }
+        : await chatApi.startAgentChat({ attachments, content: text, modelId });
+      const { chat, turn } = started;
       const targetChatId = chatId ?? chat!.id;
-      const turn = await chatApi.sendAgentChatMessage(targetChatId, { attachments, content: text, modelId });
 
       // Seed the confirmed turn without waiting for another network round trip.
       // Keep a local overlay so an in-flight GET that started before POST cannot
@@ -1245,6 +1374,7 @@ export function AgentChatPage(): JSX.Element {
                 <ChatConversation
                   api={chatApi}
                   chatId={chatId ?? null}
+                  pendingFollowUp={visiblePendingFollowUp}
                   pendingMessage={visiblePendingMessage}
                   projectId={projectId}
                   resolveDetail={resolveDetail}
@@ -1270,7 +1400,9 @@ export function AgentChatPage(): JSX.Element {
                 onModelChange={handleModelChange}
                 onSend={handleSend}
                 onStop={handleStop}
-                placeholder={`Ask Flexkit anything about ${projectName}...`}
+                placeholder={
+                  turnInProgress ? 'Add context or steer the agent...' : `Ask Flexkit anything about ${projectName}...`
+                }
               />
             </div>
           </div>

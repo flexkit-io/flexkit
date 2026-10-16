@@ -1,6 +1,9 @@
 import type {
   AgentChat,
   AgentChatAttachment,
+  AgentChatFollowUp,
+  AgentChatFollowUpDelivery,
+  AgentChatFollowUpResult,
   AgentChatMessage,
   AgentChatMessageRole,
   AgentChatMessageStatus,
@@ -26,6 +29,9 @@ import type {
 export type {
   AgentChat,
   AgentChatAttachment,
+  AgentChatFollowUp,
+  AgentChatFollowUpDelivery,
+  AgentChatFollowUpResult,
   AgentChatMessage,
   AgentChatMessageRole,
   AgentChatMessageStatus,

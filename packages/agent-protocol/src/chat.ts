@@ -1,7 +1,19 @@
 /** Chat shapes returned by the agent chat API. */
 export type AgentChatMessageRole = 'user' | 'assistant';
-/** `pending` exists only client-side, for a turn whose record has not been created yet. */
-export type AgentChatMessageStatus = 'pending' | 'streaming' | 'awaiting_approval' | 'complete' | 'failed';
+/**
+ * `pending` exists only client-side, for a turn whose record has not been
+ * created yet. `steering` and `queued` are user messages sent while a turn
+ * was running: a steering one reaches that turn at its next model step, a
+ * queued one starts the next turn once it has finished.
+ */
+export type AgentChatMessageStatus =
+  | 'pending'
+  | 'streaming'
+  | 'awaiting_approval'
+  | 'complete'
+  | 'failed'
+  | 'queued'
+  | 'steering';
 
 export interface AgentChat {
   createdAt: string;
@@ -56,3 +68,15 @@ export interface AgentChatTurn {
   userMessage: AgentChatMessage;
   workflowRunId: string;
 }
+
+/** Where a message sent during a running turn went: into that turn, or after it. */
+export type AgentChatFollowUpDelivery = 'queue' | 'steer';
+
+export interface AgentChatFollowUp {
+  delivery: AgentChatFollowUpDelivery;
+  /** The stored user message, with status `steering` or `queued`. */
+  message: AgentChatMessage;
+}
+
+/** A follow-up either joined the running turn or, when that turn had already ended, started the next one. */
+export type AgentChatFollowUpResult = { followUp: AgentChatFollowUp } | { turn: AgentChatTurn };
