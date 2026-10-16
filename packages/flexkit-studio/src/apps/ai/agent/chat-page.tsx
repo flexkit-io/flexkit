@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CheckIcon, CopyIcon, CornerDownRightIcon, LoaderCircle, PencilIcon } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useSWR, { useSWRConfig } from 'swr';
@@ -76,7 +76,10 @@ import {
   useAttachmentUploads,
 } from './attachments';
 import { mergeChatDetail, sortChatMessages } from './chat-history';
+import { useConfig } from '../../../core/config/config-context';
+import { cn } from '../../../ui/lib/utils';
 import { useAgentBasePath } from './chat-list';
+import { getComposerDraftKey, readComposerDraft, writeComposerDraft } from './composer-draft';
 import { appendDictatedText } from './dictation';
 import {
   AUTO_MODEL_KEY,
@@ -520,6 +523,37 @@ function LiveTurn({
   );
 }
 
+/**
+ * Keeps the composer text in sync with the stored draft of the chat it is
+ * showing: every change is stored under the chat's key, and when the page
+ * moves to another chat (or is first shown) that chat's draft replaces the
+ * text. The outgoing chat's draft was stored on its last change, so a switch
+ * only has to load. A single effect handles both so the stale text of the
+ * previous chat is never written under the new chat's key.
+ */
+function ComposerDraftSync({ draftKey }: { draftKey: string }): null {
+  const { textInput } = usePromptInputController();
+  const { setInput, value } = textInput;
+  const activeKeyRef = useRef<string | null>(null);
+
+  useLayoutEffect(() => {
+    if (activeKeyRef.current === draftKey) {
+      writeComposerDraft(draftKey, value);
+
+      return;
+    }
+
+    activeKeyRef.current = draftKey;
+    const draft = readComposerDraft(draftKey);
+
+    if (draft !== value) {
+      setInput(draft);
+    }
+  }, [draftKey, setInput, value]);
+
+  return null;
+}
+
 function ChatComposer({
   api,
   effort,
@@ -531,6 +565,7 @@ function ChatComposer({
   onModelChange,
   onSend,
   onStop,
+  placeholder,
   sending,
   streaming,
 }: {
@@ -544,6 +579,7 @@ function ChatComposer({
   onModelChange: (_modelKey: string) => void;
   onSend: (_text: string, _attachments: AgentChatAttachment[]) => Promise<void>;
   onStop: () => Promise<void>;
+  placeholder: string;
   sending: boolean;
   streaming: boolean;
 }): JSX.Element {
@@ -609,13 +645,14 @@ function ChatComposer({
         </PromptInputHeader>
       ) : null}
       <PromptInputBody>
-        <PromptInputTextarea disabled={isBusy} placeholder="Ask the agent anything about your project..." />
+        <PromptInputTextarea disabled={isBusy} placeholder={placeholder} />
       </PromptInputBody>
       <PromptInputFooter>
         <PromptInputTools>
           <PromptInputActionMenu>
             <PromptInputActionMenuTrigger
               aria-label="Add attachments"
+              className="fk:border-0 fk:bg-border fk:corner-round"
               disabled={isBusy}
               tooltip="Add photos or files"
             />
@@ -666,7 +703,7 @@ function ChatComposer({
               textInput.setInput(appendDictatedText(textInput.value, transcript));
             }}
           />
-          <PromptInputSubmit disabled={!isBusy && !canSubmit} status={status} onStop={() => void onStop()} />
+          <PromptInputSubmit className="fk:corner-round" disabled={!isBusy && !canSubmit} status={status} onStop={() => void onStop()} />
         </div>
       </PromptInputFooter>
     </PromptInput>
@@ -968,18 +1005,15 @@ function EmptyConversation({ projectId }: { projectId: string }): JSX.Element {
   }, [data, isLoading]);
 
   return (
-    <div className="fk:flex fk:flex-1 fk:flex-col fk:items-center fk:justify-center fk:gap-3 fk:text-center">
+    <div className="fk:flex fk:flex-col fk:items-center fk:pb-2 fk:text-center">
       <h2 className="fk:text-2xl fk:font-semibold">{greeting ?? '\u00A0'}</h2>
-      <p className="fk:max-w-md fk:text-sm fk:text-muted-foreground">
-        Ask about your project data, run analyses, or propose changes. The agent works with your own role and space
-        access, and every data change needs your approval.
-      </p>
     </div>
   );
 }
 
 export function AgentChatPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
+  const { currentProject, projectSummaries } = useConfig();
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
   const agentBase = useAgentBasePath();
@@ -1092,6 +1126,11 @@ export function AgentChatPage(): JSX.Element {
 
   const chatApi = api;
   const chatProjectId = projectId;
+  const projectName =
+    currentProject?.title ?? projectSummaries.find((project) => project.id === projectId)?.name ?? 'your project';
+  // A new chat greets in the middle of the page, ChatGPT-style; the first
+  // send (a pending message) moves the composer down to its usual place.
+  const isNewChat = !chatId && !visiblePendingMessage;
   const lastMessage = chatDetail?.messages[chatDetail.messages.length - 1];
   const turnInProgress = Boolean(
     lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status)
@@ -1176,6 +1215,7 @@ export function AgentChatPage(): JSX.Element {
 
   return (
     <PromptInputProvider>
+      <ComposerDraftSync draftKey={getComposerDraftKey(chatProjectId, chatId)} />
       <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
         <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
           <Tooltip>
@@ -1192,8 +1232,13 @@ export function AgentChatPage(): JSX.Element {
           </div>
         </div>
         <div className="fk:flex fk:min-h-0 fk:flex-1 fk:gap-4">
-          <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-3">
-            {chatId || visiblePendingMessage ? (
+          <div
+            className={cn(
+              'fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-3',
+              isNewChat && 'fk:justify-center fk:pb-[12vh]'
+            )}
+          >
+            {!isNewChat ? (
               // One element type for the pending and the loaded chat, so the
               // status line survives the navigation after the chat is created.
               <ChatApprovalContext.Provider value>
@@ -1225,6 +1270,7 @@ export function AgentChatPage(): JSX.Element {
                 onModelChange={handleModelChange}
                 onSend={handleSend}
                 onStop={handleStop}
+                placeholder={`Ask Flexkit anything about ${projectName}...`}
               />
             </div>
           </div>
