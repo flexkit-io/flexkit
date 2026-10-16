@@ -10,10 +10,8 @@ import { Layout } from '../ui/containers/layout';
 import { Root } from '../ui/containers/root';
 import { ActionsProvider } from '../entities/actions-context';
 import { AppProvider } from './app-context';
-import { builtInApps } from './apps/built-in-apps';
 import { normalizeBasePath } from './base-path';
 import { GlobalError } from './error/global-error';
-import { ErrorBoundary } from './error/error-boundary';
 import type { FlexkitStudioProps } from './config/types';
 
 const RouterProviderCompat = RouterProvider as unknown as ComponentType<RouterProviderProps>;
@@ -67,19 +65,10 @@ export function FlexkitStudio({ projectIds, basename }: FlexkitStudioProps): JSX
       errorElement: <GlobalError />,
       children: [
         {
-          path: ':projectId',
+          // The apps are rendered by the Layout (see `AppOutlet`), which keeps
+          // every opened app mounted; the splat hands it the rest of the path.
+          path: ':projectId/*',
           element: <Layout version={{ current: '1.0.0', latest: '1.0.0', isCurrent: true }} />,
-          children: builtInApps.map((app) => ({
-            path: app.name,
-            element: app.component,
-            errorElement: <ErrorBoundary />,
-            children: app.routes?.map((route) => ({
-              path: route.path,
-              element: route.component,
-              errorElement: <ErrorBoundary />,
-              children: route.children?.map((child) => ({ path: child.path, element: child.component })),
-            })),
-          })),
         },
       ],
     },

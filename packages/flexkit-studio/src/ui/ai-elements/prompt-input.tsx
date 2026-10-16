@@ -11,13 +11,21 @@ import {
 } from '../primitives/command';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../primitives/dropdown-menu';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '../primitives/hover-card';
+import {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentMedia,
+  AttachmentTitle,
+} from '../primitives/attachment';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '../primitives/input-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../primitives/select';
 import { Spinner } from '../primitives/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../primitives/tooltip';
 import { cn } from '../lib/utils';
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from 'ai';
-import { CornerDownLeftIcon, ImageIcon, Monitor, PlusIcon, SquareIcon, XIcon } from 'lucide-react';
+import { ArrowUpIcon, FileTextIcon, ImageIcon, Monitor, PlusIcon, SquareIcon, XIcon } from 'lucide-react';
 import { nanoid } from 'nanoid';
 import type {
   ChangeEvent,
@@ -818,7 +826,7 @@ export const PromptInput = ({
         type="file"
       />
       <form className={cn('fk:w-full', className)} onSubmit={handleSubmit} ref={formRef} {...props}>
-        <InputGroup className="fk:overflow-hidden">{children}</InputGroup>
+        <InputGroup className="fk:overflow-hidden fk:rounded-3xl">{children}</InputGroup>
       </form>
     </>
   );
@@ -939,7 +947,7 @@ export const PromptInputTextarea = ({
 
   return (
     <InputGroupTextarea
-      className={cn('fk:field-sizing-content fk:max-h-48 fk:min-h-16', className)}
+      className={cn('fk:field-sizing-content fk:max-h-48 fk:min-h-16 fk:p-3', className)}
       name="message"
       onCompositionEnd={handleCompositionEnd}
       onCompositionStart={handleCompositionStart}
@@ -954,8 +962,41 @@ export const PromptInputTextarea = ({
 
 export type PromptInputHeaderProps = Omit<ComponentProps<typeof InputGroupAddon>, 'align'>;
 
-export const PromptInputHeader = ({ className, ...props }: PromptInputHeaderProps) => (
-  <InputGroupAddon align="block-end" className={cn('fk:order-first fk:flex-wrap fk:gap-1', className)} {...props} />
+const isImageAttachment = (file: FileUIPart): boolean => Boolean(file.url && file.mediaType?.startsWith('image/'));
+
+/** The attachments being drafted, one small chip each with a remove button. */
+const PromptInputHeaderAttachments = () => {
+  const attachments = usePromptInputAttachments();
+
+  return attachments.files.map((file) => {
+    const name = file.filename ?? 'Attachment';
+
+    return (
+      <Attachment key={file.id} size="sm">
+        <AttachmentMedia variant={isImageAttachment(file) ? 'image' : 'icon'}>
+          {isImageAttachment(file) ? <img alt={name} src={file.url} /> : <FileTextIcon />}
+        </AttachmentMedia>
+        <AttachmentContent>
+          <AttachmentTitle>{name}</AttachmentTitle>
+        </AttachmentContent>
+        <AttachmentActions>
+          <AttachmentAction aria-label={`Remove ${name}`} onClick={() => attachments.remove(file.id)}>
+            <XIcon />
+          </AttachmentAction>
+        </AttachmentActions>
+      </Attachment>
+    );
+  });
+};
+
+/**
+ * The strip above the textarea. Without children it lists the drafted
+ * attachments as chips; children replace that list for custom renderings.
+ */
+export const PromptInputHeader = ({ className, children, ...props }: PromptInputHeaderProps) => (
+  <InputGroupAddon align="block-start" className={cn('fk:flex-wrap fk:gap-1', className)} {...props}>
+    {children ?? <PromptInputHeaderAttachments />}
+  </InputGroupAddon>
 );
 
 export type PromptInputFooterProps = Omit<ComponentProps<typeof InputGroupAddon>, 'align'>;
@@ -1019,9 +1060,15 @@ export const PromptInputActionMenu = (props: PromptInputActionMenuProps) => <Dro
 
 export type PromptInputActionMenuTriggerProps = PromptInputButtonProps;
 
-export const PromptInputActionMenuTrigger = ({ className, children, ...props }: PromptInputActionMenuTriggerProps) => (
+export const PromptInputActionMenuTrigger = ({
+  className,
+  children,
+  size = 'icon-sm',
+  variant = 'outline',
+  ...props
+}: PromptInputActionMenuTriggerProps) => (
   <DropdownMenuTrigger asChild>
-    <PromptInputButton className={className} {...props}>
+    <PromptInputButton className={cn('fk:rounded-full', className)} size={size} variant={variant} {...props}>
       {children ?? <PlusIcon className="fk:size-4" />}
     </PromptInputButton>
   </DropdownMenuTrigger>
@@ -1071,7 +1118,7 @@ export const PromptInputSubmit = ({
 }: PromptInputSubmitProps) => {
   const isGenerating = status === 'submitted' || status === 'streaming';
 
-  let Icon = <CornerDownLeftIcon className="fk:size-4" />;
+  let Icon = <ArrowUpIcon className="fk:size-4" />;
 
   if (status === 'submitted') {
     Icon = <Spinner />;
@@ -1096,7 +1143,7 @@ export const PromptInputSubmit = ({
   return (
     <InputGroupButton
       aria-label={isGenerating ? 'Stop' : 'Submit'}
-      className={cn(className)}
+      className={cn('fk:rounded-full', className)}
       onClick={handleClick}
       size={size}
       type={isGenerating && onStop ? 'button' : 'submit'}

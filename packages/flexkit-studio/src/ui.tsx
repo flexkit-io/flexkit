@@ -154,3 +154,14 @@ export * from './ui/ai-elements/suggestion';
 export * from './ui/ai-elements/tool';
 
 export { Alert, AlertTitle, AlertDescription } from './ui/primitives/alert';
+export {
+  Attachment,
+  AttachmentAction,
+  AttachmentActions,
+  AttachmentContent,
+  AttachmentDescription,
+  AttachmentGroup,
+  AttachmentMedia,
+  AttachmentTitle,
+  AttachmentTrigger,
+} from './ui/primitives/attachment';
