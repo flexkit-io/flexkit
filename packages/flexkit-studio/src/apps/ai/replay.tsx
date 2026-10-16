@@ -1,3 +1,4 @@
+import { createResumableUiStream, LegacyStreamError } from './resumable-stream';
 import { Link, useLocation } from 'react-router-dom';
 import type { JSX } from 'react';
 import type { TextUIPart, UIMessage, UIMessageChunk } from 'ai';
@@ -26,11 +27,27 @@ import { Button, MessageResponse } from '../../ui';
 import useSWR from 'swr';
 import { createApiClient, fetcher, paths } from './api';
 import { ApprovalCard } from './approval-card';
-import { type DecidedApprovals, messageHasPendingMutationApproval, settlePendingMutationApprovals } from './approval-parts';
+import {
+  type DecidedApprovals,
+  messageHasPendingMutationApproval,
+  settlePendingMutationApprovals,
+} from './approval-parts';
 
-export { getMutationApprovalIds, getPendingMutationApprovalIds, messageHasPendingMutationApproval } from './approval-parts';
+export {
+  getMutationApprovalIds,
+  getPendingMutationApprovalIds,
+  messageHasPendingMutationApproval,
+} from './approval-parts';
 export type { DecidedApprovals } from './approval-parts';
-import { RunSpecPart } from './spec-renderer';
+import { lazy, Suspense } from 'react';
+const LazyRunSpecPart = lazy(() => import('./spec-renderer').then((module) => ({ default: module.RunSpecPart })));
+function RunSpecPart(props: React.ComponentProps<typeof LazyRunSpecPart>) {
+  return (
+    <Suspense fallback={null}>
+      <LazyRunSpecPart {...props} />
+    </Suspense>
+  );
+}
 import {
   getPartData,
   getRollingStatusError,
@@ -222,7 +239,80 @@ function shouldPauseStreamForApproval({
   return messageHasPendingMutationApproval(latestMessage);
 }
 
+/** A single UI parser remains alive across approval waits and reconnects. */
 export function useRunStream(
+  streamApi: string,
+  options?: {
+    decidedApprovals?: DecidedApprovals;
+    recordStatus?: RunRecordStatus | null;
+    resumeToken?: number;
+    suppressApprovalPause?: boolean;
+  }
+): { message: ReplayMessage | undefined; status: RunStreamStatus } {
+  const [legacy, setLegacy] = useState(false);
+  const fallback = useLegacyRunStream(legacy ? streamApi : '', options);
+  const [message, setMessage] = useState<ReplayMessage>();
+  const [status, setStatus] = useState<RunStreamStatus>('streaming');
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+  useEffect(() => {
+    setLegacy(false);
+    setMessage(undefined);
+    if (!streamApi) {
+      setStatus('unavailable');
+      return;
+    }
+    const abort = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let latest: ReplayMessage | undefined;
+    const flush = () => {
+      timer = undefined;
+      if (latest && !abort.signal.aborted) setMessage({ ...latest });
+    };
+    const stream = createResumableUiStream({
+      url: streamApi,
+      signal: abort.signal,
+      state: () => ({
+        terminal: isTerminalRunStatus(optionsRef.current?.recordStatus),
+        paused: shouldPauseStreamForApproval({
+          latestMessage: latest,
+          recordStatus: optionsRef.current?.recordStatus,
+          suppressApprovalPause: optionsRef.current?.suppressApprovalPause ?? false,
+        }),
+      }),
+      onState: (next) => {
+        if (!abort.signal.aborted) setStatus(next);
+      },
+    });
+    void (async () => {
+      try {
+        for await (const current of readUIMessageStream<ReplayMessage>({ stream, terminateOnError: true })) {
+          latest = current;
+          if (!timer) timer = setTimeout(flush, REPLAY_RENDER_INTERVAL_MS);
+        }
+        flush();
+      } catch (error) {
+        if (abort.signal.aborted) return;
+        if (error instanceof LegacyStreamError) setLegacy(true);
+        else {
+          console.error('Run stream error', error);
+          setStatus('error');
+        }
+      }
+    })();
+    return () => {
+      abort.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [streamApi]);
+  if (legacy) return fallback;
+  return {
+    message: message ? settlePendingMutationApprovals(message, options?.decidedApprovals ?? {}) : undefined,
+    status,
+  };
+}
+
+function useLegacyRunStream(
   streamApi: string,
   options?: {
     /** Decisions known to this client, applied to stale pending parts while the stream rebuilds. */
@@ -593,8 +683,8 @@ export function MessagePart({
 
     return (
       <p className="fk:text-xs fk:text-muted-foreground">
-        Earlier messages ({data.summarizedMessageCount.toString()}) were summarized to keep this conversation within
-        the model&apos;s context. Details may need to be re-fetched.
+        Earlier messages ({data.summarizedMessageCount.toString()}) were summarized to keep this conversation within the
+        model&apos;s context. Details may need to be re-fetched.
       </p>
     );
   }
@@ -1056,7 +1146,11 @@ export function MutationApprovalPart({
       return;
     }
 
-    watchSchemaDeployment({ approvalId: message.approvalId, approvalUrl: paths(projectId).approval(message.approvalId), projectId });
+    watchSchemaDeployment({
+      approvalId: message.approvalId,
+      approvalUrl: paths(projectId).approval(message.approvalId),
+      projectId,
+    });
   }, [approvedSchemaChange, message.approvalId, projectId]);
 
   // The stream part changes when the proposal is decided or executed; refresh

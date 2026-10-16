@@ -110,10 +110,6 @@ function getChatDetailRefreshInterval(latestData: AgentChatDetail | undefined): 
     return STREAM_RETRY_DELAY_MS;
   }
 
-  if (latestData.chat.title?.trim()) {
-    return 0;
-  }
-
   const hasCompletedAssistant = latestData.messages.some(
     (message) => message.role === 'assistant' && message.status === 'complete'
   );
@@ -237,13 +233,7 @@ function getTurnRecordStatus(status: AgentChatMessageStatus): RunRecordStatus {
   return 'running';
 }
 
-function UserBubble({
-  attachments = [],
-  text,
-}: {
-  attachments?: AgentChatAttachment[];
-  text: string;
-}): JSX.Element {
+function UserBubble({ attachments = [], text }: { attachments?: AgentChatAttachment[]; text: string }): JSX.Element {
   const { textInput } = usePromptInputController();
   const [copied, setCopied] = useState(false);
   const hasText = text.trim().length > 0;
@@ -264,9 +254,7 @@ function UserBubble({
       ) : null}
       <div
         className={
-          hasText
-            ? 'fk:flex fk:gap-0.5 fk:opacity-0 fk:transition-opacity fk:group-hover:opacity-100'
-            : 'fk:hidden'
+          hasText ? 'fk:flex fk:gap-0.5 fk:opacity-0 fk:transition-opacity fk:group-hover:opacity-100' : 'fk:hidden'
         }
       >
         <Tooltip>
@@ -382,7 +370,9 @@ function HistoryMessage({
   // Reasoning stays persisted for debugging, but is never displayed in chat.
   // Rolling-status tool parts are only meaningful while the call is in flight.
   const parts = (Array.isArray(message.parts) ? message.parts : []).filter(
-    (part) => !isHiddenReplayPart(part as ReplayMessagePart) && !(part.type.startsWith('tool-') && part.state !== 'output-error')
+    (part) =>
+      !isHiddenReplayPart(part as ReplayMessagePart) &&
+      !(part.type.startsWith('tool-') && part.state !== 'output-error')
   );
   const hasTurnErrorPart = parts.some((part) => part.type === 'data-turn-error');
   const suggestedPrompt = showSuggestion && !message.error ? getSuggestedPrompt(parts) : null;
@@ -443,7 +433,9 @@ function LiveTurn({
   // reasoning-only message cannot leave an empty wrapper and extra spacing.
   const rawMessages = useMemo(
     () =>
-      streamMessage ? [{ ...streamMessage, parts: streamMessage.parts.filter((part) => !isHiddenReplayPart(part)) }] : [],
+      streamMessage
+        ? [{ ...streamMessage, parts: streamMessage.parts.filter((part) => !isHiddenReplayPart(part)) }]
+        : [],
     [streamMessage]
   );
   const sessionMessages = useSessionMessages(rawMessages);
@@ -524,7 +516,9 @@ function LiveTurn({
 
   const showFallbackApproval = Boolean(fallbackApproval) && isAwaitingApproval;
   const liveSuggestedPrompt =
-    status === 'finished' ? getSuggestedPrompt(sessionMessages.flatMap((sessionMessage) => sessionMessage.parts)) : null;
+    status === 'finished'
+      ? getSuggestedPrompt(sessionMessages.flatMap((sessionMessage) => sessionMessage.parts))
+      : null;
 
   // Render no wrapper until there is content: an empty div still collects the
   // parent's vertical spacing and would shift the status line at mount.
@@ -645,7 +639,11 @@ function ChatComposer({
       <PromptInputFooter>
         <PromptInputTools>
           <PromptInputActionMenu>
-            <PromptInputActionMenuTrigger aria-label="Add attachments" disabled={isBusy} tooltip="Add photos or files" />
+            <PromptInputActionMenuTrigger
+              aria-label="Add attachments"
+              disabled={isBusy}
+              tooltip="Add photos or files"
+            />
             <PromptInputActionMenuContent>
               <PromptInputActionAddAttachments />
             </PromptInputActionMenuContent>
@@ -730,11 +728,69 @@ function ChatConversation({
     chatId ? paths(projectId).agentChat(chatId) : null,
     fetcher,
     {
-      refreshInterval: (latestData) => getChatDetailRefreshInterval(resolveDetail(latestData)),
+      refreshInterval: 0,
     }
   );
   const data = resolveDetail(rawDetail);
-  const messages = data?.messages ?? [];
+  const [olderMessages, setOlderMessages] = useState<AgentChatMessage[]>([]);
+  const [page, setPage] = useState<{ cursor: string | null; hasMore: boolean } | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  useEffect(() => {
+    setOlderMessages([]);
+    setPage(null);
+    setHistoryError(null);
+  }, [chatId]);
+  const currentIds = new Set(data?.messages.map((item) => item.id) ?? []);
+  const messages = [...olderMessages.filter((item) => !currentIds.has(item.id)), ...(data?.messages ?? [])];
+  type ChatStatus = {
+    chat: AgentChat;
+    latestMessage: { id: string; status: AgentChatMessageStatus; workflow_run_id: string | null } | null;
+    latestApproval: { id: string; status: string } | null;
+  };
+  const detailRef = useRef(data);
+  detailRef.current = data;
+  const priorStatus = useRef<string | undefined>(undefined);
+  useSWR<ChatStatus>(chatId ? `${paths(projectId).agentChat(chatId)}?view=status` : null, fetcher, {
+    refreshInterval: () => getChatDetailRefreshInterval(detailRef.current),
+    onSuccess: (status) => {
+      const signature = JSON.stringify(status);
+      const previous = priorStatus.current;
+      priorStatus.current = signature;
+      const {current} = detailRef;
+      const latest = current?.messages.at(-1);
+      if (
+        (previous && previous !== signature) ||
+        (latest &&
+          status.latestMessage &&
+          (latest.id !== status.latestMessage.id ||
+            latest.status !== status.latestMessage.status ||
+            latest.workflowRunId !== status.latestMessage.workflow_run_id ||
+            current?.chat.updatedAt !== status.chat.updatedAt))
+      )
+        void mutate();
+    },
+  });
+  const loadOlder = async () => {
+    const cursor = page?.cursor ?? data?.nextCursor;
+    if (!chatId || !cursor || loadingHistory) return;
+    setLoadingHistory(true);
+    setHistoryError(null);
+    try {
+      const result = await fetcher<AgentChatDetail>(
+        `${paths(projectId).agentChat(chatId)}?before=${encodeURIComponent(cursor)}`
+      );
+      setOlderMessages((current) => {
+        const byId = new Map([...result.messages, ...current].map((item) => [item.id, item]));
+        return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+      });
+      setPage({ cursor: result.nextCursor ?? null, hasMore: result.hasMore ?? false });
+    } catch {
+      setHistoryError('Could not load earlier messages. Try again.');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
   const lastMessage = messages[messages.length - 1];
   const liveMessage =
     lastMessage && lastMessage.role === 'assistant' && isActiveTurnStatus(lastMessage.status) ? lastMessage : null;
@@ -764,6 +820,12 @@ function ChatConversation({
     <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
       <ConversationContent className="fk:gap-0 fk:p-0">
         <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
+          {(page?.hasMore ?? data?.hasMore) ? (
+            <Button variant="ghost" disabled={loadingHistory} onClick={() => void loadOlder()}>
+              {loadingHistory ? 'Loading…' : 'Load earlier messages'}
+            </Button>
+          ) : null}
+          {historyError ? <p role="alert">{historyError}</p> : null}
           {historyMessages.map((message) => (
             <HistoryMessage
               api={api}
@@ -932,9 +994,7 @@ export function AgentChatPage(): JSX.Element {
   const [rememberedModel, setRememberedModel] = useState<ModelSelection | null>(readLastAgentModel);
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
-  const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(
-    null
-  );
+  const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(null);
   const visiblePendingMessage = pendingMessage && pendingMessage.chatId === chatId ? pendingMessage : undefined;
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
