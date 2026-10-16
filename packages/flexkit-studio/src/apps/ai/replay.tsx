@@ -255,6 +255,16 @@ export function useRunStream(
   const [status, setStatus] = useState<RunStreamStatus>('streaming');
   const optionsRef = useRef(options);
   optionsRef.current = options;
+  const wakeRef = useRef<EventTarget | null>(null);
+  if (!wakeRef.current) wakeRef.current = new EventTarget();
+  const wake = wakeRef.current;
+  // A local approval decision bumps resumeToken after setting
+  // suppressApprovalPause; re-read the pause state now rather than after the
+  // retry delay, so the run resumes as soon as the user decides.
+  const resumeToken = options?.resumeToken;
+  useEffect(() => {
+    wake.dispatchEvent(new Event('wake'));
+  }, [resumeToken, wake]);
   useEffect(() => {
     setLegacy(false);
     setMessage(undefined);
@@ -283,6 +293,7 @@ export function useRunStream(
       onState: (next) => {
         if (!abort.signal.aborted) setStatus(next);
       },
+      wake,
     });
     void (async () => {
       try {
@@ -304,7 +315,7 @@ export function useRunStream(
       abort.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [streamApi]);
+  }, [streamApi, wake]);
   if (legacy) return fallback;
   return {
     message: message ? settlePendingMutationApprovals(message, options?.decidedApprovals ?? {}) : undefined,

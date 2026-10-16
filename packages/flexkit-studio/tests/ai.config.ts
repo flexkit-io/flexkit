@@ -6,6 +6,7 @@ export default defineConfig({
     'tests/ai/model-selection.test.ts',
     'tests/ai/status-label.test.ts',
     'tests/ai/approval-parts.test.ts',
+    'tests/ai/chat-history.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests/ai',

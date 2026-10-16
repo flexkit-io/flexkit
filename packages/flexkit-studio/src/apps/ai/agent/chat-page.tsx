@@ -75,6 +75,7 @@ import {
   getAttachmentsFromParts,
   useAttachmentUploads,
 } from './attachments';
+import { mergeChatDetail, sortChatMessages } from './chat-history';
 import { useAgentBasePath } from './chat-list';
 import { appendDictatedText } from './dictation';
 import {
@@ -163,32 +164,6 @@ function getSeedBaseDetail(
   }
 
   return createFallbackChatDetail(chatId, modelId, timestamp);
-}
-
-/** Keep locally confirmed turns when a stale in-flight GET wins the SWR write. */
-function mergeChatDetail(
-  current: AgentChatDetail | undefined,
-  incoming: AgentChatDetail | undefined
-): AgentChatDetail | undefined {
-  if (!incoming) {
-    return current;
-  }
-
-  if (!current) {
-    return incoming;
-  }
-
-  const incomingIds = new Set(incoming.messages.map((message) => message.id));
-  const retained = current.messages.filter((message) => !incomingIds.has(message.id));
-
-  if (retained.length === 0) {
-    return incoming;
-  }
-
-  return {
-    ...incoming,
-    messages: [...incoming.messages, ...retained],
-  };
 }
 
 function appendTurnToDetail(detail: AgentChatDetail, turn: AgentChatTurn): AgentChatDetail {
@@ -736,16 +711,35 @@ function ChatConversation({
   const [page, setPage] = useState<{ cursor: string | null; hasMore: boolean } | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  // This component stays mounted across chat navigation, so history state is
+  // reset per chat and an in-flight history request checks it still belongs
+  // to the chat on screen before it writes anything.
+  const activeChatRef = useRef(chatId);
+  activeChatRef.current = chatId;
   useEffect(() => {
     setOlderMessages([]);
     setPage(null);
     setHistoryError(null);
+    setLoadingHistory(false);
   }, [chatId]);
+  // Each GET returns only the latest page, so a new turn pushes the oldest
+  // visible messages out of it. Keep them so the history never shows a gap.
+  const windowRef = useRef<{ chatId: string | null; messages: AgentChatMessage[] }>({ chatId: null, messages: [] });
+  const windowMessages = data?.messages;
+  useEffect(() => {
+    const previous = windowRef.current;
+    const next = windowMessages ?? [];
+    windowRef.current = { chatId, messages: next };
+    if (previous.chatId !== chatId) return;
+    const nextIds = new Set(next.map((message) => message.id));
+    const dropped = previous.messages.filter((message) => !nextIds.has(message.id));
+    if (dropped.length > 0) setOlderMessages((current) => sortChatMessages([...current, ...dropped]));
+  }, [chatId, windowMessages]);
   const currentIds = new Set(data?.messages.map((item) => item.id) ?? []);
   const messages = [...olderMessages.filter((item) => !currentIds.has(item.id)), ...(data?.messages ?? [])];
   type ChatStatus = {
     chat: AgentChat;
-    latestMessage: { id: string; status: AgentChatMessageStatus; workflow_run_id: string | null } | null;
+    latestMessage: { id: string; status: AgentChatMessageStatus; workflowRunId: string | null } | null;
     latestApproval: { id: string; status: string } | null;
   };
   const detailRef = useRef(data);
@@ -765,7 +759,7 @@ function ChatConversation({
           status.latestMessage &&
           (latest.id !== status.latestMessage.id ||
             latest.status !== status.latestMessage.status ||
-            latest.workflowRunId !== status.latestMessage.workflow_run_id ||
+            latest.workflowRunId !== status.latestMessage.workflowRunId ||
             current?.chat.updatedAt !== status.chat.updatedAt))
       )
         void mutate();
@@ -774,21 +768,21 @@ function ChatConversation({
   const loadOlder = async () => {
     const cursor = page?.cursor ?? data?.nextCursor;
     if (!chatId || !cursor || loadingHistory) return;
+    const requestChatId = chatId;
+    const isCurrent = () => activeChatRef.current === requestChatId;
     setLoadingHistory(true);
     setHistoryError(null);
     try {
       const result = await fetcher<AgentChatDetail>(
-        `${paths(projectId).agentChat(chatId)}?before=${encodeURIComponent(cursor)}`
+        `${paths(projectId).agentChat(requestChatId)}?before=${encodeURIComponent(cursor)}`
       );
-      setOlderMessages((current) => {
-        const byId = new Map([...result.messages, ...current].map((item) => [item.id, item]));
-        return [...byId.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
-      });
+      if (!isCurrent()) return;
+      setOlderMessages((current) => sortChatMessages([...result.messages, ...current]));
       setPage({ cursor: result.nextCursor ?? null, hasMore: result.hasMore ?? false });
     } catch {
-      setHistoryError('Could not load earlier messages. Try again.');
+      if (isCurrent()) setHistoryError('Could not load earlier messages. Try again.');
     } finally {
-      setLoadingHistory(false);
+      if (isCurrent()) setLoadingHistory(false);
     }
   };
   const lastMessage = messages[messages.length - 1];

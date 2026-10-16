@@ -168,3 +168,38 @@ it('resumes an approval pause from the same cursor when the record becomes runni
   assert.equal(final?.parts.filter(p => p.type === 'data-mutation-approval').length, 1);
   assert.deepEqual((final?.parts[0] as { data: unknown }).data, { status: 'approved' });
 });
+
+it('a wake event re-reads the pause state before the retry delay elapses', async () => {
+  let paused = true;
+  const wake = new EventTarget();
+  const urls: string[] = [];
+  const started = Date.now();
+  const stream = createResumableUiStream({
+    url: '/wake',
+    signal: new AbortController().signal,
+    state: () => ({ terminal: false, paused }),
+    retryMs: 60_000,
+    wake,
+    onState: (status) => {
+      if (status === 'paused') {
+        paused = false;
+        setTimeout(() => wake.dispatchEvent(new Event('wake')), 5);
+      }
+    },
+    fetchStream: (async (url) => {
+      urls.push(String(url));
+      return urls.length === 1
+        ? response(frame(0, { type: 'data-mutation-approval', id: 'approval', data: { status: 'pending' } }))
+        : response(
+            frame(1, { type: 'data-mutation-approval', id: 'approval', data: { status: 'approved' } }) +
+              frame(2, { type: 'finish', messageMetadata: { flexkitTerminal: true } })
+          );
+    }) as typeof fetch,
+  });
+  let final;
+  for await (const message of readUIMessageStream({ stream, terminateOnError: true })) final = message;
+  assert.equal(urls.length, 2);
+  assert.match(urls[1]!, /startIndex=1$/);
+  assert.ok(Date.now() - started < 30_000, 'resumed without waiting for retryMs');
+  assert.deepEqual((final?.parts[0] as { data: unknown }).data, { status: 'approved' });
+});

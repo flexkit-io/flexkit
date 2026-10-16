@@ -12,6 +12,7 @@ export function createResumableUiStream({
   signal,
   state,
   onState,
+  wake,
   fetchStream = fetch,
   retryMs = 2000,
 }: {
@@ -19,6 +20,8 @@ export function createResumableUiStream({
   signal: AbortSignal;
   state: () => State;
   onState: (status: 'streaming' | 'paused' | 'finished' | 'unavailable') => void;
+  /** A `wake` event here ends the current pause or retry wait so `state` is re-read at once. */
+  wake?: EventTarget;
   fetchStream?: typeof fetch;
   retryMs?: number;
 }): ReadableStream<UIMessageChunk> {
@@ -39,10 +42,12 @@ export function createResumableUiStream({
       const done = () => {
         clearTimeout(timer);
         local.signal.removeEventListener('abort', done);
+        wake?.removeEventListener('wake', done);
         resolve();
       };
       const timer = setTimeout(done, retryMs);
       local.signal.addEventListener('abort', done, { once: true });
+      wake?.addEventListener('wake', done, { once: true });
       if (local.signal.aborted) done();
     });
 
