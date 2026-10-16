@@ -275,6 +275,8 @@ export interface AgentChatsList {
 }
 
 export interface AgentChatDetail {
+  hasMore?: boolean;
+  nextCursor?: string | null;
   chat: AgentChat;
   messages: AgentChatMessage[];
   pendingApproval: AutomationApproval | null;
@@ -288,4 +290,3 @@ export interface AgentChatSearchResult {
   score: number;
   snippet: string;
 }
-
