@@ -1,5 +1,5 @@
 import { useEffect, type JSX } from 'react';
-import { Link, Outlet, useParams, useLocation } from 'react-router-dom';
+import { Link, useParams, useLocation } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { useAuth } from '../../auth/auth-context';
 import { Login } from '../../auth/login';
@@ -12,6 +12,7 @@ import { Loading } from '../components/loading';
 import { Alert, AlertDescription, AlertTitle } from '../primitives/alert';
 import { Toaster } from '../primitives/sonner';
 import { AppBar } from './appbar';
+import { AppOutlet, useAppSessions } from './app-outlet';
 import { Navbar } from './navbar';
 
 type Props = {
@@ -72,6 +73,7 @@ export function Layout({ version }: Props): JSX.Element {
   const appDispatch = useAppDispatch();
   const location = useLocation();
   const isKnownProject = projectIds.includes(projectId);
+  const appSessions = useAppSessions(apps, projectId);
 
   useEffect(() => {
     if (scopes && scopes.length > 0) {
@@ -123,9 +125,9 @@ export function Layout({ version }: Props): JSX.Element {
       <div className="fk:flex fk:flex-col fk:h-full flexkit-studio" vaul-drawer-wrapper="">
         <Navbar projectId={projectId} projectIds={projectIds} projectSummaries={projectSummaries} projects={projects} />
         <div className="fk:flex fk:h-full fk:max-h-[calc(100%-3.5rem)] fk:border-t fk:border-border fk:grow shrink">
-          <AppBar apps={apps} version={version} />
+          <AppBar apps={apps} version={version} {...appSessions} />
           {currentProject ? (
-            <Outlet />
+            <AppOutlet apps={apps} {...appSessions} />
           ) : (
             <SchemaUnavailable
               error={schemaError ?? { status: 0, message: 'The project schema is not available.' }}

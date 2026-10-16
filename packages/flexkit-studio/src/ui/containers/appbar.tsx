@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { MoreHorizontal, PackageCheck, PackageX, Settings, Wrench } from 'lucide-react';
-import { Link, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
+import { createPath, Link, NavLink, Navigate, useLocation, useParams } from 'react-router-dom';
 import { Button } from '../primitives/button';
+import { getAppSegment } from '../../core/apps/app-sessions';
+import type { AppSessions } from '../../core/apps/app-sessions';
 import type { AppOptions } from '../../core/config/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../primitives/tooltip';
 import {
@@ -14,7 +16,11 @@ import {
 } from '../primitives/dropdown-menu';
 
 type Props = {
+  /** The app the URL points at, if it is a known one. */
+  activeApp: string | undefined;
   apps: AppOptions[];
+  /** Where each opened app was last left; its button leads back there. */
+  sessions: AppSessions;
   version: {
     current: string;
     latest: string;
@@ -22,15 +28,22 @@ type Props = {
   };
 };
 
-export function AppBar({ apps, version }: Props): JSX.Element {
+export function AppBar({ activeApp: currentApp, apps, sessions, version }: Props): JSX.Element {
   const [appBarHeight, setAppBarHeight] = useState(0);
   const [visibleApps, setVisibleApps] = useState<AppOptions[]>(apps);
   const [additionalApps, setAdditionalApps] = useState<AppOptions[]>([]); // apps that are not visible in the sidebar due to lack of space
   const appBar = useRef<HTMLDivElement>(null);
   const location = useLocation();
-  const { projectId } = useParams();
-  const currentAppSegmentPath = apps.find((app) => location.pathname.includes(`/${projectId}/${app.name}`))?.name;
-  const activeApp = apps.find((app) => location.pathname.includes(`/${projectId}/${app.name}`))?.name ?? apps[0]?.name;
+  const { projectId = '' } = useParams();
+  const appSegment = getAppSegment(location.pathname, projectId);
+  const activeApp = currentApp ?? apps[0]?.name;
+
+  /** An opened app reopens on the page it was left on; the others open on their root. */
+  function getAppPath(app: AppOptions): string {
+    const lastLocation = sessions.locations[app.name];
+
+    return lastLocation ? createPath(lastLocation) : `/${projectId}/${app.name}`;
+  }
 
   useEffect(() => {
     if (appBar.current === null) {
@@ -46,7 +59,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
     return function cleanup() {
       resizeObserver.disconnect();
     };
-  }, [currentAppSegmentPath]);
+  }, [currentApp]);
 
   useEffect(() => {
     const availableAppSlots = Math.floor(appBarHeight / 48) - 2;
@@ -65,8 +78,10 @@ export function AppBar({ apps, version }: Props): JSX.Element {
     setAdditionalApps(_additionalApps);
   }, [apps, activeApp, appBarHeight]);
 
-  if (currentAppSegmentPath === undefined && activeApp) {
-    return <Navigate to={`${location.pathname}/${activeApp}`} />;
+  // A bare project URL opens the first app. An unknown app segment is left
+  // alone (the outlet reports it) rather than redirected in a loop.
+  if (appSegment === undefined && activeApp) {
+    return <Navigate replace to={`${location.pathname.replace(/\/$/, '')}/${activeApp}`} />;
   }
 
   return (
@@ -83,7 +98,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
                   >
                     <NavLink
                       className="fk:text-muted-foreground fk:aria-[current]:text-foreground fk:aria-[current]:bg-background fk:aria-[current]:border-l-white!"
-                      to={app.name}
+                      to={getAppPath(app)}
                     >
                       {app.icon}
                     </NavLink>
@@ -112,7 +127,7 @@ export function AppBar({ apps, version }: Props): JSX.Element {
               <DropdownMenuContent align="start" className="fk:w-56" side="right">
                 {additionalApps.map((app) => (
                   <DropdownMenuItem asChild key={app.name}>
-                    <NavLink to={app.name}>{app.title}</NavLink>
+                    <NavLink to={getAppPath(app)}>{app.title}</NavLink>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

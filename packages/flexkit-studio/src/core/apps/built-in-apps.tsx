@@ -85,38 +85,6 @@ const aiSkillDetailPage = lazyElement(() =>
 
 export const builtInApps: AppOptions[] = [
   {
-    name: 'desk',
-    icon: <LayoutIcon strokeWidth={1.5} />,
-    title: 'Desk',
-    component: deskRoot,
-    routes: [
-      {
-        path: 'list/:entity',
-        component: deskList,
-        children: [
-          {
-            path: 'edit/:id',
-            component: deskEditEntity, // Not used, left here as an example of how to nest routes in apps
-          },
-        ],
-      },
-    ],
-  },
-  {
-    name: 'asset-manager',
-    icon: <FileStackIcon strokeWidth={1.5} />,
-    title: 'Asset Manager',
-    component: assetManagerRoot,
-    routes: [],
-  },
-  {
-    name: 'explorer',
-    icon: <SquarePlayIcon strokeWidth={1.5} />,
-    title: 'Explorer',
-    component: explorerRoot,
-    routes: [],
-  },
-  {
     name: 'ai',
     icon: <BotIcon strokeWidth={1.5} />,
     title: 'AI',
@@ -178,5 +146,37 @@ export const builtInApps: AppOptions[] = [
         path: 'skills/:skillId',
       },
     ],
+  },
+  {
+    name: 'desk',
+    icon: <LayoutIcon strokeWidth={1.5} />,
+    title: 'Desk',
+    component: deskRoot,
+    routes: [
+      {
+        path: 'list/:entity',
+        component: deskList,
+        children: [
+          {
+            path: 'edit/:id',
+            component: deskEditEntity, // Not used, left here as an example of how to nest routes in apps
+          },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'asset-manager',
+    icon: <FileStackIcon strokeWidth={1.5} />,
+    title: 'Asset Manager',
+    component: assetManagerRoot,
+    routes: [],
+  },
+  {
+    name: 'explorer',
+    icon: <SquarePlayIcon strokeWidth={1.5} />,
+    title: 'Explorer',
+    component: explorerRoot,
+    routes: [],
   },
 ];
