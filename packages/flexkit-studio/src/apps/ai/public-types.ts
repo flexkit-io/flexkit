@@ -1,6 +1,9 @@
 export type {
   AgentChat,
   AgentChatAttachment,
+  AgentChatFollowUp,
+  AgentChatFollowUpDelivery,
+  AgentChatFollowUpResult,
   AgentChatDetail,
   AgentChatMessage,
   AgentChatMessageRole,

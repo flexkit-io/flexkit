@@ -164,6 +164,18 @@ export const dataPartSchema = z.object({
   'suggested-prompt': z.object({
     prompt: z.string(),
   }),
+  /**
+   * A message the user sent while the turn was running, at the point in the
+   * reply where the agent received it. The UI shows it there, in place of the
+   * stored user message it refers to.
+   */
+  'mid-turn-message': z.object({
+    attachments: z.array(
+      z.object({ filename: z.string(), mediaType: z.string(), sizeBytes: z.number(), url: z.string() })
+    ),
+    messageId: z.string(),
+    text: z.string(),
+  }),
 });
 
 export type DataPart = z.infer<typeof dataPartSchema>;

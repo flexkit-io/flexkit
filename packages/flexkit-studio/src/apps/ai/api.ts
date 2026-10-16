@@ -4,6 +4,7 @@ import { convertRecordedAudioToPcm } from './agent/dictation';
 import type {
   AgentChat,
   AgentChatAttachment,
+  AgentChatFollowUpResult,
   AgentChatMessage,
   AgentChatTurn,
   Automation,
@@ -31,6 +32,12 @@ export interface SendAgentChatMessageInput {
   attachments?: AgentChatAttachment[];
   content: string;
   modelId?: string | null;
+}
+
+/** A new chat and its first turn, started by one request. */
+export interface StartAgentChatResult {
+  chat: AgentChat;
+  turn: AgentChatTurn;
 }
 
 /** Thrown when the API refuses an upload; `code` lets the UI tailor the message. */
@@ -71,6 +78,16 @@ export interface ApiClient {
   getAgentChatStreamUrl: (_chatId: string, _workflowRunId: string) => string;
   renameAgentChat: (_chatId: string, _title: string) => Promise<{ chat: AgentChat }>;
   sendAgentChatMessage: (_chatId: string, _input: SendAgentChatMessageInput) => Promise<AgentChatTurn>;
+  /**
+   * Sends a message while the chat's turn is running. The platform decides
+   * whether it steers that turn or waits as the next one; if the turn has
+   * meanwhile ended, the message starts the next turn.
+   */
+  sendAgentChatFollowUp: (_chatId: string, _input: SendAgentChatMessageInput) => Promise<AgentChatFollowUpResult>;
+  /** Creates a chat and sends its first message in one request. */
+  startAgentChat: (_input: SendAgentChatMessageInput) => Promise<StartAgentChatResult>;
+  /** Starts the next turn from a queued follow-up once the previous turn has ended. */
+  startQueuedAgentChatMessage: (_chatId: string, _messageId: string) => Promise<AgentChatTurn>;
   stopAgentChat: (_chatId: string) => Promise<{ message: AgentChatMessage }>;
   transcribeAgentAudio: (_audio: Blob, _signal?: AbortSignal) => Promise<{ text: string }>;
   /** Uploads a chat attachment straight to the platform file store. */
@@ -184,6 +201,21 @@ export function createApiClient(projectId: string): ApiClient {
         body: JSON.stringify(input),
         method: 'POST',
       }),
+    sendAgentChatFollowUp: async (chatId, input) =>
+      request<AgentChatFollowUpResult>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}/follow-ups`, {
+        body: JSON.stringify(input),
+        method: 'POST',
+      }),
+    startAgentChat: async ({ attachments, content, modelId }) =>
+      request<StartAgentChatResult>(agentChatsBasePath, {
+        body: JSON.stringify({ message: { attachments, content }, modelId: modelId ?? null }),
+        method: 'POST',
+      }),
+    startQueuedAgentChatMessage: async (chatId, messageId) =>
+      request<AgentChatTurn>(
+        `${agentChatsBasePath}/${encodeURIComponent(chatId)}/follow-ups/${encodeURIComponent(messageId)}/start`,
+        { method: 'POST' }
+      ),
     stopAgentChat: async (chatId) =>
       request<{ message: AgentChatMessage }>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}/stop`, {
         method: 'POST',

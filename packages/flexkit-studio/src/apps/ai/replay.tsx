@@ -21,6 +21,7 @@ import {
   ShieldIcon,
   XCircleIcon,
   XIcon,
+  CornerDownRightIcon,
 } from 'lucide-react';
 import { useConfig } from '../../core/config/config-context';
 import { Button, MessageResponse } from '../../ui';
@@ -58,6 +59,7 @@ import {
 import type { DataPart } from '@flexkit/agent-protocol';
 import type { AutomationApproval, AutomationRun } from './types';
 import { watchSchemaDeployment } from './schema-deploy-watch';
+import { MessageAttachments } from './agent/attachments';
 
 export {
   getLiveStatusLabel,
@@ -614,6 +616,33 @@ export function isCodeFenceOnlyText(text: string): boolean {
   return trimmed.split('\n').every((line) => /^`{3,}[\w-]*$/.test(line.trim()));
 }
 
+/**
+ * A message the user sent while the agent was working, shown inside the
+ * reply at the point the agent received it.
+ */
+function MidTurnMessagePart({
+  attachments,
+  text,
+}: {
+  attachments: ReplayDataParts['mid-turn-message']['attachments'];
+  text: string;
+}): JSX.Element {
+  return (
+    <div className="fk:ml-auto fk:flex fk:w-fit fk:max-w-[70%] fk:flex-col fk:items-end fk:gap-1">
+      <MessageAttachments attachments={attachments} />
+      {text.trim() ? (
+        <div className="fk:whitespace-pre-wrap fk:rounded-xl fk:bg-muted fk:dark:bg-white/20 fk:px-3.5 fk:py-2 fk:text-base fk:corner-squircle">
+          {text}
+        </div>
+      ) : null}
+      <span className="fk:inline-flex fk:items-center fk:gap-1 fk:text-xs fk:text-muted-foreground">
+        <CornerDownRightIcon className="fk:size-3 fk:shrink-0" />
+        Added while the agent was working
+      </span>
+    </div>
+  );
+}
+
 export function MessagePart({
   api,
   part,
@@ -687,6 +716,12 @@ export function MessagePart({
         </div>
       </ToolMessage>
     );
+  }
+
+  if (part.type === 'data-mid-turn-message') {
+    const data = getPartData<ReplayDataParts['mid-turn-message']>(part);
+
+    return <MidTurnMessagePart attachments={data.attachments} text={data.text} />;
   }
 
   if (part.type === 'data-context-compaction') {
