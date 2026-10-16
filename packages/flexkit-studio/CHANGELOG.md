@@ -1,5 +1,20 @@
 # @flexkit/studio
 
+## 0.2.2
+
+### Patch Changes
+
+- 75b52d9: The agent chat composer stays open while a turn runs. A message sent meanwhile is shown at once and either steers the running turn or starts the next one when it ends; the stop button becomes the send button as soon as there is a draft. A message the agent received mid-turn is shown inside the reply at the point it arrived.
+- 75b52d9: Start a new agent chat and send its first message in one request instead of two.
+- f68d6ed: Studio quality of life: the AI app is now the first tab and the default app of a project. Opened apps stay mounted while another app is in front, so switching from a chat to Desk, the Asset Manager or the Explorer and back finds the chat (and the other apps) exactly as they were left, with the app bar button returning to the page each app was last on. The agent composer also remembers unsent text per chat, including the New chat page, across chat switches and reloads.
+- 4afd645: The agent composer's prompt input now follows the shadcn/ui Input Group and Attachment pattern: a round outlined attach button, a round primary send button with an up arrow, a padded textarea, and a header that lists drafted attachments as removable chips when nothing custom is rendered in it. The `Attachment` primitives are exported from `@flexkit/studio/ui`, and the shadcn config now targets the `new-york-v4` registry style. Every prompt input export keeps its name and props.
+
+  A new chat now greets with the composer in the middle of the page, ChatGPT-style, with the intro paragraph removed and the placeholder reading "Ask Flexkit anything about <project>...". The composer moves to the bottom as soon as the first message is sent, and its corners are rounder.
+
+- Updated dependencies [75b52d9]
+  - @flexkit/agent-protocol@0.3.1
+  - @flexkit/schema@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes
