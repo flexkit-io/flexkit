@@ -678,6 +678,23 @@ interface PendingMessage {
   text: string;
 }
 
+/** Pages loaded before the latest one, for a single chat. */
+interface ChatHistoryState {
+  chatId: string | null;
+  error: string | null;
+  loading: boolean;
+  older: AgentChatMessage[];
+  page: { cursor: string | null; hasMore: boolean } | null;
+}
+
+const EMPTY_CHAT_HISTORY: ChatHistoryState = {
+  chatId: null,
+  error: null,
+  loading: false,
+  older: [],
+  page: null,
+};
+
 function ChatConversation({
   api,
   chatId,
@@ -707,21 +724,19 @@ function ChatConversation({
     }
   );
   const data = resolveDetail(rawDetail);
-  const [olderMessages, setOlderMessages] = useState<AgentChatMessage[]>([]);
-  const [page, setPage] = useState<{ cursor: string | null; hasMore: boolean } | null>(null);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [historyError, setHistoryError] = useState<string | null>(null);
-  // This component stays mounted across chat navigation, so history state is
-  // reset per chat and an in-flight history request checks it still belongs
-  // to the chat on screen before it writes anything.
+  // History pages are keyed by chat so that, with this component mounted
+  // across chat navigation, the first render of another chat never shows this
+  // chat's pages, and a late response for another chat is dropped.
+  const [historyState, setHistoryState] = useState<ChatHistoryState>(EMPTY_CHAT_HISTORY);
+  const history = historyState.chatId === chatId ? historyState : EMPTY_CHAT_HISTORY;
   const activeChatRef = useRef(chatId);
   activeChatRef.current = chatId;
-  useEffect(() => {
-    setOlderMessages([]);
-    setPage(null);
-    setHistoryError(null);
-    setLoadingHistory(false);
-  }, [chatId]);
+  const updateHistory = (forChatId: string, patch: (_current: ChatHistoryState) => Partial<ChatHistoryState>) =>
+    setHistoryState((current) => {
+      if (activeChatRef.current !== forChatId) return current;
+      const base = current.chatId === forChatId ? current : { ...EMPTY_CHAT_HISTORY, chatId: forChatId };
+      return { ...base, ...patch(base) };
+    });
   // Each GET returns only the latest page, so a new turn pushes the oldest
   // visible messages out of it. Keep them so the history never shows a gap.
   const windowRef = useRef<{ chatId: string | null; messages: AgentChatMessage[] }>({ chatId: null, messages: [] });
@@ -730,13 +745,14 @@ function ChatConversation({
     const previous = windowRef.current;
     const next = windowMessages ?? [];
     windowRef.current = { chatId, messages: next };
-    if (previous.chatId !== chatId) return;
+    if (!chatId || previous.chatId !== chatId) return;
     const nextIds = new Set(next.map((message) => message.id));
     const dropped = previous.messages.filter((message) => !nextIds.has(message.id));
-    if (dropped.length > 0) setOlderMessages((current) => sortChatMessages([...current, ...dropped]));
+    if (dropped.length > 0)
+      updateHistory(chatId, (current) => ({ older: sortChatMessages([...current.older, ...dropped]) }));
   }, [chatId, windowMessages]);
   const currentIds = new Set(data?.messages.map((item) => item.id) ?? []);
-  const messages = [...olderMessages.filter((item) => !currentIds.has(item.id)), ...(data?.messages ?? [])];
+  const messages = [...history.older.filter((item) => !currentIds.has(item.id)), ...(data?.messages ?? [])];
   type ChatStatus = {
     chat: AgentChat;
     latestMessage: { id: string; status: AgentChatMessageStatus; workflowRunId: string | null } | null;
@@ -766,23 +782,21 @@ function ChatConversation({
     },
   });
   const loadOlder = async () => {
-    const cursor = page?.cursor ?? data?.nextCursor;
-    if (!chatId || !cursor || loadingHistory) return;
+    const cursor = history.page?.cursor ?? data?.nextCursor;
+    if (!chatId || !cursor || history.loading) return;
     const requestChatId = chatId;
-    const isCurrent = () => activeChatRef.current === requestChatId;
-    setLoadingHistory(true);
-    setHistoryError(null);
+    updateHistory(requestChatId, () => ({ error: null, loading: true }));
     try {
       const result = await fetcher<AgentChatDetail>(
         `${paths(projectId).agentChat(requestChatId)}?before=${encodeURIComponent(cursor)}`
       );
-      if (!isCurrent()) return;
-      setOlderMessages((current) => sortChatMessages([...result.messages, ...current]));
-      setPage({ cursor: result.nextCursor ?? null, hasMore: result.hasMore ?? false });
+      updateHistory(requestChatId, (current) => ({
+        loading: false,
+        older: sortChatMessages([...result.messages, ...current.older]),
+        page: { cursor: result.nextCursor ?? null, hasMore: result.hasMore ?? false },
+      }));
     } catch {
-      if (isCurrent()) setHistoryError('Could not load earlier messages. Try again.');
-    } finally {
-      if (isCurrent()) setLoadingHistory(false);
+      updateHistory(requestChatId, () => ({ error: 'Could not load earlier messages. Try again.', loading: false }));
     }
   };
   const lastMessage = messages[messages.length - 1];
@@ -814,12 +828,12 @@ function ChatConversation({
     <Conversation className="fk:h-0 fk:min-h-0 fk:flex-1">
       <ConversationContent className="fk:gap-0 fk:p-0">
         <div className="fk:mx-auto fk:w-full fk:max-w-4xl fk:space-y-5 fk:pb-6 fk:pr-4">
-          {(page?.hasMore ?? data?.hasMore) ? (
-            <Button variant="ghost" disabled={loadingHistory} onClick={() => void loadOlder()}>
-              {loadingHistory ? 'Loading…' : 'Load earlier messages'}
+          {(history.page?.hasMore ?? data?.hasMore) ? (
+            <Button variant="ghost" disabled={history.loading} onClick={() => void loadOlder()}>
+              {history.loading ? 'Loading…' : 'Load earlier messages'}
             </Button>
           ) : null}
-          {historyError ? <p role="alert">{historyError}</p> : null}
+          {history.error ? <p role="alert">{history.error}</p> : null}
           {historyMessages.map((message) => (
             <HistoryMessage
               api={api}
