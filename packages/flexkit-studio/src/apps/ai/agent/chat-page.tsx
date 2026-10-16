@@ -731,9 +731,12 @@ function ChatConversation({
   const history = historyState.chatId === chatId ? historyState : EMPTY_CHAT_HISTORY;
   const activeChatRef = useRef(chatId);
   activeChatRef.current = chatId;
+  // A write for the chat the state already belongs to always applies, even
+  // while that chat is off screen, so a request finishing after navigation
+  // never parks it as loading. Only a chat on screen may claim the state.
   const updateHistory = (forChatId: string, patch: (_current: ChatHistoryState) => Partial<ChatHistoryState>) =>
     setHistoryState((current) => {
-      if (activeChatRef.current !== forChatId) return current;
+      if (current.chatId !== forChatId && activeChatRef.current !== forChatId) return current;
       const base = current.chatId === forChatId ? current : { ...EMPTY_CHAT_HISTORY, chatId: forChatId };
       return { ...base, ...patch(base) };
     });
