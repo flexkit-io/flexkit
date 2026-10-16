@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.1
+
+### Patch Changes
+
+- 75b52d9: Add the `queued` and `steering` message statuses and the `AgentChatFollowUp` types for messages sent while a chat turn is running.
+
 ## 0.3.0
 
 ### Minor Changes

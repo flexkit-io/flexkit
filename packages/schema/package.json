@@ -1,6 +1,6 @@
 {
   "name": "@flexkit/schema",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Flexkit project configuration: schema types, defineConfig/defineEntity, and the serializer that turns a flexkit.config.ts into the deployable JSON schema.",
   "keywords": [
     "flexkit",
