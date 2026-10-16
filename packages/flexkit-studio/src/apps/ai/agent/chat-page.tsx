@@ -419,6 +419,7 @@ function LiveTurn({
   chatId,
   detail,
   message,
+  onMidTurnDelivered,
   onStatusChange,
   onTurnUpdated,
 }: {
@@ -426,6 +427,8 @@ function LiveTurn({
   chatId: string;
   detail: AgentChatDetail;
   message: AgentChatMessage;
+  /** Ids of the follow-ups the stream has shown inline so far. */
+  onMidTurnDelivered: (_ids: string[]) => void;
   onStatusChange: (_status: TurnStatus) => void;
   onTurnUpdated: () => void;
 }): JSX.Element {
@@ -497,6 +500,20 @@ function LiveTurn({
       onTurnUpdatedRef.current();
     }
   }, [status]);
+
+  // A follow-up the stream renders inline must leave the waiting list at once.
+  const deliveredKey = (streamMessage?.parts ?? [])
+    .filter((part) => part.type === 'data-mid-turn-message')
+    .map((part) => String((part as { data?: { messageId?: unknown } }).data?.messageId ?? ''))
+    .join('\n');
+  const onMidTurnDeliveredRef = useRef(onMidTurnDelivered);
+  onMidTurnDeliveredRef.current = onMidTurnDelivered;
+
+  useEffect(() => {
+    if (deliveredKey) {
+      onMidTurnDeliveredRef.current(deliveredKey.split('\n'));
+    }
+  }, [deliveredKey]);
 
   // Prefer the turn record over a stale pending stream part once execution
   // has resumed (`streaming`). Keeping the previous replay on reconnect can
@@ -854,7 +871,8 @@ function ChatConversation({
       const previous = priorStatus.current;
       priorStatus.current = signature;
       const {current} = detailRef;
-      const latest = current?.messages.at(-1);
+      // The status reports the latest reply; a follow-up sent during the turn is newer than it.
+      const latest = current ? [...current.messages].reverse().find((message) => message.role === 'assistant') : undefined;
       if (
         (previous && previous !== signature) ||
         (latest &&
@@ -890,32 +908,60 @@ function ChatConversation({
   // only the ones still waiting are listed here and delivered rows are
   // dropped from the history.
   const { after: followUpMessages, before: earlierMessages, live: liveMessage } = splitLiveTurn(messages);
-  const waitingFollowUps = followUpMessages.filter((message) => isFollowUpStatus(message.status));
+  // Ids the live stream already renders inline; the rows catch up on the next refresh.
+  const [liveDeliveredIds, setLiveDeliveredIds] = useState<{ messageId: string; ids: string[] }>({ ids: [], messageId: '' });
   const deliveredIds = getDeliveredMidTurnMessageIds(messages);
+
+  for (const id of liveMessage && liveDeliveredIds.messageId === liveMessage.id ? liveDeliveredIds.ids : []) {
+    deliveredIds.add(id);
+  }
+
+  const waitingFollowUps = followUpMessages.filter(
+    (message) => isFollowUpStatus(message.status) && !deliveredIds.has(message.id)
+  );
   const historyMessages = earlierMessages.filter((message) => !deliveredIds.has(message.id));
   // A queued follow-up starts the next turn as soon as the previous one has
-  // ended, whether this tab sent it or it was found on load.
+  // ended, whether this tab sent it or it was found on load. A failed start
+  // (the turn still wrapping up, a network blip) is retried after a pause.
   const nextQueued = !liveMessage && !pendingMessage ? getNextQueuedMessage(messages) : null;
   const nextQueuedId = nextQueued?.id ?? null;
-  const queuedStartsRef = useRef<Map<string, number>>(new Map());
+  const [queuedStartAttempt, setQueuedStartAttempt] = useState(0);
+  const queuedStartInFlightRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!chatId || !nextQueuedId) {
+    if (!chatId || !nextQueuedId || queuedStartInFlightRef.current === nextQueuedId) {
       return;
     }
 
-    const lastAttempt = queuedStartsRef.current.get(nextQueuedId) ?? 0;
+    queuedStartInFlightRef.current = nextQueuedId;
+    let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | null = null;
 
-    if (Date.now() - lastAttempt < QUEUED_START_RETRY_MS) {
-      return;
-    }
-
-    queuedStartsRef.current.set(nextQueuedId, Date.now());
     void api
       .startQueuedAgentChatMessage(chatId, nextQueuedId)
-      .catch(() => undefined)
-      .then(() => mutate());
-  }, [api, chatId, mutate, nextQueuedId]);
+      .then(
+        () => undefined,
+        () => {
+          retry = setTimeout(() => {
+            if (!cancelled) {
+              setQueuedStartAttempt((attempt) => attempt + 1);
+            }
+          }, QUEUED_START_RETRY_MS);
+        }
+      )
+      .finally(() => {
+        queuedStartInFlightRef.current = null;
+        void mutate();
+      });
+
+    return () => {
+      cancelled = true;
+
+      if (retry) {
+        clearTimeout(retry);
+      }
+    };
+  }, [api, chatId, mutate, nextQueuedId, queuedStartAttempt]);
   // Reported by LiveTurn; owned here so the status line keeps one stable slot
   // from "Sending" (no turn yet) through the live turn, rolling between labels
   // instead of remounting. Keyed by turn so a new turn never shows the
@@ -961,6 +1007,7 @@ function ChatConversation({
               chatId={chatId}
               detail={data}
               message={liveMessage}
+              onMidTurnDelivered={(ids) => setLiveDeliveredIds({ ids, messageId: liveMessage.id })}
               onStatusChange={(status) => setReportedStatus({ messageId: liveMessage.id, status })}
               onTurnUpdated={() => void mutate()}
             />
@@ -1260,9 +1307,18 @@ export function AgentChatPage(): JSX.Element {
     setSendError(null);
 
     // During a turn the message is a follow-up: stored at once, then either
-    // steering the running turn or starting the next one.
-    if (chatId && turnInProgress) {
+    // steering the running turn or starting the next one. A queued follow-up
+    // that has not started yet goes first, so the new message cannot jump
+    // the queue or race the auto-start.
+    const queuedBeforeThis = chatDetail ? getNextQueuedMessage(chatDetail.messages) : null;
+
+    if (chatId && (turnInProgress || queuedBeforeThis)) {
       try {
+        if (!turnInProgress && queuedBeforeThis) {
+          // The auto-start may have won the race; either way a turn is now running.
+          await chatApi.startQueuedAgentChatMessage(chatId, queuedBeforeThis.id).catch(() => undefined);
+        }
+
         await sendFollowUp(chatId, text, attachments);
       } catch (error) {
         setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
