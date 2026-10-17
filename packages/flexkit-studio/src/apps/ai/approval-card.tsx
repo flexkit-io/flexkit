@@ -30,6 +30,7 @@ import type {
   AutomationApprovalOperation,
   AutomationApprovalPreviewOperation,
   AutomationApprovalStatus,
+  AutomationChangePreview,
   AutomationNotifyRule,
   AutomationProposalPreview,
 } from './types';
@@ -267,6 +268,10 @@ function getChatActionTitle(approval: AutomationApproval): string {
 
   if (approval.kind === 'automation' && approval.preview?.automation) {
     return `Create the automation “${approval.preview.automation.name}”`;
+  }
+
+  if (approval.kind === 'automation' && approval.preview?.automationChange) {
+    return `Change the automation “${approval.preview.automationChange.name}”`;
   }
 
   return approval.kind === 'plugin' ? 'Use a connected app' : approval.operationsSummary;
@@ -704,6 +709,7 @@ function AutomationProposalView({
   const instructionsId = useId();
   const created = approval.createdAutomation ?? null;
   const rows: { label: string; value: string }[] = [
+    ...(proposal.replacesMonitor ? [{ label: 'Replaces', value: `The monitor “${proposal.replacesMonitor}”, which stops once this exists` }] : []),
     { label: 'Runs', value: proposal.triggers.join('\n') },
     { label: 'Visible to', value: describeVisibility(proposal) },
     {
@@ -801,6 +807,50 @@ function AutomationProposalView({
   );
 }
 
+/** What changes on an existing automation: each changed setting before and after. */
+function AutomationChangeView({ approval, change }: { approval: AutomationApproval; change: AutomationChangePreview }): JSX.Element {
+  const settings = change.changes.filter((field) => field.field !== 'instructions');
+  const instructions = change.changes.find((field) => field.field === 'instructions');
+
+  return (
+    <div className="fk:space-y-4">
+      {settings.length > 0 ? (
+        <dl className="fk:grid fk:grid-cols-[max-content_1fr] fk:gap-x-4 fk:gap-y-2 fk:text-sm">
+          {settings.map((field) => (
+            <div className="fk:contents" key={field.field}>
+              <dt className="fk:text-muted-foreground">{field.label}</dt>
+              <dd className="fk:space-y-0.5">
+                <div className="fk:whitespace-pre-line fk:text-muted-foreground fk:line-through">{field.before}</div>
+                <div className="fk:whitespace-pre-line">{field.after}</div>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {instructions ? (
+        <div className="fk:grid fk:gap-3 fk:md:grid-cols-2">
+          {[
+            { label: 'Current instructions', muted: true, text: instructions.before },
+            { label: 'New instructions', muted: false, text: instructions.after },
+          ].map((block) => (
+            <div className="fk:min-w-0 fk:space-y-1.5" key={block.label}>
+              <div className="fk:text-sm fk:font-medium">{block.label}</div>
+              <p
+                className={`fk:whitespace-pre-wrap fk:rounded-md fk:border fk:p-3 fk:text-sm fk:corner-squircle${block.muted ? ' fk:text-muted-foreground' : ''}`}
+              >
+                {block.text}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      <Button asChild size="sm" variant="outline">
+        <Link to={`/${approval.projectId}/ai/automations/${change.automationId}`}>Open the automation</Link>
+      </Button>
+    </div>
+  );
+}
+
 /** Create, Create and run once now, Reject: the decisions on a proposed automation. */
 function AutomationDecisionActions({
   decide,
@@ -873,7 +923,9 @@ function ApprovalCardBody({
       <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
         <ApprovalStatusBadge status={approval.status} />
         {approval.kind === 'schema' ? <Badge variant="outline">Schema change</Badge> : null}
-        {approval.kind === 'automation' ? <Badge variant="outline">New automation</Badge> : null}
+        {approval.kind === 'automation' ? (
+          <Badge variant="outline">{preview?.automationChange ? 'Automation change' : 'New automation'}</Badge>
+        ) : null}
         <span className="fk:text-sm fk:font-medium">
           {chat ? getChatActionTitle(approval) : approval.operationsSummary}
         </span>
@@ -903,6 +955,8 @@ function ApprovalCardBody({
           proposal={preview.automation}
           onInstructionsChange={onAutomationInstructionsChange}
         />
+      ) : approval.kind === 'automation' && preview?.automationChange ? (
+        <AutomationChangeView approval={approval} change={preview.automationChange} />
       ) : approval.kind === 'schema' && preview ? (
         <SchemaChangePreview preview={preview} />
       ) : preview && preview.operations.length > 0 ? (
@@ -1089,7 +1143,7 @@ export function ApprovalDrawer({
       depth={0}
       isFocused
       onClose={onClose}
-      title={proposal ? 'Automation proposal' : 'Mutation proposal'}
+      title={proposal ? 'Automation proposal' : approval.preview?.automationChange ? 'Automation change' : 'Mutation proposal'}
     >
       <ApprovalCardBody
         approval={approval}

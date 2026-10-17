@@ -25,6 +25,8 @@ export type {
   SchemaChangePreviewSummary,
   AutomationApprovalPreviewRow,
   AutomationApprovalStatus,
+  AutomationChangeField,
+  AutomationChangePreview,
   AutomationMutationPolicy,
   AutomationNotifyRule,
   AutomationProposalPlugin,
@@ -49,5 +51,6 @@ export type {
   AgentChatMonitor,
   AgentChatPart,
   AgentChatTurn,
+  AgentMonitorSourceType,
   AgentMonitorStatus,
 } from './chat';

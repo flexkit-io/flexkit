@@ -1451,7 +1451,18 @@ export function AgentChatPage(): JSX.Element {
               <EmptyConversation projectId={chatProjectId} />
             )}
             <div className="fk:shrink-0 fk:pb-3">
-              {chatId ? <MonitorChips api={chatApi} chatId={chatId} projectId={projectId} /> : null}
+              {chatId ? (
+                <MonitorChips
+                  api={chatApi}
+                  chatId={chatId}
+                  projectId={projectId}
+                  onTurnIntoAutomation={(monitor) =>
+                    void handleSend(`Turn the monitor “${monitor.description}” into an automation.`, []).catch((error: unknown) =>
+                      setSendError(error instanceof Error ? error.message : 'Failed to send the message.')
+                    )
+                  }
+                />
+              ) : null}
               {sendError ? (
                 <p className="fk:mx-auto fk:mb-2 fk:max-w-4xl fk:text-xs fk:text-destructive">{sendError}</p>
               ) : null}

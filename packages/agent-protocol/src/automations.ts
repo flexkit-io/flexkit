@@ -67,6 +67,8 @@ export interface AutomationProposalPreview {
   notifyCreator: boolean;
   notifyRule: AutomationNotifyRule;
   plugins: AutomationProposalPlugin[];
+  /** The description of the chat monitor this automation replaces; the monitor stops once it exists. */
+  replacesMonitor?: string;
   /** Run the automation once right after it is created (the approver can also choose this). */
   runOnceAfterCreate: boolean;
   skills: string[];
@@ -78,8 +80,29 @@ export interface AutomationProposalPreview {
   visibility: AutomationVisibility;
 }
 
+/** One changed setting of an automation, in plain words. */
+export interface AutomationChangeField {
+  after: string;
+  before: string;
+  /** `name`, `instructions`, `triggers`, `enabled`, `notifyRule` or `mutationPolicy`. */
+  field: string;
+  label: string;
+}
+
+/**
+ * Extra context carried by `kind: 'automation'` approvals that change an
+ * existing automation: only the settings that change, before and after.
+ */
+export interface AutomationChangePreview {
+  automationId: string;
+  changes: AutomationChangeField[];
+  /** The automation's current name. */
+  name: string;
+}
+
 export interface AutomationApprovalPreview {
   automation?: AutomationProposalPreview;
+  automationChange?: AutomationChangePreview;
   operations: AutomationApprovalPreviewOperation[];
   schema?: SchemaChangePreviewSummary;
 }
