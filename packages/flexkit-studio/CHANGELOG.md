@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.2.7
+
+### Patch Changes
+
+- 0237b03: Show the Activity unread dot in the success color.
+  - @flexkit/schema@0.2.7
+
 ## 0.2.6
 
 ### Patch Changes
