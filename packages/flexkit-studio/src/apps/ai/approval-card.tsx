@@ -1032,11 +1032,20 @@ export function ApprovalDrawer({
     setIsRejectDialogOpen,
     setRejectReason,
   } = useApprovalDecision({ api, approval: initialApproval, onDecided });
+  const proposal = approval.kind === 'automation' ? (approval.preview?.automation ?? null) : null;
+  const [automationInstructions, setAutomationInstructions] = useState(proposal?.instructions ?? '');
 
   return (
     <DrawerModal
       actions={
-        isPending ? (
+        isPending && proposal ? (
+          <AutomationDecisionActions
+            decide={decide}
+            instructions={automationInstructions}
+            isDeciding={isDeciding}
+            proposal={proposal}
+          />
+        ) : isPending ? (
           <ApprovalDecisionActions
             allowRemember={approval.kind === 'plugin' && Boolean(approval.automationId)}
             askForRejectionReason
@@ -1054,14 +1063,16 @@ export function ApprovalDrawer({
       depth={0}
       isFocused
       onClose={onClose}
-      title="Mutation proposal"
+      title={proposal ? 'Automation proposal' : 'Mutation proposal'}
     >
       <ApprovalCardBody
         approval={approval}
+        automationInstructions={proposal ? automationInstructions : undefined}
         chat={false}
         errorMessage={errorMessage}
         isPending={isPending}
         isStale={isStale}
+        onAutomationInstructionsChange={proposal ? setAutomationInstructions : undefined}
       />
     </DrawerModal>
   );
