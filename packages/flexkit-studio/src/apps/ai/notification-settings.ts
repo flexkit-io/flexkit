@@ -27,14 +27,21 @@ async function userRequest<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function useNotificationPreferences(): {
+  /** False until the stored preferences arrived (or could not be loaded, which means the defaults). */
+  isLoaded: boolean;
   mutate: KeyedMutator<{ preferences: NotificationPreferences }>;
   preferences: NotificationPreferences;
 } {
-  const { data, mutate } = useSWR<{ preferences: NotificationPreferences }>(userApiPaths.notificationPreferences, (url: string) =>
-    userRequest<{ preferences: NotificationPreferences }>(url)
+  const { data, error, mutate } = useSWR<{ preferences: NotificationPreferences }>(
+    userApiPaths.notificationPreferences,
+    (url: string) => userRequest<{ preferences: NotificationPreferences }>(url)
   );
 
-  return { mutate, preferences: data?.preferences ?? DEFAULT_NOTIFICATION_PREFERENCES };
+  return {
+    isLoaded: data !== undefined || error !== undefined,
+    mutate,
+    preferences: data?.preferences ?? DEFAULT_NOTIFICATION_PREFERENCES,
+  };
 }
 
 export function saveNotificationPreferences(preferences: NotificationPreferences): Promise<{ preferences: NotificationPreferences }> {

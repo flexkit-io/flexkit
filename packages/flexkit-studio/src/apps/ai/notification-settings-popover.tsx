@@ -38,7 +38,7 @@ function SettingSwitch({
 /** Activity's notification settings: desktop notifications per kind and the approval email. Shared by every project. */
 export function NotificationSettingsButton(): JSX.Element {
   const { mode } = useConfig();
-  const { mutate, preferences } = useNotificationPreferences();
+  const { isLoaded, mutate, preferences } = useNotificationPreferences();
   const [isSaving, setIsSaving] = useState(false);
 
   async function save(next: NotificationPreferences): Promise<void> {
@@ -84,7 +84,7 @@ export function NotificationSettingsButton(): JSX.Element {
           {DESKTOP_KINDS.map(({ kind, label }) => (
             <SettingSwitch
               checked={!preferences.desktopMutedKinds.includes(kind)}
-              disabled={isSaving}
+              disabled={isSaving || !isLoaded}
               key={kind}
               label={label}
               onCheckedChange={(checked) => toggleDesktopKind(kind, checked)}
@@ -95,7 +95,7 @@ export function NotificationSettingsButton(): JSX.Element {
           <p className="fk:text-sm fk:font-medium">Email</p>
           <SettingSwitch
             checked={preferences.approvalEmail}
-            disabled={isSaving}
+            disabled={isSaving || !isLoaded}
             label="Approval requests I haven’t read"
             onCheckedChange={(checked) => void save({ ...preferences, approvalEmail: checked })}
           />

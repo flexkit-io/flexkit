@@ -120,12 +120,14 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
   const navigateRef = useRef(navigate);
   const { mutate } = useSWRConfig();
   const { mode } = useConfig();
-  const { preferences } = useNotificationPreferences();
+  const { isLoaded: preferencesLoaded, preferences } = useNotificationPreferences();
   // Read on every poll without restarting the poller when preferences change.
   const mutedKindsRef = useRef(preferences.desktopMutedKinds);
+  const preferencesLoadedRef = useRef(preferencesLoaded);
 
   navigateRef.current = navigate;
   mutedKindsRef.current = preferences.desktopMutedKinds;
+  preferencesLoadedRef.current = preferencesLoaded;
 
   // The hosted Studio also reaches the person through Web Push while no tab is
   // open; keep this browser's subscription saved once notifications are allowed.
@@ -146,6 +148,12 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
       let since = readWatermark(projectId);
 
       async function poll(): Promise<void> {
+        // Without the stored preferences a muted kind could still notify; wait for
+        // them (the watermark stays put, so nothing is skipped meanwhile).
+        if (!preferencesLoadedRef.current) {
+          return;
+        }
+
         let summary: ActivitySummary;
 
         try {

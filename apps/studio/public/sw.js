@@ -25,13 +25,23 @@ self.addEventListener('push', (event) => {
   const url = typeof payload.url === 'string' ? payload.url : '/';
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: typeof payload.body === 'string' ? payload.body : '',
-      data: { url },
-      icon: '/android-chrome-192x192.png',
-      // Same tag as the in-tab notification, so a browser shows one of the two.
-      tag: typeof payload.tag === 'string' ? payload.tag : undefined,
-    })
+    (async () => {
+      const windows = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+
+      // Someone is looking at Studio: its badge already shows the item, and the
+      // in-tab notifier stays quiet too. Browsers allow a silent push then.
+      if (windows.some((client) => client.focused && client.visibilityState === 'visible')) {
+        return;
+      }
+
+      await self.registration.showNotification(title, {
+        body: typeof payload.body === 'string' ? payload.body : '',
+        data: { url },
+        icon: '/android-chrome-192x192.png',
+        // Same tag as the in-tab notification, so a browser shows one of the two.
+        tag: typeof payload.tag === 'string' ? payload.tag : undefined,
+      });
+    })()
   );
 });
 
