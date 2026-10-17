@@ -1,5 +1,15 @@
 # @flexkit/studio
 
+## 0.2.4
+
+### Patch Changes
+
+- 6d17b6c: Approve automations the Flexkit Agent proposes from a chat: the review card shows when the automation runs, who sees it, its notifications, plugins and model, and lets you edit its instructions before choosing Create or Create and run once now. Automations gain a Notifications setting (results that need attention, every run, failures only or never), a Notify the creator switch and a Subscribers list; their results and failures appear in Activity.
+- 4f3840b: The plugin list now shows a red warning triangle, with a tooltip, for a plugin whose account needs to be reconnected, instead of the green check.
+- Updated dependencies [6d17b6c]
+  - @flexkit/agent-protocol@0.3.3
+  - @flexkit/schema@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes
