@@ -19,6 +19,7 @@ import {
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { ColumnDef, ColumnFiltersState } from '@tanstack/react-table';
+import { useIsViewing } from '../../core/apps/app-active';
 import { useCanMutate } from '../../core/permissions';
 import {
   Badge,
@@ -1337,6 +1338,7 @@ function NotificationPermissionBanner(): JSX.Element | null {
 export function ActivityPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const navigate = useNavigate();
+  const isViewing = useIsViewing();
   const [filter, setFilter] = useState<'needs_action' | 'all'>('needs_action');
   // Items that were unread when they first appeared keep their marker for this visit, even after being marked read.
   const [seenUnreadIds, setSeenUnreadIds] = useState<ReadonlySet<string>>(() => new Set());
@@ -1355,17 +1357,19 @@ export function ActivityPage(): JSX.Element {
   const hasMore = pages?.[pages.length - 1]?.hasMore ?? false;
   const isLoadingMore = pages !== undefined && size > pages.length;
 
-  // Opening Activity counts as reading what it shows; the email fallback skips read items.
+  // Opening Activity counts as reading what it shows; the email fallback skips read items. Only while
+  // the person looks at it: the AI app stays mounted behind other apps and keeps polling, and items
+  // marked read there would never be emailed or shown as desktop notifications.
   useEffect(() => {
     const unreadIds = items.filter((item) => item.state === 'unread').map((item) => item.id);
 
-    if (!api || unreadIds.length === 0) {
+    if (!api || !isViewing || unreadIds.length === 0) {
       return;
     }
 
     setSeenUnreadIds((current) => new Set([...current, ...unreadIds]));
     void api.markActivityRead(unreadIds).then(() => revalidateApprovalsCount());
-  }, [api, items, revalidateApprovalsCount]);
+  }, [api, isViewing, items, revalidateApprovalsCount]);
 
   if (!projectId || !api) {
     return <PageMessage>Select a project to view activity.</PageMessage>;
@@ -1507,10 +1511,11 @@ export function ActivityItemPage(): JSX.Element {
     fetcher
   );
   const isUnread = item?.state === 'unread';
+  const isViewing = useIsViewing();
 
-  // Opening an item reads it; the email fallback skips read items.
+  // Opening an item reads it (while the person looks at it); the email fallback skips read items.
   useEffect(() => {
-    if (!api || !isUnread) {
+    if (!api || !isUnread || !isViewing) {
       return;
     }
 
@@ -1518,7 +1523,7 @@ export function ActivityItemPage(): JSX.Element {
       void mutate();
       revalidateApprovalsCount();
     });
-  }, [api, isUnread, itemId, mutate, revalidateApprovalsCount]);
+  }, [api, isUnread, isViewing, itemId, mutate, revalidateApprovalsCount]);
 
   if (!projectId || !api) {
     return <PageMessage>Select a project to view activity.</PageMessage>;
