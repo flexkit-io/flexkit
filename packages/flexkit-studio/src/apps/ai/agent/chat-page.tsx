@@ -1456,11 +1456,17 @@ export function AgentChatPage(): JSX.Element {
                   api={chatApi}
                   chatId={chatId}
                   projectId={projectId}
-                  onTurnIntoAutomation={(monitor) =>
+                  sending={sending || modelPending}
+                  onTurnIntoAutomation={(monitor) => {
+                    // Like the composer: one send at a time.
+                    if (sendingRef.current || modelPending) {
+                      return;
+                    }
+
                     void handleSend(`Turn the monitor “${monitor.description}” into an automation.`, []).catch((error: unknown) =>
                       setSendError(error instanceof Error ? error.message : 'Failed to send the message.')
-                    )
-                  }
+                    );
+                  }}
                 />
               ) : null}
               {sendError ? (

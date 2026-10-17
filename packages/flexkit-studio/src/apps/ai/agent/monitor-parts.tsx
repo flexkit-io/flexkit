@@ -55,12 +55,15 @@ export function MonitorChips({
   chatId,
   onTurnIntoAutomation,
   projectId,
+  sending = false,
 }: {
   api: ApiClient;
   chatId: string;
   /** Asks the agent in the chat to propose an automation that replaces the monitor. */
   onTurnIntoAutomation?: (_monitor: AgentChatMonitor) => void;
   projectId: string;
+  /** A message is being sent; Turn into automation waits for it. */
+  sending?: boolean;
 }): JSX.Element | null {
   // Shares the chat page's cached detail (same key); no request of its own.
   const { data, mutate } = useSWR<AgentChatDetail>(paths(projectId).agentChat(chatId), fetcher, { revalidateOnMount: false });
@@ -101,6 +104,7 @@ export function MonitorChips({
                 <Button
                   aria-label={`Turn ${monitor.description} into an automation`}
                   className="fk:size-6 fk:rounded-full"
+                  disabled={sending}
                   size="icon"
                   variant="ghost"
                   onClick={() => onTurnIntoAutomation(monitor)}
