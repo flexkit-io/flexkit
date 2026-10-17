@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.2
+
+### Patch Changes
+
+- 615fdac: Add the Activity inbox types (`ActivityItem`, `ActivityItemsPage`, `ActivitySummary` and their kind, state and resolution unions) shared by Studio and the platform.
+
 ## 0.3.1
 
 ### Patch Changes

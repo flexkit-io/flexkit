@@ -1,5 +1,14 @@
 # @flexkit/studio
 
+## 0.2.3
+
+### Patch Changes
+
+- 615fdac: Add an Activity section to the AI app. It lists approval requests waiting on you and opens each one on its own page, where you can approve or reject it. A bell next to your avatar shows how many requests are waiting, from every app. While Studio is in the background, new items show as desktop notifications once you turn them on from Activity.
+- Updated dependencies [615fdac]
+  - @flexkit/agent-protocol@0.3.2
+  - @flexkit/schema@0.2.3
+
 ## 0.2.2
 
 ### Patch Changes
