@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
+import { useConfig } from '../../core/config/config-context';
 import { LOGO_MARK_PATH } from '../../ui/components/logo';
 import { fetcher, paths } from './api';
 import { planActivityNotifications } from './activity';
+import { ensurePushSubscription, useNotificationPreferences } from './notification-settings';
 import type { ActivitySummary } from './types';
 
 const POLL_INTERVAL_MS = 30_000;
@@ -117,8 +119,23 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
   const navigate = useNavigate();
   const navigateRef = useRef(navigate);
   const { mutate } = useSWRConfig();
+  const { mode } = useConfig();
+  const { preferences } = useNotificationPreferences();
+  // Read on every poll without restarting the poller when preferences change.
+  const mutedKindsRef = useRef(preferences.desktopMutedKinds);
 
   navigateRef.current = navigate;
+  mutedKindsRef.current = preferences.desktopMutedKinds;
+
+  // The hosted Studio also reaches the person through Web Push while no tab is
+  // open; keep this browser's subscription saved once notifications are allowed.
+  useEffect(() => {
+    if (mode !== 'hosted') {
+      return;
+    }
+
+    ensurePushSubscription().catch(() => undefined);
+  }, [mode]);
 
   useEffect(() => {
     if (!projectId) {
@@ -141,7 +158,7 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
           return;
         }
 
-        const plan = planActivityNotifications({ newItems: summary.newItems, since });
+        const plan = planActivityNotifications({ mutedKinds: mutedKindsRef.current, newItems: summary.newItems, since });
 
         ({ since } = plan);
         writeWatermark(projectId, plan.since);

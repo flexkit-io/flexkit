@@ -20,6 +20,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { ColumnDef, ColumnFiltersState } from '@tanstack/react-table';
 import { useIsViewing } from '../../core/apps/app-active';
+import { useConfig } from '../../core/config/config-context';
 import { useCanMutate } from '../../core/permissions';
 import {
   Badge,
@@ -64,6 +65,8 @@ import {
 } from './activity';
 import { useRevalidateApprovalsCount } from './approvals-count';
 import { ApprovalCard, ApprovalDrawer, ApprovalStatusBadge } from './approval-card';
+import { ensurePushSubscription } from './notification-settings';
+import { NotificationSettingsButton } from './notification-settings-popover';
 import { AutomationsDataTableToolbar } from './data-table-toolbar';
 import { AutomationForm } from './form';
 import {
@@ -1317,6 +1320,7 @@ function isActivityFilter(value: string): value is 'needs_action' | 'all' {
 }
 
 function NotificationPermissionBanner(): JSX.Element | null {
+  const { mode } = useConfig();
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() =>
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
   );
@@ -1333,7 +1337,14 @@ function NotificationPermissionBanner(): JSX.Element | null {
         size="sm"
         variant="outline"
         onClick={() => {
-          void Notification.requestPermission().then(setPermission);
+          void Notification.requestPermission().then((next) => {
+            setPermission(next);
+
+            // The hosted Studio can also notify while no tab is open.
+            if (next === 'granted' && mode === 'hosted') {
+              ensurePushSubscription().catch(() => undefined);
+            }
+          });
         }}
       >
         Turn on
@@ -1419,6 +1430,7 @@ export function ActivityPage(): JSX.Element {
             <TabsTrigger value="all">All</TabsTrigger>
           </TabsList>
         </Tabs>
+        <NotificationSettingsButton />
       </div>
       <NotificationPermissionBanner />
       <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">

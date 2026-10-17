@@ -35,6 +35,10 @@ export const userApiPaths = {
   logout: `/api/flexkit/${USER_API_SEGMENT}/auth/logout`,
   /** Signed-in user plus every project they can open. */
   me: `/api/flexkit/${USER_API_SEGMENT}/me`,
+  /** The signed-in user's notification preferences (desktop kinds, approval email). */
+  notificationPreferences: `/api/flexkit/${USER_API_SEGMENT}/me/notification-preferences`,
+  /** Web Push: GET the VAPID public key, POST or DELETE this browser's subscription. */
+  push: `/api/flexkit/${USER_API_SEGMENT}/me/push`,
   otpConfirm: `/api/flexkit/${USER_API_SEGMENT}/auth/otp/confirm`,
   otpSend: `/api/flexkit/${USER_API_SEGMENT}/auth/otp/send`,
 } as const;
