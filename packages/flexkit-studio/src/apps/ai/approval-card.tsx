@@ -717,7 +717,21 @@ function AutomationProposalView({
       }`,
     },
     ...(proposal.plugins.length > 0
-      ? [{ label: 'Plugins', value: proposal.plugins.map((plugin) => plugin.name).join(', ') }]
+      ? [
+          {
+            label: 'Plugins',
+            value: proposal.plugins
+              .map((plugin) =>
+                [
+                  plugin.account ? `${plugin.name} as ${plugin.account}` : plugin.name,
+                  plugin.deliveryChannels.length > 0 ? `posting to ${plugin.deliveryChannels.join(', ')}` : '',
+                ]
+                  .filter(Boolean)
+                  .join(', ')
+              )
+              .join('\n'),
+          },
+        ]
       : []),
     ...(proposal.skills.length > 0 ? [{ label: 'Skills', value: proposal.skills.join(', ') }] : []),
     ...(proposal.customTools.length > 0 ? [{ label: 'Custom tools', value: proposal.customTools.join(', ') }] : []),
@@ -726,6 +740,18 @@ function AutomationProposalView({
 
   return (
     <div className="fk:space-y-4">
+      {proposal.mutationPolicy === 'auto_approve' ? (
+        <div
+          className="fk:flex fk:items-start fk:gap-2 fk:rounded-md fk:border fk:border-amber-500/40 fk:bg-amber-500/10 fk:p-3 fk:text-sm fk:corner-squircle"
+          role="status"
+        >
+          <TriangleAlertIcon className="fk:mt-0.5 fk:size-4 fk:shrink-0 fk:text-amber-600" />
+          <span>
+            Every run will change data{proposal.plugins.length > 0 ? ' and call these plugins' : ''} without asking
+            anyone first. Reject and ask for review if that is not what you want.
+          </span>
+        </div>
+      ) : null}
       <dl className="fk:grid fk:grid-cols-[max-content_1fr] fk:gap-x-4 fk:gap-y-1.5 fk:text-sm">
         {rows.map((row) => (
           <div className="fk:contents" key={row.label}>
