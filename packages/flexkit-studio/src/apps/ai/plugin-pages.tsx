@@ -42,6 +42,7 @@ import {
   Plug,
   Plus,
   RefreshCw,
+  TriangleAlert,
   XIcon,
 } from 'lucide-react';
 import { createApiClient, fetcher } from './api';
@@ -355,6 +356,9 @@ export function CatalogHeader(): JSX.Element {
 
 function PluginRow({ onOpen, plugin }: { onOpen: () => void; plugin: MarketplacePlugin }): JSX.Element {
   const connected = isConnected(plugin);
+  const needsReconnect = plugin.connections.filter((connection) => connection.status === 'needs_auth').length;
+  const reconnectLabel =
+    needsReconnect === 1 ? 'An account needs to be reconnected' : `${needsReconnect.toString()} accounts need to be reconnected`;
 
   return (
     <button
@@ -367,7 +371,17 @@ function PluginRow({ onOpen, plugin }: { onOpen: () => void; plugin: Marketplace
         <span className="fk:block fk:truncate fk:text-sm fk:font-medium">{plugin.name}</span>
         <span className="fk:block fk:truncate fk:text-sm fk:text-muted-foreground">{plugin.description}</span>
       </span>
-      {connected ? (
+      {needsReconnect > 0 ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="fk:flex fk:shrink-0">
+              <TriangleAlert aria-hidden className="fk:size-4 fk:text-destructive" />
+              <span className="fk:sr-only">{reconnectLabel}</span>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{reconnectLabel}</TooltipContent>
+        </Tooltip>
+      ) : connected ? (
         <CheckIcon className="fk:size-4 fk:shrink-0 fk:text-success" />
       ) : (
         <Plus className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
