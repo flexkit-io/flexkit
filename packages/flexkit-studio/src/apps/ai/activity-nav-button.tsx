@@ -47,7 +47,7 @@ export function ActivityNavButton({ projectId }: { projectId: string }): JSX.Ele
                   {formatCount(needsAction)}
                 </span>
               ) : unread > 0 ? (
-                <span className="fk:absolute fk:right-1 fk:top-1 fk:size-2 fk:rounded-full fk:bg-primary" />
+                <span className="fk:absolute fk:right-1 fk:top-1 fk:size-2 fk:rounded-full fk:bg-success" />
               ) : null}
             </Link>
           </Button>
