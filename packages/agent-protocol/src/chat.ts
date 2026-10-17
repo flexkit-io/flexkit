@@ -70,6 +70,9 @@ export interface AgentChatMessage {
 
 export type AgentMonitorStatus = 'active' | 'stopped' | 'expired' | 'completed' | 'paused_budget';
 
+/** What a monitor watches: a long job, content changes, a polled query or a webhook. */
+export type AgentMonitorSourceType = 'job' | 'entity' | 'poll' | 'webhook';
+
 /** A watcher the chat agent started; it wakes the chat when its job finishes. */
 export interface AgentChatMonitor {
   createdAt: string;
@@ -77,6 +80,8 @@ export interface AgentChatMonitor {
   eventCount: number;
   expiresAt: string;
   id: string;
+  /** Absent from platforms that predate monitor sources. */
+  sourceType?: AgentMonitorSourceType;
   status: AgentMonitorStatus;
 }
 

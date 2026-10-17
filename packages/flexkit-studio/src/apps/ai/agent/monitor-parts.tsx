@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { formatDistance } from 'date-fns';
-import { RadarIcon, XIcon } from 'lucide-react';
+import { BotIcon, RadarIcon, XIcon } from 'lucide-react';
 import useSWR from 'swr';
 import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '../../../ui';
 import { fetcher, paths, type ApiClient } from '../api';
@@ -45,8 +45,26 @@ export function MonitorEventCard({ data, error }: { data: MonitorEventData; erro
   );
 }
 
-/** "Watching: … · expires in 20 hours · Stop" above the composer, one per active monitor. */
-export function MonitorChips({ api, chatId, projectId }: { api: ApiClient; chatId: string; projectId: string }): JSX.Element | null {
+/**
+ * "Watching: … · expires in 20 hours · Turn into automation · Stop" above the
+ * composer, one per active monitor. A job monitor ends with its job, so it
+ * cannot become an automation.
+ */
+export function MonitorChips({
+  api,
+  chatId,
+  onTurnIntoAutomation,
+  projectId,
+  sending = false,
+}: {
+  api: ApiClient;
+  chatId: string;
+  /** Asks the agent in the chat to propose an automation that replaces the monitor. */
+  onTurnIntoAutomation?: (_monitor: AgentChatMonitor) => void;
+  projectId: string;
+  /** A message is being sent; Turn into automation waits for it. */
+  sending?: boolean;
+}): JSX.Element | null {
   // Shares the chat page's cached detail (same key); no request of its own.
   const { data, mutate } = useSWR<AgentChatDetail>(paths(projectId).agentChat(chatId), fetcher, { revalidateOnMount: false });
   const [stopping, setStopping] = useState<string | null>(null);
@@ -80,6 +98,23 @@ export function MonitorChips({ api, chatId, projectId }: { api: ApiClient; chatI
           <span className="fk:truncate">
             Watching: {monitor.description} · expires {formatDistance(new Date(monitor.expiresAt), new Date(), { addSuffix: true })}
           </span>
+          {onTurnIntoAutomation && monitor.sourceType && monitor.sourceType !== 'job' ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label={`Turn ${monitor.description} into an automation`}
+                  className="fk:size-6 fk:rounded-full"
+                  disabled={sending}
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => onTurnIntoAutomation(monitor)}
+                >
+                  <BotIcon className="fk:size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Turn into automation</TooltipContent>
+            </Tooltip>
+          ) : null}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
