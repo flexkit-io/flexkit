@@ -8,6 +8,14 @@ export {
   type DataPartType,
 } from './data-parts';
 export type {
+  ActivityItem,
+  ActivityItemKind,
+  ActivityItemResolution,
+  ActivityItemsPage,
+  ActivityItemState,
+  ActivitySummary,
+} from './activity';
+export type {
   AutomationApproval,
   AutomationApprovalKind,
   AutomationApprovalOperation,

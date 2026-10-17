@@ -2,6 +2,8 @@ import type { PluginConnection, PluginScope, PluginTools } from './plugin-types'
 import { put } from '@vercel/blob/client';
 import { convertRecordedAudioToPcm } from './agent/dictation';
 import type {
+  ActivityItem,
+  ActivityItemState,
   AgentChat,
   AgentChatAttachment,
   AgentChatFollowUpResult,
@@ -117,6 +119,12 @@ export interface ApiClient {
     _input: AutomationInput
   ) => Promise<MutationResult & { automation?: Automation }>;
   updateSkill: (_skillId: string, _input: SkillInput) => Promise<MutationResult & { skill?: Skill }>;
+  /** Marks the caller's Activity items read; `'all'` marks every unread item. */
+  markActivityRead: (_ids: string[] | 'all') => Promise<{ success: boolean }>;
+  setActivityItemState: (
+    _itemId: string,
+    _state: Extract<ActivityItemState, 'unread' | 'read' | 'dismissed'>
+  ) => Promise<{ item: ActivityItem }>;
 }
 
 
@@ -306,6 +314,16 @@ export function createApiClient(projectId: string): ApiClient {
 
       return data;
     },
+    markActivityRead: async (ids) =>
+      request<{ success: boolean }>(`${projectBasePath}/activity/read`, {
+        body: JSON.stringify(ids === 'all' ? { all: true } : { ids }),
+        method: 'POST',
+      }),
+    setActivityItemState: async (itemId, state) =>
+      request<{ item: ActivityItem }>(`${projectBasePath}/activity/${encodeURIComponent(itemId)}`, {
+        body: JSON.stringify({ state }),
+        method: 'PATCH',
+      }),
     createAutomation: async (input) =>
       request<MutationResult & { automation?: Automation }>(automationsBasePath, {
         body: JSON.stringify(input),
@@ -409,6 +427,10 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 };
 
 export function paths(projectId: string): {
+  activity: (_options?: { filter?: 'all' | 'needs_action'; limit?: number; offset?: number }) => string;
+  activityItem: (_itemId: string) => string;
+  /** Badge counts; with `since`, also the unread items created after it. */
+  activitySummary: (_since?: string | null) => string;
   agentChat: (_chatId: string) => string;
   agentChatSearch: (_query: string) => string;
   agentChats: (_offset?: number) => string;
@@ -444,6 +466,17 @@ export function paths(projectId: string): {
   const agentChatsBasePath = `/api/flexkit/${projectId}/agent/chats`;
 
   return {
+    activity: (options = {}) => {
+      const { filter = 'all', limit = 25, offset = 0 } = options;
+      const params = new URLSearchParams({ filter, limit: limit.toString(), offset: offset.toString() });
+
+      return `/api/flexkit/${projectId}/activity?${params.toString()}`;
+    },
+    activityItem: (itemId) => `/api/flexkit/${projectId}/activity/${encodeURIComponent(itemId)}`,
+    activitySummary: (since) =>
+      since
+        ? `/api/flexkit/${projectId}/activity/summary?since=${encodeURIComponent(since)}`
+        : `/api/flexkit/${projectId}/activity/summary`,
     agentChat: (chatId) => `${agentChatsBasePath}/${encodeURIComponent(chatId)}`,
     agentChatSearch: (query) => `${agentChatsBasePath}/search?q=${encodeURIComponent(query)}`,
     agentChats: (offset = 0) => `${agentChatsBasePath}?offset=${offset.toString()}`,

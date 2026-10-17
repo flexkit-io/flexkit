@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { format, formatDistance } from 'date-fns';
 import {
   ArrowLeft,
+  BellIcon,
   BotIcon,
   CoinsIcon,
   Ellipsis,
@@ -12,11 +13,13 @@ import {
   Plus,
   Trash2,
   TriangleAlertIcon,
+  XIcon,
   ZapIcon,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { ColumnDef, ColumnFiltersState } from '@tanstack/react-table';
+import { useIsViewing } from '../../core/apps/app-active';
 import { useCanMutate } from '../../core/permissions';
 import {
   Badge,
@@ -44,6 +47,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  toast,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -51,8 +55,14 @@ import {
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths } from './api';
+import {
+  getActivitySourceLabel,
+  getActivitySourcePath,
+  getActivityStatusLabel,
+  isActivityItemOpen,
+} from './activity';
 import { useRevalidateApprovalsCount } from './approvals-count';
-import { ApprovalDrawer, ApprovalStatusBadge } from './approval-card';
+import { ApprovalCard, ApprovalDrawer, ApprovalStatusBadge } from './approval-card';
 import { AutomationsDataTableToolbar } from './data-table-toolbar';
 import { AutomationForm } from './form';
 import {
@@ -77,6 +87,8 @@ import {
   type RunStreamStatus,
 } from './replay';
 import type {
+  ActivityItem,
+  ActivityItemsPage,
   Automation,
   AutomationApproval,
   AutomationApprovals,
@@ -1287,6 +1299,309 @@ export function ApprovalsPage(): JSX.Element {
           onDecided={() => void mutate()}
         />
       ) : null}
+    </div>
+  );
+}
+
+const ACTIVITY_PAGE_SIZE = 25;
+
+function isActivityFilter(value: string): value is 'needs_action' | 'all' {
+  return value === 'needs_action' || value === 'all';
+}
+
+function NotificationPermissionBanner(): JSX.Element | null {
+  const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() =>
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  );
+
+  if (permission !== 'default') {
+    return null;
+  }
+
+  return (
+    <div className="fk:mb-3 fk:flex fk:items-center fk:gap-3 fk:rounded-md fk:border fk:p-3 fk:text-sm fk:corner-squircle">
+      <BellIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
+      <span className="fk:flex-1">Get a desktop notification when something needs you while Studio is in the background.</span>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => {
+          void Notification.requestPermission().then(setPermission);
+        }}
+      >
+        Turn on
+      </Button>
+    </div>
+  );
+}
+
+export function ActivityPage(): JSX.Element {
+  const { api, projectId } = useProjectApi();
+  const navigate = useNavigate();
+  const isViewing = useIsViewing();
+  const [filter, setFilter] = useState<'needs_action' | 'all'>('needs_action');
+  // Items that were unread when they first appeared keep their marker for this visit, even after being marked read.
+  const [seenUnreadIds, setSeenUnreadIds] = useState<ReadonlySet<string>>(() => new Set());
+  const revalidateApprovalsCount = useRevalidateApprovalsCount();
+  const getActivityKey = (pageIndex: number, previousPage: ActivityItemsPage | null): string | null => {
+    if (!projectId || (previousPage && !previousPage.hasMore)) {
+      return null;
+    }
+
+    return paths(projectId).activity({ filter, limit: ACTIVITY_PAGE_SIZE, offset: pageIndex * ACTIVITY_PAGE_SIZE });
+  };
+  const { data: pages, isLoading, mutate, setSize, size } = useSWRInfinite<ActivityItemsPage>(getActivityKey, fetcher, {
+    refreshInterval: 30_000,
+  });
+  const items = useMemo(() => pages?.flatMap((page) => page.items) ?? [], [pages]);
+  const hasMore = pages?.[pages.length - 1]?.hasMore ?? false;
+  const isLoadingMore = pages !== undefined && size > pages.length;
+
+  // Opening Activity counts as reading what it shows; the email fallback skips read items. Only while
+  // the person looks at it: the AI app stays mounted behind other apps and keeps polling, and items
+  // marked read there would never be emailed or shown as desktop notifications.
+  useEffect(() => {
+    const unreadIds = items.filter((item) => item.state === 'unread').map((item) => item.id);
+
+    if (!api || !isViewing || unreadIds.length === 0) {
+      return;
+    }
+
+    setSeenUnreadIds((current) => new Set([...current, ...unreadIds]));
+    void api.markActivityRead(unreadIds).then(() => revalidateApprovalsCount());
+  }, [api, isViewing, items, revalidateApprovalsCount]);
+
+  if (!projectId || !api) {
+    return <PageMessage>Select a project to view activity.</PageMessage>;
+  }
+
+  function handleFilterChange(next: string): void {
+    if (!isActivityFilter(next) || next === filter) {
+      return;
+    }
+
+    void setSize(1);
+    setFilter(next);
+  }
+
+  function handleDismiss(item: ActivityItem): void {
+    if (!api) {
+      return;
+    }
+
+    api
+      .setActivityItemState(item.id, 'dismissed')
+      .catch((failure: unknown) => {
+        toast.error(failure instanceof Error ? failure.message : 'Unable to dismiss this item.');
+      })
+      .finally(() => void mutate());
+  }
+
+  return (
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col">
+      <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-center fk:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Tabs value={filter} onValueChange={handleFilterChange}>
+          <TabsList>
+            <TabsTrigger value="needs_action">Needs attention</TabsTrigger>
+            <TabsTrigger value="all">All</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+      <NotificationPermissionBanner />
+      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
+        <div className="fk:pb-6 fk:pr-4">
+          {isLoading ? (
+            <RunsTableSkeleton />
+          ) : items.length === 0 ? (
+            <PageMessage>{filter === 'needs_action' ? 'Nothing needs your attention.' : 'No activity yet.'}</PageMessage>
+          ) : (
+            <Table>
+              <TableBody>
+                {items.map((item) => {
+                  const statusLabel = getActivityStatusLabel(item);
+                  const sourcePath = getActivitySourcePath(item);
+                  const sourceLabel = getActivitySourceLabel(item);
+                  const isOpen = isActivityItemOpen(item);
+
+                  return (
+                    <TableRow className="fk:cursor-pointer" key={item.id} onClick={() => navigate(item.id)}>
+                      <TableCell className="fk:w-4 fk:pr-0">
+                        {seenUnreadIds.has(item.id) || item.state === 'unread' ? (
+                          <span aria-label="Unread" className="fk:block fk:size-2 fk:rounded-full fk:bg-primary" />
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        <div className="fk:font-medium">{item.title}</div>
+                        {item.body ? <div className="fk:text-xs fk:text-muted-foreground">{item.body}</div> : null}
+                      </TableCell>
+                      <TableCell>
+                        {statusLabel ? (
+                          <Badge
+                            className={
+                              isOpen
+                                ? 'fk:border-none fk:bg-amber-500/20 fk:text-amber-600 fk:corner-squircle'
+                                : 'fk:corner-squircle'
+                            }
+                            variant={isOpen ? 'default' : 'outline'}
+                          >
+                            {statusLabel}
+                          </Badge>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="fk:whitespace-nowrap fk:text-muted-foreground">
+                        {formatDistance(new Date(item.createdAt), new Date(), { addSuffix: true })}
+                      </TableCell>
+                      <TableCell className="fk:whitespace-nowrap" onClick={(event) => event.stopPropagation()}>
+                        {sourcePath && sourceLabel ? (
+                          <Link className="fk:text-xs fk:text-muted-foreground hover:fk:underline" to={`../${sourcePath}`}>
+                            {sourceLabel}
+                          </Link>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="fk:w-8" onClick={(event) => event.stopPropagation()}>
+                        {isOpen ? null : (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button aria-label="Dismiss" size="icon" variant="ghost" onClick={() => handleDismiss(item)}>
+                                <XIcon className="fk:size-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Dismiss</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+          {hasMore && !isLoadingMore ? <InfiniteScrollSentinel onVisible={() => void setSize((current) => current + 1)} /> : null}
+          {isLoadingMore ? (
+            <div className="fk:flex fk:items-center fk:justify-center fk:gap-2 fk:py-4 fk:text-sm fk:text-muted-foreground">
+              <LoaderCircle className="fk:size-4 fk:animate-spin" />
+              <span>Loading more activity...</span>
+            </div>
+          ) : null}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+/** One Activity item with its approval inline. Notification clicks land here. */
+export function ActivityItemPage(): JSX.Element {
+  const { api, projectId } = useProjectApi();
+  const { itemId = '' } = useParams<{ itemId: string }>();
+  const revalidateApprovalsCount = useRevalidateApprovalsCount();
+  const { data, error, isLoading, mutate } = useSWR<{ item: ActivityItem }>(
+    projectId && itemId ? paths(projectId).activityItem(itemId) : null,
+    fetcher
+  );
+  const item = data?.item;
+  const approvalId = item?.approvalId ?? null;
+  const { data: approvalData, mutate: mutateApproval } = useSWR<{ approval: AutomationApproval }>(
+    projectId && approvalId ? paths(projectId).approval(approvalId) : null,
+    fetcher
+  );
+  const isUnread = item?.state === 'unread';
+  const isViewing = useIsViewing();
+
+  // Opening an item reads it (while the person looks at it); the email fallback skips read items.
+  useEffect(() => {
+    if (!api || !isUnread || !isViewing) {
+      return;
+    }
+
+    void api.markActivityRead([itemId]).then(() => {
+      void mutate();
+      revalidateApprovalsCount();
+    });
+  }, [api, isUnread, isViewing, itemId, mutate, revalidateApprovalsCount]);
+
+  if (!projectId || !api) {
+    return <PageMessage>Select a project to view activity.</PageMessage>;
+  }
+
+  const sourcePath = item ? getActivitySourcePath(item) : null;
+  const sourceLabel = item ? getActivitySourceLabel(item) : null;
+  let content: JSX.Element;
+
+  if (error) {
+    content = <PageMessage>This activity item no longer exists.</PageMessage>;
+  } else if (isLoading || !item) {
+    content = (
+      <div className="fk:flex fk:flex-col fk:gap-3">
+        <Skeleton className="fk:h-4 fk:w-64" />
+        <Skeleton className="fk:h-32 fk:w-full" />
+      </div>
+    );
+  } else {
+    content = (
+      <div className="fk:flex fk:flex-col fk:gap-6">
+        <div className="fk:text-sm fk:text-muted-foreground">
+          {item.body ? `${item.body} · ` : ''}
+          {formatDistance(new Date(item.createdAt), new Date(), { addSuffix: true })}
+        </div>
+        {approvalData ? (
+          <ApprovalCard
+            api={api}
+            approval={approvalData.approval}
+            chat={approvalData.approval.chatId !== null}
+            key={`${approvalData.approval.id}-${approvalData.approval.status}`}
+            onDecided={() => {
+              void mutate();
+              void mutateApproval();
+              revalidateApprovalsCount();
+            }}
+          />
+        ) : approvalId ? (
+          <Skeleton className="fk:h-32 fk:w-full" />
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
+      <div className="fk:mb-4 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+          </TooltipTrigger>
+          <TooltipContent>Toggle Sidebar</TooltipContent>
+        </Tooltip>
+        <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
+        <div className="fk:flex-1">
+          <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">{item?.title ?? 'Activity'}</h1>
+        </div>
+      </div>
+      <div className="fk:flex fk:shrink-0 fk:items-center fk:justify-between fk:gap-3 fk:pr-4">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button asChild aria-label="Back to Activity" size="icon" variant="ghost">
+              <Link relative="path" to="..">
+                <ArrowLeft className="fk:size-4" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Back to Activity</TooltipContent>
+        </Tooltip>
+        {sourcePath && sourceLabel ? (
+          <Button asChild size="sm" variant="outline">
+            <Link to={`../${sourcePath}`}>{sourceLabel}</Link>
+          </Button>
+        ) : null}
+      </div>
+      <ScrollArea className="fk:h-0 fk:min-h-0 fk:flex-1">
+        <div className="fk:pb-6 fk:pr-4">{content}</div>
+      </ScrollArea>
     </div>
   );
 }

@@ -9,6 +9,7 @@ export default defineConfig({
     'tests/ai/chat-history.test.ts',
     'tests/ai/composer-draft.test.ts',
     'tests/ai/follow-ups.test.ts',
+    'tests/ai/activity.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests/ai',

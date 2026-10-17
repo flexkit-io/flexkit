@@ -3,6 +3,7 @@ import type { JSX } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useLocation, useRoutes } from 'react-router-dom';
 import type { Location, RouteObject } from 'react-router-dom';
+import { AppActiveContext } from '../../core/apps/app-active';
 import { createAppSessions, getAppSegment, rememberAppLocation } from '../../core/apps/app-sessions';
 import type { AppSessions } from '../../core/apps/app-sessions';
 import type { AppOptions, AppRoute } from '../../core/config/types';
@@ -115,7 +116,9 @@ export function AppOutlet({ activeApp, apps, sessions }: Props): JSX.Element {
             key={name}
             style={{ display: isActive ? 'contents' : 'none' }}
           >
-            <AppRoutes app={app} location={appLocation} />
+            <AppActiveContext.Provider value={isActive}>
+              <AppRoutes app={app} location={appLocation} />
+            </AppActiveContext.Provider>
           </div>
         );
       })}
