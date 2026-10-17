@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.4
+
+### Patch Changes
+
+- 42733f6: Add chat monitors: the `monitor-event` data part (also carried on `mid-turn-message` as `monitorEvent`), `AgentChatMessage.kind` with `AgentChatMessageKind`, `AgentChatMonitor` and `AgentMonitorStatus`, and the `monitor_event` Activity item kind.
+
 ## 0.3.3
 
 ### Patch Changes
