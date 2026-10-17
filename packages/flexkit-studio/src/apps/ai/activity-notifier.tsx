@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
+import { useConfig } from '../../core/config/config-context';
 import { LOGO_MARK_PATH } from '../../ui/components/logo';
 import { fetcher, paths } from './api';
 import { planActivityNotifications } from './activity';
+import { ensurePushSubscription, useNotificationPreferences } from './notification-settings';
 import type { ActivitySummary } from './types';
 
 const POLL_INTERVAL_MS = 30_000;
@@ -117,8 +119,27 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
   const navigate = useNavigate();
   const navigateRef = useRef(navigate);
   const { mutate } = useSWRConfig();
+  const { mode } = useConfig();
+  const { isLoaded: preferencesLoaded, preferences } = useNotificationPreferences();
+  // Read on every poll without restarting the poller when preferences change.
+  const mutedKindsRef = useRef(preferences.desktopMutedKinds);
+  const preferencesLoadedRef = useRef(preferencesLoaded);
+  // The leader tab's poll, so a poll skipped while preferences loaded can run as soon as they arrive.
+  const pollNowRef = useRef<(() => void) | null>(null);
 
   navigateRef.current = navigate;
+  mutedKindsRef.current = preferences.desktopMutedKinds;
+  preferencesLoadedRef.current = preferencesLoaded;
+
+  // The hosted Studio also reaches the person through Web Push while no tab is
+  // open; keep this browser's subscription saved once notifications are allowed.
+  useEffect(() => {
+    if (mode !== 'hosted') {
+      return;
+    }
+
+    ensurePushSubscription().catch(() => undefined);
+  }, [mode]);
 
   useEffect(() => {
     if (!projectId) {
@@ -129,6 +150,12 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
       let since = readWatermark(projectId);
 
       async function poll(): Promise<void> {
+        // Without the stored preferences a muted kind could still notify; wait for
+        // them (the watermark stays put, so nothing is skipped meanwhile).
+        if (!preferencesLoadedRef.current) {
+          return;
+        }
+
         let summary: ActivitySummary;
 
         try {
@@ -141,7 +168,7 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
           return;
         }
 
-        const plan = planActivityNotifications({ newItems: summary.newItems, since });
+        const plan = planActivityNotifications({ mutedKinds: mutedKindsRef.current, newItems: summary.newItems, since });
 
         ({ since } = plan);
         writeWatermark(projectId, plan.since);
@@ -168,9 +195,21 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
 
       const interval = setInterval(() => void poll(), POLL_INTERVAL_MS);
 
-      signal.addEventListener('abort', () => clearInterval(interval));
+      pollNowRef.current = () => void poll();
+      signal.addEventListener('abort', () => {
+        clearInterval(interval);
+        pollNowRef.current = null;
+      });
     });
   }, [mutate, projectId]);
+
+  // The first poll waits for the preferences; run it the moment they arrive
+  // instead of on the next interval.
+  useEffect(() => {
+    if (preferencesLoaded) {
+      pollNowRef.current?.();
+    }
+  }, [preferencesLoaded]);
 
   return null;
 }

@@ -1,4 +1,4 @@
-import type { ActivityItem, ActivityItemResolution } from './types';
+import type { ActivityItem, ActivityItemKind, ActivityItemResolution } from './types';
 
 /** More new items than this in one poll are announced by a single summary notification. */
 const MAX_SEPARATE_NOTIFICATIONS = 3;
@@ -80,9 +80,12 @@ export function isActivityItemOpen(item: ActivityItem): boolean {
  * replays notifications for items the user already had.
  */
 export function planActivityNotifications({
+  mutedKinds = [],
   newItems,
   since,
 }: {
+  /** Kinds the viewer turned off for desktop notifications; they still move the watermark. */
+  mutedKinds?: ActivityItemKind[];
   newItems: ActivityItem[];
   since: string | null;
 }): { notifications: ActivityNotification[]; since: string } {
@@ -95,7 +98,7 @@ export function planActivityNotifications({
     return { notifications: [], since: newest ?? EPOCH };
   }
 
-  const fresh = newItems.filter((item) => item.createdAt > since);
+  const fresh = newItems.filter((item) => item.createdAt > since && !mutedKinds.includes(item.kind));
   const nextSince = newest !== null && newest > since ? newest : since;
 
   if (fresh.length === 0) {

@@ -8,6 +8,7 @@ import {
   isActivityItemOpen,
   planActivityNotifications,
 } from '../../src/apps/ai/activity';
+import { decodeApplicationServerKey } from '../../src/apps/ai/notification-settings';
 
 function item(id: string, createdAt: string, overrides: Partial<ActivityItem> = {}): ActivityItem {
   return {
@@ -106,5 +107,27 @@ describe('activity item helpers', () => {
     assert.equal(isActivityItemOpen(result), false);
     assert.equal(getActivitySourcePath(result), 'automations/auto/runs/run');
     assert.equal(getActivityStatusTone(item('a', 'x')), 'attention');
+  });
+});
+
+describe('desktop notification preferences', () => {
+  it('skips muted kinds but still moves the watermark past them', () => {
+    const result = item('r', '2026-10-17T10:00:02Z', { kind: 'automation_result', requiresAction: false });
+    const approval = item('a', '2026-10-17T10:00:01Z');
+    const plan = planActivityNotifications({
+      mutedKinds: ['automation_result'],
+      newItems: [result, approval],
+      since: '2026-10-17T10:00:00Z',
+    });
+
+    assert.deepEqual(
+      plan.notifications.map((notification) => notification.tag),
+      ['flexkit-activity:a']
+    );
+    assert.equal(plan.since, '2026-10-17T10:00:02Z');
+  });
+
+  it('decodes a base64url VAPID key into bytes', () => {
+    assert.deepEqual([...decodeApplicationServerKey('AQID_w')], [1, 2, 3, 255]);
   });
 });
