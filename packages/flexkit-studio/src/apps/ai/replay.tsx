@@ -60,6 +60,7 @@ import type { DataPart } from '@flexkit/agent-protocol';
 import type { AutomationApproval, AutomationRun } from './types';
 import { watchSchemaDeployment } from './schema-deploy-watch';
 import { MessageAttachments } from './agent/attachments';
+import { MonitorEventCard } from './agent/monitor-parts';
 
 export {
   getLiveStatusLabel,
@@ -720,6 +721,11 @@ export function MessagePart({
 
   if (part.type === 'data-mid-turn-message') {
     const data = getPartData<ReplayDataParts['mid-turn-message']>(part);
+
+    // A monitor, not the user, sent it while the agent was working.
+    if (data.monitorEvent) {
+      return <MonitorEventCard data={data.monitorEvent} />;
+    }
 
     return <MidTurnMessagePart attachments={data.attachments} text={data.text} />;
   }

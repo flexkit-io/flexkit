@@ -9,6 +9,15 @@ export const errorSchema = z.object({
   message: z.string(),
 });
 
+/** A batch of one monitor's events as the chat card shows it; the model reads a text summary. */
+const monitorEventSchema = z.object({
+  description: z.string(),
+  events: z.array(z.object({ createdAt: z.string(), id: z.string(), summary: z.string() })),
+  monitorId: z.string(),
+  /** Events this message carries, including any beyond the listed ones. */
+  total: z.number(),
+});
+
 export const dataPartSchema = z.object({
   'plugin-connection': z.object({ pluginId: z.string(), connectionId: z.string().optional() }),
   /** Lifecycle of one plugin tool call, so the UI can name the in-flight call in its status line. */
@@ -167,15 +176,19 @@ export const dataPartSchema = z.object({
   /**
    * A message the user sent while the turn was running, at the point in the
    * reply where the agent received it. The UI shows it there, in place of the
-   * stored user message it refers to.
+   * stored user message it refers to. `monitorEvent` is set when a monitor,
+   * not the user, sent it.
    */
   'mid-turn-message': z.object({
     attachments: z.array(
       z.object({ filename: z.string(), mediaType: z.string(), sizeBytes: z.number(), url: z.string() })
     ),
     messageId: z.string(),
+    monitorEvent: monitorEventSchema.optional(),
     text: z.string(),
   }),
+  /** Events a chat monitor delivered, on the `monitor_event` message that carries them. */
+  'monitor-event': monitorEventSchema,
 });
 
 export type DataPart = z.infer<typeof dataPartSchema>;

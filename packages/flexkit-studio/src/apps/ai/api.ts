@@ -8,6 +8,7 @@ import type {
   AgentChatAttachment,
   AgentChatFollowUpResult,
   AgentChatMessage,
+  AgentChatMonitor,
   AgentChatTurn,
   Automation,
   AutomationApproval,
@@ -93,6 +94,7 @@ export interface ApiClient {
   /** Starts the next turn from a queued follow-up once the previous turn has ended. */
   startQueuedAgentChatMessage: (_chatId: string, _messageId: string) => Promise<AgentChatTurn>;
   stopAgentChat: (_chatId: string) => Promise<{ message: AgentChatMessage }>;
+  stopAgentChatMonitor: (_chatId: string, _monitorId: string) => Promise<{ monitor: AgentChatMonitor }>;
   transcribeAgentAudio: (_audio: Blob, _signal?: AbortSignal) => Promise<{ text: string }>;
   /** Uploads a chat attachment straight to the platform file store. */
   uploadAgentChatAttachment: (_file: File, _signal?: AbortSignal) => Promise<AgentChatAttachment>;
@@ -230,6 +232,11 @@ export function createApiClient(projectId: string): ApiClient {
       request<{ message: AgentChatMessage }>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}/stop`, {
         method: 'POST',
       }),
+    stopAgentChatMonitor: async (chatId, monitorId) =>
+      request<{ monitor: AgentChatMonitor }>(
+        `${agentChatsBasePath}/${encodeURIComponent(chatId)}/monitors/${encodeURIComponent(monitorId)}/stop`,
+        { method: 'POST' }
+      ),
     transcribeAgentAudio: async (audio, signal) => {
       const { durationSeconds, pcm } = await convertRecordedAudioToPcm(audio);
       const formData = new FormData();

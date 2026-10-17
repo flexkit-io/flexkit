@@ -89,6 +89,7 @@ import {
   isFollowUpStatus,
   splitLiveTurn,
 } from './follow-ups';
+import { getMonitorEventData, MonitorChips, MonitorEventCard } from './monitor-parts';
 import {
   AUTO_MODEL_KEY,
   coerceEffort,
@@ -106,6 +107,8 @@ interface ToolsResponse {
 
 /** Keep fetching an untitled chat after the first turn so the generated title can land. */
 const TITLE_POLL_TIMEOUT_MS = 60_000;
+/** While a monitor watches, a turn it starts must show up without a reload. */
+const MONITOR_POLL_MS = 15_000;
 
 function getChatDetailRefreshInterval(latestData: AgentChatDetail | undefined): number {
   if (!latestData) {
@@ -122,7 +125,7 @@ function getChatDetailRefreshInterval(latestData: AgentChatDetail | undefined): 
   );
 
   if (!hasCompletedAssistant) {
-    return 0;
+    return (latestData.monitors?.length ?? 0) > 0 ? MONITOR_POLL_MS : 0;
   }
 
   const lastActivity = new Date(latestData.chat.lastMessageAt ?? latestData.chat.updatedAt).getTime();
@@ -131,7 +134,7 @@ function getChatDetailRefreshInterval(latestData: AgentChatDetail | undefined): 
     return STREAM_RETRY_DELAY_MS;
   }
 
-  return 0;
+  return (latestData.monitors?.length ?? 0) > 0 ? MONITOR_POLL_MS : 0;
 }
 
 function createFallbackChatDetail(chatId: string, modelId: string | null, timestamp: string): AgentChatDetail {
@@ -369,6 +372,12 @@ function HistoryMessage({
   /** Only the latest reply offers its follow-up; older ones would compete with it. */
   showSuggestion?: boolean;
 }): JSX.Element | null {
+  if (message.kind === 'monitor_event') {
+    const monitorEvent = getMonitorEventData(message);
+
+    return monitorEvent ? <MonitorEventCard data={monitorEvent} error={message.error} /> : null;
+  }
+
   if (message.role === 'user') {
     return (
       <UserBubble
@@ -860,6 +869,8 @@ function ChatConversation({
     chat: AgentChat;
     latestMessage: { id: string; status: AgentChatMessageStatus; workflowRunId: string | null } | null;
     latestApproval: { id: string; status: string } | null;
+    /** Active monitors; a change (one ended, a new one started) refreshes the detail. */
+    activeMonitorCount?: number;
   };
   const detailRef = useRef(data);
   detailRef.current = data;
@@ -1440,6 +1451,7 @@ export function AgentChatPage(): JSX.Element {
               <EmptyConversation projectId={chatProjectId} />
             )}
             <div className="fk:shrink-0 fk:pb-3">
+              {chatId ? <MonitorChips api={chatApi} chatId={chatId} projectId={projectId} /> : null}
               {sendError ? (
                 <p className="fk:mx-auto fk:mb-2 fk:max-w-4xl fk:text-xs fk:text-destructive">{sendError}</p>
               ) : null}

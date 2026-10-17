@@ -1,9 +1,9 @@
 /**
  * `approval_request`: a proposal waits on the recipient. `automation_result`: an
  * automation run finished and its notify rule asked for it. `automation_failure`:
- * an automation run failed.
+ * an automation run failed. `monitor_event`: a chat monitor woke the chat, or paused.
  */
-export type ActivityItemKind = 'approval_request' | 'automation_result' | 'automation_failure';
+export type ActivityItemKind = 'approval_request' | 'automation_result' | 'automation_failure' | 'monitor_event';
 
 /** `done` = resolved by the system (e.g. the approval was decided); `dismissed` = hidden by the recipient. */
 export type ActivityItemState = 'unread' | 'read' | 'done' | 'dismissed';

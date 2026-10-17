@@ -43,8 +43,11 @@ export type {
   AgentChatFollowUp,
   AgentChatFollowUpDelivery,
   AgentChatFollowUpResult,
+  AgentChatMessageKind,
   AgentChatMessageRole,
   AgentChatMessageStatus,
+  AgentChatMonitor,
   AgentChatPart,
   AgentChatTurn,
+  AgentMonitorStatus,
 } from './chat';

@@ -53,6 +53,10 @@ export function getActivityStatusLabel(item: ActivityItem): string | null {
     return 'Result';
   }
 
+  if (item.kind === 'monitor_event') {
+    return 'Monitor';
+  }
+
   if (item.resolution) {
     return RESOLUTION_LABELS[item.resolution];
   }

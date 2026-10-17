@@ -107,6 +107,7 @@ describe('activity item helpers', () => {
     assert.equal(isActivityItemOpen(result), false);
     assert.equal(getActivitySourcePath(result), 'automations/auto/runs/run');
     assert.equal(getActivityStatusTone(item('a', 'x')), 'attention');
+    assert.equal(getActivityStatusLabel(item('m', 'x', { ...run, kind: 'monitor_event' })), 'Monitor');
   });
 });
 
