@@ -124,6 +124,8 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
   // Read on every poll without restarting the poller when preferences change.
   const mutedKindsRef = useRef(preferences.desktopMutedKinds);
   const preferencesLoadedRef = useRef(preferencesLoaded);
+  // The leader tab's poll, so a poll skipped while preferences loaded can run as soon as they arrive.
+  const pollNowRef = useRef<(() => void) | null>(null);
 
   navigateRef.current = navigate;
   mutedKindsRef.current = preferences.desktopMutedKinds;
@@ -193,9 +195,21 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
 
       const interval = setInterval(() => void poll(), POLL_INTERVAL_MS);
 
-      signal.addEventListener('abort', () => clearInterval(interval));
+      pollNowRef.current = () => void poll();
+      signal.addEventListener('abort', () => {
+        clearInterval(interval);
+        pollNowRef.current = null;
+      });
     });
   }, [mutate, projectId]);
+
+  // The first poll waits for the preferences; run it the moment they arrive
+  // instead of on the next interval.
+  useEffect(() => {
+    if (preferencesLoaded) {
+      pollNowRef.current?.();
+    }
+  }, [preferencesLoaded]);
 
   return null;
 }
