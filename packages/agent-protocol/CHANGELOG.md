@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.5
+
+### Patch Changes
+
+- 10afed4: Add `automationChange` (before/after settings) to automation approval previews, `replacesMonitor` to automation proposals, and `sourceType` to chat monitors.
+
 ## 0.3.4
 
 ### Patch Changes
