@@ -1,5 +1,11 @@
 # demo-schemas
 
+## 0.0.8
+
+### Patch Changes
+
+- @flexkit/schema@0.2.4
+
 ## 0.0.7
 
 ### Patch Changes

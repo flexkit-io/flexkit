@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.3
+
+### Patch Changes
+
+- 6d17b6c: Add the `automation` approval kind for automations the chat agent proposes (`AutomationProposalPreview`, `CreatedAutomationResult`), the `AutomationNotifyRule` and `AutomationVisibility` types, and the `automation_result` and `automation_failure` Activity item kinds.
+
 ## 0.3.2
 
 ### Patch Changes

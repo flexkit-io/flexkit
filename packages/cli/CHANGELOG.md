@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.1.7
+
+### Patch Changes
+
+- @flexkit/schema@0.2.4
+
 ## 0.1.6
 
 ### Patch Changes
