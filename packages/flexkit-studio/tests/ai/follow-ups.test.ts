@@ -45,6 +45,8 @@ describe('follow-up helpers', () => {
 
     assert.equal(getNextQueuedMessage([message('u1', 'user', 'complete'), first, second]), first);
     assert.equal(getNextQueuedMessage([message('u1', 'user', 'steering')]), null);
+    // A queued monitor event is started by the server, which checks the monitor's credit cap.
+    assert.equal(getNextQueuedMessage([{ ...message('m1', 'user', 'queued'), kind: 'monitor_event' }, second]), second);
   });
 
   it('finds the follow-ups a reply shows in place', () => {

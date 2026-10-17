@@ -11,6 +11,9 @@ import type {
   AgentChatFollowUpDelivery,
   AgentChatFollowUpResult,
   AgentChatMessage,
+  AgentChatMessageKind,
+  AgentChatMonitor,
+  AgentMonitorStatus,
   AgentChatMessageRole,
   AgentChatMessageStatus,
   AgentChatPart,
@@ -49,6 +52,9 @@ export type {
   AgentChatFollowUpDelivery,
   AgentChatFollowUpResult,
   AgentChatMessage,
+  AgentChatMessageKind,
+  AgentChatMonitor,
+  AgentMonitorStatus,
   AgentChatMessageRole,
   AgentChatMessageStatus,
   AgentChatPart,
@@ -324,6 +330,8 @@ export interface AgentChatDetail {
   nextCursor?: string | null;
   chat: AgentChat;
   messages: AgentChatMessage[];
+  /** Monitors still watching for this chat; may be absent from older API responses. */
+  monitors?: AgentChatMonitor[];
   pendingApproval: AutomationApproval | null;
 }
 

@@ -52,15 +52,32 @@ export interface AgentChatPart {
   url?: string;
 }
 
+/** Set on user-role messages the user did not write: `monitor_event` is a chat monitor's delivery. */
+export type AgentChatMessageKind = 'monitor_event';
+
 export interface AgentChatMessage {
   createdAt: string;
   error: string | null;
   id: string;
+  /** May be absent from older API responses. */
+  kind?: AgentChatMessageKind | null;
   parts: AgentChatPart[] | null;
   role: AgentChatMessageRole;
   status: AgentChatMessageStatus;
   textContent: string;
   workflowRunId: string | null;
+}
+
+export type AgentMonitorStatus = 'active' | 'stopped' | 'expired' | 'completed' | 'paused_budget';
+
+/** A watcher the chat agent started; it wakes the chat when its job finishes. */
+export interface AgentChatMonitor {
+  createdAt: string;
+  description: string;
+  eventCount: number;
+  expiresAt: string;
+  id: string;
+  status: AgentMonitorStatus;
 }
 
 export interface AgentChatTurn {

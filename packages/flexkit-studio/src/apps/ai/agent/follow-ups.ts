@@ -81,9 +81,15 @@ export function getDeliveredMidTurnMessageIds(messages: AgentChatMessage[]): Set
   return ids;
 }
 
-/** The oldest queued follow-up: the one that starts the next turn. */
+/**
+ * The oldest queued follow-up: the one that starts the next turn. Monitor
+ * events are left to the server, which checks the monitor's credit cap first.
+ */
 export function getNextQueuedMessage(messages: AgentChatMessage[]): AgentChatMessage | null {
-  return messages.find((message) => message.role === 'user' && message.status === 'queued') ?? null;
+  return (
+    messages.find((message) => message.role === 'user' && message.status === 'queued' && message.kind !== 'monitor_event') ??
+    null
+  );
 }
 
 /**
