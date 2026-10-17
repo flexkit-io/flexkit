@@ -8,6 +8,7 @@ import { SCOPE_STORAGE_KEY, useAppDispatch } from '../../core/app-context';
 import { rememberLastProjectId } from '../../core/config/last-project';
 import type { ProjectSchemaError } from '../../core/config/types';
 import { FlexkitError } from '../../core/error/errors';
+import { ActivityNotifier } from '../../apps/ai/activity-notifier';
 import { Loading } from '../components/loading';
 import { Alert, AlertDescription, AlertTitle } from '../primitives/alert';
 import { Toaster } from '../primitives/sonner';
@@ -137,6 +138,7 @@ export function Layout({ version }: Props): JSX.Element {
           )}
         </div>
       </div>
+      <ActivityNotifier projectId={projectId} />
       <Toaster />
     </>
   );

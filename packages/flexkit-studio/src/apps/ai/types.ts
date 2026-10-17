@@ -1,4 +1,10 @@
 import type {
+  ActivityItem,
+  ActivityItemKind,
+  ActivityItemResolution,
+  ActivityItemsPage,
+  ActivityItemState,
+  ActivitySummary,
   AgentChat,
   AgentChatAttachment,
   AgentChatFollowUp,
@@ -27,6 +33,12 @@ import type {
 // Shared with the platform through @flexkit/agent-protocol; re-exported so
 // the rest of this package keeps importing from './types'.
 export type {
+  ActivityItem,
+  ActivityItemKind,
+  ActivityItemResolution,
+  ActivityItemsPage,
+  ActivityItemState,
+  ActivitySummary,
   AgentChat,
   AgentChatAttachment,
   AgentChatFollowUp,

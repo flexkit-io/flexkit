@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { BotIcon, PlugIcon, HistoryIcon, InboxIcon, SearchIcon, SquarePenIcon, XIcon } from 'lucide-react';
+import { BellIcon, BotIcon, PlugIcon, HistoryIcon, InboxIcon, SearchIcon, SquarePenIcon, XIcon } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import { useConfig } from '../../core/config/config-context';
@@ -17,6 +17,7 @@ import {
   SidebarRail,
 } from '../../ui';
 import { fetcher, paths } from './api';
+import { useActivitySummary } from './activity-nav-button';
 import { AgentChatsSection, useDebouncedValue } from './agent/chat-list';
 import type { AutomationApprovals } from './types';
 
@@ -47,12 +48,35 @@ function PendingApprovalsBadge(): JSX.Element | null {
   );
 }
 
+/** Open items that wait on the viewer; falls back to the unread count when nothing waits. */
+function ActivityBadge(): JSX.Element | null {
+  const { currentProjectId } = useConfig();
+  const data = useActivitySummary(currentProjectId);
+  const needsAction = data?.needsActionCount ?? 0;
+  const count = needsAction > 0 ? needsAction : (data?.unreadCount ?? 0);
+
+  if (count === 0) {
+    return null;
+  }
+
+  return (
+    <Badge
+      className={`fk:ml-auto fk:h-5 fk:min-w-5 fk:justify-center fk:rounded-full fk:px-1.5 fk:text-[0.6875rem] fk:border-none fk:corner-squircle ${
+        needsAction > 0 ? 'fk:bg-amber-500/20 fk:text-amber-600' : 'fk:bg-muted fk:text-muted-foreground'
+      }`}
+    >
+      {count > 99 ? '99+' : count.toString()}
+    </Badge>
+  );
+}
+
 export function AutomationsSidebar(): JSX.Element {
   const location = useLocation();
   const pathname = location.pathname.replace(/\/$/, '');
   const isNewChat = pathname.endsWith('/ai/agent');
   const isRunHistory = pathname.endsWith('/ai/runs');
   const isApprovals = pathname.endsWith('/ai/approvals');
+  const isActivity = pathname.endsWith('/ai/activity') || pathname.includes('/ai/activity/');
   const isPlugins = pathname.includes('/ai/plugins') || pathname.includes('/ai/skills');
   const isAutomations = pathname.includes('/ai/automations');
   const [query, setQuery] = useState('');
@@ -89,6 +113,15 @@ export function AutomationsSidebar(): JSX.Element {
                 <NavLinkCompat to="agent">
                   <SquarePenIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
                   <span>New chat</span>
+                </NavLinkCompat>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActivity} tooltip="Activity">
+                <NavLinkCompat to="activity">
+                  <BellIcon className="fk:h-4 fk:w-4" strokeWidth={2} />
+                  <span>Activity</span>
+                  <ActivityBadge />
                 </NavLinkCompat>
               </SidebarMenuButton>
             </SidebarMenuItem>

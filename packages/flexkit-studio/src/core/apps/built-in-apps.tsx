@@ -65,6 +65,10 @@ const aiRunHistoryPage = lazyElement(() =>
   import('../../apps/ai/pages').then((m) => ({ default: m.RunHistoryPage }))
 );
 const aiApprovalsPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.ApprovalsPage })));
+const aiActivityPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.ActivityPage })));
+const aiActivityItemPage = lazyElement(() =>
+  import('../../apps/ai/pages').then((m) => ({ default: m.ActivityItemPage }))
+);
 const aiCreateAutomationPage = lazyElement(() =>
   import('../../apps/ai/pages').then((m) => ({ default: m.CreateAutomationPage }))
 );
@@ -116,6 +120,14 @@ export const builtInApps: AppOptions[] = [
       {
         component: aiApprovalsPage,
         path: 'approvals',
+      },
+      {
+        component: aiActivityPage,
+        path: 'activity',
+      },
+      {
+        component: aiActivityItemPage,
+        path: 'activity/:itemId',
       },
       {
         component: aiCreateAutomationPage,

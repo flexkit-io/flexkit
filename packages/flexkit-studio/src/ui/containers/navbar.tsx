@@ -9,6 +9,9 @@ const ProjectSelector = lazy(() =>
   import('../components/project-selector.js').then(({ ProjectSelector: Component }) => ({ 'default': Component }))
 );
 const Search = lazy(() => import('../components/search.js').then(({ Search: Component }) => ({ 'default': Component })));
+const ActivityNavButton = lazy(() =>
+  import('../../apps/ai/activity-nav-button.js').then(({ ActivityNavButton: Component }) => ({ 'default': Component }))
+);
 const UserNav = lazy(() => import('../components/user-nav.js').then(({ UserNav: Component }) => ({ 'default': Component })));
 
 type Props = {
@@ -50,7 +53,10 @@ export function Navbar({ projectId, projectIds, projectSummaries = [], projects 
           <Search key={projectId} onSelect={handleSearchSelection} projectId={projectId} schema={schema} />
         </Suspense>
       </div>
-      <div className="fk:flex fk:items-center">
+      <div className="fk:flex fk:items-center fk:gap-x-4">
+        <Suspense fallback={null}>
+          <ActivityNavButton projectId={projectId} />
+        </Suspense>
         <Suspense fallback={null}>
           <UserNav projectId={projectId} />
         </Suspense>
