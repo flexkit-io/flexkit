@@ -4,6 +4,7 @@ import type { ActivityItem } from '../../src/apps/ai/types';
 import {
   getActivitySourcePath,
   getActivityStatusLabel,
+  getActivityStatusTone,
   isActivityItemOpen,
   planActivityNotifications,
 } from '../../src/apps/ai/activity';
@@ -91,5 +92,19 @@ describe('activity item helpers', () => {
 
     assert.equal(getActivityStatusLabel(decided), 'Rejected');
     assert.equal(isActivityItemOpen(decided), false);
+  });
+
+  it('labels automation results and failures, which never wait on the viewer', () => {
+    const run = { approvalId: null, automationId: 'auto', automationRunId: 'run', chatId: null, requiresAction: false };
+    const failure = item('f', 'x', { ...run, kind: 'automation_failure' });
+    const result = item('r', 'x', { ...run, kind: 'automation_result' });
+
+    assert.equal(getActivityStatusLabel(failure), 'Failed');
+    assert.equal(getActivityStatusTone(failure), 'failure');
+    assert.equal(getActivityStatusLabel(result), 'Result');
+    assert.equal(getActivityStatusTone(result), 'neutral');
+    assert.equal(isActivityItemOpen(result), false);
+    assert.equal(getActivitySourcePath(result), 'automations/auto/runs/run');
+    assert.equal(getActivityStatusTone(item('a', 'x')), 'attention');
   });
 });

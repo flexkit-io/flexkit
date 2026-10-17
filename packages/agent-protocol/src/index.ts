@@ -26,10 +26,15 @@ export type {
   AutomationApprovalPreviewRow,
   AutomationApprovalStatus,
   AutomationMutationPolicy,
+  AutomationNotifyRule,
+  AutomationProposalPlugin,
+  AutomationProposalPreview,
   AutomationRun,
   AutomationRunStatus,
   AutomationToolAllowRule,
   AutomationTriggerType,
+  AutomationVisibility,
+  CreatedAutomationResult,
 } from './automations';
 export type {
   AgentChat,

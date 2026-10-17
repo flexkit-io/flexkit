@@ -2,9 +2,16 @@
 export type AutomationRunStatus = 'running' | 'awaiting_approval' | 'success' | 'skipped' | 'failed' | 'cancelled';
 export type AutomationTriggerType = 'entity' | 'manual' | 'schedule' | 'webhook';
 export type AutomationApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
-export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin' | 'exec' | 'schema';
+export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin' | 'exec' | 'schema' | 'automation';
 export type AutomationApprovalPreviewKind = 'create' | 'update' | 'delete' | 'unknown';
 export type AutomationMutationPolicy = 'require_approval' | 'auto_approve';
+/**
+ * Which finished runs create an Activity item for the automation's recipients:
+ * every run, runs the agent flagged for attention, failures only, or none.
+ * Failures notify under every rule except `never`.
+ */
+export type AutomationNotifyRule = 'always' | 'when_flagged' | 'failures' | 'never';
+export type AutomationVisibility = 'project' | 'space' | 'personal';
 
 export interface AutomationApprovalOperation {
   query: string;
@@ -37,9 +44,51 @@ export interface SchemaChangePreviewSummary {
   warnings: string[];
 }
 
+/** A plugin an agent-proposed automation may use. */
+export interface AutomationProposalPlugin {
+  /** The connected account, e.g. an email address; null when the plugin needs none. */
+  account: string | null;
+  /** Channel names it delivers to (Slack, Teams); empty when it does not deliver. */
+  deliveryChannels: string[];
+  name: string;
+}
+
+/**
+ * Extra context carried by `kind: 'automation'` approvals: the automation the
+ * chat agent proposed. Nothing exists until a person approves; the approver may
+ * edit the instructions first.
+ */
+export interface AutomationProposalPreview {
+  customTools: string[];
+  instructions: string;
+  modelLabel: string;
+  mutationPolicy: AutomationMutationPolicy;
+  name: string;
+  notifyCreator: boolean;
+  notifyRule: AutomationNotifyRule;
+  plugins: AutomationProposalPlugin[];
+  /** Run the automation once right after it is created (the approver can also choose this). */
+  runOnceAfterCreate: boolean;
+  skills: string[];
+  spaceLabel: string | null;
+  /** Subscribers' display names. */
+  subscribers: string[];
+  /** One line per trigger in plain words, e.g. "Every Monday at 09:00 (Europe/Prague)". */
+  triggers: string[];
+  visibility: AutomationVisibility;
+}
+
 export interface AutomationApprovalPreview {
+  automation?: AutomationProposalPreview;
   operations: AutomationApprovalPreviewOperation[];
   schema?: SchemaChangePreviewSummary;
+}
+
+/** What an approved `kind: 'automation'` proposal created. */
+export interface CreatedAutomationResult {
+  automationId: string;
+  /** The first run, when the approver chose to run it once. */
+  runId: string | null;
 }
 
 export interface AutomationApproval {
@@ -47,6 +96,8 @@ export interface AutomationApproval {
   /** Null for approvals raised by a chat turn. */
   automationId: string | null;
   automationName: string;
+  /** Set once an approved `kind: 'automation'` proposal created its automation. */
+  createdAutomation?: CreatedAutomationResult | null;
   /** Set for approvals raised by a chat turn. */
   chatId: string | null;
   chatMessageId: string | null;

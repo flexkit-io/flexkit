@@ -36,6 +36,7 @@ export function AttachCombobox({
   footer,
   items,
   searchPlaceholder,
+  triggerLabel = 'Attach',
   onToggle,
 }: {
   disabled: boolean;
@@ -43,6 +44,8 @@ export function AttachCombobox({
   footer?: ReactNode;
   items: AttachComboboxItem[];
   searchPlaceholder: string;
+  /** Text of the button that opens the list. */
+  triggerLabel?: string;
   onToggle: (_id: string, _attached: boolean) => void;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
@@ -52,7 +55,7 @@ export function AttachCombobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button disabled={disabled} size="sm" type="button" variant="outline">
-          Attach
+          {triggerLabel}
           <ChevronDownIcon className="fk:ml-1 fk:size-4" />
         </Button>
       </PopoverTrigger>

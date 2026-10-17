@@ -26,6 +26,8 @@ export interface DecideApprovalInput {
   /** Approve and always allow this plugin tool for the automation. */
   remember?: boolean;
   approved: boolean;
+  /** For a proposed automation: the approver's edited instructions and whether to run it once now. */
+  automationEdits?: { instructions?: string; runOnce?: boolean };
   force?: boolean;
   reason?: string;
 }
@@ -459,6 +461,8 @@ export function paths(projectId: string): {
   skill: (_skillId: string) => string;
   skills: (_options?: { limit?: number; offset?: number; search?: string; visibility?: AutomationVisibility[] }) => string;
   spaces: string;
+  /** Members for pickers; with a space id, only members who can see that space. */
+  members: (_spaceId?: string | null) => string;
   tools: (_automationId?: string) => string;
 } {
   const basePath = `/api/flexkit/${projectId}/automations`;
@@ -552,6 +556,10 @@ export function paths(projectId: string): {
       return `${skillsBasePath}?${params.toString()}`;
     },
     spaces: `/api/flexkit/${projectId}/spaces`,
+    members: (spaceId) =>
+      spaceId
+        ? `/api/flexkit/${projectId}/members?spaceId=${encodeURIComponent(spaceId)}`
+        : `/api/flexkit/${projectId}/members`,
     tools: (automationId) =>
       automationId ? `${basePath}/${encodeURIComponent(automationId)}/tools` : `${basePath}/tools`,
   };

@@ -24,10 +24,14 @@ import type {
   AutomationApprovalPreviewRow,
   AutomationApprovalStatus,
   AutomationMutationPolicy,
+  AutomationNotifyRule,
+  AutomationProposalPlugin,
+  AutomationProposalPreview,
   AutomationRun,
   AutomationRunStatus,
   AutomationToolAllowRule,
   AutomationTriggerType,
+  CreatedAutomationResult,
 } from '@flexkit/agent-protocol';
 
 // Shared with the platform through @flexkit/agent-protocol; re-exported so
@@ -58,10 +62,14 @@ export type {
   AutomationApprovalPreviewRow,
   AutomationApprovalStatus,
   AutomationMutationPolicy,
+  AutomationNotifyRule,
+  AutomationProposalPlugin,
+  AutomationProposalPreview,
   AutomationRun,
   AutomationRunStatus,
   AutomationToolAllowRule,
   AutomationTriggerType,
+  CreatedAutomationResult,
 };
 
 export type AutomationTriggerEvent = 'create' | 'update' | 'delete';
@@ -165,7 +173,13 @@ export interface Automation {
   /** May be absent from older API responses. */
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
+  /** May be absent from older API responses; treated as true. */
+  notifyCreator?: boolean;
+  /** May be absent from older API responses; treated as "when_flagged". */
+  notifyRule?: AutomationNotifyRule;
   projectId: string;
+  /** Members who receive its approval requests and run notifications. Only populated by the detail endpoint. */
+  subscriberIds?: string[];
   /** Plugin tools a reviewer chose to always allow in this automation. */
   toolAllowRules?: AutomationToolAllowRule[];
   /** Attached skill ids. Only populated by the detail endpoint. */
@@ -270,6 +284,10 @@ export interface AutomationInput {
   modelId: string;
   mutationPolicy?: AutomationMutationPolicy;
   name: string;
+  notifyCreator: boolean;
+  notifyRule: AutomationNotifyRule;
+  /** Members who receive its approval requests and run notifications. */
+  subscriberIds: string[];
   /** Omitted keeps the stored rules; an array replaces them. */
   toolAllowRules?: AutomationToolAllowRule[];
   /** Skills that are always loaded into the agent context on every run. */
@@ -279,6 +297,15 @@ export interface AutomationInput {
   toolConfigs: AutomationToolConfigInput[];
   triggers: AutomationTrigger[];
   visibility?: AutomationVisibility;
+}
+
+/** A project member as listed for pickers (`GET /members`). */
+export interface ProjectMember {
+  avatarUrl: string | null;
+  displayName: string;
+  email: string;
+  id: string;
+  role: string;
 }
 
 export interface MutationResult {

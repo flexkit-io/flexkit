@@ -45,11 +45,28 @@ const RESOLUTION_LABELS: { [key in ActivityItemResolution]: string } = {
 
 /** Short status for a row: what happened to it, or that it still waits on the viewer. */
 export function getActivityStatusLabel(item: ActivityItem): string | null {
+  if (item.kind === 'automation_failure') {
+    return 'Failed';
+  }
+
+  if (item.kind === 'automation_result') {
+    return 'Result';
+  }
+
   if (item.resolution) {
     return RESOLUTION_LABELS[item.resolution];
   }
 
   return item.requiresAction && item.state !== 'done' && item.state !== 'dismissed' ? 'Needs approval' : null;
+}
+
+/** How a row's status badge reads: waiting on the viewer, a failure, or neutral. */
+export function getActivityStatusTone(item: ActivityItem): 'attention' | 'failure' | 'neutral' {
+  if (item.kind === 'automation_failure') {
+    return 'failure';
+  }
+
+  return isActivityItemOpen(item) ? 'attention' : 'neutral';
 }
 
 /** True while the item still waits on the viewer. */
