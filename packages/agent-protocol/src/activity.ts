@@ -1,4 +1,9 @@
-export type ActivityItemKind = 'approval_request';
+/**
+ * `approval_request`: a proposal waits on the recipient. `automation_result`: an
+ * automation run finished and its notify rule asked for it. `automation_failure`:
+ * an automation run failed.
+ */
+export type ActivityItemKind = 'approval_request' | 'automation_result' | 'automation_failure';
 
 /** `done` = resolved by the system (e.g. the approval was decided); `dismissed` = hidden by the recipient. */
 export type ActivityItemState = 'unread' | 'read' | 'done' | 'dismissed';

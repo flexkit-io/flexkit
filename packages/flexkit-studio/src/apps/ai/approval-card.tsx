@@ -1,7 +1,8 @@
 import type { JSX } from 'react';
 import { useId, useState, useTransition } from 'react';
 import { format, formatDistance } from 'date-fns';
-import { ArrowRightIcon, CheckIcon, LoaderCircle, MoveRightIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
+import { ArrowRightIcon, CheckIcon, LoaderCircle, MoveRightIcon, PlayIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -29,6 +30,8 @@ import type {
   AutomationApprovalOperation,
   AutomationApprovalPreviewOperation,
   AutomationApprovalStatus,
+  AutomationNotifyRule,
+  AutomationProposalPreview,
 } from './types';
 
 const APPROVAL_STATUS_STYLES: { [status in AutomationApprovalStatus]: string } = {
@@ -262,6 +265,10 @@ function getChatActionTitle(approval: AutomationApproval): string {
     return approval.operationsSummary.replace(/^Schema: /, '');
   }
 
+  if (approval.kind === 'automation' && approval.preview?.automation) {
+    return `Create the automation “${approval.preview.automation.name}”`;
+  }
+
   return approval.kind === 'plugin' ? 'Use a connected app' : approval.operationsSummary;
 }
 
@@ -410,6 +417,15 @@ function isSameApprovalSnapshot(left: AutomationApproval, right: AutomationAppro
   );
 }
 
+interface DecideOptions {
+  approved: boolean;
+  /** For a proposed automation: edited instructions and whether to run it once now. */
+  automationEdits?: { instructions?: string; runOnce?: boolean };
+  force?: boolean;
+  reason?: string;
+  remember?: boolean;
+}
+
 function useApprovalDecision({
   api,
   approval: initialApproval,
@@ -420,7 +436,7 @@ function useApprovalDecision({
   onDecided?: (_approval: AutomationApproval) => void;
 }): {
   approval: AutomationApproval;
-  decide: (_options: { approved: boolean; force?: boolean; reason?: string; remember?: boolean }) => void;
+  decide: (_options: DecideOptions) => void;
   errorMessage: string;
   isDeciding: boolean;
   isPending: boolean;
@@ -476,22 +492,18 @@ function useApprovalDecision({
     onDecided?.(nextApproval);
   }
 
-  function decide({
-    approved,
-    force = false,
-    reason,
-    remember = false,
-  }: {
-    approved: boolean;
-    force?: boolean;
-    reason?: string;
-    remember?: boolean;
-  }): void {
+  function decide({ approved, automationEdits, force = false, reason, remember = false }: DecideOptions): void {
     startDecideTransition(async () => {
       setErrorMessage('');
 
       try {
-        const result = await api.decideApproval(approval.id, { approved, force, reason, remember });
+        const result = await api.decideApproval(approval.id, {
+          approved,
+          ...(automationEdits ? { automationEdits } : {}),
+          force,
+          reason,
+          remember,
+        });
 
         if (result.errorCode === 'stale_preview') {
           setIsStale(true);
@@ -660,18 +672,195 @@ function ApprovalDecisionActions({
   );
 }
 
+const NOTIFY_RULE_LABELS: { [rule in AutomationNotifyRule]: string } = {
+  always: 'Every finished run',
+  failures: 'Failures only',
+  never: 'Never',
+  when_flagged: 'Results that need attention',
+};
+
+function describeVisibility(proposal: AutomationProposalPreview): string {
+  if (proposal.visibility === 'personal') {
+    return 'Only you';
+  }
+
+  return proposal.visibility === 'space' ? `Space: ${proposal.spaceLabel ?? 'unknown'}` : 'Everyone in the project';
+}
+
+/** What a chat-proposed automation will be, with the instructions editable while it waits for a decision. */
+function AutomationProposalView({
+  approval,
+  instructions,
+  isPending,
+  proposal,
+  onInstructionsChange,
+}: {
+  approval: AutomationApproval;
+  instructions: string;
+  isPending: boolean;
+  proposal: AutomationProposalPreview;
+  onInstructionsChange?: (_instructions: string) => void;
+}): JSX.Element {
+  const instructionsId = useId();
+  const created = approval.createdAutomation ?? null;
+  const rows: { label: string; value: string }[] = [
+    { label: 'Runs', value: proposal.triggers.join('\n') },
+    { label: 'Visible to', value: describeVisibility(proposal) },
+    {
+      label: 'Data changes',
+      value: proposal.mutationPolicy === 'auto_approve' ? 'Applied without review' : 'Wait for approval',
+    },
+    {
+      label: 'Notifications',
+      value: `${NOTIFY_RULE_LABELS[proposal.notifyRule]}${proposal.notifyCreator ? ', to you' : ''}${
+        proposal.subscribers.length > 0 ? ` and ${proposal.subscribers.join(', ')}` : ''
+      }`,
+    },
+    ...(proposal.plugins.length > 0
+      ? [
+          {
+            label: 'Plugins',
+            value: proposal.plugins
+              .map((plugin) =>
+                [
+                  plugin.account ? `${plugin.name} as ${plugin.account}` : plugin.name,
+                  plugin.deliveryChannels.length > 0 ? `posting to ${plugin.deliveryChannels.join(', ')}` : '',
+                ]
+                  .filter(Boolean)
+                  .join(', ')
+              )
+              .join('\n'),
+          },
+        ]
+      : []),
+    ...(proposal.skills.length > 0 ? [{ label: 'Skills', value: proposal.skills.join(', ') }] : []),
+    ...(proposal.customTools.length > 0 ? [{ label: 'Custom tools', value: proposal.customTools.join(', ') }] : []),
+    { label: 'Model', value: proposal.modelLabel },
+  ];
+
+  return (
+    <div className="fk:space-y-4">
+      {proposal.mutationPolicy === 'auto_approve' ? (
+        <div
+          className="fk:flex fk:items-start fk:gap-2 fk:rounded-md fk:border fk:border-amber-500/40 fk:bg-amber-500/10 fk:p-3 fk:text-sm fk:corner-squircle"
+          role="status"
+        >
+          <TriangleAlertIcon className="fk:mt-0.5 fk:size-4 fk:shrink-0 fk:text-amber-600" />
+          <span>
+            Every run will change data{proposal.plugins.length > 0 ? ' and call these plugins' : ''} without asking
+            anyone first. Reject and ask for review if that is not what you want.
+          </span>
+        </div>
+      ) : null}
+      <dl className="fk:grid fk:grid-cols-[max-content_1fr] fk:gap-x-4 fk:gap-y-1.5 fk:text-sm">
+        {rows.map((row) => (
+          <div className="fk:contents" key={row.label}>
+            <dt className="fk:text-muted-foreground">{row.label}</dt>
+            <dd className="fk:whitespace-pre-line">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="fk:space-y-1.5">
+        <label className="fk:text-sm fk:font-medium" htmlFor={instructionsId}>
+          Instructions
+        </label>
+        {isPending && onInstructionsChange ? (
+          <>
+            <p className="fk:text-xs fk:text-muted-foreground">
+              The automation never sees this chat, so these instructions are all it has to go on. Edit them before
+              creating it.
+            </p>
+            <Textarea
+              className="fk:min-h-40 fk:text-sm"
+              id={instructionsId}
+              value={instructions}
+              onChange={(event) => onInstructionsChange(event.target.value)}
+            />
+          </>
+        ) : (
+          <p className="fk:whitespace-pre-wrap fk:rounded-md fk:border fk:p-3 fk:text-sm fk:corner-squircle" id={instructionsId}>
+            {instructions}
+          </p>
+        )}
+      </div>
+      {created ? (
+        <div className="fk:flex fk:flex-wrap fk:gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to={`/${approval.projectId}/ai/automations/${created.automationId}`}>Open the automation</Link>
+          </Button>
+          {created.runId ? (
+            <Button asChild size="sm" variant="ghost">
+              <Link to={`/${approval.projectId}/ai/automations/${created.automationId}/runs/${created.runId}`}>
+                View its first run
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Create, Create and run once now, Reject: the decisions on a proposed automation. */
+function AutomationDecisionActions({
+  decide,
+  instructions,
+  isDeciding,
+  proposal,
+}: {
+  decide: (_options: DecideOptions) => void;
+  instructions: string;
+  isDeciding: boolean;
+  proposal: AutomationProposalPreview;
+}): JSX.Element {
+  const trimmed = instructions.trim();
+  const edits = trimmed !== proposal.instructions.trim() ? { instructions: trimmed } : {};
+
+  return (
+    <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
+      <Button
+        disabled={isDeciding || trimmed.length === 0}
+        size="sm"
+        variant={proposal.runOnceAfterCreate ? 'outline' : 'default'}
+        onClick={() => decide({ approved: true, automationEdits: { ...edits, runOnce: false } })}
+      >
+        {isDeciding ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : <CheckIcon className="fk:size-4" />}
+        Create
+      </Button>
+      <Button
+        disabled={isDeciding || trimmed.length === 0}
+        size="sm"
+        variant={proposal.runOnceAfterCreate ? 'default' : 'outline'}
+        onClick={() => decide({ approved: true, automationEdits: { ...edits, runOnce: true } })}
+      >
+        <PlayIcon className="fk:size-4" />
+        Create and run once now
+      </Button>
+      <Button disabled={isDeciding} size="sm" variant="outline" onClick={() => decide({ approved: false })}>
+        <XIcon className="fk:size-4" />
+        Reject
+      </Button>
+    </div>
+  );
+}
+
 function ApprovalCardBody({
   approval,
+  automationInstructions,
   chat,
   errorMessage,
   isPending,
   isStale,
+  onAutomationInstructionsChange,
 }: {
   approval: AutomationApproval;
+  /** The proposed automation's instructions as the approver edits them. */
+  automationInstructions?: string;
   chat: boolean;
   errorMessage: string;
   isPending: boolean;
   isStale: boolean;
+  onAutomationInstructionsChange?: (_instructions: string) => void;
 }): JSX.Element {
   const { preview } = approval;
   const pluginAction = chat ? getChatPluginAction(approval) : null;
@@ -684,6 +873,7 @@ function ApprovalCardBody({
       <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
         <ApprovalStatusBadge status={approval.status} />
         {approval.kind === 'schema' ? <Badge variant="outline">Schema change</Badge> : null}
+        {approval.kind === 'automation' ? <Badge variant="outline">New automation</Badge> : null}
         <span className="fk:text-sm fk:font-medium">
           {chat ? getChatActionTitle(approval) : approval.operationsSummary}
         </span>
@@ -705,7 +895,15 @@ function ApprovalCardBody({
         </div>
       ) : null}
 
-      {approval.kind === 'schema' && preview ? (
+      {approval.kind === 'automation' && preview?.automation ? (
+        <AutomationProposalView
+          approval={approval}
+          instructions={automationInstructions ?? preview.automation.instructions}
+          isPending={isPending}
+          proposal={preview.automation}
+          onInstructionsChange={onAutomationInstructionsChange}
+        />
+      ) : approval.kind === 'schema' && preview ? (
         <SchemaChangePreview preview={preview} />
       ) : preview && preview.operations.length > 0 ? (
         <div className="fk:space-y-4">
@@ -741,12 +939,14 @@ function ApprovalCardBody({
         </div>
       )}
 
-      <OperationDocuments
-        chat={chat}
-        operations={approval.operations}
-        plugin={approval.kind === 'plugin' || approval.kind === 'exec'}
-        title={approval.kind === 'exec' ? 'Command and options' : approval.kind === 'schema' ? 'Operations' : undefined}
-      />
+      {approval.kind === 'automation' ? null : (
+        <OperationDocuments
+          chat={chat}
+          operations={approval.operations}
+          plugin={approval.kind === 'plugin' || approval.kind === 'exec'}
+          title={approval.kind === 'exec' ? 'Command and options' : approval.kind === 'schema' ? 'Operations' : undefined}
+        />
+      )}
 
       {approval.reason ? (
         <div className="fk:text-sm">
@@ -792,17 +992,30 @@ export function ApprovalCard({
     setIsRejectDialogOpen,
     setRejectReason,
   } = useApprovalDecision({ api, approval: initialApproval, onDecided });
+  const proposal = approval.kind === 'automation' ? (approval.preview?.automation ?? null) : null;
+  const [automationInstructions, setAutomationInstructions] = useState(proposal?.instructions ?? '');
 
   return (
     <>
       <ApprovalCardBody
         approval={approval}
+        automationInstructions={proposal ? automationInstructions : undefined}
         chat={chat}
         errorMessage={errorMessage}
         isPending={isPending}
         isStale={isStale}
+        onAutomationInstructionsChange={proposal ? setAutomationInstructions : undefined}
       />
-      {isPending ? (
+      {isPending && proposal ? (
+        <div className="fk:mt-4">
+          <AutomationDecisionActions
+            decide={decide}
+            instructions={automationInstructions}
+            isDeciding={isDeciding}
+            proposal={proposal}
+          />
+        </div>
+      ) : isPending ? (
         <div className="fk:mt-4">
           <ApprovalDecisionActions
             allowRemember={!chat && approval.kind === 'plugin' && Boolean(approval.automationId)}
@@ -845,11 +1058,20 @@ export function ApprovalDrawer({
     setIsRejectDialogOpen,
     setRejectReason,
   } = useApprovalDecision({ api, approval: initialApproval, onDecided });
+  const proposal = approval.kind === 'automation' ? (approval.preview?.automation ?? null) : null;
+  const [automationInstructions, setAutomationInstructions] = useState(proposal?.instructions ?? '');
 
   return (
     <DrawerModal
       actions={
-        isPending ? (
+        isPending && proposal ? (
+          <AutomationDecisionActions
+            decide={decide}
+            instructions={automationInstructions}
+            isDeciding={isDeciding}
+            proposal={proposal}
+          />
+        ) : isPending ? (
           <ApprovalDecisionActions
             allowRemember={approval.kind === 'plugin' && Boolean(approval.automationId)}
             askForRejectionReason
@@ -867,14 +1089,16 @@ export function ApprovalDrawer({
       depth={0}
       isFocused
       onClose={onClose}
-      title="Mutation proposal"
+      title={proposal ? 'Automation proposal' : 'Mutation proposal'}
     >
       <ApprovalCardBody
         approval={approval}
+        automationInstructions={proposal ? automationInstructions : undefined}
         chat={false}
         errorMessage={errorMessage}
         isPending={isPending}
         isStale={isStale}
+        onAutomationInstructionsChange={proposal ? setAutomationInstructions : undefined}
       />
     </DrawerModal>
   );

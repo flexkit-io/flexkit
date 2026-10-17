@@ -68,6 +68,7 @@ import type {
   AutomationEntityTrigger,
   AutomationInput,
   AutomationMutationPolicy,
+  AutomationNotifyRule,
   AutomationToolAllowRule,
   AutomationScheduleTrigger,
   AutomationCustomTools,
@@ -80,6 +81,7 @@ import type {
   AutomationProviderTools,
   AutomationVisibility,
   AutomationWebhookTrigger,
+  ProjectMember,
   ProjectSpace,
   Skill,
   SkillsList,
@@ -1077,6 +1079,17 @@ async function fetchSkillOrNull(projectId: string, skillId: string): Promise<Ski
   }
 }
 
+const NOTIFY_RULE_OPTIONS: { label: string; value: AutomationNotifyRule }[] = [
+  { label: 'Results that need attention (recommended)', value: 'when_flagged' },
+  { label: 'Every finished run', value: 'always' },
+  { label: 'Failures only', value: 'failures' },
+  { label: 'Never', value: 'never' },
+];
+
+function isNotifyRule(value: string): value is AutomationNotifyRule {
+  return NOTIFY_RULE_OPTIONS.some((option) => option.value === value);
+}
+
 export function AutomationForm({ api, automation, mode, onSaved, projectId }: AutomationFormProps): JSX.Element {
   const [pluginUsages, setPluginUsages] = useState<AutomationToolConfigInput[]>((automation?.toolConfigs ?? []).filter((entry) => !['slack', 'teams'].includes(entry.pluginId)));
   const [name, setName] = useState(automation?.name ?? '');
@@ -1094,6 +1107,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [toolAllowRules, setToolAllowRules] = useState<AutomationToolAllowRule[] | undefined>(
     automation?.toolAllowRules
   );
+  const [notifyRule, setNotifyRule] = useState<AutomationNotifyRule>(automation?.notifyRule ?? 'when_flagged');
+  const [notifyCreator, setNotifyCreator] = useState(automation?.notifyCreator ?? true);
+  const [subscriberIds, setSubscriberIds] = useState<string[]>(automation?.subscriberIds ?? []);
   const [visibility, setVisibility] = useState<AutomationVisibility>(automation?.visibility ?? 'project');
   const [spaceId, setSpaceId] = useState<string | null>(automation?.spaceId ?? null);
   const [skillIds, setSkillIds] = useState<string[]>(automation?.skillIds ?? []);
@@ -1125,6 +1141,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const { data: toolsData, error: toolsError } = useSWR<ToolsResponse>(toolsUrl, fetcher);
   const { data: entitiesData } = useSWR<{ entities: string[] }>(paths(projectId).entities, fetcher);
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
+  // Subscribers must be able to see the automation: a space automation offers that space's members.
+  const { data: membersData } = useSWR<{ members: ProjectMember[] }>(
+    visibility === 'personal' ? null : paths(projectId).members(visibility === 'space' ? spaceId : null),
+    fetcher
+  );
   // Catalog for the attach picker. The API caps a page at 100, so attached
   // skills may be missing from this list — those are resolved separately.
   const { data: skillsData } = useSWR<SkillsList>(paths(projectId).skills({ limit: 100 }), fetcher);
@@ -1578,7 +1599,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       modelId: effectiveModelId,
       mutationPolicy,
       name,
+      notifyCreator,
+      notifyRule,
       skillIds,
+      // A personal automation is only visible to its creator, so it has no subscribers.
+      subscriberIds: visibility === 'personal' ? [] : subscriberIds,
       ...(toolAllowRules !== undefined ? { toolAllowRules } : {}),
       spaceId: visibility === 'space' ? spaceId : null,
       toolConfigs: [...toolConfigs, ...pluginUsages],
@@ -1860,6 +1885,92 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             </ul>
           </div>
         ) : null}
+      </div>
+
+      <div className="fk:space-y-3">
+        <Label className="fk:mb-1" htmlFor="automation-notify-rule">
+          Notifications
+        </Label>
+        <p className="fk:text-xs fk:text-muted-foreground fk:mb-2">
+          Approval requests and run results appear in Activity in Studio. Failures are always reported unless set to
+          Never.
+        </p>
+        <Select
+          value={notifyRule}
+          onValueChange={(value) => {
+            if (isNotifyRule(value)) {
+              setNotifyRule(value);
+            }
+          }}
+        >
+          <SelectTrigger aria-label="Notify about runs" className="fk:w-fit" id="automation-notify-rule">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="start">
+            {NOTIFY_RULE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="fk:flex fk:h-8 fk:items-center fk:gap-2">
+          <Switch checked={notifyCreator} id="automation-notify-creator" onCheckedChange={setNotifyCreator} />
+          <Label className="fk:font-normal" htmlFor="automation-notify-creator">
+            Notify the creator
+          </Label>
+        </div>
+        {visibility === 'personal' ? null : (
+          <div className="fk:space-y-2">
+            <div className="fk:flex fk:items-center fk:justify-between fk:gap-2">
+              <div>
+                <p className="fk:text-sm">Subscribers</p>
+                <p className="fk:text-xs fk:text-muted-foreground">
+                  Members who also get its notifications. Only owners and developers receive approval requests.
+                </p>
+              </div>
+              <AttachCombobox
+                disabled={!canMutate || !membersData}
+                emptyText="No members match."
+                items={(membersData?.members ?? []).map((member) => ({
+                  attached: subscriberIds.includes(member.id),
+                  id: member.id,
+                  label: member.displayName,
+                }))}
+                searchPlaceholder="Search members…"
+                triggerLabel="Add"
+                onToggle={(memberId, attached) =>
+                  setSubscriberIds((current) =>
+                    attached ? [...new Set([...current, memberId])] : current.filter((id) => id !== memberId)
+                  )
+                }
+              />
+            </div>
+            {subscriberIds.length > 0 ? (
+              <div className="fk:flex fk:flex-wrap fk:gap-1.5">
+                {subscriberIds.map((subscriberId) => {
+                  const member = membersData?.members.find((item) => item.id === subscriberId);
+                  const label = member?.displayName ?? (membersData ? 'No longer has access' : 'Loading…');
+
+                  return (
+                    <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={subscriberId} variant="secondary">
+                      {label}
+                      <button
+                        aria-label={`Remove subscriber ${label}`}
+                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed fk:corner-squircle"
+                        disabled={!canMutate}
+                        type="button"
+                        onClick={() => setSubscriberIds((current) => current.filter((id) => id !== subscriberId))}
+                      >
+                        <XIcon className="fk:size-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="fk:space-y-4">

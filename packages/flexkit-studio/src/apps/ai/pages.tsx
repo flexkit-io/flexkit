@@ -59,6 +59,7 @@ import {
   getActivitySourceLabel,
   getActivitySourcePath,
   getActivityStatusLabel,
+  getActivityStatusTone,
   isActivityItemOpen,
 } from './activity';
 import { useRevalidateApprovalsCount } from './approvals-count';
@@ -1305,6 +1306,12 @@ export function ApprovalsPage(): JSX.Element {
 
 const ACTIVITY_PAGE_SIZE = 25;
 
+const ACTIVITY_TONE_CLASSES: { [tone in ReturnType<typeof getActivityStatusTone>]: string } = {
+  attention: 'fk:border-none fk:bg-amber-500/20 fk:text-amber-600 fk:corner-squircle',
+  failure: 'fk:border-none fk:bg-destructive/15 fk:text-destructive fk:corner-squircle',
+  neutral: 'fk:corner-squircle',
+};
+
 function isActivityFilter(value: string): value is 'needs_action' | 'all' {
   return value === 'needs_action' || value === 'all';
 }
@@ -1428,6 +1435,7 @@ export function ActivityPage(): JSX.Element {
                   const sourcePath = getActivitySourcePath(item);
                   const sourceLabel = getActivitySourceLabel(item);
                   const isOpen = isActivityItemOpen(item);
+                  const tone = getActivityStatusTone(item);
 
                   return (
                     <TableRow className="fk:cursor-pointer" key={item.id} onClick={() => navigate(item.id)}>
@@ -1443,12 +1451,8 @@ export function ActivityPage(): JSX.Element {
                       <TableCell>
                         {statusLabel ? (
                           <Badge
-                            className={
-                              isOpen
-                                ? 'fk:border-none fk:bg-amber-500/20 fk:text-amber-600 fk:corner-squircle'
-                                : 'fk:corner-squircle'
-                            }
-                            variant={isOpen ? 'default' : 'outline'}
+                            className={ACTIVITY_TONE_CLASSES[tone]}
+                            variant={tone === 'neutral' ? 'outline' : 'default'}
                           >
                             {statusLabel}
                           </Badge>
