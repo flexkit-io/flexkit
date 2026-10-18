@@ -1,5 +1,14 @@
 # @flexkit/studio
 
+## 0.2.9
+
+### Patch Changes
+
+- acfe7ea: Show the chat agent's Ask User Question cards: pick options, type your own answer, skip, or reply in the composer to answer. Questions also appear in Activity.
+- Updated dependencies [acfe7ea]
+  - @flexkit/agent-protocol@0.3.7
+  - @flexkit/schema@0.2.9
+
 ## 0.2.8
 
 ### Patch Changes

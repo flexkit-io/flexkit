@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.7
+
+### Patch Changes
+
+- acfe7ea: Add the `user-question` data part, the `AgentChatQuestion` types and the `question` Activity kind for the chat agent's Ask User Question tool.
+
 ## 0.3.6
 
 ### Patch Changes
