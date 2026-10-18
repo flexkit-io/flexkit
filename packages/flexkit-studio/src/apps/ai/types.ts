@@ -108,7 +108,36 @@ export interface AutomationEntityTrigger {
   type: 'entity';
 }
 
-export type AutomationTrigger = AutomationScheduleTrigger | AutomationWebhookTrigger | AutomationEntityTrigger;
+/** The jobs whose completion can start an automation. */
+export type AutomationJobKind = 'automation_run' | 'bulk_action' | 'schema_deploy';
+
+export interface AutomationJobTrigger {
+  /** For `automation_run` (required) and `bulk_action`: only jobs of this automation; null for any. */
+  automationId: string | null;
+  id?: string;
+  job: AutomationJobKind;
+  outcome: 'any' | 'failed' | 'succeeded';
+  type: 'job';
+}
+
+export type AutomationPollConditionOp = 'contains' | 'eq' | 'exists' | 'gt' | 'gte' | 'lt' | 'lte' | 'neq';
+
+export interface AutomationPollTrigger {
+  /** Without a condition, a run starts whenever the query result changes. */
+  condition: { op: AutomationPollConditionOp; path: string; value?: string | number | boolean | null } | null;
+  id?: string;
+  intervalMinutes: number;
+  query: string;
+  type: 'poll';
+  variables: { [key: string]: unknown } | null;
+}
+
+export type AutomationTrigger =
+  | AutomationScheduleTrigger
+  | AutomationWebhookTrigger
+  | AutomationEntityTrigger
+  | AutomationJobTrigger
+  | AutomationPollTrigger;
 
 export interface AutomationToolChannel {
   id: string;
