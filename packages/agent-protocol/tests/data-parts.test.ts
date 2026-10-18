@@ -55,4 +55,11 @@ describe('dataPartSchema', () => {
     );
     assert.ok(dataPartSchema.shape['run-artifact'].safeParse({ filename: 'products.csv', kind: 'csv', status: 'done' }).success);
   });
+
+  it('validates the plugin-connected notice', () => {
+    const schema = dataPartSchema.shape['plugin-connected'];
+
+    assert.ok(schema.safeParse({ accountName: 'dan@acme.com', pluginId: 'notion', pluginName: 'Notion', scope: 'personal' }).success);
+    assert.equal(schema.safeParse({ pluginId: 'notion', pluginName: 'Notion', scope: 'team' }).success, false);
+  });
 });

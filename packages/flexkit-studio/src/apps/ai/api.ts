@@ -91,6 +91,11 @@ export interface ApiClient {
    * meanwhile ended, the message starts the next turn.
    */
   sendAgentChatFollowUp: (_chatId: string, _input: SendAgentChatMessageInput) => Promise<AgentChatFollowUpResult>;
+  /** The user connected a plugin from the chat's connect card: starts the turn that uses it, or queues it. */
+  announcePluginConnected: (
+    _chatId: string,
+    _pluginId: string
+  ) => Promise<Extract<AgentChatFollowUpResult, { followUp: unknown } | { turn: unknown }>>;
   /** Answers (or dismisses) the questions a chat turn waits on; a settled question comes back with an error. */
   answerAgentChatQuestion: (
     _chatId: string,
@@ -219,6 +224,11 @@ export function createApiClient(projectId: string): ApiClient {
     sendAgentChatMessage: async (chatId, input) =>
       request<AgentChatTurn>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}/messages`, {
         body: JSON.stringify(input),
+        method: 'POST',
+      }),
+    announcePluginConnected: async (chatId, pluginId) =>
+      request(`${agentChatsBasePath}/${encodeURIComponent(chatId)}/plugin-connected`, {
+        body: JSON.stringify({ pluginId }),
         method: 'POST',
       }),
     sendAgentChatFollowUp: async (chatId, input) =>

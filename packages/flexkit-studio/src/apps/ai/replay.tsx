@@ -1,5 +1,4 @@
 import { createResumableUiStream, LegacyStreamError } from './resumable-stream';
-import { Link, useLocation } from 'react-router-dom';
 import type { JSX } from 'react';
 import type { TextUIPart, UIMessage, UIMessageChunk } from 'ai';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -65,6 +64,7 @@ import type { AutomationApproval, AutomationRun } from './types';
 import { watchSchemaDeployment } from './schema-deploy-watch';
 import { MessageAttachments } from './agent/attachments';
 import { MonitorEventCard } from './agent/monitor-parts';
+import { PluginConnectCard } from './agent/plugin-connect-card';
 
 export {
   getLiveStatusLabel,
@@ -750,7 +750,7 @@ export function MessagePart({
   if (part.type === 'data-plugin-connection') {
     const data = getPartData<ReplayDataParts['plugin-connection']>(part);
 
-    return <PluginConnectionPart pluginId={data.pluginId} />;
+    return <PluginConnectCard connectionId={data.connectionId} pluginId={data.pluginId} />;
   }
 
   // Rendered by the chat page under the latest reply, where the composer is in reach.
@@ -1424,17 +1424,3 @@ function getArtifactLabel(message: ReplayDataParts['run-artifact']): string {
   return 'Artifact';
 }
 
-/** Links to the plugin page, which lists every account and reconnects the one that needs attention. */
-function PluginConnectionPart({ pluginId }: { pluginId: string }): JSX.Element {
-  const { pathname } = useLocation();
-  const [base] = pathname.split('/ai/');
-
-  return (
-    <ToolMessage>
-      <p className="fk:text-sm">Connect {pluginId} to use it in this conversation.</p>
-      <Button asChild size="sm" variant="outline">
-        <Link to={`${base}/ai/plugins/${encodeURIComponent(pluginId)}`}>Connect {pluginId}</Link>
-      </Button>
-    </ToolMessage>
-  );
-}

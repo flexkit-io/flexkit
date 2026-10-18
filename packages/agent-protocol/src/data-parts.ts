@@ -34,7 +34,15 @@ export const userQuestionAnswerSchema = z.object({
 });
 
 export const dataPartSchema = z.object({
+  /** The agent needs a plugin connected (or reconnected): the chat shows a connect card. */
   'plugin-connection': z.object({ pluginId: z.string(), connectionId: z.string().optional() }),
+  /** On a `plugin_connected` message: which plugin the user connected, and the account the agent will use. */
+  'plugin-connected': z.object({
+    accountName: z.string().optional(),
+    pluginId: z.string(),
+    pluginName: z.string(),
+    scope: z.enum(['project', 'personal']),
+  }),
   /** Lifecycle of one plugin tool call, so the UI can name the in-flight call in its status line. */
   'plugin-call': z.object({
     pluginId: z.string(),
