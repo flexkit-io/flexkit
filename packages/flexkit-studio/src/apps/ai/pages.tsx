@@ -207,6 +207,14 @@ function getTriggerSummary(automation: Automation): string {
       return 'Webhook';
     }
 
+    if (trigger.type === 'job') {
+      return trigger.job === 'schema_deploy' ? 'After a deployment' : trigger.job === 'automation_run' ? 'After another automation' : 'After a bulk action';
+    }
+
+    if (trigger.type === 'poll') {
+      return `Poll every ${trigger.intervalMinutes.toString()} min`;
+    }
+
     const entities = trigger.entities.length > 0 ? trigger.entities.join(', ') : 'all entities';
 
     return `On ${trigger.events.join('/')} of ${entities}`;

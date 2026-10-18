@@ -1,6 +1,6 @@
 /** Run and approval shapes returned by the automations API. */
 export type AutomationRunStatus = 'running' | 'awaiting_approval' | 'success' | 'skipped' | 'failed' | 'cancelled';
-export type AutomationTriggerType = 'entity' | 'manual' | 'schedule' | 'webhook';
+export type AutomationTriggerType = 'entity' | 'job' | 'manual' | 'poll' | 'schedule' | 'webhook';
 export type AutomationApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
 export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin' | 'exec' | 'schema' | 'automation';
 export type AutomationApprovalPreviewKind = 'create' | 'update' | 'delete' | 'unknown';

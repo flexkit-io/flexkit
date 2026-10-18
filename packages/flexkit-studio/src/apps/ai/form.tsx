@@ -1,7 +1,7 @@
 import { PluginAccountSelect, PluginUsagePicker, resolvePluginConnection } from './plugin-usage-picker';
 import type { Marketplace } from './plugin-types';
 import type { FormEvent, JSX } from 'react';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { connectPluginPopup } from './plugin-oauth';
 import { AttachCombobox } from './attach-combobox';
@@ -36,6 +36,7 @@ import {
 import {
   BrainIcon,
   CheckIcon,
+  CircleCheckBigIcon,
   ChevronDownIcon,
   ChevronsUpDownIcon,
   ClockIcon,
@@ -66,6 +67,10 @@ import {
 import type {
   Automation,
   AutomationEntityTrigger,
+  AutomationJobKind,
+  AutomationJobTrigger,
+  AutomationPollConditionOp,
+  AutomationPollTrigger,
   AutomationInput,
   AutomationMutationPolicy,
   AutomationNotifyRule,
@@ -149,6 +154,34 @@ type FormTrigger = AutomationTrigger & { key: string };
 type ScheduleFormTrigger = AutomationScheduleTrigger & { key: string };
 type WebhookFormTrigger = AutomationWebhookTrigger & { key: string };
 type EntityFormTrigger = AutomationEntityTrigger & { key: string };
+type JobFormTrigger = AutomationJobTrigger & { key: string };
+type PollFormTrigger = AutomationPollTrigger & { key: string };
+
+const JOB_KIND_LABELS: { [kind in AutomationJobKind]: string } = {
+  automation_run: 'a run of',
+  bulk_action: 'a bulk action of',
+  schema_deploy: 'a schema deployment',
+};
+const JOB_OUTCOME_LABELS: { [outcome in AutomationJobTrigger['outcome']]: string } = {
+  any: 'finishes',
+  failed: 'fails',
+  succeeded: 'succeeds',
+};
+const POLL_CONDITION_OPS: { label: string; value: AutomationPollConditionOp }[] = [
+  { label: '=', value: 'eq' },
+  { label: '≠', value: 'neq' },
+  { label: '>', value: 'gt' },
+  { label: '≥', value: 'gte' },
+  { label: '<', value: 'lt' },
+  { label: '≤', value: 'lte' },
+  { label: 'contains', value: 'contains' },
+  { label: 'exists', value: 'exists' },
+];
+const MIN_POLL_INTERVAL_MINUTES = 5;
+const MAX_POLL_INTERVAL_MINUTES = 1440;
+const DEFAULT_POLL_INTERVAL_MINUTES = 15;
+/** Any automation, for bulk-action job triggers (a Select item cannot have an empty value). */
+const ANY_AUTOMATION = '__any__';
 
 type ScheduleKind =
   | { kind: 'hourly' }
@@ -864,13 +897,194 @@ function EntityTriggerRow({
   );
 }
 
+/** "When [a run of] [Order import] [succeeds]": runs after a deployment, another automation's run or a bulk action. */
+function JobTriggerRow({
+  automationId,
+  onChange,
+  projectId,
+  trigger,
+}: {
+  /** The automation being edited, which cannot follow its own jobs. */
+  automationId?: string;
+  onChange: (_trigger: JobFormTrigger) => void;
+  projectId: string;
+  trigger: JobFormTrigger;
+}): JSX.Element {
+  const { data } = useSWR<{ automations: Automation[] }>(
+    trigger.job === 'schema_deploy' ? null : paths(projectId).automations({ limit: 100 }),
+    fetcher
+  );
+  const others = (data?.automations ?? []).filter((automation) => automation.id !== automationId);
+
+  return (
+    <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
+      <span>When</span>
+      <Select
+        value={trigger.job}
+        onValueChange={(job) =>
+          onChange({ ...trigger, automationId: job === 'schema_deploy' ? null : trigger.automationId, job: job as AutomationJobKind })
+        }
+      >
+        <SelectTrigger className="fk:h-7 fk:w-auto fk:text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.keys(JOB_KIND_LABELS) as AutomationJobKind[]).map((kind) => (
+            <SelectItem key={kind} value={kind}>
+              {JOB_KIND_LABELS[kind]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {trigger.job === 'schema_deploy' ? null : (
+        <Select
+          value={trigger.automationId ?? (trigger.job === 'bulk_action' ? ANY_AUTOMATION : '')}
+          onValueChange={(value) => onChange({ ...trigger, automationId: value === ANY_AUTOMATION ? null : value })}
+        >
+          <SelectTrigger className="fk:h-7 fk:w-auto fk:max-w-60 fk:text-xs">
+            <SelectValue placeholder="Choose an automation" />
+          </SelectTrigger>
+          <SelectContent>
+            {trigger.job === 'bulk_action' ? <SelectItem value={ANY_AUTOMATION}>any automation</SelectItem> : null}
+            {others.map((automation) => (
+              <SelectItem key={automation.id} value={automation.id}>
+                {automation.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+      <Select
+        value={trigger.outcome}
+        onValueChange={(outcome) => onChange({ ...trigger, outcome: outcome as AutomationJobTrigger['outcome'] })}
+      >
+        <SelectTrigger className="fk:h-7 fk:w-auto fk:text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.keys(JOB_OUTCOME_LABELS) as AutomationJobTrigger['outcome'][]).map((outcome) => (
+            <SelectItem key={outcome} value={outcome}>
+              {JOB_OUTCOME_LABELS[outcome]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function parseConditionValue(text: string): string | number | boolean | null {
+  const trimmed = text.trim();
+
+  if (trimmed === 'true' || trimmed === 'false') {
+    return trimmed === 'true';
+  }
+
+  if (trimmed === 'null') {
+    return null;
+  }
+
+  return trimmed !== '' && Number.isFinite(Number(trimmed)) ? Number(trimmed) : text;
+}
+
+/** "Every [15] minutes, run when [path] [≥] [10]" over a read-only GraphQL query. */
+function PollTriggerRow({ onChange, trigger }: { onChange: (_trigger: PollFormTrigger) => void; trigger: PollFormTrigger }): JSX.Element {
+  const queryId = useId();
+  const { condition } = trigger;
+
+  return (
+    <div className="fk:flex fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-2 fk:text-sm">
+      <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
+        <span>Every</span>
+        <Input
+          aria-label="Minutes between checks"
+          className="fk:h-7 fk:w-16 fk:text-xs"
+          max={MAX_POLL_INTERVAL_MINUTES}
+          min={MIN_POLL_INTERVAL_MINUTES}
+          type="number"
+          value={Number.isFinite(trigger.intervalMinutes) ? trigger.intervalMinutes : ''}
+          onChange={(event) => onChange({ ...trigger, intervalMinutes: Number.parseInt(event.target.value, 10) })}
+        />
+        <span>minutes, run when</span>
+        <Select
+          value={condition ? 'condition' : 'changed'}
+          onValueChange={(mode) =>
+            onChange({ ...trigger, condition: mode === 'changed' ? null : { op: 'gte', path: '', value: '' } })
+          }
+        >
+          <SelectTrigger className="fk:h-7 fk:w-auto fk:text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="condition">a value meets a condition</SelectItem>
+            <SelectItem value="changed">the result changes</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {condition ? (
+        <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
+          <Input
+            aria-label="Path in the result"
+            className="fk:h-7 fk:w-78 fk:font-mono fk:text-xs"
+            placeholder="data.ordersConnection.totalCount"
+            value={condition.path}
+            onChange={(event) => onChange({ ...trigger, condition: { ...condition, path: event.target.value } })}
+          />
+          <Select
+            value={condition.op}
+            onValueChange={(op) =>
+              onChange({
+                ...trigger,
+                condition: op === 'exists' ? { op: 'exists', path: condition.path } : { ...condition, op: op as AutomationPollConditionOp },
+              })
+            }
+          >
+            <SelectTrigger className="fk:h-7 fk:w-auto fk:text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {POLL_CONDITION_OPS.map((op) => (
+                <SelectItem key={op.value} value={op.value}>
+                  {op.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {condition.op === 'exists' ? null : (
+            <Input
+              aria-label="Value"
+              className="fk:h-7 fk:w-32 fk:text-xs"
+              placeholder="10"
+              value={condition.value === undefined || condition.value === null ? '' : String(condition.value)}
+              onChange={(event) => onChange({ ...trigger, condition: { ...condition, value: parseConditionValue(event.target.value) } })}
+            />
+          )}
+        </div>
+      ) : null}
+      <Label className="fk:sr-only" htmlFor={queryId}>
+        Read-only GraphQL query
+      </Label>
+      <Textarea
+        className="fk:min-h-20 fk:font-mono fk:text-xs"
+        id={queryId}
+        placeholder={'query {\n  ordersConnection(where: { status: { eq: "pending" } }) { totalCount }\n}'}
+        value={trigger.query}
+        onChange={(event) => onChange({ ...trigger, query: event.target.value })}
+      />
+    </div>
+  );
+}
+
 function TriggersField({
+  automationId,
   entities,
   errors,
   onChange,
   projectId,
   triggers,
 }: {
+  /** The automation being edited, if any. */
+  automationId?: string;
   entities: string[];
   errors: { [triggerKey: string]: string };
   onChange: (_triggers: FormTrigger[]) => void;
@@ -910,6 +1124,12 @@ function TriggersField({
               {trigger.type === 'entity' ? (
                 <DatabaseZapIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
               ) : null}
+              {trigger.type === 'job' ? (
+                <CircleCheckBigIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
+              ) : null}
+              {trigger.type === 'poll' ? (
+                <RefreshCwIcon className="fk:size-4 fk:shrink-0 fk:self-start fk:mt-2.5 fk:text-muted-foreground" />
+              ) : null}
               {trigger.type === 'schedule' ? <ScheduleTriggerRow trigger={trigger} onChange={updateTrigger} /> : null}
               {trigger.type === 'webhook' ? (
                 <WebhookTriggerRow projectId={projectId} trigger={trigger} onChange={updateTrigger} />
@@ -917,6 +1137,10 @@ function TriggersField({
               {trigger.type === 'entity' ? (
                 <EntityTriggerRow entities={entities} trigger={trigger} onChange={updateTrigger} />
               ) : null}
+              {trigger.type === 'job' ? (
+                <JobTriggerRow automationId={automationId} projectId={projectId} trigger={trigger} onChange={updateTrigger} />
+              ) : null}
+              {trigger.type === 'poll' ? <PollTriggerRow trigger={trigger} onChange={updateTrigger} /> : null}
               <Button
                 aria-label="Remove trigger"
                 className="fk:opacity-0 fk:group-hover:opacity-100"
@@ -975,6 +1199,27 @@ function TriggersField({
           >
             <DatabaseZapIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
             Entity Events
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => addTrigger({ automationId: null, job: 'schema_deploy', key: createTriggerKey(), outcome: 'succeeded', type: 'job' })}
+          >
+            <CircleCheckBigIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
+            Job Finished
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              addTrigger({
+                condition: { op: 'gte', path: '', value: '' },
+                intervalMinutes: DEFAULT_POLL_INTERVAL_MINUTES,
+                key: createTriggerKey(),
+                query: '',
+                type: 'poll',
+                variables: null,
+              })
+            }
+          >
+            <RefreshCwIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
+            Poll Condition
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -1310,6 +1555,24 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
 
       if (trigger.type === 'entity' && trigger.events.length === 0) {
         triggerErrors[trigger.key] = 'Select at least one event (create, update or delete)';
+      }
+
+      if (trigger.type === 'job' && trigger.job === 'automation_run' && !trigger.automationId) {
+        triggerErrors[trigger.key] = 'Choose the automation whose runs start this one';
+      }
+
+      if (trigger.type === 'poll') {
+        if (
+          !Number.isInteger(trigger.intervalMinutes) ||
+          trigger.intervalMinutes < MIN_POLL_INTERVAL_MINUTES ||
+          trigger.intervalMinutes > MAX_POLL_INTERVAL_MINUTES
+        ) {
+          triggerErrors[trigger.key] = `Check every ${MIN_POLL_INTERVAL_MINUTES.toString()} to ${MAX_POLL_INTERVAL_MINUTES.toString()} minutes`;
+        } else if (!trigger.query.trim()) {
+          triggerErrors[trigger.key] = 'Enter the read-only GraphQL query to check';
+        } else if (trigger.condition && !trigger.condition.path.trim()) {
+          triggerErrors[trigger.key] = 'Enter the path of the value to compare, e.g. data.ordersConnection.totalCount';
+        }
       }
     }
 
@@ -1741,6 +2004,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           When this automation should run. Schedules run in your timezone; webhooks run when their URL is called.
         </p>
         <TriggersField
+          automationId={automation?.id}
           entities={entitiesData?.entities ?? []}
           errors={validation.triggerErrors}
           projectId={projectId}
