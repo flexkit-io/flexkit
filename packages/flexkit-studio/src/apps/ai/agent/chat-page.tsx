@@ -212,6 +212,11 @@ function resolveSeededChatDetail(
 }
 
 /** Maps a chat turn status onto the record statuses the stream hook understands. */
+/** A composer reply answered the question of this assistant turn; a new object per answer. */
+interface QuestionAnsweredSignal {
+  messageId: string;
+}
+
 function getTurnRecordStatus(status: AgentChatMessageStatus): RunRecordStatus {
   if (status === 'awaiting_approval') {
     return 'awaiting_approval';
@@ -442,8 +447,8 @@ function LiveTurn({
   onMidTurnDelivered: (_ids: string[]) => void;
   onStatusChange: (_status: TurnStatus) => void;
   onTurnUpdated: () => void;
-  /** Bumped when a composer reply answered the question this turn waits on. */
-  questionAnsweredSignal: number;
+  /** Set when a composer reply answered a question; applies only to the turn that asked it. */
+  questionAnsweredSignal: QuestionAnsweredSignal | null;
 }): JSX.Element {
   const recordStatus = getTurnRecordStatus(message.status);
   const streamApi = message.workflowRunId ? api.getAgentChatStreamUrl(chatId, message.workflowRunId) : '';
@@ -512,16 +517,21 @@ function LiveTurn({
   }, [message.id]);
 
   // A composer reply answered the open question: resume the stream as the card's own answer does.
-  // Only a bump seen while mounted counts, so a turn mounting later never inherits an old one.
+  // Only a signal for this turn, newer than the one seen at mount, counts.
   const seenQuestionSignalRef = useRef(questionAnsweredSignal);
 
   useEffect(() => {
-    if (questionAnsweredSignal !== seenQuestionSignalRef.current) {
-      seenQuestionSignalRef.current = questionAnsweredSignal;
+    if (questionAnsweredSignal === seenQuestionSignalRef.current) {
+      return;
+    }
+
+    seenQuestionSignalRef.current = questionAnsweredSignal;
+
+    if (questionAnsweredSignal?.messageId === message.id) {
       setSuppressApprovalPause(true);
       setResumeToken((current) => current + 1);
     }
-  }, [questionAnsweredSignal]);
+  }, [message.id, questionAnsweredSignal]);
 
   // Clear the post-decide suppress window once the workflow has resumed.
   useEffect(() => {
@@ -847,7 +857,7 @@ function ChatConversation({
   /** A message sent during the live turn, until the platform has stored it. */
   pendingFollowUp?: PendingMessage;
   pendingMessage?: PendingMessage;
-  questionAnsweredSignal: number;
+  questionAnsweredSignal: QuestionAnsweredSignal | null;
   resolveDetail: (_detail: AgentChatDetail | undefined) => AgentChatDetail | undefined;
 }): JSX.Element {
   // SWR only re-arms its polling timer when the refreshInterval option (or
@@ -1212,7 +1222,7 @@ export function AgentChatPage(): JSX.Element {
   const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(null);
   const visiblePendingMessage = pendingMessage && pendingMessage.chatId === chatId ? pendingMessage : undefined;
   const [pendingFollowUp, setPendingFollowUp] = useState<(PendingMessage & { chatId: string }) | null>(null);
-  const [questionAnsweredSignal, setQuestionAnsweredSignal] = useState(0);
+  const [questionAnsweredSignal, setQuestionAnsweredSignal] = useState<QuestionAnsweredSignal | null>(null);
   const visiblePendingFollowUp = pendingFollowUp && pendingFollowUp.chatId === chatId ? pendingFollowUp : undefined;
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
@@ -1315,7 +1325,7 @@ export function AgentChatPage(): JSX.Element {
       // The message answered the question the turn waited on: resume the live stream so the
       // card shows the reply, and refresh the turn status (no longer awaiting).
       if ('question' in result) {
-        setQuestionAnsweredSignal((current) => current + 1);
+        setQuestionAnsweredSignal({ messageId: result.question.chatMessageId });
         await globalMutate(paths(chatProjectId).agentChat(targetChatId));
 
         return;
