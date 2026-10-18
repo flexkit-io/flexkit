@@ -1,5 +1,14 @@
 # @flexkit/studio
 
+## 0.2.8
+
+### Patch Changes
+
+- 1554896: Automations can be triggered when a job finishes (a schema deployment, another automation's run or a bulk action) and by a poll condition (a read-only GraphQL query checked every few minutes).
+- Updated dependencies [1554896]
+  - @flexkit/agent-protocol@0.3.6
+  - @flexkit/schema@0.2.8
+
 ## 0.2.7
 
 ### Patch Changes
