@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.6
+
+### Patch Changes
+
+- 1554896: Add the `job` and `poll` automation trigger types to `AutomationTriggerType`.
+
 ## 0.3.5
 
 ### Patch Changes
