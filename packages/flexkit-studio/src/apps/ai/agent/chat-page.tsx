@@ -432,6 +432,7 @@ function LiveTurn({
   onMidTurnDelivered,
   onStatusChange,
   onTurnUpdated,
+  questionAnsweredSignal,
 }: {
   api: ApiClient;
   chatId: string;
@@ -441,6 +442,8 @@ function LiveTurn({
   onMidTurnDelivered: (_ids: string[]) => void;
   onStatusChange: (_status: TurnStatus) => void;
   onTurnUpdated: () => void;
+  /** Bumped when a composer reply answered the question this turn waits on. */
+  questionAnsweredSignal: number;
 }): JSX.Element {
   const recordStatus = getTurnRecordStatus(message.status);
   const streamApi = message.workflowRunId ? api.getAgentChatStreamUrl(chatId, message.workflowRunId) : '';
@@ -507,6 +510,18 @@ function LiveTurn({
     lastDecidedApprovalIdRef.current = null;
     setDecidedApprovals({});
   }, [message.id]);
+
+  // A composer reply answered the open question: resume the stream as the card's own answer does.
+  // Only a bump seen while mounted counts, so a turn mounting later never inherits an old one.
+  const seenQuestionSignalRef = useRef(questionAnsweredSignal);
+
+  useEffect(() => {
+    if (questionAnsweredSignal !== seenQuestionSignalRef.current) {
+      seenQuestionSignalRef.current = questionAnsweredSignal;
+      setSuppressApprovalPause(true);
+      setResumeToken((current) => current + 1);
+    }
+  }, [questionAnsweredSignal]);
 
   // Clear the post-decide suppress window once the workflow has resumed.
   useEffect(() => {
@@ -822,6 +837,7 @@ function ChatConversation({
   projectId,
   pendingFollowUp,
   pendingMessage,
+  questionAnsweredSignal,
   resolveDetail,
 }: {
   api: ApiClient;
@@ -831,6 +847,7 @@ function ChatConversation({
   /** A message sent during the live turn, until the platform has stored it. */
   pendingFollowUp?: PendingMessage;
   pendingMessage?: PendingMessage;
+  questionAnsweredSignal: number;
   resolveDetail: (_detail: AgentChatDetail | undefined) => AgentChatDetail | undefined;
 }): JSX.Element {
   // SWR only re-arms its polling timer when the refreshInterval option (or
@@ -1036,6 +1053,7 @@ function ChatConversation({
               onMidTurnDelivered={(ids) => setLiveDeliveredIds({ ids, messageId: liveMessage.id })}
               onStatusChange={(status) => setReportedStatus({ messageId: liveMessage.id, status })}
               onTurnUpdated={() => void mutate()}
+              questionAnsweredSignal={questionAnsweredSignal}
             />
           ) : null}
           {pendingMessage && !liveMessage ? (
@@ -1194,6 +1212,7 @@ export function AgentChatPage(): JSX.Element {
   const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(null);
   const visiblePendingMessage = pendingMessage && pendingMessage.chatId === chatId ? pendingMessage : undefined;
   const [pendingFollowUp, setPendingFollowUp] = useState<(PendingMessage & { chatId: string }) | null>(null);
+  const [questionAnsweredSignal, setQuestionAnsweredSignal] = useState(0);
   const visiblePendingFollowUp = pendingFollowUp && pendingFollowUp.chatId === chatId ? pendingFollowUp : undefined;
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
@@ -1293,9 +1312,10 @@ export function AgentChatPage(): JSX.Element {
     try {
       const result = await chatApi.sendAgentChatFollowUp(targetChatId, { attachments, content: text, modelId });
 
-      // The message answered the question the turn waited on: the card shows it once the
-      // resumed stream arrives, which the refreshed turn status (no longer awaiting) reconnects.
+      // The message answered the question the turn waited on: resume the live stream so the
+      // card shows the reply, and refresh the turn status (no longer awaiting).
       if ('question' in result) {
+        setQuestionAnsweredSignal((current) => current + 1);
         await globalMutate(paths(chatProjectId).agentChat(targetChatId));
 
         return;
@@ -1467,6 +1487,7 @@ export function AgentChatPage(): JSX.Element {
                   pendingFollowUp={visiblePendingFollowUp}
                   pendingMessage={visiblePendingMessage}
                   projectId={projectId}
+                  questionAnsweredSignal={questionAnsweredSignal}
                   resolveDetail={resolveDetail}
                 />
               </ChatApprovalContext.Provider>
