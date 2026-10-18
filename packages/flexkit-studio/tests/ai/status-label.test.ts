@@ -233,3 +233,20 @@ describe('question status', () => {
     assert.equal(getLiveStatusLabel(message([dataPart('data-user-question', { ...question, status: 'answered' })])), null);
   });
 });
+
+describe('export status', () => {
+  it('counts exported rows while the export runs', () => {
+    const exporting = { filename: 'products.csv', format: 'csv', rowCount: 0, status: 'loading' };
+
+    assert.equal(getLiveStatusLabel(message([dataPart('data-export-records', exporting)])), 'Exporting records');
+    assert.equal(
+      getLiveStatusLabel(message([dataPart('data-export-records', { ...exporting, rowCount: 12500 })])),
+      'Exporting records (12,500 so far)'
+    );
+    assert.equal(isHiddenReplayPart(dataPart('data-export-records', { ...exporting, status: 'done' })), true);
+    assert.equal(
+      isHiddenReplayPart(dataPart('data-export-records', { ...exporting, error: { message: 'x' }, status: 'error' })),
+      false
+    );
+  });
+});

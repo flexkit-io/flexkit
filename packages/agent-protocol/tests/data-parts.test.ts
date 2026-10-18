@@ -43,4 +43,16 @@ describe('dataPartSchema', () => {
     );
     assert.equal(schema.safeParse({ questionId: 'q1', questions: [question], status: 'approved' }).success, false);
   });
+
+  it('validates export progress and data artifacts', () => {
+    assert.ok(
+      dataPartSchema.shape['export-records'].safeParse({ filename: 'products.csv', format: 'csv', rowCount: 1200, status: 'loading' })
+        .success
+    );
+    assert.equal(
+      dataPartSchema.shape['export-records'].safeParse({ filename: 'products.xml', format: 'xml', rowCount: 0, status: 'done' }).success,
+      false
+    );
+    assert.ok(dataPartSchema.shape['run-artifact'].safeParse({ filename: 'products.csv', kind: 'csv', status: 'done' }).success);
+  });
 });

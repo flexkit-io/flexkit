@@ -304,7 +304,7 @@ export interface AutomationArtifact {
   createdAt: string;
   downloadUrl: string;
   filename: string;
-  kind: 'html' | 'pdf';
+  kind: 'html' | 'pdf' | 'csv' | 'json';
   previewUrl: string;
   sizeBytes: number;
 }

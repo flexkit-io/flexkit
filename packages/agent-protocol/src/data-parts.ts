@@ -98,7 +98,7 @@ export const dataPartSchema = z.object({
     contentType: z.string().optional(),
     error: errorSchema.optional(),
     filename: z.string(),
-    kind: z.enum(['html', 'pdf']).optional(),
+    kind: z.enum(['html', 'pdf', 'csv', 'json']).optional(),
     sizeBytes: z.number().optional(),
     status: z.enum(['uploading', 'done', 'error']),
     /** Persistent public URL of the stored artifact. */
@@ -139,6 +139,15 @@ export const dataPartSchema = z.object({
     operationType: z.enum(['query', 'mutation']).optional(),
     status: z.enum(['loading', 'done', 'error']),
     error: errorSchema.optional(),
+  }),
+  /** A data export the server pages through; the file arrives as a `run-artifact` part. */
+  'export-records': z.object({
+    error: errorSchema.optional(),
+    filename: z.string(),
+    format: z.enum(['csv', 'json']),
+    /** Rows written so far, then in total. */
+    rowCount: z.number(),
+    status: z.enum(['loading', 'done', 'error']),
   }),
   /** Emitted for proposals; the UI fetches the full proposal from the approvals API by id. */
   'mutation-approval': z.object({

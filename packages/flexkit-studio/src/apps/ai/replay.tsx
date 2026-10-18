@@ -1075,7 +1075,11 @@ export function RunArtifactPart({
     <ToolMessage>
       <ToolHeader>
         <FileTextIcon className="fk:size-3.5" />
-        {message.status === 'done' ? 'Published artifact' : 'Publishing artifact'}
+        {message.kind === 'csv' || message.kind === 'json'
+          ? 'Exported file'
+          : message.status === 'done'
+            ? 'Published artifact'
+            : 'Publishing artifact'}
       </ToolHeader>
       <div className="fk:relative fk:min-h-5 fk:pl-6">
         <span className="fk:absolute fk:left-0 fk:top-0">
@@ -1092,11 +1096,14 @@ export function RunArtifactPart({
           </div>
           {isDone ? (
             <div className="fk:flex fk:flex-wrap fk:gap-2">
-              <Button asChild size="sm" variant="outline">
-                <a href={previewUrl} rel="noreferrer" target="_blank">
-                  Preview
-                </a>
-              </Button>
+              {/* Browsers download a CSV instead of showing it, so only Download makes sense. */}
+              {message.kind === 'csv' ? null : (
+                <Button asChild size="sm" variant="outline">
+                  <a href={previewUrl} rel="noreferrer" target="_blank">
+                    Preview
+                  </a>
+                </Button>
+              )}
               <Button asChild size="sm" variant="outline">
                 <a href={downloadUrl}>
                   <DownloadIcon className="fk:size-3" />
@@ -1404,6 +1411,14 @@ function getArtifactLabel(message: ReplayDataParts['run-artifact']): string {
 
   if (message.kind === 'html') {
     return 'HTML artifact';
+  }
+
+  if (message.kind === 'csv') {
+    return 'CSV file';
+  }
+
+  if (message.kind === 'json') {
+    return 'JSON file';
   }
 
   return 'Artifact';
