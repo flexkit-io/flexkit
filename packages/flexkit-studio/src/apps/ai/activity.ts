@@ -37,8 +37,10 @@ export function getActivitySourceLabel(item: ActivityItem): string | null {
 }
 
 const RESOLUTION_LABELS: { [key in ActivityItemResolution]: string } = {
+  answered: 'Answered',
   approved: 'Approved',
   cancelled: 'Cancelled',
+  dismissed: 'Dismissed',
   expired: 'Expired',
   rejected: 'Rejected',
 };
@@ -61,7 +63,11 @@ export function getActivityStatusLabel(item: ActivityItem): string | null {
     return RESOLUTION_LABELS[item.resolution];
   }
 
-  return item.requiresAction && item.state !== 'done' && item.state !== 'dismissed' ? 'Needs approval' : null;
+  if (!item.requiresAction || item.state === 'done' || item.state === 'dismissed') {
+    return null;
+  }
+
+  return item.kind === 'question' ? 'Needs answer' : 'Needs approval';
 }
 
 /** How a row's status badge reads: waiting on the viewer, a failure, or neutral. */

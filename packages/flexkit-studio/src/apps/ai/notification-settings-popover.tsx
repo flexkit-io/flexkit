@@ -11,6 +11,7 @@ const DESKTOP_KINDS: { kind: ActivityItemKind; label: string }[] = [
   { kind: 'automation_failure', label: 'Automation failures' },
   { kind: 'automation_result', label: 'Automation results' },
   { kind: 'monitor_event', label: 'Chat monitors' },
+  { kind: 'question', label: 'Agent questions' },
 ];
 
 function SettingSwitch({

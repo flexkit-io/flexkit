@@ -335,6 +335,12 @@ export function getLiveStatusLabel(message: ReplayMessage | undefined): string |
       return data.status === 'pending' ? 'Awaiting approval' : getPlanStatusLabel(message);
     }
 
+    if (part.type === 'data-user-question') {
+      const data = getPartData<ReplayDataParts['user-question']>(part);
+
+      return data.status === 'pending' ? 'Waiting for your answer' : getPlanStatusLabel(message);
+    }
+
     if (part.type === 'text') {
       return null;
     }

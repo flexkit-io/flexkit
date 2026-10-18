@@ -2,13 +2,14 @@
  * `approval_request`: a proposal waits on the recipient. `automation_result`: an
  * automation run finished and its notify rule asked for it. `automation_failure`:
  * an automation run failed. `monitor_event`: a chat monitor woke the chat, or paused.
+ * `question`: the chat agent asked the recipient a question and waits for the answer.
  */
-export type ActivityItemKind = 'approval_request' | 'automation_result' | 'automation_failure' | 'monitor_event';
+export type ActivityItemKind = 'approval_request' | 'automation_result' | 'automation_failure' | 'monitor_event' | 'question';
 
 /** `done` = resolved by the system (e.g. the approval was decided); `dismissed` = hidden by the recipient. */
 export type ActivityItemState = 'unread' | 'read' | 'done' | 'dismissed';
 
-export type ActivityItemResolution = 'approved' | 'rejected' | 'expired' | 'cancelled';
+export type ActivityItemResolution = 'approved' | 'rejected' | 'expired' | 'cancelled' | 'answered' | 'dismissed';
 
 /** One entry in a user's Studio Activity inbox. */
 export interface ActivityItem {
@@ -22,7 +23,7 @@ export interface ActivityItem {
   id: string;
   kind: ActivityItemKind;
   readAt: string | null;
-  /** True when the item waits on the recipient (an approval request). */
+  /** True when the item waits on the recipient (an approval request or a question). */
   requiresAction: boolean;
   resolution: ActivityItemResolution | null;
   resolvedAt: string | null;

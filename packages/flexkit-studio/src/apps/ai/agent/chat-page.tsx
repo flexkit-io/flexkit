@@ -46,6 +46,7 @@ import {
   getMutationApprovalIds,
   isHiddenReplayPart,
   messageHasPendingMutationApproval,
+  messageHasPendingUserQuestion,
   toMutationApprovalPartData,
   useProjectApi,
   useRunStream,
@@ -211,6 +212,11 @@ function resolveSeededChatDetail(
 }
 
 /** Maps a chat turn status onto the record statuses the stream hook understands. */
+/** A composer reply answered the question of this assistant turn; a new object per answer. */
+interface QuestionAnsweredSignal {
+  messageId: string;
+}
+
 function getTurnRecordStatus(status: AgentChatMessageStatus): RunRecordStatus {
   if (status === 'awaiting_approval') {
     return 'awaiting_approval';
@@ -431,6 +437,7 @@ function LiveTurn({
   onMidTurnDelivered,
   onStatusChange,
   onTurnUpdated,
+  questionAnsweredSignal,
 }: {
   api: ApiClient;
   chatId: string;
@@ -440,6 +447,8 @@ function LiveTurn({
   onMidTurnDelivered: (_ids: string[]) => void;
   onStatusChange: (_status: TurnStatus) => void;
   onTurnUpdated: () => void;
+  /** Set when a composer reply answered a question; applies only to the turn that asked it. */
+  questionAnsweredSignal: QuestionAnsweredSignal | null;
 }): JSX.Element {
   const recordStatus = getTurnRecordStatus(message.status);
   const streamApi = message.workflowRunId ? api.getAgentChatStreamUrl(chatId, message.workflowRunId) : '';
@@ -469,6 +478,16 @@ function LiveTurn({
   onStatusChangeRef.current = onStatusChange;
   const replayActions = useMemo<RunReplayActions>(
     () => ({
+      answerQuestion: async (questionId, response) => {
+        const { question } = await api.answerAgentChatQuestion(chatId, questionId, response);
+
+        // Reconnect the stream right away, as after an approval decision, so the resumed turn shows without waiting for a poll.
+        setSuppressApprovalPause(true);
+        setResumeToken((current) => current + 1);
+        onTurnUpdatedRef.current();
+
+        return question ?? null;
+      },
       onApprovalDecided: (approvalId, decidedStatus) => {
         if (approvalId && decidedStatus && decidedStatus !== 'pending') {
           setDecidedApprovals((current) => ({ ...current, [approvalId]: decidedStatus }));
@@ -487,7 +506,7 @@ function LiveTurn({
         onTurnUpdatedRef.current();
       },
     }),
-    []
+    [api, chatId]
   );
 
   useEffect(() => {
@@ -496,6 +515,23 @@ function LiveTurn({
     lastDecidedApprovalIdRef.current = null;
     setDecidedApprovals({});
   }, [message.id]);
+
+  // A composer reply answered the open question: resume the stream as the card's own answer does.
+  // Only a signal for this turn, newer than the one seen at mount, counts.
+  const seenQuestionSignalRef = useRef(questionAnsweredSignal);
+
+  useEffect(() => {
+    if (questionAnsweredSignal === seenQuestionSignalRef.current) {
+      return;
+    }
+
+    seenQuestionSignalRef.current = questionAnsweredSignal;
+
+    if (questionAnsweredSignal?.messageId === message.id) {
+      setSuppressApprovalPause(true);
+      setResumeToken((current) => current + 1);
+    }
+  }, [message.id, questionAnsweredSignal]);
 
   // Clear the post-decide suppress window once the workflow has resumed.
   useEffect(() => {
@@ -530,7 +566,10 @@ function LiveTurn({
   const isAwaitingApproval =
     !suppressApprovalPause &&
     message.status !== 'streaming' &&
-    (message.status === 'awaiting_approval' || status === 'paused' || messageHasPendingMutationApproval(streamMessage));
+    (message.status === 'awaiting_approval' ||
+      status === 'paused' ||
+      messageHasPendingMutationApproval(streamMessage) ||
+      messageHasPendingUserQuestion(streamMessage));
   // When the stream replay has no data-mutation-approval part yet (e.g. right
   // after a reload), fall back to the pending approval from the chat detail.
   const streamApprovalIds = useMemo(() => new Set(getMutationApprovalIds(streamMessage)), [streamMessage]);
@@ -541,7 +580,8 @@ function LiveTurn({
   // reasoning, a tool call ("Searching schema"), or plain "Thinking".
   const lastPart = streamMessage?.parts[streamMessage.parts.length - 1];
   const contentIsStreaming = lastPart?.type === 'text' && lastPart.state === 'streaming';
-  const statusLabel = isAwaitingApproval ? 'Awaiting approval' : (getLiveStatusLabel(streamMessage) ?? 'Thinking');
+  const awaitingLabel = messageHasPendingUserQuestion(streamMessage) ? 'Waiting for your answer' : 'Awaiting approval';
+  const statusLabel = isAwaitingApproval ? awaitingLabel : (getLiveStatusLabel(streamMessage) ?? 'Thinking');
   const statusVisible = isAwaitingApproval
     ? status !== 'finished' && status !== 'error'
     : status === 'streaming' && !contentIsStreaming;
@@ -807,6 +847,7 @@ function ChatConversation({
   projectId,
   pendingFollowUp,
   pendingMessage,
+  questionAnsweredSignal,
   resolveDetail,
 }: {
   api: ApiClient;
@@ -816,6 +857,7 @@ function ChatConversation({
   /** A message sent during the live turn, until the platform has stored it. */
   pendingFollowUp?: PendingMessage;
   pendingMessage?: PendingMessage;
+  questionAnsweredSignal: QuestionAnsweredSignal | null;
   resolveDetail: (_detail: AgentChatDetail | undefined) => AgentChatDetail | undefined;
 }): JSX.Element {
   // SWR only re-arms its polling timer when the refreshInterval option (or
@@ -1021,6 +1063,7 @@ function ChatConversation({
               onMidTurnDelivered={(ids) => setLiveDeliveredIds({ ids, messageId: liveMessage.id })}
               onStatusChange={(status) => setReportedStatus({ messageId: liveMessage.id, status })}
               onTurnUpdated={() => void mutate()}
+              questionAnsweredSignal={questionAnsweredSignal}
             />
           ) : null}
           {pendingMessage && !liveMessage ? (
@@ -1179,6 +1222,7 @@ export function AgentChatPage(): JSX.Element {
   const [pendingMessage, setPendingMessage] = useState<(PendingMessage & { chatId: string | undefined }) | null>(null);
   const visiblePendingMessage = pendingMessage && pendingMessage.chatId === chatId ? pendingMessage : undefined;
   const [pendingFollowUp, setPendingFollowUp] = useState<(PendingMessage & { chatId: string }) | null>(null);
+  const [questionAnsweredSignal, setQuestionAnsweredSignal] = useState<QuestionAnsweredSignal | null>(null);
   const visiblePendingFollowUp = pendingFollowUp && pendingFollowUp.chatId === chatId ? pendingFollowUp : undefined;
   const [sendError, setSendError] = useState<string | null>(null);
   const chatModelId = chatDetail?.chat.modelId ?? null;
@@ -1277,6 +1321,15 @@ export function AgentChatPage(): JSX.Element {
 
     try {
       const result = await chatApi.sendAgentChatFollowUp(targetChatId, { attachments, content: text, modelId });
+
+      // The message answered the question the turn waited on: resume the live stream so the
+      // card shows the reply, and refresh the turn status (no longer awaiting).
+      if ('question' in result) {
+        setQuestionAnsweredSignal({ messageId: result.question.chatMessageId });
+        await globalMutate(paths(chatProjectId).agentChat(targetChatId));
+
+        return;
+      }
 
       await globalMutate<AgentChatDetail>(
         paths(chatProjectId).agentChat(targetChatId),
@@ -1444,6 +1497,7 @@ export function AgentChatPage(): JSX.Element {
                   pendingFollowUp={visiblePendingFollowUp}
                   pendingMessage={visiblePendingMessage}
                   projectId={projectId}
+                  questionAnsweredSignal={questionAnsweredSignal}
                   resolveDetail={resolveDetail}
                 />
               </ChatApprovalContext.Provider>
