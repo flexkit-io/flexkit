@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useRef, useState } from 'react';
 import { CheckIcon, CircleAlertIcon, LoaderCircle, PlugIcon } from 'lucide-react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useConfig } from '../../../core/config/config-context';
@@ -38,6 +38,7 @@ function PluginLogo({ name, src, size }: { name: string; size: 'md' | 'lg'; src:
 }
 
 function ConsentDialog({
+  busy,
   logoUrl,
   name,
   onContinue,
@@ -45,6 +46,7 @@ function ConsentDialog({
   open,
   scopes,
 }: {
+  busy: boolean;
   logoUrl: string;
   name: string;
   onContinue: (_scope: PluginScope) => void;
@@ -104,7 +106,7 @@ function ConsentDialog({
         <p className="fk:text-center fk:text-xs fk:text-muted-foreground">
           You can manage connections anytime in AI → Marketplace.
         </p>
-        <Button className="fk:w-full" disabled={!scope} onClick={() => scope && onContinue(scope)} type="button">
+        <Button className="fk:w-full" disabled={busy || !scope} onClick={() => scope && onContinue(scope)} type="button">
           Continue
         </Button>
       </DialogContent>
@@ -133,6 +135,8 @@ export function PluginConnectCard({
   const chat = useContext(PluginConnectContext);
   const [consentOpen, setConsentOpen] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  // State updates land after the next render; a double click must not start a second popup.
+  const connectingRef = useRef(false);
   const [failure, setFailure] = useState<{ message: string; scope: PluginScope } | null>(null);
 
   if (!data) {
@@ -150,34 +154,41 @@ export function PluginConnectCard({
 
   // Called straight from a click: browsers only allow the popup there.
   function authorize(scope: PluginScope): void {
-    if (!api) {
+    if (!api || connectingRef.current) {
       return;
     }
 
+    connectingRef.current = true;
     setConsentOpen(false);
     setConnecting(true);
     setFailure(null);
 
     connectPluginPopup(api, pluginId, scope, reconnect ? { connectionId: reconnect.id } : undefined)
-      .then(async () => {
-        await mutate();
+      .then(
+        () => {
+          // Refreshing the card is best-effort: the connection succeeded either
+          // way, and the chat continues with it (reporting its own errors).
+          mutate().catch(() => undefined);
 
-        if (base) {
-          void revalidateKey(`${base}/plugins`);
+          if (base) {
+            revalidateKey(`${base}/plugins`).catch(() => undefined);
+          }
+
+          void chat?.onConnected(pluginId);
+        },
+        (reason: unknown) => {
+          const detail = reason instanceof Error ? reason.message : '';
+
+          setFailure({
+            message: /popups|different account/i.test(detail) ? detail : `${plugin.name} authorization didn't finish`,
+            scope,
+          });
         }
-
-        // The chat reports its own errors; the connection itself succeeded.
-        void chat?.onConnected(pluginId);
-      })
-      .catch((reason: unknown) => {
-        const detail = reason instanceof Error ? reason.message : '';
-
-        setFailure({
-          message: /popups|different account/i.test(detail) ? detail : `${plugin.name} authorization didn't finish`,
-          scope,
-        });
-      })
-      .finally(() => setConnecting(false));
+      )
+      .finally(() => {
+        connectingRef.current = false;
+        setConnecting(false);
+      });
   }
 
   let status: JSX.Element | null = null;
@@ -261,6 +272,7 @@ export function PluginConnectCard({
       ) : null}
       {state.kind === 'connect' ? (
         <ConsentDialog
+          busy={connecting}
           logoUrl={plugin.logoUrl}
           name={plugin.name}
           onContinue={authorize}
@@ -277,9 +289,12 @@ export function PluginConnectCard({
 export function PluginConnectedNotice({
   data,
   error,
+  label,
 }: {
   data: PluginConnectedData;
   error?: string | null;
+  /** Set while the message waits for the running turn, like other follow-ups. */
+  label?: string | null;
 }): JSX.Element {
   return (
     <div className="fk:mr-auto fk:flex fk:max-w-[85%] fk:flex-wrap fk:items-center fk:gap-x-2 fk:gap-y-1 fk:text-sm fk:text-muted-foreground">
@@ -288,6 +303,7 @@ export function PluginConnectedNotice({
         Connected <span className="fk:font-medium fk:text-foreground">{data.pluginName}</span>
         {data.accountName ? ` · ${data.accountName}` : ''}
       </span>
+      {label ? <span className="fk:text-xs">· {label}</span> : null}
       {error ? <span className="fk:text-xs fk:text-destructive">{error}</span> : null}
     </div>
   );

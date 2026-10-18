@@ -388,7 +388,9 @@ function HistoryMessage({
   if (message.kind === 'plugin_connected') {
     const connected = getPluginConnectedData(message.parts);
 
-    return connected ? <PluginConnectedNotice data={connected} error={message.error} /> : null;
+    return connected ? (
+      <PluginConnectedNotice data={connected} error={message.error} label={getFollowUpLabel(message.status)} />
+    ) : null;
   }
 
   if (message.role === 'user') {
