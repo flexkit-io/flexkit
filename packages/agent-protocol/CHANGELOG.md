@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.8
+
+### Patch Changes
+
+- 297e77f: Add the `export-records` data part and the `csv` and `json` artifact kinds for the agent's Export Records tool.
+
 ## 0.3.7
 
 ### Patch Changes

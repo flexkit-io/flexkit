@@ -1,5 +1,14 @@
 # @flexkit/studio
 
+## 0.2.10
+
+### Patch Changes
+
+- 297e77f: Show the agent's CSV and JSON exports: an "Exporting records" status line with the running row count, and an "Exported file" card with a download.
+- Updated dependencies [297e77f]
+  - @flexkit/agent-protocol@0.3.8
+  - @flexkit/schema@0.2.10
+
 ## 0.2.9
 
 ### Patch Changes
