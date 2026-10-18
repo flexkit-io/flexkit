@@ -987,6 +987,31 @@ function parseConditionValue(text: string): string | number | boolean | null {
   return trimmed !== '' && Number.isFinite(Number(trimmed)) ? Number(trimmed) : text;
 }
 
+function formatConditionValue(value: unknown): string {
+  return value === undefined ? '' : String(value);
+}
+
+/**
+ * Keeps the typed text while the parsed value goes to the trigger, so "5." or
+ * "null" stay in the field as typed instead of being rewritten mid-typing.
+ */
+function PollValueInput({ onChange, value }: { onChange: (_value: string | number | boolean | null) => void; value: unknown }): JSX.Element {
+  const [text, setText] = useState(() => formatConditionValue(value));
+
+  return (
+    <Input
+      aria-label="Value"
+      className="fk:h-7 fk:w-32 fk:text-xs"
+      placeholder="10"
+      value={text}
+      onChange={(event) => {
+        setText(event.target.value);
+        onChange(parseConditionValue(event.target.value));
+      }}
+    />
+  );
+}
+
 /** "Every [15] minutes, run when [path] [≥] [10]" over a read-only GraphQL query. */
 function PollTriggerRow({ onChange, trigger }: { onChange: (_trigger: PollFormTrigger) => void; trigger: PollFormTrigger }): JSX.Element {
   const queryId = useId();
@@ -1051,13 +1076,7 @@ function PollTriggerRow({ onChange, trigger }: { onChange: (_trigger: PollFormTr
             </SelectContent>
           </Select>
           {condition.op === 'exists' ? null : (
-            <Input
-              aria-label="Value"
-              className="fk:h-7 fk:w-32 fk:text-xs"
-              placeholder="10"
-              value={condition.value === undefined || condition.value === null ? '' : String(condition.value)}
-              onChange={(event) => onChange({ ...trigger, condition: { ...condition, value: parseConditionValue(event.target.value) } })}
-            />
+            <PollValueInput value={condition.value} onChange={(value) => onChange({ ...trigger, condition: { ...condition, value } })} />
           )}
         </div>
       ) : null}
