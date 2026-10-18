@@ -13,6 +13,7 @@ export const TOOL_ALLOW_RULE_REASON_PREFIX = 'Approved by automation tool allow 
 const ROLLING_STATUS_PART_TYPES = new Set<string>([
   'data-create-sandbox',
   'data-execute-graphql',
+  'data-export-records',
   'data-load-skill',
   'data-plan',
   'data-plugin-call',
@@ -161,6 +162,16 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
     }
 
     return data.operationType === 'mutation' ? 'Executing GraphQL mutation' : 'Executing GraphQL query';
+  }
+
+  if (part.type === 'data-export-records') {
+    const data = getPartData<ReplayDataParts['export-records']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.rowCount > 0 ? `Exporting records (${data.rowCount.toLocaleString('en-US')} so far)` : 'Exporting records';
   }
 
   if (part.type === 'data-update-memory') {
