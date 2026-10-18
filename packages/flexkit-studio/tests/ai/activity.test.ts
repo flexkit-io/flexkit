@@ -95,6 +95,16 @@ describe('activity item helpers', () => {
     assert.equal(isActivityItemOpen(decided), false);
   });
 
+  it('labels open and answered agent questions', () => {
+    const question = { approvalId: null, kind: 'question' as const };
+
+    assert.equal(getActivityStatusLabel(item('q', 'x', question)), 'Needs answer');
+    assert.equal(
+      getActivityStatusLabel(item('q', 'x', { ...question, resolution: 'answered', resolvedAt: 'y', state: 'done' })),
+      'Answered'
+    );
+  });
+
   it('labels automation results and failures, which never wait on the viewer', () => {
     const run = { approvalId: null, automationId: 'auto', automationRunId: 'run', chatId: null, requiresAction: false };
     const failure = item('f', 'x', { ...run, kind: 'automation_failure' });

@@ -9,6 +9,8 @@ import type {
   AgentChatFollowUpResult,
   AgentChatMessage,
   AgentChatMonitor,
+  AgentChatQuestion,
+  AgentChatQuestionResponse,
   AgentChatTurn,
   Automation,
   AutomationApproval,
@@ -89,6 +91,12 @@ export interface ApiClient {
    * meanwhile ended, the message starts the next turn.
    */
   sendAgentChatFollowUp: (_chatId: string, _input: SendAgentChatMessageInput) => Promise<AgentChatFollowUpResult>;
+  /** Answers (or dismisses) the questions a chat turn waits on; a settled question comes back with an error. */
+  answerAgentChatQuestion: (
+    _chatId: string,
+    _questionId: string,
+    _response: AgentChatQuestionResponse
+  ) => Promise<{ errorMessage?: string; question?: AgentChatQuestion }>;
   /** Creates a chat and sends its first message in one request. */
   startAgentChat: (_input: SendAgentChatMessageInput) => Promise<StartAgentChatResult>;
   /** Starts the next turn from a queued follow-up once the previous turn has ended. */
@@ -218,6 +226,25 @@ export function createApiClient(projectId: string): ApiClient {
         body: JSON.stringify(input),
         method: 'POST',
       }),
+    answerAgentChatQuestion: async (chatId, questionId, response) => {
+      const result = await fetch(
+        `${agentChatsBasePath}/${encodeURIComponent(chatId)}/questions/${encodeURIComponent(questionId)}/answer`,
+        {
+          body: JSON.stringify(response),
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        }
+      );
+      const data = (await result.json()) as { errorMessage?: string; error?: string; question?: AgentChatQuestion };
+
+      // A question settled elsewhere (409) comes back with its final state for the card to show.
+      if (!result.ok && !data.question) {
+        throw new Error(data.errorMessage ?? data.error ?? 'Request failed');
+      }
+
+      return { errorMessage: result.ok ? undefined : data.errorMessage, question: data.question };
+    },
     startAgentChat: async ({ attachments, content, modelId }) =>
       request<StartAgentChatResult>(agentChatsBasePath, {
         body: JSON.stringify({ message: { attachments, content }, modelId: modelId ?? null }),

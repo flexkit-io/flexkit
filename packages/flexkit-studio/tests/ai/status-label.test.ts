@@ -224,3 +224,12 @@ describe('isHiddenReplayPart and getRollingStatusError', () => {
     assert.equal(isHiddenReplayPart(dataPart('data-run-summary', { status: 'success', summary: 'ok' })), false);
   });
 });
+
+describe('question status', () => {
+  it('waits for the answer while a question is pending', () => {
+    const question = { questionId: 'q', questions: [], status: 'pending' };
+
+    assert.equal(getLiveStatusLabel(message([dataPart('data-user-question', question)])), 'Waiting for your answer');
+    assert.equal(getLiveStatusLabel(message([dataPart('data-user-question', { ...question, status: 'answered' })])), null);
+  });
+});

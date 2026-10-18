@@ -18,6 +18,21 @@ const monitorEventSchema = z.object({
   total: z.number(),
 });
 
+/** One multiple-choice question the chat agent asks with Ask User Question. */
+export const userQuestionSchema = z.object({
+  /** Short chip label, at most 12 characters. */
+  header: z.string(),
+  multiSelect: z.boolean(),
+  options: z.array(z.object({ description: z.string(), label: z.string() })),
+  question: z.string(),
+});
+
+/** The user's answer to one question, by position: chosen option labels plus optional own words. */
+export const userQuestionAnswerSchema = z.object({
+  other: z.string().optional(),
+  selected: z.array(z.string()),
+});
+
 export const dataPartSchema = z.object({
   'plugin-connection': z.object({ pluginId: z.string(), connectionId: z.string().optional() }),
   /** Lifecycle of one plugin tool call, so the UI can name the in-flight call in its status line. */
@@ -186,6 +201,18 @@ export const dataPartSchema = z.object({
     messageId: z.string(),
     monitorEvent: monitorEventSchema.optional(),
     text: z.string(),
+  }),
+  /**
+   * Questions the chat agent asked; the turn waits until the user answers.
+   * `answers` follow `questions` by position. `message` is set instead when
+   * the user answered by typing in the composer.
+   */
+  'user-question': z.object({
+    answers: z.array(userQuestionAnswerSchema).optional(),
+    message: z.string().optional(),
+    questionId: z.string(),
+    questions: z.array(userQuestionSchema),
+    status: z.enum(['pending', 'answered', 'dismissed', 'expired', 'cancelled']),
   }),
   /** Events a chat monitor delivered, on the `monitor_event` message that carries them. */
   'monitor-event': monitorEventSchema,

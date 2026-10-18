@@ -1,3 +1,6 @@
+import type { z } from 'zod';
+import type { userQuestionAnswerSchema, userQuestionSchema } from './data-parts';
+
 /** Chat shapes returned by the agent chat API. */
 export type AgentChatMessageRole = 'user' | 'assistant';
 /**
@@ -100,5 +103,32 @@ export interface AgentChatFollowUp {
   message: AgentChatMessage;
 }
 
-/** A follow-up either joined the running turn or, when that turn had already ended, started the next one. */
-export type AgentChatFollowUpResult = { followUp: AgentChatFollowUp } | { turn: AgentChatTurn };
+/**
+ * A follow-up either joined the running turn, answered the question that turn
+ * waits on, or, when that turn had already ended, started the next one.
+ */
+export type AgentChatFollowUpResult = { followUp: AgentChatFollowUp } | { question: AgentChatQuestion } | { turn: AgentChatTurn };
+
+export type AgentChatQuestionItem = z.infer<typeof userQuestionSchema>;
+export type AgentChatQuestionAnswer = z.infer<typeof userQuestionAnswerSchema>;
+
+/** `answered` also covers an answer typed in the composer, which is kept in `message`. */
+export type AgentChatQuestionStatus = 'pending' | 'answered' | 'dismissed' | 'expired' | 'cancelled';
+
+/** Multiple-choice questions the chat agent asked; its turn waits until they are answered. */
+export interface AgentChatQuestion {
+  answeredAt: string | null;
+  /** By position, one per question. */
+  answers: AgentChatQuestionAnswer[] | null;
+  chatId: string;
+  chatMessageId: string;
+  expiresAt: string;
+  id: string;
+  message: string | null;
+  questions: AgentChatQuestionItem[];
+  requestedAt: string;
+  status: AgentChatQuestionStatus;
+}
+
+/** Body of `POST .../chats/:chatId/questions/:questionId/answer`. */
+export type AgentChatQuestionResponse = { action: 'answer'; answers: AgentChatQuestionAnswer[] } | { action: 'dismiss' };

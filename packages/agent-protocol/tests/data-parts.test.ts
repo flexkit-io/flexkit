@@ -19,4 +19,28 @@ describe('dataPartSchema', () => {
     assert.equal(dataPartSchema.shape['plugin-call'].safeParse({ pluginId: 'gmail', status: 'nope' }).success, false);
     assert.equal(dataPartSchema.shape['run-summary'].safeParse({ status: 'success' }).success, false);
   });
+
+  it('validates user questions and their answers', () => {
+    const question = {
+      header: 'Format',
+      multiSelect: false,
+      options: [
+        { description: 'Opens in Excel', label: 'CSV' },
+        { description: 'Keeps nesting', label: 'JSON' },
+      ],
+      question: 'Which export format?',
+    };
+    const schema = dataPartSchema.shape['user-question'];
+
+    assert.ok(schema.safeParse({ questionId: 'q1', questions: [question], status: 'pending' }).success);
+    assert.ok(
+      schema.safeParse({
+        answers: [{ other: 'Both, please', selected: ['CSV'] }],
+        questionId: 'q1',
+        questions: [question],
+        status: 'answered',
+      }).success
+    );
+    assert.equal(schema.safeParse({ questionId: 'q1', questions: [question], status: 'approved' }).success, false);
+  });
 });

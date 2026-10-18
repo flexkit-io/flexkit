@@ -15,6 +15,7 @@ import {
   LinkIcon,
   FileTextIcon,
   LoaderCircle,
+  MessageCircleQuestionIcon,
   MessageSquareIcon,
   SendIcon,
   ShieldCheckIcon,
@@ -33,12 +34,15 @@ import {
   messageHasPendingMutationApproval,
   settlePendingMutationApprovals,
 } from './approval-parts';
+import { type AnswerQuestion, QuestionCard } from './question-card';
+import { messageHasPendingUserQuestion } from './question-parts';
 
 export {
   getMutationApprovalIds,
   getPendingMutationApprovalIds,
   messageHasPendingMutationApproval,
 } from './approval-parts';
+export { messageHasPendingUserQuestion } from './question-parts';
 export type { DecidedApprovals } from './approval-parts';
 import { lazy, Suspense } from 'react';
 const LazyRunSpecPart = lazy(() => import('./spec-renderer').then((module) => ({ default: module.RunSpecPart })));
@@ -111,6 +115,8 @@ const JSON_RENDER_SPEC_PART_TYPE = 'data-spec';
 export interface RunReplayActions {
   /** A proposal was decided here or seen decided elsewhere; `status` lets the replay keep its card mounted. */
   onApprovalDecided: (_approvalId?: string, _status?: AutomationApproval['status']) => void;
+  /** Answers a question the live chat turn waits on, then resumes the stream; absent where nothing can be answered. */
+  answerQuestion?: AnswerQuestion;
 }
 
 export const RunReplayActionsContext = createContext<RunReplayActions | null>(null);
@@ -239,7 +245,7 @@ function shouldPauseStreamForApproval({
   }
 
   // Fall back to the stream part when the run record hasn't caught up yet.
-  return messageHasPendingMutationApproval(latestMessage);
+  return messageHasPendingMutationApproval(latestMessage) || messageHasPendingUserQuestion(latestMessage);
 }
 
 /** A single UI parser remains alive across approval waits and reconnects. */
@@ -776,6 +782,10 @@ export function MessagePart({
     );
   }
 
+  if (part.type === 'data-user-question') {
+    return <UserQuestionPart data={getPartData<ReplayDataParts['user-question']>(part)} />;
+  }
+
   if (part.type === 'data-bulk-graphql-action') {
     return <BulkGraphqlActionPart message={getPartData<ReplayDataParts['bulk-graphql-action']>(part)} />;
   }
@@ -1289,6 +1299,24 @@ export function MutationApprovalPart({
       {message.status === 'error' && message.error ? (
         <p className="fk:mt-2 fk:text-xs fk:text-destructive">{message.error.message}</p>
       ) : null}
+    </ToolMessage>
+  );
+}
+
+function UserQuestionPart({ data }: { data: ReplayDataParts['user-question'] }): JSX.Element {
+  const replayActions = useContext(RunReplayActionsContext);
+  const plural = data.questions.length > 1;
+
+  return (
+    <ToolMessage>
+      <ToolHeader>
+        <MessageCircleQuestionIcon className="fk:size-3.5" />
+        {data.status === 'pending' ? (plural ? 'The agent has questions' : 'The agent has a question') : plural ? 'Questions' : 'Question'}
+      </ToolHeader>
+      <div className="fk:mt-3">
+        {/* Keyed by status so a settled stream part replaces the card's local state. */}
+        <QuestionCard answer={replayActions?.answerQuestion} data={data} key={data.status} />
+      </div>
     </ToolMessage>
   );
 }

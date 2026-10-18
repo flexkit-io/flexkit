@@ -46,6 +46,7 @@ import {
   getMutationApprovalIds,
   isHiddenReplayPart,
   messageHasPendingMutationApproval,
+  messageHasPendingUserQuestion,
   toMutationApprovalPartData,
   useProjectApi,
   useRunStream,
@@ -469,6 +470,16 @@ function LiveTurn({
   onStatusChangeRef.current = onStatusChange;
   const replayActions = useMemo<RunReplayActions>(
     () => ({
+      answerQuestion: async (questionId, response) => {
+        const { question } = await api.answerAgentChatQuestion(chatId, questionId, response);
+
+        // Reconnect the stream right away, as after an approval decision, so the resumed turn shows without waiting for a poll.
+        setSuppressApprovalPause(true);
+        setResumeToken((current) => current + 1);
+        onTurnUpdatedRef.current();
+
+        return question ?? null;
+      },
       onApprovalDecided: (approvalId, decidedStatus) => {
         if (approvalId && decidedStatus && decidedStatus !== 'pending') {
           setDecidedApprovals((current) => ({ ...current, [approvalId]: decidedStatus }));
@@ -487,7 +498,7 @@ function LiveTurn({
         onTurnUpdatedRef.current();
       },
     }),
-    []
+    [api, chatId]
   );
 
   useEffect(() => {
@@ -530,7 +541,10 @@ function LiveTurn({
   const isAwaitingApproval =
     !suppressApprovalPause &&
     message.status !== 'streaming' &&
-    (message.status === 'awaiting_approval' || status === 'paused' || messageHasPendingMutationApproval(streamMessage));
+    (message.status === 'awaiting_approval' ||
+      status === 'paused' ||
+      messageHasPendingMutationApproval(streamMessage) ||
+      messageHasPendingUserQuestion(streamMessage));
   // When the stream replay has no data-mutation-approval part yet (e.g. right
   // after a reload), fall back to the pending approval from the chat detail.
   const streamApprovalIds = useMemo(() => new Set(getMutationApprovalIds(streamMessage)), [streamMessage]);
@@ -541,7 +555,8 @@ function LiveTurn({
   // reasoning, a tool call ("Searching schema"), or plain "Thinking".
   const lastPart = streamMessage?.parts[streamMessage.parts.length - 1];
   const contentIsStreaming = lastPart?.type === 'text' && lastPart.state === 'streaming';
-  const statusLabel = isAwaitingApproval ? 'Awaiting approval' : (getLiveStatusLabel(streamMessage) ?? 'Thinking');
+  const awaitingLabel = messageHasPendingUserQuestion(streamMessage) ? 'Waiting for your answer' : 'Awaiting approval';
+  const statusLabel = isAwaitingApproval ? awaitingLabel : (getLiveStatusLabel(streamMessage) ?? 'Thinking');
   const statusVisible = isAwaitingApproval
     ? status !== 'finished' && status !== 'error'
     : status === 'streaming' && !contentIsStreaming;
@@ -1277,6 +1292,14 @@ export function AgentChatPage(): JSX.Element {
 
     try {
       const result = await chatApi.sendAgentChatFollowUp(targetChatId, { attachments, content: text, modelId });
+
+      // The message answered the question the turn waited on: the card shows it once the
+      // resumed stream arrives, which the refreshed turn status (no longer awaiting) reconnects.
+      if ('question' in result) {
+        await globalMutate(paths(chatProjectId).agentChat(targetChatId));
+
+        return;
+      }
 
       await globalMutate<AgentChatDetail>(
         paths(chatProjectId).agentChat(targetChatId),
