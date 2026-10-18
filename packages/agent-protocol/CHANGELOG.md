@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.9
+
+### Patch Changes
+
+- 8df13d7: Add the `plugin_connected` chat message kind and the `plugin-connected` data part for connecting plugins from the chat.
+
 ## 0.3.8
 
 ### Patch Changes
