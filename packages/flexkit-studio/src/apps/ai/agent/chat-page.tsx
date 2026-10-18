@@ -91,6 +91,7 @@ import {
   splitLiveTurn,
 } from './follow-ups';
 import { getMonitorEventData, MonitorChips, MonitorEventCard } from './monitor-parts';
+import { getPluginConnectedData, PluginConnectContext, PluginConnectedNotice } from './plugin-connect-card';
 import {
   AUTO_MODEL_KEY,
   coerceEffort,
@@ -382,6 +383,14 @@ function HistoryMessage({
     const monitorEvent = getMonitorEventData(message);
 
     return monitorEvent ? <MonitorEventCard data={monitorEvent} error={message.error} /> : null;
+  }
+
+  if (message.kind === 'plugin_connected') {
+    const connected = getPluginConnectedData(message.parts);
+
+    return connected ? (
+      <PluginConnectedNotice data={connected} error={message.error} label={getFollowUpLabel(message.status)} />
+    ) : null;
   }
 
   if (message.role === 'user') {
@@ -1331,29 +1340,56 @@ export function AgentChatPage(): JSX.Element {
         return;
       }
 
-      await globalMutate<AgentChatDetail>(
-        paths(chatProjectId).agentChat(targetChatId),
-        (current) => {
-          const base = getSeedBaseDetail(
-            mergeChatDetail(seededDetailRef.current[targetChatId], current),
-            null,
-            rawChatDetail,
-            targetChatId,
-            modelId,
-            'turn' in result ? result.turn.userMessage.createdAt : result.followUp.message.createdAt
-          );
-          const next =
-            'turn' in result ? appendTurnToDetail(base, result.turn) : appendMessageToDetail(base, result.followUp.message);
-          seededDetailRef.current[targetChatId] = next;
-
-          return next;
-        },
-        { revalidate: false }
-      );
+      await showSentMessage(targetChatId, result);
     } finally {
       setPendingFollowUp(null);
     }
   }
+
+  /** Puts a message the platform stored (a started turn, or a follow-up waiting for one) into the chat at once. */
+  async function showSentMessage(
+    targetChatId: string,
+    result: { followUp: { message: AgentChatMessage } } | { turn: AgentChatTurn }
+  ): Promise<void> {
+    await globalMutate<AgentChatDetail>(
+      paths(chatProjectId).agentChat(targetChatId),
+      (current) => {
+        const base = getSeedBaseDetail(
+          mergeChatDetail(seededDetailRef.current[targetChatId], current),
+          null,
+          rawChatDetail,
+          targetChatId,
+          modelId,
+          'turn' in result ? result.turn.userMessage.createdAt : result.followUp.message.createdAt
+        );
+        const next =
+          'turn' in result
+            ? appendTurnToDetail(base, result.turn)
+            : appendMessageToDetail(base, result.followUp.message);
+        seededDetailRef.current[targetChatId] = next;
+
+        return next;
+      },
+      { revalidate: false }
+    );
+  }
+
+  // A plugin connected from a connect card: the agent continues in a new turn that can use it.
+  const pluginConnect = {
+    onConnected: async (pluginId: string): Promise<void> => {
+      if (!chatId) {
+        return;
+      }
+
+      const targetChatId = chatId;
+
+      try {
+        await showSentMessage(targetChatId, await chatApi.announcePluginConnected(targetChatId, pluginId));
+      } catch (error) {
+        setSendError(error instanceof Error ? error.message : 'The agent could not continue after the connection.');
+      }
+    },
+  };
 
   async function handleSend(text: string, attachments: AgentChatAttachment[]): Promise<void> {
     // Reject rather than resolve so the composer does not treat a duplicate
@@ -1491,15 +1527,17 @@ export function AgentChatPage(): JSX.Element {
               // One element type for the pending and the loaded chat, so the
               // status line survives the navigation after the chat is created.
               <ChatApprovalContext.Provider value>
-                <ChatConversation
-                  api={chatApi}
-                  chatId={chatId ?? null}
-                  pendingFollowUp={visiblePendingFollowUp}
-                  pendingMessage={visiblePendingMessage}
-                  projectId={projectId}
-                  questionAnsweredSignal={questionAnsweredSignal}
-                  resolveDetail={resolveDetail}
-                />
+                <PluginConnectContext.Provider value={pluginConnect}>
+                  <ChatConversation
+                    api={chatApi}
+                    chatId={chatId ?? null}
+                    pendingFollowUp={visiblePendingFollowUp}
+                    pendingMessage={visiblePendingMessage}
+                    projectId={projectId}
+                    questionAnsweredSignal={questionAnsweredSignal}
+                    resolveDetail={resolveDetail}
+                  />
+                </PluginConnectContext.Provider>
               </ChatApprovalContext.Provider>
             ) : (
               <EmptyConversation projectId={chatProjectId} />

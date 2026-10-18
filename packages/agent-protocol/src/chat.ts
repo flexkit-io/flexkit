@@ -55,8 +55,12 @@ export interface AgentChatPart {
   url?: string;
 }
 
-/** Set on user-role messages the user did not write: `monitor_event` is a chat monitor's delivery. */
-export type AgentChatMessageKind = 'monitor_event';
+/**
+ * Set on user-role messages the user did not type: `monitor_event` is a chat
+ * monitor's delivery, `plugin_connected` says the user connected a plugin from
+ * the chat's connect card and starts the turn that uses it.
+ */
+export type AgentChatMessageKind = 'monitor_event' | 'plugin_connected';
 
 export interface AgentChatMessage {
   createdAt: string;
