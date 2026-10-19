@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { getPluginConnectState } from '../../src/apps/ai/agent/plugin-connect-state';
+import { describeConnectFailure, getPluginConnectState } from '../../src/apps/ai/agent/plugin-connect-state';
 import type { MarketplacePlugin, PluginConnection } from '../../src/apps/ai/plugin-types';
 
 function plugin(overrides: Partial<MarketplacePlugin> = {}): MarketplacePlugin {
@@ -79,3 +79,19 @@ describe('getPluginConnectState', () => {
     );
   });
 });
+
+describe('describeConnectFailure', () => {
+  it('keeps an abandoned sign-in short and names any other reason', () => {
+    assert.equal(describeConnectFailure('Stripe', 'Connection window was closed.'), "Stripe authorization didn't finish");
+    assert.equal(describeConnectFailure('Stripe', ''), "Stripe authorization didn't finish");
+    assert.equal(
+      describeConnectFailure('Stripe', 'Origin is not allowed.'),
+      "Stripe authorization didn't finish: Origin is not allowed"
+    );
+    assert.equal(
+      describeConnectFailure('Stripe', 'Allow popups for Studio, then connect again.'),
+      'Allow popups for Studio, then connect again.'
+    );
+  });
+});
+

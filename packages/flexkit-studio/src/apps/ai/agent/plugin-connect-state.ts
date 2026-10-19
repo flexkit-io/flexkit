@@ -8,6 +8,25 @@ export type PluginConnectState =
   | { kind: 'disabled' }
   | { kind: 'not_permitted' };
 
+/**
+ * The card's message for a sign-in that did not finish. A closed or abandoned
+ * window says only that; anything else names the reason, so a failure the
+ * user did not cause can be reported.
+ */
+export function describeConnectFailure(pluginName: string, detail: string): string {
+  const reason = detail.trim();
+
+  if (!reason || /window was closed|not completed/i.test(reason)) {
+    return `${pluginName} authorization didn't finish`;
+  }
+
+  if (/popups|different account/i.test(reason)) {
+    return reason;
+  }
+
+  return `${pluginName} authorization didn't finish: ${reason.replace(/\.$/, '')}`;
+}
+
 /** The account chat uses: the personal primary wins over the project primary. */
 function chatConnection(plugin: MarketplacePlugin): PluginConnection | null {
   const primaries = plugin.connections.filter(
