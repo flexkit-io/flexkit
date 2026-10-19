@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import type { FlexkitDesktopBridge } from '@flexkit/studio';
-import { IPC, VERSION_ARGUMENT } from '../main/constants';
+import { APP_ORIGIN, IPC, VERSION_ARGUMENT } from '../main/constants';
 
 const version = process.argv.find((argument) => argument.startsWith(VERSION_ARGUMENT))?.slice(VERSION_ARGUMENT.length) ?? '0.0.0';
 
@@ -49,4 +49,8 @@ const bridge: FlexkitDesktopBridge = {
   },
 };
 
-contextBridge.exposeInMainWorld('flexkitDesktop', bridge);
+// A popup opened on about:blank inherits this preload and then moves to a
+// third-party page: the bridge is for the Studio's own origin only.
+if (location.origin === APP_ORIGIN) {
+  contextBridge.exposeInMainWorld('flexkitDesktop', bridge);
+}

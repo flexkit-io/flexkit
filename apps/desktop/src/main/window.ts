@@ -29,6 +29,8 @@ app.once('before-quit', () => {
 
 export interface StudioWindowOptions {
   version: string;
+  /** Last word on a URL about to open in the system browser (adds the login nonce). */
+  prepareExternalUrl?: (url: string) => string;
 }
 
 /**
@@ -37,7 +39,7 @@ export interface StudioWindowOptions {
  * elsewhere the native frame stays. Links leave for the system browser, and
  * popups (plugin OAuth) open as child windows.
  */
-export function createStudioWindow({ version }: StudioWindowOptions): BrowserWindow {
+export function createStudioWindow({ version, prepareExternalUrl = (url) => url }: StudioWindowOptions): BrowserWindow {
   const state = windowStateKeeper({ defaultWidth: 1440, defaultHeight: 900 });
   const window = new BrowserWindow({
     x: state.x,
@@ -87,7 +89,7 @@ export function createStudioWindow({ version }: StudioWindowOptions): BrowserWin
     event.preventDefault();
 
     if (isBrowserUrl(url)) {
-      void shell.openExternal(url);
+      void shell.openExternal(prepareExternalUrl(url));
     }
   });
 

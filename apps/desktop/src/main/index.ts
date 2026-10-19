@@ -5,6 +5,7 @@ import contextMenu from 'electron-context-menu';
 import { completeDesktopLogin, createFlexkitElectronHandler } from '@flexkit/studio/electron';
 import { APP_ORIGIN, APP_SCHEME, IPC, LOGIN_CALLBACK_HOST } from './constants';
 import { getLaunchUrl, setupDeepLinks } from './deep-link';
+import { clearLoginState, expectedLoginState, prepareExternalUrl } from './login-state';
 import { buildApplicationMenu } from './menu';
 import { setupPermissions } from './permissions';
 import { registerAppProtocol, registerAppScheme, restrictApiToStudio } from './protocol';
@@ -77,10 +78,15 @@ async function handleAppUrl(url: string): Promise<void> {
   }
 
   if (parsed.host === LOGIN_CALLBACK_HOST) {
-    const redirect = await completeDesktopLogin(url, sessionStore);
+    const expectedState = expectedLoginState();
+    const redirect = await completeDesktopLogin(url, sessionStore, { expectedState });
+
+    if (redirect !== null) {
+      clearLoginState();
+    }
 
     if (process.env.FLEXKIT_DEBUG_PROTOCOL) {
-      console.log('[deep-link] login', redirect === null ? 'refused' : `ok -> ${redirect}`);
+      console.log('[deep-link] login', redirect === null ? `refused (${expectedState === null ? 'no login in flight' : 'state or code'})` : `ok -> ${redirect}`);
     }
 
     // A refused code leaves the Studio where it is (the login page, or the
@@ -120,7 +126,7 @@ function handleOsUrl(url: string): void {
 }
 
 function createWindow(): BrowserWindow {
-  const window = createStudioWindow({ version: app.getVersion() });
+  const window = createStudioWindow({ version: app.getVersion(), prepareExternalUrl });
 
   mainWindow = window;
 
@@ -160,23 +166,30 @@ if (setupDeepLinks(handleOsUrl, () => {
 
     Menu.setApplicationMenu(buildApplicationMenu({ getWindow, checkForUpdates: () => updater.checkForUpdates(true) }));
 
-    ipcMain.on(IPC.setBadge, (_event, count: unknown) => {
-      app.setBadgeCount(typeof count === 'number' && Number.isFinite(count) && count > 0 ? Math.floor(count) : 0);
+    // Only the Studio window may talk to the main process.
+    const fromStudio = (event: { sender: { id: number } }): boolean => event.sender.id === getWindow()?.webContents.id;
+
+    ipcMain.on(IPC.setBadge, (event, count: unknown) => {
+      if (fromStudio(event)) {
+        app.setBadgeCount(typeof count === 'number' && Number.isFinite(count) && count > 0 ? Math.floor(count) : 0);
+      }
     });
 
-    ipcMain.on(IPC.focusWindow, () => {
+    ipcMain.on(IPC.focusWindow, (event) => {
       const window = getWindow();
 
-      if (window) {
+      if (window && fromStudio(event)) {
         focusWindow(window);
       }
     });
 
-    ipcMain.on(IPC.installUpdate, () => {
-      installUpdate();
+    ipcMain.on(IPC.installUpdate, (event) => {
+      if (fromStudio(event)) {
+        installUpdate();
+      }
     });
 
-    ipcMain.handle(IPC.getUpdate, () => updater.getDownloadedVersion());
+    ipcMain.handle(IPC.getUpdate, (event) => (fromStudio(event) ? updater.getDownloadedVersion() : null));
 
     nativeTheme.on('updated', () => {
       getWindow()?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#020817' : '#ffffff');

@@ -43,11 +43,49 @@ export function parseSessionCookie(setCookie: string): SessionChange | null {
   return { type: 'set', token };
 }
 
+/**
+ * The nonce the desktop app adds to a login it starts and the Flexkit backend
+ * echoes to the callback: only a callback carrying the expected one is
+ * exchanged, so a `flexkit://auth/callback` link from anywhere else cannot
+ * sign the app into another account.
+ */
+export const DESKTOP_LOGIN_STATE_PARAM = 'state';
+
+const LOGIN_STATE_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+
+/** A login start URL (`https://<flexkit>/auth/login/<provider>?origin=flexkit://auth/callback&...`). */
+export function isDesktopLoginStart(url: string): boolean {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  return (
+    parsed.protocol === 'https:' &&
+    parsed.pathname.startsWith('/auth/login/') &&
+    parsed.searchParams.get('origin') === DESKTOP_LOGIN_CALLBACK
+  );
+}
+
+/** The login start URL with the app's nonce, for the backend to echo to the callback. */
+export function withDesktopLoginState(url: string, state: string): string {
+  const parsed = new URL(url);
+
+  parsed.searchParams.set(DESKTOP_LOGIN_STATE_PARAM, state);
+
+  return parsed.toString();
+}
+
 /** What a `flexkit://auth/callback` URL carries. */
 export interface DesktopLoginCallback {
   code: string;
   /** In-app path to open after the login; always absolute within the app. */
   redirect: string;
+  /** The nonce echoed from the login start, if any. */
+  state: string | null;
 }
 
 /**
@@ -75,19 +113,34 @@ export function parseDesktopLoginCallback(url: string): DesktopLoginCallback | n
   }
 
   const redirect = parsed.searchParams.get('redirect') ?? '/';
+  const state = parsed.searchParams.get(DESKTOP_LOGIN_STATE_PARAM);
 
-  return { code, redirect: redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/' };
+  return {
+    code,
+    redirect: redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/',
+    state: state !== null && LOGIN_STATE_PATTERN.test(state) ? state : null,
+  };
+}
+
+export interface CompleteDesktopLoginOptions {
+  /** The nonce of the login this app started; null when it started none. */
+  expectedState: string | null;
 }
 
 /**
  * Finishes a desktop login: exchanges the code from the callback for a
  * session and stores it. Resolves to the in-app path to open, or null when
- * the callback or the code was not accepted.
+ * the callback, its state or the code was not accepted. A callback is only
+ * accepted for a login this app started (`expectedState`).
  */
-export async function completeDesktopLogin(url: string, sessionStore: DesktopSessionStore): Promise<string | null> {
+export async function completeDesktopLogin(
+  url: string,
+  sessionStore: DesktopSessionStore,
+  { expectedState }: CompleteDesktopLoginOptions
+): Promise<string | null> {
   const callback = parseDesktopLoginCallback(url);
 
-  if (!callback) {
+  if (!callback || expectedState === null || callback.state !== expectedState) {
     return null;
   }
 
