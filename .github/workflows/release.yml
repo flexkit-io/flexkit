@@ -76,6 +76,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
+      # Both legs publish to the same GitHub release: one at a time, or the
+      # release gets created twice and assets go missing.
+      max-parallel: 1
       matrix:
         os: [macos-latest, windows-latest]
     steps:

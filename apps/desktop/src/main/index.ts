@@ -7,7 +7,7 @@ import { APP_ORIGIN, APP_SCHEME, IPC, LOGIN_CALLBACK_HOST } from './constants';
 import { getLaunchUrl, setupDeepLinks } from './deep-link';
 import { buildApplicationMenu } from './menu';
 import { setupPermissions } from './permissions';
-import { registerAppProtocol, registerAppScheme } from './protocol';
+import { registerAppProtocol, registerAppScheme, restrictApiToStudio } from './protocol';
 import { createSessionStore } from './session-store';
 import { installUpdate, setupUpdater } from './updater';
 import { createStudioWindow, focusWindow } from './window';
@@ -47,9 +47,14 @@ function showStudio(path = '/'): void {
   focusWindow(window);
 }
 
-/** The Studio is on screen and can take a path over IPC (a fresh window has nothing loaded yet). */
+/** The window holds the Studio, loaded or still loading (a fresh window has nothing). */
+function hasStudio(window: BrowserWindow): boolean {
+  return window.webContents.getURL().startsWith(APP_ORIGIN);
+}
+
+/** The Studio is on screen and can take a path over IPC. */
 function isStudioLoaded(window: BrowserWindow): boolean {
-  return window.webContents.getURL().startsWith(APP_ORIGIN) && !window.webContents.isLoading();
+  return hasStudio(window) && !window.webContents.isLoading();
 }
 
 /** A `flexkit://` URL from the OS: the login callback, or a path into the Studio. */
@@ -78,12 +83,13 @@ async function handleAppUrl(url: string): Promise<void> {
       console.log('[deep-link] login', redirect === null ? 'refused' : `ok -> ${redirect}`);
     }
 
-    // A refused code leaves the Studio where it is (the login page).
+    // A refused code leaves the Studio where it is (the login page, or the
+    // path a first, accepted callback is still loading).
     const window = getWindow();
 
     if (redirect !== null) {
       showStudio(redirect);
-    } else if (window && isStudioLoaded(window)) {
+    } else if (window && hasStudio(window)) {
       focusWindow(window);
     } else {
       showStudio('/');
@@ -146,6 +152,7 @@ if (setupDeepLinks(handleOsUrl, () => {
     });
 
     setupPermissions();
+    restrictApiToStudio((webContentsId) => webContentsId !== undefined && webContentsId === getWindow()?.webContents.id);
 
     contextMenu({ showSearchWithGoogle: false, showLookUpSelection: process.platform === 'darwin' });
 

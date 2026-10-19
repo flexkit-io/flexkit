@@ -2,8 +2,8 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { Readable } from 'node:stream';
-import { protocol } from 'electron';
-import { APP_HOST, APP_SCHEME } from './constants';
+import { protocol, session } from 'electron';
+import { APP_HOST, APP_ORIGIN, APP_SCHEME } from './constants';
 
 const MIME_TYPES: { [extension: string]: string } = {
   '.css': 'text/css; charset=utf-8',
@@ -91,6 +91,41 @@ function serveFile(path: string, cacheable: boolean): Response {
       // Hashed asset names change with their content; the page itself must not be cached.
       'Cache-Control': cacheable ? 'public, max-age=31536000, immutable' : 'no-cache',
     },
+  });
+}
+
+/**
+ * The BFF carries the person's session, so only the Studio window itself may
+ * call it, and only from script (`fetch`): a navigation to an API path, or a
+ * request from any other document in the session (a plugin's OAuth popup),
+ * is blocked. This stands in for the cookie and same-origin rules a browser
+ * applies to the hosted Studio.
+ */
+export function restrictApiToStudio(isStudioWebContents: (webContentsId: number | undefined) => boolean): void {
+  const apiPrefix = `${APP_ORIGIN}/api/`;
+
+  session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+    if (!details.url.startsWith(apiPrefix)) {
+      callback({});
+
+      return;
+    }
+
+    const isDocument = details.resourceType === 'mainFrame' || details.resourceType === 'subFrame';
+    const isStudio = isStudioWebContents(details.webContentsId);
+
+    if (isStudio && !isDocument) {
+      callback({});
+
+      return;
+    }
+
+    if (process.env.FLEXKIT_DEBUG_PROTOCOL) {
+      console.log('[protocol] blocked', details.resourceType, 'from', details.webContentsId, new URL(details.url).pathname);
+    }
+
+    // The Studio window itself lands back on the Studio rather than on an error page.
+    callback(isStudio && details.resourceType === 'mainFrame' ? { redirectURL: `${APP_ORIGIN}/` } : { cancel: true });
   });
 }
 

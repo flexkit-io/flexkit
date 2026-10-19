@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { BrowserWindow, nativeTheme, shell } from 'electron';
+import { app, BrowserWindow, nativeTheme, shell } from 'electron';
 import windowStateKeeper from 'electron-window-state';
 import { APP_ORIGIN, VERSION_ARGUMENT } from './constants';
 
@@ -9,6 +9,23 @@ const LIGHT_BACKGROUND = '#ffffff';
 function isAppUrl(url: string): boolean {
   return url === APP_ORIGIN || url.startsWith(`${APP_ORIGIN}/`);
 }
+
+/** What may leave for the system browser: never `file:`, `smb:` or another OS handler. */
+function isBrowserUrl(url: string): boolean {
+  return url.startsWith('https:') || url.startsWith('http:') || url.startsWith('mailto:');
+}
+
+function isWebUrl(url: string): boolean {
+  return url.startsWith('https:') || url.startsWith('http:');
+}
+
+// On macOS closing the window hides it: the app stays in the dock and the
+// Studio keeps polling Activity and notifying. Quitting closes it for real.
+let quitting = false;
+
+app.once('before-quit', () => {
+  quitting = true;
+});
 
 export interface StudioWindowOptions {
   version: string;
@@ -49,21 +66,34 @@ export function createStudioWindow({ version }: StudioWindowOptions): BrowserWin
     window.show();
   });
 
-  // The Studio's own pages stay in the window; anything else is for the browser.
+  window.on('close', (event) => {
+    if (process.platform === 'darwin' && !quitting) {
+      event.preventDefault();
+      window.hide();
+    }
+  });
+
+  // The Studio's own pages stay in the window; web links are for the browser;
+  // anything else is dropped.
   window.webContents.on('will-navigate', (event, url) => {
     if (process.env.FLEXKIT_DEBUG_PROTOCOL) {
       console.log('[navigate]', url);
     }
 
-    if (!isAppUrl(url)) {
-      event.preventDefault();
+    if (isAppUrl(url)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (isBrowserUrl(url)) {
       void shell.openExternal(url);
     }
   });
 
   window.webContents.setWindowOpenHandler(({ url, features }) => {
     // The Studio opens plugin OAuth as a popup it then drives (`popup.location`, postMessage).
-    if (features.includes('popup')) {
+    if (features.includes('popup') && isWebUrl(url)) {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
@@ -74,11 +104,29 @@ export function createStudioWindow({ version }: StudioWindowOptions): BrowserWin
       };
     }
 
-    if (url.startsWith('https:') || url.startsWith('http:') || url.startsWith('mailto:')) {
+    if (isBrowserUrl(url)) {
       void shell.openExternal(url);
     }
 
     return { action: 'deny' };
+  });
+
+  // A popup is third-party content: it stays on the web (never the Studio's
+  // origin, never an OS handler) and cannot open windows of its own.
+  window.webContents.on('did-create-window', (popup) => {
+    popup.webContents.on('will-navigate', (event, url) => {
+      if (!isWebUrl(url)) {
+        event.preventDefault();
+      }
+    });
+
+    popup.webContents.setWindowOpenHandler(({ url }) => {
+      if (isBrowserUrl(url)) {
+        void shell.openExternal(url);
+      }
+
+      return { action: 'deny' };
+    });
   });
 
   return window;

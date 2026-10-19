@@ -30,9 +30,20 @@ export function ActivityNavButton({ projectId }: { projectId: string }): JSX.Ele
   const summary = useActivitySummary(projectId);
   const needsAction = summary?.needsActionCount ?? 0;
   const unread = summary?.unreadCount ?? 0;
-  // The desktop app shows what waits for you on its dock or taskbar icon.
+  // The desktop app shows what waits for you on its dock or taskbar icon;
+  // leaving the project or signing out clears it.
   useEffect(() => {
-    getDesktop()?.setBadgeCount(needsAction);
+    const desktop = getDesktop();
+
+    if (!desktop) {
+      return;
+    }
+
+    desktop.setBadgeCount(needsAction);
+
+    return () => {
+      desktop.setBadgeCount(0);
+    };
   }, [needsAction]);
 
   const label =
