@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { createContext, useContext, useMemo, useRef, useState } from 'react';
+import { createContext, useContext, useMemo, useState, useSyncExternalStore } from 'react';
 import { CheckIcon, CircleAlertIcon, LoaderCircle, PlugIcon } from 'lucide-react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useConfig } from '../../../core/config/config-context';
@@ -7,7 +7,7 @@ import { Button, Dialog, DialogContent, DialogDescription, DialogTitle } from '.
 import { createApiClient, fetcher } from '../api';
 import { connectPluginPopup } from '../plugin-oauth';
 import type { PluginDetail, PluginScope } from '../plugin-types';
-import { getPluginConnectState } from './plugin-connect-state';
+import { describeConnectFailure, getPluginConnectState } from './plugin-connect-state';
 
 /** Lets a connect card hand a finished connection back to the chat, which continues in a new turn. */
 export const PluginConnectContext = createContext<{ onConnected: (_pluginId: string) => Promise<void> } | null>(null);
@@ -18,6 +18,40 @@ export interface PluginConnectedData {
   pluginId: string;
   pluginName: string;
   scope: PluginScope;
+}
+
+type ConnectAttempt = { status: 'connecting' } | { message: string; scope: PluginScope; status: 'failed' };
+
+/**
+ * Connect attempts by plugin and account, outside the card: the card of a
+ * live reply is replaced by its history copy when the turn ends, and the new
+ * one must still show a sign-in in progress or why the last one failed.
+ */
+const attempts = new Map<string, ConnectAttempt>();
+const attemptListeners = new Set<() => void>();
+
+function setAttempt(key: string, attempt: ConnectAttempt | null): void {
+  if (attempt) {
+    attempts.set(key, attempt);
+  } else {
+    attempts.delete(key);
+  }
+
+  attemptListeners.forEach((listener) => listener());
+}
+
+function subscribeAttempts(listener: () => void): () => void {
+  attemptListeners.add(listener);
+
+  return () => attemptListeners.delete(listener);
+}
+
+function useConnectAttempt(key: string): ConnectAttempt | null {
+  return useSyncExternalStore(
+    subscribeAttempts,
+    () => attempts.get(key) ?? null,
+    () => null
+  );
 }
 
 const SCOPE_OPTIONS: { [scope in PluginScope]: { description: string; title: string } } = {
@@ -134,10 +168,10 @@ export function PluginConnectCard({
   const { mutate: revalidateKey } = useSWRConfig();
   const chat = useContext(PluginConnectContext);
   const [consentOpen, setConsentOpen] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  // State updates land after the next render; a double click must not start a second popup.
-  const connectingRef = useRef(false);
-  const [failure, setFailure] = useState<{ message: string; scope: PluginScope } | null>(null);
+  const attemptKey = `${currentProjectId ?? ''}:${pluginId}:${connectionId ?? ''}`;
+  const attempt = useConnectAttempt(attemptKey);
+  const connecting = attempt?.status === 'connecting';
+  const failure = attempt?.status === 'failed' ? attempt : null;
 
   if (!data) {
     return (
@@ -154,18 +188,18 @@ export function PluginConnectCard({
 
   // Called straight from a click: browsers only allow the popup there.
   function authorize(scope: PluginScope): void {
-    if (!api || connectingRef.current) {
+    // Read from the store, not the render: a double click must not start a second popup.
+    if (!api || attempts.get(attemptKey)?.status === 'connecting') {
       return;
     }
 
-    connectingRef.current = true;
     setConsentOpen(false);
-    setConnecting(true);
-    setFailure(null);
+    setAttempt(attemptKey, { status: 'connecting' });
 
     connectPluginPopup(api, pluginId, scope, reconnect ? { connectionId: reconnect.id } : undefined)
       .then(
         () => {
+          setAttempt(attemptKey, null);
           // Refreshing the card is best-effort: the connection succeeded either
           // way, and the chat continues with it (reporting its own errors).
           mutate().catch(() => undefined);
@@ -179,16 +213,9 @@ export function PluginConnectCard({
         (reason: unknown) => {
           const detail = reason instanceof Error ? reason.message : '';
 
-          setFailure({
-            message: /popups|different account/i.test(detail) ? detail : `${plugin.name} authorization didn't finish`,
-            scope,
-          });
+          setAttempt(attemptKey, { message: describeConnectFailure(plugin.name, detail), scope, status: 'failed' });
         }
-      )
-      .finally(() => {
-        connectingRef.current = false;
-        setConnecting(false);
-      });
+      );
   }
 
   let status: JSX.Element | null = null;
