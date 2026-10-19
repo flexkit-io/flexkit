@@ -92,8 +92,9 @@ export function createStudioWindow({ version }: StudioWindowOptions): BrowserWin
   });
 
   window.webContents.setWindowOpenHandler(({ url, features }) => {
-    // The Studio opens plugin OAuth as a popup it then drives (`popup.location`, postMessage).
-    if (features.includes('popup') && isWebUrl(url)) {
+    // The Studio opens plugin OAuth as a blank popup it then drives
+    // (`popup.location`, postMessage); the popup's own guard keeps it on the web.
+    if (features.includes('popup') && (url === 'about:blank' || url === '' || isWebUrl(url))) {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
