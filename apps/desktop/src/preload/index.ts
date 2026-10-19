@@ -31,7 +31,22 @@ const bridge: FlexkitDesktopBridge = {
     ipcRenderer.send(IPC.installUpdate);
   },
   onNavigate: (listener) => subscribe<string>(IPC.navigate, listener),
-  onUpdateDownloaded: (listener) => subscribe<{ version: string }>(IPC.updateDownloaded, listener),
+  onUpdateDownloaded: (listener) => {
+    let active = true;
+    const unsubscribe = subscribe<{ version: string }>(IPC.updateDownloaded, listener);
+
+    // A download that finished before the Studio mounted (on the login page, say).
+    void ipcRenderer.invoke(IPC.getUpdate).then((version: unknown) => {
+      if (active && typeof version === 'string') {
+        listener({ version });
+      }
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  },
 };
 
 contextBridge.exposeInMainWorld('flexkitDesktop', bridge);

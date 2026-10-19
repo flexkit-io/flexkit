@@ -33,6 +33,8 @@ const handleApi = createFlexkitElectronHandler({ sessionStore });
 
 let mainWindow: BrowserWindow | null = null;
 let pendingUrl = getLaunchUrl();
+// URLs from the OS wait until the scheme is served and the window exists.
+let ready = false;
 
 function getWindow(): BrowserWindow | null {
   return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
@@ -43,6 +45,11 @@ function showStudio(path = '/'): void {
 
   void window.loadURL(`${APP_ORIGIN}${path}`);
   focusWindow(window);
+}
+
+/** The Studio is on screen and can take a path over IPC (a fresh window has nothing loaded yet). */
+function isStudioLoaded(window: BrowserWindow): boolean {
+  return window.webContents.getURL().startsWith(APP_ORIGIN) && !window.webContents.isLoading();
 }
 
 /** A `flexkit://` URL from the OS: the login callback, or a path into the Studio. */
@@ -72,14 +79,14 @@ async function handleAppUrl(url: string): Promise<void> {
     }
 
     // A refused code leaves the Studio where it is (the login page).
+    const window = getWindow();
+
     if (redirect !== null) {
       showStudio(redirect);
+    } else if (window && isStudioLoaded(window)) {
+      focusWindow(window);
     } else {
-      const window = getWindow();
-
-      if (window) {
-        focusWindow(window);
-      }
+      showStudio('/');
     }
 
     return;
@@ -89,12 +96,20 @@ async function handleAppUrl(url: string): Promise<void> {
     const window = getWindow();
     const path = `${parsed.pathname}${parsed.search}`;
 
-    if (window && !window.webContents.isLoading()) {
+    if (window && isStudioLoaded(window)) {
       window.webContents.send(IPC.navigate, path);
       focusWindow(window);
     } else {
       showStudio(path);
     }
+  }
+}
+
+function handleOsUrl(url: string): void {
+  if (ready) {
+    void handleAppUrl(url);
+  } else {
+    pendingUrl = url;
   }
 }
 
@@ -110,7 +125,7 @@ function createWindow(): BrowserWindow {
   return window;
 }
 
-if (setupDeepLinks((url) => void handleAppUrl(url), () => {
+if (setupDeepLinks(handleOsUrl, () => {
   const window = getWindow();
 
   if (window) {
@@ -154,11 +169,14 @@ if (setupDeepLinks((url) => void handleAppUrl(url), () => {
       installUpdate();
     });
 
+    ipcMain.handle(IPC.getUpdate, () => updater.getDownloadedVersion());
+
     nativeTheme.on('updated', () => {
       getWindow()?.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#020817' : '#ffffff');
     });
 
     createWindow();
+    ready = true;
 
     if (pendingUrl) {
       const url = pendingUrl;

@@ -10,7 +10,13 @@ const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
  * download in the background; the Studio shows "Restart to update" in its
  * app bar, and the update also installs on the next quit.
  */
-export function setupUpdater(getWindow: () => BrowserWindow | null): { checkForUpdates: (interactive?: boolean) => void } {
+export interface Updater {
+  checkForUpdates: (interactive?: boolean) => void;
+  /** The version downloaded and waiting for a restart, if any: the Studio asks when it mounts. */
+  getDownloadedVersion: () => string | null;
+}
+
+export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
   if (!app.isPackaged) {
     return {
       checkForUpdates: (interactive) => {
@@ -18,13 +24,17 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): { checkForU
           void dialog.showMessageBox({ message: 'Updates are only checked in the packaged app.' });
         }
       },
+      getDownloadedVersion: () => null,
     };
   }
+
+  let downloadedVersion: string | null = null;
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('update-downloaded', (info) => {
+    downloadedVersion = info.version;
     getWindow()?.webContents.send(IPC.updateDownloaded, { version: info.version });
   });
 
@@ -49,7 +59,7 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): { checkForU
   checkForUpdates();
   setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS).unref();
 
-  return { checkForUpdates };
+  return { checkForUpdates, getDownloadedVersion: () => downloadedVersion };
 }
 
 export function installUpdate(): void {

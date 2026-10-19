@@ -13,6 +13,7 @@ export const IPC = {
   installUpdate: 'desktop:install-update',
   navigate: 'desktop:navigate',
   updateDownloaded: 'desktop:update-downloaded',
+  getUpdate: 'desktop:get-update',
 } as const;
 
 /** Argument the preload reads the app version from (`--flexkit-version=1.2.3`). */
