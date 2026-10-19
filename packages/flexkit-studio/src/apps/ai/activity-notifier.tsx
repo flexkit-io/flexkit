@@ -4,6 +4,7 @@ import { useSWRConfig } from 'swr';
 import { useConfig } from '../../core/config/config-context';
 import { LOGO_MARK_PATH } from '../../ui/components/logo';
 import { fetcher, paths } from './api';
+import { getDesktop } from '../../core/desktop';
 import { planActivityNotifications } from './activity';
 import { ensurePushSubscription, useNotificationPreferences } from './notification-settings';
 import type { ActivitySummary } from './types';
@@ -184,7 +185,14 @@ export function ActivityNotifier({ projectId }: { projectId: string }): null {
           const shown = new Notification(notification.title, { body: notification.body, icon, tag: notification.tag });
 
           shown.onclick = () => {
-            window.focus();
+            const desktop = getDesktop();
+
+            if (desktop) {
+              desktop.focusWindow();
+            } else {
+              window.focus();
+            }
+
             navigateRef.current(`/${projectId}/ai/${notification.path}`);
             shown.close();
           };

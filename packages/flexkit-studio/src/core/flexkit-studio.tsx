@@ -68,7 +68,7 @@ export function FlexkitStudio({ projectIds, basename }: FlexkitStudioProps): JSX
           // The apps are rendered by the Layout (see `AppOutlet`), which keeps
           // every opened app mounted; the splat hands it the rest of the path.
           path: ':projectId/*',
-          element: <Layout version={{ current: '1.0.0', latest: '1.0.0', isCurrent: true }} />,
+          element: <Layout />,
         },
       ],
     },

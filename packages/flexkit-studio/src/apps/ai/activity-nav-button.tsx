@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import type { JSX } from 'react';
 import { BellIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { Button } from '../../ui/primitives/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../ui/primitives/tooltip';
+import { getDesktop } from '../../core/desktop';
 import { fetcher, paths } from './api';
 import type { ActivitySummary } from './types';
 
@@ -28,6 +30,11 @@ export function ActivityNavButton({ projectId }: { projectId: string }): JSX.Ele
   const summary = useActivitySummary(projectId);
   const needsAction = summary?.needsActionCount ?? 0;
   const unread = summary?.unreadCount ?? 0;
+  // The desktop app shows what waits for you on its dock or taskbar icon.
+  useEffect(() => {
+    getDesktop()?.setBadgeCount(needsAction);
+  }, [needsAction]);
+
   const label =
     needsAction > 0
       ? `Activity: ${formatCount(needsAction)} waiting for you`

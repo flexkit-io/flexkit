@@ -4,6 +4,7 @@ import { AlertCircle } from 'lucide-react';
 import { AuthProvider } from '../../auth/auth-context';
 import { Login } from '../../auth/login';
 import { ConfigProvider } from '../../core/config/config-context';
+import { DesktopEffects } from '../../core/desktop-effects';
 import { pickStartProjectId, readLastProjectId } from '../../core/config/last-project';
 import type { ProjectSummary, StudioMode } from '../../core/config/types';
 import { useHostedSession } from '../../core/config/use-hosted-session';
@@ -114,9 +115,10 @@ function HostedRoot(): JSX.Element {
 }
 
 export function Root({ projectIds }: { projectIds?: string[] }): JSX.Element {
-  if (projectIds === undefined) {
-    return <HostedRoot />;
-  }
-
-  return <ProjectsRoot projectIds={projectIds} />;
+  return (
+    <>
+      <DesktopEffects />
+      {projectIds === undefined ? <HostedRoot /> : <ProjectsRoot projectIds={projectIds} />}
+    </>
+  );
 }

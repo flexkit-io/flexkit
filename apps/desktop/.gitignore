@@ -1,0 +1,4 @@
+# electron-vite output
+out/
+# installers (electron-builder)
+dist/

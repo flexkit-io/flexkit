@@ -43,6 +43,8 @@ import { LoaderCircle } from 'lucide-react';
 import { FileIcon as FileTypeIcon, defaultStyles } from 'react-file-icon';
 import { getAssetFilename, getAssetImageUrl, getExtensionFromAsset, isImageAsset } from './asset-url';
 import { AssetRowActions } from './asset-row-actions';
+import { useIsAppActive } from '../../../core/apps/app-active';
+import { shouldLoadMore } from '../../../data-grid/should-load-more';
 
 // Temporary fix due to runtime mismatch between React 18 and React 19 types
 type FileTypeIconCompatProps = {
@@ -76,10 +78,6 @@ interface AssetGridProps<TData extends AttributeValue, TValue> {
   pageSize?: number;
   sorting?: SortingState;
   toolbarComponent?: (table: ReactTable<AttributeValue>) => ReactElement;
-}
-
-function getLoadMoreThreshold(clientHeight: number): number {
-  return Math.max(600, clientHeight);
 }
 
 function formatAssetSize(bytes: number | null | undefined): string {
@@ -184,19 +182,27 @@ export function AssetGrid<TData extends AttributeValue, TValue>({
       return;
     }
 
-    const { scrollHeight, scrollTop, clientHeight } = scrollElement;
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-    if (distanceFromBottom >= getLoadMoreThreshold(clientHeight)) {
+    // A grid in an app behind the active one has no height (`display: none`):
+    // without this guard it looks scrolled to the bottom and would page
+    // through the whole entity while nobody is looking.
+    if (!shouldLoadMore(scrollElement)) {
       return;
     }
 
+    // Optimistic guard until the parent's isLoadingMore prop catches up.
+    isLoadingMoreRef.current = true;
     onLoadMoreRef.current();
   }, []);
 
+  // Re-check when rows/hasMore/loading settle, and when the app comes back
+  // to the front (a hidden grid skips loading until then).
+  const isAppActive = useIsAppActive();
+
   useEffect(() => {
-    checkLoadMore();
-  }, [checkLoadMore, rows.length, hasMore, isLoadingMore]);
+    if (isAppActive) {
+      checkLoadMore();
+    }
+  }, [checkLoadMore, rows.length, hasMore, isLoadingMore, isAppActive]);
 
   function handleScroll(event: UIEvent<HTMLDivElement>): void {
     checkLoadMore(event.currentTarget);

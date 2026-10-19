@@ -14,6 +14,7 @@ export default defineConfig({
     'tests/project-schema-key.test.ts',
     'tests/schema-deploy-watch.test.ts',
     'tests/app-sessions.test.ts',
+    'tests/electron-api.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',

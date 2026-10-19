@@ -52,6 +52,10 @@ export type * from './apps/ai/public-types';
 // Auth
 export { useAuth } from './auth/auth-context';
 
+// Desktop app bridge (Electron)
+export { DESKTOP_LOGIN_CALLBACK, getDesktop } from './core/desktop';
+export type { FlexkitDesktopBridge } from './core/desktop';
+
 // Router
 export { Outlet, useLocation, useParams } from 'react-router-dom';
 

@@ -6,6 +6,7 @@ import { Button } from '../primitives/button';
 import { getAppSegment } from '../../core/apps/app-sessions';
 import type { AppSessions } from '../../core/apps/app-sessions';
 import type { AppOptions } from '../../core/config/types';
+import type { StudioVersion } from '../../core/use-studio-version';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../primitives/tooltip';
 import {
   DropdownMenu,
@@ -21,11 +22,7 @@ type Props = {
   apps: AppOptions[];
   /** Where each opened app was last left; its button leads back there. */
   sessions: AppSessions;
-  version: {
-    current: string;
-    latest: string;
-    isCurrent: boolean;
-  };
+  version: StudioVersion;
 };
 
 export function AppBar({ activeApp: currentApp, apps, sessions, version }: Props): JSX.Element {
@@ -178,9 +175,7 @@ export function AppBar({ activeApp: currentApp, apps, sessions, version }: Props
             <DropdownMenuItem
               disabled={version.isCurrent}
               onSelect={() => {
-                if (!version.isCurrent) {
-                  // TODO: open upgrade modal
-                }
+                version.upgrade?.();
               }}
             >
               {version.isCurrent ? (
@@ -193,7 +188,7 @@ export function AppBar({ activeApp: currentApp, apps, sessions, version }: Props
                   <PackageX className="fk:mr-2 fk:h-4 fk:w-4" />
                   <span>
                     Version {version.current}.<br />
-                    Upgrade to {version.latest}
+                    Restart to update to {version.latest}
                   </span>
                 </>
               )}

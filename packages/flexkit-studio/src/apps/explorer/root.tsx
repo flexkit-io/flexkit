@@ -9,8 +9,8 @@ import '@graphiql/plugin-history/style.css';
 
 const DEFAULT_QUERY = `# Welcome to Flexkit Explorer
 #
-# Explorer is an in-browser tool for writing, validating, and
-# testing GraphQL queries against your Flexkit datasource.
+# Explorer is where you write, validate and run GraphQL queries
+# against your Flexkit project.
 #
 # Type queries into this side of the screen, and you will see intelligent
 # typeaheads aware of the current GraphQL schema and live syntax and
