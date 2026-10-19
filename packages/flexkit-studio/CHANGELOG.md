@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.2.12
+
+### Patch Changes
+
+- 9824276: Connect card: a sign-in in progress or a failed one now survives the card being redrawn when the agent's reply finishes, and a failure names its reason instead of only "didn't finish".
+  - @flexkit/schema@0.2.12
+
 ## 0.2.11
 
 ### Patch Changes
