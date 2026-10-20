@@ -105,7 +105,8 @@ function serveFile(path: string, cacheable: boolean): Response {
  */
 export function restrictApiToStudio(isStudioWebContents: (webContentsId: number | undefined) => boolean): void {
   const apiPrefix = `${APP_ORIGIN}/api/`;
-  const sessionPaths = new Set(['/api/flexkit/logout', '/api/flexkit/get-token', '/api/flexkit/-/auth/logout']);
+  // Every route that reads or writes the session (see the BFF core).
+  const sessionPaths = new Set(['/api/flexkit/get-token', '/api/flexkit/set-token', '/api/flexkit/logout', '/api/flexkit/-/auth/logout']);
 
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
     if (!details.url.startsWith(apiPrefix)) {
@@ -161,8 +162,15 @@ export function registerAppProtocol({ handleApi, rendererDir, devServerUrl }: Ap
     if (devServerUrl) {
       // Vite answers with the page for paths that are not files (SPA fallback).
       // Node's fetch, not Chromium's: the unbundled Studio is hundreds of modules at once.
+      // The path is set on the dev server's URL, never resolved against it: a
+      // `//host` path would otherwise point at another host.
+      const target = new URL(devServerUrl);
+
+      target.pathname = url.pathname;
+      target.search = url.search;
+
       return forward(() =>
-        fetch(new URL(`${url.pathname}${url.search}`, devServerUrl).toString(), {
+        fetch(target.toString(), {
           method: 'GET',
           headers: { Accept: request.headers.get('accept') ?? '*/*' },
         })
