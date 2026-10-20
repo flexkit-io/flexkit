@@ -134,10 +134,8 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
   autoUpdater.on('update-downloaded', (info) => {
     downloadedVersion = info.version;
     getWindow()?.webContents.send(IPC.updateDownloaded, { version: info.version });
-
-    if (info.version !== settings.skippedVersion) {
-      autoUpdater.autoInstallOnAppQuit = true;
-    }
+    // A skipped version stays out of the quit-time install, also after a relaunch.
+    autoUpdater.autoInstallOnAppQuit = info.version !== settings.skippedVersion;
 
     const requested = promptRequested;
 
@@ -193,6 +191,16 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
 
     const { version } = result.updateInfo;
 
+    // Already downloaded in this run (the background check prompted, or the
+    // dialog was dismissed): offer to install, never to download again.
+    if (downloadedVersion === version) {
+      if (interactive || (promptedVersion !== version && version !== settings.skippedVersion)) {
+        await promptToInstall(version);
+      }
+
+      return;
+    }
+
     if (!settings.autoDownload) {
       if (interactive || (offeredVersion !== version && version !== settings.skippedVersion)) {
         await promptToDownload(version);
@@ -217,13 +225,21 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
   };
 
   function checkForUpdates(interactive = false): Promise<void> {
-    if (checking === null) {
+    const run = (): Promise<void> => {
       checking = check(interactive).finally(() => {
         checking = null;
       });
+
+      return checking;
+    };
+
+    if (checking === null) {
+      return run();
     }
 
-    return checking;
+    // A background check is running: a manual one follows it (and reports),
+    // another background one just shares it.
+    return interactive ? checking.then(run, run) : checking;
   }
 
   void checkForUpdates();

@@ -18,9 +18,9 @@ export interface UpdateDialogResult {
   autoDownload: boolean;
 }
 
-/** What the preload sends back when a button is pressed. */
+/** What the preload sends back: the checkbox whenever it changes, and the choice when a button is pressed. */
 export interface UpdateDialogResponse {
-  choice: UpdateChoice;
+  choice: UpdateChoice | 'checkbox';
   autoDownload: boolean;
 }
 
@@ -175,6 +175,9 @@ export function showUpdateDialog(options: UpdateDialogOptions): Promise<UpdateDi
 
   return new Promise<UpdateDialogResult>((resolve) => {
     let settled = false;
+    // Closing the window with its close button answers "later" with the
+    // checkbox as last seen.
+    let { autoDownload } = options;
     const settle = (result: UpdateDialogResult): void => {
       if (settled) {
         return;
@@ -215,16 +218,18 @@ export function showUpdateDialog(options: UpdateDialogOptions): Promise<UpdateDi
         return;
       }
 
-      const { choice, autoDownload } = response as Partial<UpdateDialogResponse>;
+      const { choice, autoDownload: checked } = response as Partial<UpdateDialogResponse>;
+
+      autoDownload = checked === true;
 
       if (choice === 'install' || choice === 'download' || choice === 'later' || choice === 'skip') {
-        settle({ choice, autoDownload: autoDownload === true });
+        settle({ choice, autoDownload });
       }
     };
 
     ipcMain.on(UPDATE_DIALOG_SIZE, onSize);
     ipcMain.on(UPDATE_DIALOG_CHOICE, onChoice);
-    window.on('closed', () => settle({ choice: 'later', autoDownload: options.autoDownload }));
+    window.on('closed', () => settle({ choice: 'later', autoDownload }));
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', (event) => event.preventDefault());
 

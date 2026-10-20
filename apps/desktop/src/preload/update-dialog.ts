@@ -15,6 +15,8 @@ function answer(choice: string): void {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('auto')?.addEventListener('change', () => answer('checkbox'));
+
   document.querySelectorAll<HTMLButtonElement>('button[data-choice]').forEach((button) => {
     button.addEventListener('click', () => answer(button.dataset.choice ?? 'later'));
   });
