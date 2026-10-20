@@ -43,4 +43,6 @@ Signing and notarization run when the credentials are present as GitHub secrets,
 - macOS: `CSC_LINK` (base64 `.p12` of the Developer ID Application certificate), `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
 - Windows: `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD` (Authenticode `.pfx`), or Azure Trusted Signing variables as electron-builder documents them.
 
+The session is encrypted with a key the app keeps in the keychain (`Flexkit Studio Safe Storage`). macOS ties that entry to the binary that created it: a Developer ID build creates it once and later versions use it silently, but every local package is a new ad-hoc binary, so after a local build macOS asks for the login keychain password the next time any Flexkit Studio build signs in. Choose Allow (or Always Allow). A refusal fails the sign-in with a dialog that says so.
+
 Backend: the login callback `flexkit://auth/callback` is allowlisted in the Flexkit web project (`lib/auth/hosted-origins.ts`).

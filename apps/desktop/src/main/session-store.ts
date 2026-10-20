@@ -6,6 +6,14 @@ import type { DesktopSessionStore } from '@flexkit/studio/electron';
 const ENCRYPTED_PREFIX = 'enc:';
 const PLAIN_PREFIX = 'raw:';
 
+/** The OS refused to encrypt the session (on macOS: keychain access denied). */
+export class SessionStoreError extends Error {
+  constructor(cause: unknown) {
+    super('The session could not be stored securely.', { cause });
+    this.name = 'SessionStoreError';
+  }
+}
+
 /**
  * The Flexkit session, encrypted with the OS keychain (macOS), DPAPI
  * (Windows) or the desktop's secret service (Linux) through `safeStorage`,
@@ -40,15 +48,28 @@ export function createSessionStore(): DesktopSessionStore & { file: string } {
       return cached;
     },
     async set(token) {
-      cached = token;
       await mkdir(dirname(file), { recursive: true });
 
       if (safeStorage.isEncryptionAvailable()) {
-        await writeFile(file, `${ENCRYPTED_PREFIX}${safeStorage.encryptString(token).toString('base64')}`, { mode: 0o600 });
+        let encrypted: Buffer;
+
+        try {
+          encrypted = safeStorage.encryptString(token);
+        } catch (error) {
+          // macOS asks before the app may use its keychain entry; a refusal
+          // lands here. The session is not written unencrypted instead.
+          throw new SessionStoreError(error);
+        }
+
+        await writeFile(file, `${ENCRYPTED_PREFIX}${encrypted.toString('base64')}`, { mode: 0o600 });
       } else {
         console.warn('[flexkit] No encryption backend available; the session is stored unencrypted.');
         await writeFile(file, `${PLAIN_PREFIX}${token}`, { mode: 0o600 });
       }
+
+      // Only a persisted session counts: a failed write must not leave the
+      // app signed in until it quits.
+      cached = token;
     },
     async clear() {
       cached = '';
