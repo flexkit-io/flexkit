@@ -1,6 +1,6 @@
 import './env';
 import { join } from 'node:path';
-import { app, BrowserWindow, ipcMain, Menu, nativeTheme } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme } from 'electron';
 import contextMenu from 'electron-context-menu';
 import { completeDesktopLogin, createFlexkitElectronHandler } from '@flexkit/studio/electron';
 import { APP_ORIGIN, APP_SCHEME, IPC, LOGIN_CALLBACK_HOST } from './constants';
@@ -9,7 +9,7 @@ import { clearLoginState, expectedLoginState, prepareExternalUrl } from './login
 import { buildApplicationMenu } from './menu';
 import { setupPermissions } from './permissions';
 import { registerAppProtocol, registerAppScheme, restrictApiToStudio } from './protocol';
-import { createSessionStore } from './session-store';
+import { createSessionStore, SessionStoreError } from './session-store';
 import { installUpdate, setupUpdater } from './updater';
 import { createStudioWindow, focusWindow } from './window';
 
@@ -58,6 +58,30 @@ function isStudioLoaded(window: BrowserWindow): boolean {
   return hasStudio(window) && !window.webContents.isLoading();
 }
 
+/**
+ * The login callback arrived but the session could not be established.
+ * Without this the Studio would just stay on the login page.
+ */
+function reportLoginFailure(error: unknown): void {
+  const window = getWindow();
+  const keychainRefused = error instanceof SessionStoreError && process.platform === 'darwin';
+  const detail = keychainRefused
+    ? 'macOS did not let Flexkit Studio save your session in your keychain. Sign in again and choose Allow when macOS asks: that keychain entry only holds the key that encrypts your Flexkit session on this Mac.'
+    : error instanceof Error
+      ? error.message
+      : String(error);
+
+  console.error('[deep-link] login failed:', error);
+
+  if (window) {
+    focusWindow(window);
+  }
+
+  const options = { type: 'error' as const, title: 'Sign-in failed', message: 'Flexkit Studio could not finish signing in.', detail };
+
+  void (window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options));
+}
+
 /** A `flexkit://` URL from the OS: the login callback, or a path into the Studio. */
 async function handleAppUrl(url: string): Promise<void> {
   let parsed: URL;
@@ -79,7 +103,17 @@ async function handleAppUrl(url: string): Promise<void> {
 
   if (parsed.host === LOGIN_CALLBACK_HOST) {
     const expectedState = expectedLoginState();
-    const redirect = await completeDesktopLogin(url, sessionStore, { expectedState });
+    let redirect: string | null;
+
+    try {
+      redirect = await completeDesktopLogin(url, sessionStore, { expectedState });
+    } catch (error) {
+      // The code is spent either way; the next attempt starts a new login.
+      clearLoginState();
+      reportLoginFailure(error);
+
+      return;
+    }
 
     if (redirect !== null) {
       clearLoginState();
