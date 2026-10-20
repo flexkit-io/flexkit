@@ -11,7 +11,10 @@ export interface StudioVersion {
   upgrade?: () => void;
 }
 
-const WEB_VERSION: StudioVersion = { current: '1.0.0', latest: '1.0.0', isCurrent: true };
+// `@flexkit/studio`'s own version, inlined at build time; a build without the
+// define (tests, tooling) shows a placeholder.
+const STUDIO_VERSION = typeof __STUDIO_VERSION__ === 'string' ? __STUDIO_VERSION__ : '0.0.0';
+const WEB_VERSION: StudioVersion = { current: STUDIO_VERSION, latest: STUDIO_VERSION, isCurrent: true };
 
 /**
  * The Studio version shown in the app bar. The web Studio is always current
