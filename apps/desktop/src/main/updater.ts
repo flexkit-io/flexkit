@@ -1,19 +1,21 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, dialog } from 'electron';
-import type { BrowserWindow, MessageBoxOptions } from 'electron';
+import type { BrowserWindow, MessageBoxOptions, MessageBoxReturnValue } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { IPC } from './constants';
+import { showUpdateDialog } from './update-dialog';
 import { focusWindow } from './window';
 
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 /**
- * Updates come from the GitHub release the app was published with. They
- * download in the background. A downloaded update is offered in a dialog
- * (install now, on quit, or skip that version), the Studio's app bar shows
- * "Restart to update" as well, and unless skipped it installs on the next quit.
- * "Check for Updates…" in the menu reports every outcome in a dialog.
+ * Updates come from the GitHub release the app was published with. By
+ * default they download in the background and a dialog then offers to
+ * install (now, on quit, or skip that version); with automatic downloads
+ * turned off the dialog asks before downloading. The Studio's app bar shows
+ * "Restart to update" as well, and unless skipped a downloaded update
+ * installs on the next quit. "Check for Updates…" reports every outcome.
  */
 export interface Updater {
   /** `interactive`: the person asked (menu), so every outcome gets a dialog. */
@@ -22,88 +24,118 @@ export interface Updater {
   getDownloadedVersion: () => string | null;
 }
 
+/** Persisted in the user-data folder. */
+interface UpdateSettings {
+  autoDownload: boolean;
+  /** "Skip This Version": not offered again, and not installed on quit. */
+  skippedVersion: string | null;
+}
+
+function readSettings(file: string): UpdateSettings {
+  const settings: UpdateSettings = { autoDownload: true, skippedVersion: null };
+
+  try {
+    const stored = JSON.parse(readFileSync(file, 'utf8')) as Partial<UpdateSettings>;
+
+    if (typeof stored.autoDownload === 'boolean') {
+      settings.autoDownload = stored.autoDownload;
+    }
+
+    if (typeof stored.skippedVersion === 'string') {
+      settings.skippedVersion = stored.skippedVersion;
+    }
+  } catch {
+    // Defaults.
+  }
+
+  return settings;
+}
+
 export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
-  const showDialog = (options: MessageBoxOptions): Promise<number> => {
+  /** A sheet on the Studio window when it is on screen, a standalone alert otherwise. */
+  const showSheet = (options: MessageBoxOptions): Promise<MessageBoxReturnValue> => {
     const window = getWindow();
 
     if (window && window.isVisible()) {
       focusWindow(window);
 
-      return dialog.showMessageBox(window, options).then(({ response }) => response);
+      return dialog.showMessageBox(window, options);
     }
 
-    return dialog.showMessageBox(options).then(({ response }) => response);
+    return dialog.showMessageBox(options);
   };
 
   if (!app.isPackaged) {
     return {
       checkForUpdates: async (interactive) => {
         if (interactive) {
-          await showDialog({ type: 'info', message: 'Updates are only checked in the packaged app.' });
+          await showSheet({ type: 'info', message: 'Updates are only checked in the packaged app.' });
         }
       },
       getDownloadedVersion: () => null,
     };
   }
 
-  // "Skip This Version" survives restarts; a later version is offered again.
-  const skipFile = join(app.getPath('userData'), 'skipped-update');
-  let skippedVersion: string | null = null;
-
-  try {
-    skippedVersion = readFileSync(skipFile, 'utf8').trim() || null;
-  } catch {
-    // Nothing skipped.
-  }
+  const settingsFile = join(app.getPath('userData'), 'update-settings.json');
+  const settings = readSettings(settingsFile);
+  const saveSettings = (): void => {
+    writeFileSync(settingsFile, JSON.stringify(settings), { mode: 0o600 });
+  };
 
   let downloadedVersion: string | null = null;
-  // The automatic prompt shows once per version per run; a skipped version
-  // is not prompted for unless the person checks for updates themselves.
+  // Each prompt shows once per version per run; a skipped version is not
+  // prompted for unless the person checks for updates themselves.
+  let offeredVersion: string | null = null;
   let promptedVersion: string | null = null;
   let promptRequested = false;
   let checking: Promise<void> | null = null;
 
-  autoUpdater.autoDownload = true;
+  autoUpdater.autoDownload = settings.autoDownload;
   autoUpdater.autoInstallOnAppQuit = true;
 
+  /** Persists what the dialog was answered: the checkbox, and whether this version is skipped. */
+  const record = (version: string, choice: 'install' | 'download' | 'later' | 'skip', autoDownload: boolean): void => {
+    settings.autoDownload = autoDownload;
+    autoUpdater.autoDownload = autoDownload;
+    settings.skippedVersion = choice === 'skip' ? version : null;
+    autoUpdater.autoInstallOnAppQuit = choice !== 'skip';
+    saveSettings();
+  };
+
+  /** The update is downloaded: install now, on quit, or skip. */
   const promptToInstall = async (version: string): Promise<void> => {
     promptedVersion = version;
 
-    const response = await showDialog({
-      type: 'info',
-      title: 'Update ready',
-      message: 'A new version of Flexkit Studio is ready to install.',
-      detail: `Flexkit Studio ${version} has been downloaded. Install it and relaunch now? Otherwise it installs when you quit.`,
-      buttons: ['Install and Relaunch', 'Install on Quit', 'Skip This Version'],
-      defaultId: 0,
-      cancelId: 1,
-    });
+    const { choice, autoDownload } = await showUpdateDialog({ kind: 'ready', version, autoDownload: settings.autoDownload, parent: getWindow() });
 
-    if (response === 0) {
+    record(version, choice, autoDownload);
+
+    if (choice === 'install') {
       installUpdate();
-
-      return;
     }
+  };
 
-    if (response === 2) {
-      skippedVersion = version;
-      autoUpdater.autoInstallOnAppQuit = false;
-      writeFileSync(skipFile, version, { mode: 0o600 });
+  /** Automatic downloads are off: ask before downloading. */
+  const promptToDownload = async (version: string): Promise<void> => {
+    offeredVersion = version;
 
-      return;
+    const { choice, autoDownload } = await showUpdateDialog({ kind: 'available', version, autoDownload: settings.autoDownload, parent: getWindow() });
+
+    record(version, choice, autoDownload);
+
+    if (choice === 'download') {
+      promptRequested = true;
+      autoUpdater.downloadUpdate().catch((error: unknown) => {
+        console.warn('[flexkit] Update download failed:', error instanceof Error ? error.message : error);
+      });
     }
-
-    // Install on Quit.
-    skippedVersion = null;
-    autoUpdater.autoInstallOnAppQuit = true;
-    rmSync(skipFile, { force: true });
   };
 
   autoUpdater.on('update-downloaded', (info) => {
     downloadedVersion = info.version;
     getWindow()?.webContents.send(IPC.updateDownloaded, { version: info.version });
 
-    if (info.version !== skippedVersion) {
+    if (info.version !== settings.skippedVersion) {
       autoUpdater.autoInstallOnAppQuit = true;
     }
 
@@ -111,7 +143,7 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
 
     promptRequested = false;
 
-    if (promptedVersion === info.version || (!requested && info.version === skippedVersion)) {
+    if (promptedVersion === info.version || (!requested && info.version === settings.skippedVersion)) {
       return;
     }
 
@@ -135,7 +167,7 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
       result = await autoUpdater.checkForUpdates();
     } catch (error) {
       if (interactive) {
-        await showDialog({
+        await showSheet({
           type: 'error',
           title: 'Update check failed',
           message: 'Flexkit Studio could not check for updates.',
@@ -146,29 +178,41 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
       return;
     }
 
-    if (!interactive) {
+    if (!result?.isUpdateAvailable) {
+      if (interactive) {
+        await showSheet({
+          type: 'info',
+          title: 'Up to date',
+          message: "You're up to date!",
+          detail: `Flexkit Studio ${app.getVersion()} is currently the newest version available.`,
+        });
+      }
+
       return;
     }
 
-    if (!result?.isUpdateAvailable) {
-      await showDialog({
-        type: 'info',
-        title: 'Up to date',
-        message: "You're up to date.",
-        detail: `Flexkit Studio ${app.getVersion()} is the latest version.`,
-      });
+    const { version } = result.updateInfo;
 
+    if (!settings.autoDownload) {
+      if (interactive || (offeredVersion !== version && version !== settings.skippedVersion)) {
+        await promptToDownload(version);
+      }
+
+      return;
+    }
+
+    if (!interactive) {
       return;
     }
 
     // The download is under way (`autoDownload`); `update-downloaded` then
     // prompts, even for a version that was skipped before.
     promptRequested = true;
-    await showDialog({
+    await showSheet({
       type: 'info',
       title: 'Update available',
-      message: 'A new version of Flexkit Studio is available.',
-      detail: `Flexkit Studio ${result.updateInfo.version} is downloading in the background. You'll be asked to install it as soon as it's ready.`,
+      message: 'A new version of Flexkit Studio is available!',
+      detail: `Flexkit Studio ${version} is downloading in the background. You'll be asked to install it as soon as it's ready.`,
     });
   };
 

@@ -10,6 +10,10 @@ files:
   - out/**/*
   - package.json
 asar: true
+# The update dialog shows the app icon (src/main/update-dialog.ts).
+extraResources:
+  - from: build/icon.png
+    to: icon.png
 # The OS hands `flexkit://` URLs (login callback, links into the Studio) to the app.
 protocols:
   - name: Flexkit Studio
