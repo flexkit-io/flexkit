@@ -1,3 +1,5 @@
+import { getDesktop } from './desktop';
+
 const defaultFlexkitDomain = 'flexkit.io';
 
 const allowedFlexkitDomains: { [domain: string]: true } = {
@@ -14,7 +16,9 @@ type GlobalWithProcessEnv = typeof globalThis & {
 };
 
 function getConfiguredFlexkitDomain(): string {
-  const configuredDomain = (globalThis as GlobalWithProcessEnv).process?.env?.FLEXKIT_DOMAIN?.trim();
+  // The desktop app says which backend it was built for; a `process.env`
+  // inside its renderer is a polyfill that any dependency may replace.
+  const configuredDomain = (getDesktop()?.domain ?? (globalThis as GlobalWithProcessEnv).process?.env?.FLEXKIT_DOMAIN)?.trim();
 
   if (!configuredDomain) {
     return defaultFlexkitDomain;

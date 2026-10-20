@@ -1,9 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import type { FlexkitDesktopBridge } from '@flexkit/studio';
-import { APP_ORIGIN, IPC, VERSION_ARGUMENT } from '../main/constants';
+import { APP_ORIGIN, DOMAIN_ARGUMENT, IPC, VERSION_ARGUMENT } from '../main/constants';
 
-const version = process.argv.find((argument) => argument.startsWith(VERSION_ARGUMENT))?.slice(VERSION_ARGUMENT.length) ?? '0.0.0';
+function argument(prefix: string, fallback: string): string {
+  return process.argv.find((item) => item.startsWith(prefix))?.slice(prefix.length) ?? fallback;
+}
+
+const version = argument(VERSION_ARGUMENT, '0.0.0');
+const domain = argument(DOMAIN_ARGUMENT, 'flexkit.io');
 
 function subscribe<T>(channel: string, listener: (payload: T) => void): () => void {
   const handler = (_event: IpcRendererEvent, payload: T): void => {
@@ -20,6 +25,7 @@ function subscribe<T>(channel: string, listener: (payload: T) => void): () => vo
 const bridge: FlexkitDesktopBridge = {
   platform: process.platform === 'darwin' || process.platform === 'win32' ? process.platform : 'linux',
   version,
+  domain,
   loginCallback: 'flexkit://auth/callback',
   setBadgeCount: (count) => {
     ipcRenderer.send(IPC.setBadge, count);

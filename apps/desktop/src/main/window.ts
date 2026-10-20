@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { app, BrowserWindow, nativeTheme, shell } from 'electron';
 import windowStateKeeper from 'electron-window-state';
-import { APP_ORIGIN, VERSION_ARGUMENT } from './constants';
+import { APP_ORIGIN, DOMAIN_ARGUMENT, VERSION_ARGUMENT } from './constants';
 
 const DARK_BACKGROUND = '#020817';
 const LIGHT_BACKGROUND = '#ffffff';
@@ -54,7 +54,7 @@ export function createStudioWindow({ version, prepareExternalUrl = (url) => url 
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 16, y: 22 } } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      additionalArguments: [`${VERSION_ARGUMENT}${version}`],
+      additionalArguments: [`${VERSION_ARGUMENT}${version}`, `${DOMAIN_ARGUMENT}${__FLEXKIT_DOMAIN__}`],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
