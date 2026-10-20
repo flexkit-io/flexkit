@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useMemo } from 'react';
+import { useDebounce } from 'use-debounce';
 import type { JSX } from 'react';
 import { LoaderCircle, Search as SearchIcon, X as XIcon } from 'lucide-react';
 import { Command as CommandPrimitive } from 'cmdk';
@@ -39,6 +40,13 @@ export interface SearchProps {
 }
 
 const ALL_COLLECTIONS = 'all';
+/** Wait for a pause in typing before searching; every keystroke used to fan out one query per entity. */
+const SEARCH_DEBOUNCE_MS = 200;
+/** One character matches too much to be useful and is the most expensive prefix query. */
+const MIN_QUERY_LENGTH = 2;
+/** Searching all entities fans out per collection; the dropdown only shows a handful of rows per entity anyway. */
+const ALL_COLLECTIONS_LIMIT = 8;
+const SINGLE_COLLECTION_LIMIT = 25;
 
 function capitalize(str: string): string {
   const withSpaces = str.replace(/([A-Z])/g, ' $1');
@@ -70,7 +78,13 @@ function resolveCollection(entities: Entity[], selectedCollection: string): stri
   return ALL_COLLECTIONS;
 }
 
-function buildSearchRequest(collections: string[], q: string): SearchRequestProps {
+function buildSearchRequest(collections: string[], q: string): SearchRequestProps | null {
+  const query = q.trim();
+
+  if (query.length < MIN_QUERY_LENGTH) {
+    return null;
+  }
+
   return {
     searchRequests: {
       searches: collections.map((collection) => ({
@@ -78,7 +92,8 @@ function buildSearchRequest(collections: string[], q: string): SearchRequestProp
       })),
     },
     commonParams: {
-      q,
+      q: query,
+      limit: collections.length > 1 ? ALL_COLLECTIONS_LIMIT : SINGLE_COLLECTION_LIMIT,
     },
   };
 }
@@ -105,15 +120,22 @@ export function Search({
     () => getCollections(searchableEntities, resolvedCollection),
     [searchableEntities, resolvedCollection]
   );
-  const searchQuery = useMemo(() => buildSearchRequest(collections, inputValue), [collections, inputValue]);
+  const [debouncedInputValue] = useDebounce(inputValue, SEARCH_DEBOUNCE_MS);
+  const searchQuery = useMemo(
+    () => buildSearchRequest(collections, debouncedInputValue),
+    [collections, debouncedInputValue]
+  );
   const inputRef = useRef<HTMLInputElement>(null);
-  const { results, isLoading } = useSearch(projectId, searchQuery);
-  const showDropdown = isOpen && (results.length > 0 || !isLoading);
+  const { results: searchResults, isLoading } = useSearch(projectId, searchQuery);
+  // Previous hits are kept while a request is in flight, so drop them once the query is too short to search.
+  const results = searchQuery ? searchResults : [];
+  const isPending = isLoading || debouncedInputValue !== inputValue;
+  const showDropdown = isOpen && searchQuery !== null && (results.length > 0 || !isPending);
   const navigate = useNavigate();
 
   function handleOnSearchChange(q: string): void {
     setInputValue(q);
-    // TODO: Add debounce
+
     if (q.length > 0) {
       setIsOpen(true);
     }
@@ -194,7 +216,7 @@ export function Search({
             'fk:outline-none fk:transition-[color,box-shadow] fk:has-[input:focus-visible]:border-ring fk:has-[input:focus-visible]:ring-[3px] fk:has-[input:focus-visible]:ring-ring/50'
           )}
         >
-          {isLoading ? (
+          {isPending ? (
             <LoaderCircle className="fk:mr-2 fk:h-4 fk:w-4 fk:shrink-0 fk:opacity-50 fk:animate-spin" />
           ) : (
             <SearchIcon className="fk:mr-2 fk:h-4 fk:w-4 fk:shrink-0 fk:opacity-50" />
@@ -231,7 +253,7 @@ export function Search({
             )}
           >
             <ScrollArea className="fk:max-h-55 fk:overflow-auto">
-              {!isLoading && <CommandEmpty>{noResultsMsg}</CommandEmpty>}
+              {!isPending && <CommandEmpty>{noResultsMsg}</CommandEmpty>}
               <CommandList>
                 <CommandGroup>
                   {results.length > 0 && <CommandItem aria-hidden="true" className="fk:hidden!" value="-" />}
