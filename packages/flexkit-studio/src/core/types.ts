@@ -146,5 +146,7 @@ export interface SearchRequestProps {
   };
   commonParams: {
     q: string;
+    /** Hits per collection. The server default is 25, the maximum 100. */
+    limit?: number;
   };
 }

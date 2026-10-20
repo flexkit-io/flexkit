@@ -19,17 +19,23 @@ export function useSearch(
   const scopes = currentProject?.scopes;
   const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
   const swrKey = searchRequest?.commonParams.q ? JSON.stringify(searchRequest) : null;
-  const { data, error, isLoading } = useSWR(swrKey, () =>
-    fetch(apiPaths(projectId).search, {
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(searchRequest),
-      method: 'POST',
-      mode: 'cors',
-    }).then((res) => res.json() as Promise<{ results: RawSearchResultItems }>)
+  const { data, error, isLoading } = useSWR(
+    swrKey,
+    () =>
+      fetch(apiPaths(projectId).search, {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchRequest),
+        method: 'POST',
+        mode: 'cors',
+      }).then((res) => res.json() as Promise<{ results: RawSearchResultItems }>),
+    // Show the previous hits until the next request lands instead of flashing an empty list per keystroke.
+    { keepPreviousData: true }
   );
   const results = useMemo(
-    () => mapResults(data?.results ?? [], projectId, schema, scope, defaultScope) ?? [],
-    [data, defaultScope, projectId, schema, scope]
+    // SWR keeps the previous key's data while a new key loads, and also after the key becomes null.
+    // Callers treat an empty query as "no search", so return no hits once there is nothing to search for.
+    () => (swrKey ? (mapResults(data?.results ?? [], projectId, schema, scope, defaultScope) ?? []) : []),
+    [data, defaultScope, projectId, schema, scope, swrKey]
   );
 
   return { results, error, isLoading };
