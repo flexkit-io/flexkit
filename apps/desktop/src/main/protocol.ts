@@ -95,14 +95,17 @@ function serveFile(path: string, cacheable: boolean): Response {
 }
 
 /**
- * The BFF carries the person's session, so only the Studio window itself may
- * call it, and only from script (`fetch`): a navigation to an API path, or a
- * request from any other document in the session (a plugin's OAuth popup),
- * is blocked. This stands in for the cookie and same-origin rules a browser
- * applies to the hosted Studio.
+ * The BFF carries the person's session, so only the Studio window may call
+ * it: a request from any other document in the session (a plugin's OAuth
+ * popup) is blocked. Within the Studio window, the endpoints that change the
+ * session answer script (`fetch`) only, never an image or a frame that in-app
+ * content could plant. Downloads (a link to an artifact) stay possible.
+ * This stands in for the cookie and same-origin rules a browser applies to
+ * the hosted Studio.
  */
 export function restrictApiToStudio(isStudioWebContents: (webContentsId: number | undefined) => boolean): void {
   const apiPrefix = `${APP_ORIGIN}/api/`;
+  const sessionPaths = new Set(['/api/flexkit/logout', '/api/flexkit/get-token', '/api/flexkit/-/auth/logout']);
 
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
     if (!details.url.startsWith(apiPrefix)) {
@@ -111,21 +114,15 @@ export function restrictApiToStudio(isStudioWebContents: (webContentsId: number 
       return;
     }
 
-    const isDocument = details.resourceType === 'mainFrame' || details.resourceType === 'subFrame';
-    const isStudio = isStudioWebContents(details.webContentsId);
+    const { pathname } = new URL(details.url);
+    const isScript = details.resourceType === 'xhr';
+    const allowed = isStudioWebContents(details.webContentsId) && (isScript || !sessionPaths.has(pathname));
 
-    if (isStudio && !isDocument) {
-      callback({});
-
-      return;
+    if (!allowed && process.env.FLEXKIT_DEBUG_PROTOCOL) {
+      console.log('[protocol] blocked', details.resourceType, 'from', details.webContentsId, pathname);
     }
 
-    if (process.env.FLEXKIT_DEBUG_PROTOCOL) {
-      console.log('[protocol] blocked', details.resourceType, 'from', details.webContentsId, new URL(details.url).pathname);
-    }
-
-    // The Studio window itself lands back on the Studio rather than on an error page.
-    callback(isStudio && details.resourceType === 'mainFrame' ? { redirectURL: `${APP_ORIGIN}/` } : { cancel: true });
+    callback({ cancel: !allowed });
   });
 }
 

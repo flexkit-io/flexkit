@@ -108,7 +108,7 @@ export function createStudioWindow({ version, prepareExternalUrl = (url) => url 
     }
 
     if (isBrowserUrl(url)) {
-      void shell.openExternal(url);
+      void shell.openExternal(prepareExternalUrl(url));
     }
 
     return { action: 'deny' };

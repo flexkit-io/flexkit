@@ -1,3 +1,4 @@
+import { flexkitDomain } from '../core/domains';
 import { handleFlexkitRequest, type FlexkitHandlerResult } from './core-handler';
 import { getToken } from './get-token';
 
@@ -53,7 +54,11 @@ export const DESKTOP_LOGIN_STATE_PARAM = 'state';
 
 const LOGIN_STATE_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
 
-/** A login start URL (`https://<flexkit>/auth/login/<provider>?origin=flexkit://auth/callback&...`). */
+/**
+ * A login start URL on the Flexkit backend
+ * (`https://<flexkit>/auth/login/<provider>?origin=flexkit://auth/callback&...`).
+ * Only that host gets the nonce: it is the secret that lets a callback in.
+ */
 export function isDesktopLoginStart(url: string): boolean {
   let parsed: URL;
 
@@ -65,6 +70,7 @@ export function isDesktopLoginStart(url: string): boolean {
 
   return (
     parsed.protocol === 'https:' &&
+    (parsed.host === flexkitDomain || parsed.host === `www.${flexkitDomain}`) &&
     parsed.pathname.startsWith('/auth/login/') &&
     parsed.searchParams.get('origin') === DESKTOP_LOGIN_CALLBACK
   );
@@ -204,7 +210,9 @@ export function createFlexkitElectronHandler({
   return async function handleElectronRequest(request: Request): Promise<Response> {
     const { pathname, search } = new URL(request.url);
 
-    if (!pathname.startsWith('/api/flexkit/')) {
+    // The web callback has no place in the app: a login arrives through the
+    // deep link, bound to its nonce, never through a URL a page can request.
+    if (!pathname.startsWith('/api/flexkit/') || pathname === '/api/flexkit/get-token') {
       return new Response('Not found', { status: 404 });
     }
 

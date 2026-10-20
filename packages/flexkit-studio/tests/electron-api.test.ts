@@ -90,7 +90,10 @@ describe('parseDesktopLoginCallback', () => {
 describe('login start', () => {
   it('recognises a login the Studio starts for the desktop callback', () => {
     assert.equal(isDesktopLoginStart(LOGIN_START), true);
+    assert.equal(isDesktopLoginStart('https://www.flexkit.io/auth/login/github?origin=flexkit%3A%2F%2Fauth%2Fcallback'), true);
     assert.equal(isDesktopLoginStart('https://flexkit.io/auth/login/google?origin=https%3A%2F%2Fother.example'), false);
+    assert.equal(isDesktopLoginStart('https://evil.example/auth/login/x?origin=flexkit%3A%2F%2Fauth%2Fcallback'), false);
+    assert.equal(isDesktopLoginStart('https://flexkit.io.evil.example/auth/login/x?origin=flexkit%3A%2F%2Fauth%2Fcallback'), false);
     assert.equal(isDesktopLoginStart('https://flexkit.io/docs'), false);
     assert.equal(isDesktopLoginStart('http://flexkit.io/auth/login/google?origin=flexkit%3A%2F%2Fauth%2Fcallback'), false);
     assert.equal(isDesktopLoginStart('not a url'), false);
@@ -159,6 +162,13 @@ describe('completeDesktopLogin', () => {
 });
 
 describe('createFlexkitElectronHandler', () => {
+  it('has no web login callback', async () => {
+    const handle = createFlexkitElectronHandler({ sessionStore: memoryStore() });
+    const response = await handle(new Request(`flexkit://app/api/flexkit/get-token?code=${CODE}`));
+
+    assert.equal(response.status, 404);
+  });
+
   it('proxies with the stored session and forwards the response', async () => {
     const store = memoryStore('sid-1');
     let forwarded: Request | undefined;
