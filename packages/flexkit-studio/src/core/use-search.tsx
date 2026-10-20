@@ -32,8 +32,10 @@ export function useSearch(
     { keepPreviousData: true }
   );
   const results = useMemo(
-    () => mapResults(data?.results ?? [], projectId, schema, scope, defaultScope) ?? [],
-    [data, defaultScope, projectId, schema, scope]
+    // SWR keeps the previous key's data while a new key loads, and also after the key becomes null.
+    // Callers treat an empty query as "no search", so return no hits once there is nothing to search for.
+    () => (swrKey ? (mapResults(data?.results ?? [], projectId, schema, scope, defaultScope) ?? []) : []),
+    [data, defaultScope, projectId, schema, scope, swrKey]
   );
 
   return { results, error, isLoading };

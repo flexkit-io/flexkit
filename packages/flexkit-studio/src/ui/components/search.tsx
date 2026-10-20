@@ -126,9 +126,7 @@ export function Search({
     [collections, debouncedInputValue]
   );
   const inputRef = useRef<HTMLInputElement>(null);
-  const { results: searchResults, isLoading } = useSearch(projectId, searchQuery);
-  // Previous hits are kept while a request is in flight, so drop them once the query is too short to search.
-  const results = searchQuery ? searchResults : [];
+  const { results, isLoading } = useSearch(projectId, searchQuery);
   const isPending = isLoading || debouncedInputValue !== inputValue;
   const showDropdown = isOpen && searchQuery !== null && (results.length > 0 || !isPending);
   const navigate = useNavigate();
