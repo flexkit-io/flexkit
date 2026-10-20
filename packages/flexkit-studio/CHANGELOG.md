@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.2.15
+
+### Patch Changes
+
+- 1049445: The app bar's version entry shows the Studio's package version on the web instead of a fixed 1.0.0.
+  - @flexkit/schema@0.2.15
+
 ## 0.2.14
 
 ### Patch Changes
