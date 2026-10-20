@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.16
+
+### Patch Changes
+
+- 70919a6: Faster Studio search: requests are debounced, need at least two characters, ask for fewer hits per entity when searching all entities, and keep the previous results visible while the next request is in flight.
+
 ## 0.2.15
 
 ### Patch Changes
