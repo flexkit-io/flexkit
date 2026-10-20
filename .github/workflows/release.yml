@@ -112,17 +112,6 @@ jobs:
               --notes "Flexkit Studio desktop app $version for macOS and Windows. Downloads: the .dmg for macOS (Apple silicon: arm64, Intel: x64) and the -setup.exe for Windows. The other files serve the app's automatic updates."
           fi
 
-      # Code signing needs Apple's "Developer ID" intermediate certificate to
-      # build the chain from the Developer ID Application certificate to Apple's
-      # root; the exported .p12 does not carry it, and without it the identity
-      # counts as untrusted and electron-builder quietly skips signing.
-      - name: Install Apple's Developer ID intermediate certificate
-        if: runner.os == 'macOS'
-        run: |
-          curl -fsSL -o DeveloperIDG2CA.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
-          sudo security add-trusted-cert -d -r unspecified -k /Library/Keychains/System.keychain DeveloperIDG2CA.cer
-          rm DeveloperIDG2CA.cer
-
       # Signing and notarization happen when the secrets are set (see
       # apps/desktop/README.md); without them the installers are unsigned.
       - name: Package and publish
