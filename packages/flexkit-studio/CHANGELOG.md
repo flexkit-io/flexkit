@@ -1,5 +1,14 @@
 # @flexkit/studio
 
+## 0.2.13
+
+### Patch Changes
+
+- 98ff5a8: Desktop app support: a new `@flexkit/studio/electron` adapter runs the Studio BFF inside an Electron main process (session from the app's store instead of a cookie, `flexkit://auth/callback` login), and the Studio reads an optional `window.flexkitDesktop` bridge for the dock badge, native notification focus, deep-link navigation and update prompts. The web Studio is unchanged.
+- 98ff5a8: The Explorer's welcome comment no longer calls it an in-browser tool, since it also runs in the desktop app.
+- 98ff5a8: Lists in an app behind the active one no longer page through the whole entity while hidden: the asset grid and the data table wait until their app is in front again before loading more.
+  - @flexkit/schema@0.2.13
+
 ## 0.2.12
 
 ### Patch Changes
