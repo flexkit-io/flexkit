@@ -4,7 +4,7 @@ import { app, dialog } from 'electron';
 import type { BrowserWindow, MessageBoxOptions, MessageBoxReturnValue } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { IPC } from './constants';
-import { showUpdateDialog } from './update-dialog';
+import { focusUpdateDialog, showUpdateDialog } from './update-dialog';
 import { focusWindow } from './window';
 
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -89,6 +89,22 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
   let promptedVersion: string | null = null;
   let promptRequested = false;
   let checking: Promise<void> | null = null;
+  let interactiveCheck: Promise<void> | null = null;
+  // One prompt at a time: a second request brings the open one to the front.
+  let prompt: Promise<void> | null = null;
+  const withPrompt = (open: () => Promise<void>): Promise<void> => {
+    if (prompt !== null) {
+      focusUpdateDialog();
+
+      return prompt;
+    }
+
+    prompt = open().finally(() => {
+      prompt = null;
+    });
+
+    return prompt;
+  };
 
   autoUpdater.autoDownload = settings.autoDownload;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -103,33 +119,35 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
   };
 
   /** The update is downloaded: install now, on quit, or skip. */
-  const promptToInstall = async (version: string): Promise<void> => {
-    promptedVersion = version;
+  const promptToInstall = (version: string): Promise<void> =>
+    withPrompt(async () => {
+      promptedVersion = version;
 
-    const { choice, autoDownload } = await showUpdateDialog({ kind: 'ready', version, autoDownload: settings.autoDownload, parent: getWindow() });
+      const { choice, autoDownload } = await showUpdateDialog({ kind: 'ready', version, autoDownload: settings.autoDownload, parent: getWindow() });
 
-    record(version, choice, autoDownload);
+      record(version, choice, autoDownload);
 
-    if (choice === 'install') {
-      installUpdate();
-    }
-  };
+      if (choice === 'install') {
+        installUpdate();
+      }
+    });
 
   /** Automatic downloads are off: ask before downloading. */
-  const promptToDownload = async (version: string): Promise<void> => {
-    offeredVersion = version;
+  const promptToDownload = (version: string): Promise<void> =>
+    withPrompt(async () => {
+      offeredVersion = version;
 
-    const { choice, autoDownload } = await showUpdateDialog({ kind: 'available', version, autoDownload: settings.autoDownload, parent: getWindow() });
+      const { choice, autoDownload } = await showUpdateDialog({ kind: 'available', version, autoDownload: settings.autoDownload, parent: getWindow() });
 
-    record(version, choice, autoDownload);
+      record(version, choice, autoDownload);
 
-    if (choice === 'download') {
-      promptRequested = true;
-      autoUpdater.downloadUpdate().catch((error: unknown) => {
-        console.warn('[flexkit] Update download failed:', error instanceof Error ? error.message : error);
-      });
-    }
-  };
+      if (choice === 'download') {
+        promptRequested = true;
+        autoUpdater.downloadUpdate().catch((error: unknown) => {
+          console.warn('[flexkit] Update download failed:', error instanceof Error ? error.message : error);
+        });
+      }
+    });
 
   autoUpdater.on('update-downloaded', (info) => {
     downloadedVersion = info.version;
@@ -225,21 +243,29 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
   };
 
   function checkForUpdates(interactive = false): Promise<void> {
-    const run = (): Promise<void> => {
-      checking = check(interactive).finally(() => {
-        checking = null;
-      });
+    if (!interactive) {
+      if (checking === null) {
+        checking = check(false).finally(() => {
+          checking = null;
+        });
+      }
 
       return checking;
-    };
-
-    if (checking === null) {
-      return run();
     }
 
-    // A background check is running: a manual one follows it (and reports),
-    // another background one just shares it.
-    return interactive ? checking.then(run, run) : checking;
+    // One manual check at a time; it waits for a background check so that it
+    // reports, and repeated clicks share it (an open prompt comes to the front).
+    if (interactiveCheck === null) {
+      const run = (): Promise<void> => check(true);
+
+      interactiveCheck = (checking ?? Promise.resolve()).then(run, run).finally(() => {
+        interactiveCheck = null;
+      });
+    } else {
+      focusUpdateDialog();
+    }
+
+    return interactiveCheck;
   }
 
   void checkForUpdates();

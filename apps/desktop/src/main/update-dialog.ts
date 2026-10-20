@@ -142,6 +142,19 @@ function page(options: UpdateDialogOptions): string {
 </html>`;
 }
 
+let current: BrowserWindow | null = null;
+
+/** Brings the open update prompt to the front, if there is one. */
+export function focusUpdateDialog(): boolean {
+  if (current === null || current.isDestroyed()) {
+    return false;
+  }
+
+  current.focus();
+
+  return true;
+}
+
 /**
  * The update prompt, as its own small window (icon, title, text, the
  * auto-download checkbox and the choices in a row). Closing it counts as
@@ -172,6 +185,7 @@ export function showUpdateDialog(options: UpdateDialogOptions): Promise<UpdateDi
   });
 
   window.setMenuBarVisibility(false);
+  current = window;
 
   return new Promise<UpdateDialogResult>((resolve) => {
     let settled = false;
@@ -184,6 +198,7 @@ export function showUpdateDialog(options: UpdateDialogOptions): Promise<UpdateDi
       }
 
       settled = true;
+      current = null;
       ipcMain.removeListener(UPDATE_DIALOG_SIZE, onSize);
       ipcMain.removeListener(UPDATE_DIALOG_CHOICE, onChoice);
       resolve(result);
