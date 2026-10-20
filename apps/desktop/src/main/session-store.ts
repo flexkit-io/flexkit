@@ -48,7 +48,6 @@ export function createSessionStore(): DesktopSessionStore & { file: string } {
       return cached;
     },
     async set(token) {
-      cached = token;
       await mkdir(dirname(file), { recursive: true });
 
       if (safeStorage.isEncryptionAvailable()) {
@@ -67,6 +66,10 @@ export function createSessionStore(): DesktopSessionStore & { file: string } {
         console.warn('[flexkit] No encryption backend available; the session is stored unencrypted.');
         await writeFile(file, `${PLAIN_PREFIX}${token}`, { mode: 0o600 });
       }
+
+      // Only a persisted session counts: a failed write must not leave the
+      // app signed in until it quits.
+      cached = token;
     },
     async clear() {
       cached = '';

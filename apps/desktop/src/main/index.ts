@@ -103,16 +103,15 @@ async function handleAppUrl(url: string): Promise<void> {
 
   if (parsed.host === LOGIN_CALLBACK_HOST) {
     const expectedState = expectedLoginState();
-    let redirect: string | null;
+    let redirect: string | null = null;
 
     try {
       redirect = await completeDesktopLogin(url, sessionStore, { expectedState });
     } catch (error) {
       // The code is spent either way; the next attempt starts a new login.
+      // The window handling below then treats this like a refused callback.
       clearLoginState();
       reportLoginFailure(error);
-
-      return;
     }
 
     if (redirect !== null) {
