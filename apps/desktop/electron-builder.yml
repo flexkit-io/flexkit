@@ -32,13 +32,16 @@ mac:
     # electron-updater needs the zip next to the dmg.
     - target: zip
       arch: [arm64, x64]
+  # No space in file names: GitHub renames assets with spaces, and the updater
+  # looks for the block map under the zip's exact name.
+  artifactName: Flexkit-Studio-${version}-${arch}.${ext}
 dmg:
-  artifactName: ${productName}-${version}-${arch}.${ext}
+  artifactName: Flexkit-Studio-${version}-${arch}.${ext}
 win:
   target:
     - target: nsis
       arch: [x64]
-  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+  artifactName: Flexkit-Studio-${version}-${arch}-setup.${ext}
 nsis:
   oneClick: true
   perMachine: false

@@ -99,6 +99,19 @@ jobs:
       - name: Build
         run: pnpm turbo run build --filter=desktop...
 
+      # The release exists before electron-builder runs, so its per-architecture
+      # publishers only upload (creating it from two of them at once fails).
+      - name: Ensure the GitHub release exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(node -p "require('./packages/flexkit-studio/package.json').version")
+          if ! gh release view "v$version" >/dev/null 2>&1; then
+            gh release create "v$version" --target "$GITHUB_SHA" --title "Flexkit Studio $version" \
+              --notes "Flexkit Studio desktop app $version for macOS and Windows. Downloads: the .dmg for macOS (Apple silicon: arm64, Intel: x64) and the -setup.exe for Windows. The other files serve the app's automatic updates."
+          fi
+
       # Signing and notarization happen when the secrets are set (see
       # apps/desktop/README.md); without them the installers are unsigned.
       - name: Package and publish
