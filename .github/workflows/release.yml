@@ -118,6 +118,10 @@ jobs:
         run: pnpm --filter desktop dist --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The release is created before packaging; electron-builder would
+          # otherwise skip uploads to a release published over two hours ago
+          # (notarization and the serialized Windows leg can take that long).
+          EP_GH_IGNORE_TIME: 'true'
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
