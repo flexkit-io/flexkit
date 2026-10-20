@@ -1004,3 +1004,18 @@ pre {
   border-radius: var(--border-radius-4);
   padding: var(--px-4);
 }
+
+/* Desktop app (Electron): the navbar doubles as the window's title bar. It
+   can be dragged, except where it is interactive, and on macOS it leaves room
+   for the window controls drawn over the top-left corner. */
+html[data-desktop-platform] .flexkit-navbar {
+  -webkit-app-region: drag;
+}
+
+html[data-desktop-platform] .flexkit-navbar :is(a, button, input, textarea, select, [role='button'], [role='combobox']) {
+  -webkit-app-region: no-drag;
+}
+
+html[data-desktop-platform='darwin'] .flexkit-navbar {
+  padding-left: 6.5rem;
+}

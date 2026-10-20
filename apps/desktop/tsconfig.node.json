@@ -1,0 +1,14 @@
+{
+  "extends": "tsconfig/base.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["electron.vite.config.ts", "src/globals.d.ts", "src/main/**/*", "src/preload/**/*"]
+}

@@ -15,14 +15,8 @@ import { Toaster } from '../primitives/sonner';
 import { AppBar } from './appbar';
 import { AppOutlet, useAppSessions } from './app-outlet';
 import { Navbar } from './navbar';
+import { useStudioVersion } from '../../core/use-studio-version';
 
-type Props = {
-  version: {
-    current: string;
-    latest: string;
-    isCurrent: boolean;
-  };
-};
 
 function SchemaUnavailable({
   projectId,
@@ -65,7 +59,7 @@ function SchemaUnavailable({
   );
 }
 
-export function Layout({ version }: Props): JSX.Element {
+export function Layout(): JSX.Element {
   const { apps, currentProject, isLoadingSchemas, mode, projectIds, projects, projectSummaries, schemaErrors } =
     useConfig();
   const [isLoading, auth] = useAuth();
@@ -75,6 +69,7 @@ export function Layout({ version }: Props): JSX.Element {
   const location = useLocation();
   const isKnownProject = projectIds.includes(projectId);
   const appSessions = useAppSessions(apps, projectId);
+  const version = useStudioVersion();
 
   useEffect(() => {
     if (scopes && scopes.length > 0) {

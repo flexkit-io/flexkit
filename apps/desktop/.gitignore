@@ -1,0 +1,6 @@
+# electron-vite output
+out/
+# installers (electron-builder)
+dist/
+# electron-builder resources (the root ignores every "build")
+!build/

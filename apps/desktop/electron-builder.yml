@@ -1,0 +1,54 @@
+# Installers and updates for the Flexkit Studio desktop app.
+# `pnpm --filter desktop dist` builds them (see scripts/build-installers.mjs).
+appId: app.flexkit.studio
+productName: Flexkit Studio
+copyright: Copyright © Flexkit
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+  - package.json
+asar: true
+# The OS hands `flexkit://` URLs (login callback, links into the Studio) to the app.
+protocols:
+  - name: Flexkit Studio
+    schemes:
+      - flexkit
+mac:
+  category: public.app-category.productivity
+  # Signing and notarization happen when the Apple credentials are present in
+  # the environment (CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD,
+  # APPLE_TEAM_ID); without them the build is unsigned.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: Flexkit Studio uses the microphone to dictate messages.
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    # electron-updater needs the zip next to the dmg.
+    - target: zip
+      arch: [arm64, x64]
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}-setup.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+linux:
+  category: Office
+  target:
+    - target: AppImage
+      arch: [x64]
+publish:
+  provider: github
+  owner: flexkit-io
+  repo: flexkit
+  releaseType: release

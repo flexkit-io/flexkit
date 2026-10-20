@@ -37,6 +37,7 @@ import type { AttributeValue } from '../graphql-client/types';
 import type { MultipleRelationshipConnection } from '../core/types';
 import { useGraphQLError } from '../graphql-client/graphql-context';
 import { shouldLoadMore } from './should-load-more';
+import { useIsAppActive } from '../core/apps/app-active';
 
 interface DataTableProps<TData extends AttributeValue, TValue> {
   classNames?: {
@@ -272,10 +273,16 @@ export function DataTable<TData extends AttributeValue, TValue>({
     onLoadMoreRef.current();
   }, []);
 
-  // Re-check when rows/hasMore/loading settle — not when parent callback identities change.
+  // Re-check when rows/hasMore/loading settle (not when parent callback
+  // identities change) and when the app comes back to the front: behind the
+  // active app the table has no height, so `shouldLoadMore` waits.
+  const isAppActive = useIsAppActive();
+
   useEffect(() => {
-    checkLoadMore();
-  }, [checkLoadMore, rows.length, hasMore, isLoadingMore]);
+    if (isAppActive) {
+      checkLoadMore();
+    }
+  }, [checkLoadMore, rows.length, hasMore, isLoadingMore, isAppActive]);
 
   function handleRowSelectionChange(updaterFn: Updater<RowSelectionState>): void {
     const selectedIds = typeof updaterFn === 'function' ? Object.keys(updaterFn(rowSelection)) : Object.keys(updaterFn);

@@ -1,5 +1,6 @@
 import useSWR, { type KeyedMutator } from 'swr';
 import { userApiPaths } from '../../core/api-paths';
+import { getDesktop } from '../../core/desktop';
 import type { ActivityItemKind } from './types';
 
 /** A person's notification choices, shared by every project they open. */
@@ -49,8 +50,10 @@ export function saveNotificationPreferences(preferences: NotificationPreferences
 }
 
 export function isWebPushSupported(): boolean {
+  // The desktop app keeps polling while it runs in the background and notifies natively.
   return (
     typeof window !== 'undefined' &&
+    getDesktop() === undefined &&
     typeof Notification !== 'undefined' &&
     'serviceWorker' in navigator &&
     'PushManager' in window

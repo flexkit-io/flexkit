@@ -3,11 +3,20 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [
-    ["@flexkit/studio", "@flexkit/schema"]
+    [
+      "@flexkit/studio",
+      "@flexkit/schema"
+    ]
   ],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["astro-7", "next-16", "studio", "tanstack-start"]
+  "ignore": [
+    "astro-7",
+    "desktop",
+    "next-16",
+    "studio",
+    "tanstack-start"
+  ]
 }

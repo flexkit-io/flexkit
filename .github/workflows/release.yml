@@ -19,6 +19,8 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -63,3 +65,50 @@ jobs:
           pnpm dlx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
           pnpm dlx vercel@latest build --prod --token="$VERCEL_TOKEN"
           pnpm dlx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+  # The desktop app ships with the same commit as the npm packages and the
+  # hosted Studio: installers are built on each OS and attached to a GitHub
+  # release named after the @flexkit/studio version they bundle.
+  desktop:
+    name: Desktop installers (${{ matrix.os }})
+    needs: release
+    if: needs.release.outputs.published == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      # Both legs publish to the same GitHub release: one at a time, or the
+      # release gets created twice and assets go missing.
+      max-parallel: 1
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm turbo run build --filter=desktop...
+
+      # Signing and notarization happen when the secrets are set (see
+      # apps/desktop/README.md); without them the installers are unsigned.
+      - name: Package and publish
+        run: pnpm --filter desktop dist --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}

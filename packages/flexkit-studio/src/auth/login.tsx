@@ -10,6 +10,7 @@ import { Label } from '../ui/primitives/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { apiPaths, userApiPaths } from '../core/api-paths';
 import { useConfig } from '../core/config/config-context';
+import { getDesktop } from '../core/desktop';
 import { getProjectLabel } from '../ui/components/project-label';
 import { useAuth } from './auth-context';
 import EmailLogin from './email';
@@ -56,12 +57,12 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
   const referal: string = currentRouterLocation.state?.from?.pathname ?? currentRouterLocation.pathname;
   const referalHref = useHref(referal);
 
+  const desktop = getDesktop();
   // Hosted mode returns to the page that asked for login (the root picks the project);
   // project mode lands on the project picked in the selector.
-  const fromPath =
-    isHosted || referal.includes(selectedProjectId)
-      ? `${location.origin}${referalHref}`
-      : `${location.origin}${selectedProjectHref}`;
+  const fromHref = isHosted || referal.includes(selectedProjectId) ? referalHref : selectedProjectHref;
+  // The desktop app receives the code on its URL scheme and opens the path itself.
+  const fromPath = desktop ? fromHref : `${location.origin}${fromHref}`;
 
   if (error) {
     throw new Error('Error fetching auth providers');
@@ -135,7 +136,7 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
                         href={composeLoginHref({
                           url: provider.url,
                           projectId: isHosted ? undefined : selectedProjectId,
-                          basePath: '/api/flexkit/get-token',
+                          callback: desktop ? desktop.loginCallback : `${location.origin}/api/flexkit/get-token`,
                           fromPath,
                         })}
                       >
@@ -159,6 +160,11 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
                   >
                     Continue with Email →
                   </Button>
+                  {desktop ? (
+                    <p className="fk:text-xs fk:text-center fk:text-muted-foreground">
+                      Sign-in with a provider continues in your browser and returns here.
+                    </p>
+                  ) : null}
                 </div>
               </>
             )}
@@ -252,13 +258,14 @@ interface CreateHrefForProviderOptions {
   /** Omitted in hosted mode: the login is for the account, not a project. */
   projectId?: string;
   url: string;
-  basePath: string;
+  /** Where Flexkit sends the session code: the BFF token route, or the desktop app's URL scheme. */
+  callback: string;
   fromPath: string;
 }
 
-function composeLoginHref({ projectId, url, basePath, fromPath }: CreateHrefForProviderOptions): string {
+function composeLoginHref({ projectId, url, callback, fromPath }: CreateHrefForProviderOptions): string {
   const params = new URLSearchParams();
-  params.set('origin', `${location.origin}${basePath}`);
+  params.set('origin', callback);
 
   if (projectId) {
     params.set('projectId', projectId);

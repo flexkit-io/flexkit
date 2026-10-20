@@ -1,0 +1,43 @@
+{
+  "name": "desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Flexkit Studio for macOS and Windows: @flexkit/studio in hosted mode inside Electron, with the Studio BFF in the main process.",
+  "author": {
+    "name": "Flexkit",
+    "url": "https://www.flexkit.io"
+  },
+  "homepage": "https://flexkit.app",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "dist": "node scripts/build-installers.mjs",
+    "dist:dir": "node scripts/build-installers.mjs --dir"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9",
+    "electron-window-state": "5.0.3"
+  },
+  "devDependencies": {
+    "@flexkit/studio": "workspace:*",
+    "@types/node": "^20",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.1.2",
+    "electron": "44.9.0",
+    "electron-builder": "26.15.3",
+    "electron-context-menu": "5.1.0",
+    "electron-vite": "6.0.0",
+    "eslint": "^9",
+    "eslint-config-custom": "workspace:*",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "tsconfig": "workspace:*",
+    "typescript": "^5",
+    "vite": "8.3.4"
+  }
+}
