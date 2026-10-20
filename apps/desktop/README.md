@@ -38,7 +38,7 @@ Studio UI changes are made in `packages/flexkit-studio` as usual (`pnpm --filter
 
 Installers are built by the `Release` workflow after `changeset publish`, from the same commit as the npm packages and the hosted Studio, and attached to a GitHub release of this repository. The app's version is the `@flexkit/studio` version it bundles (`scripts/build-installers.mjs`), so installers, npm and flexkit.app always line up.
 
-Signing and notarization run when the credentials are present as GitHub secrets, and are skipped otherwise (the app then opens with a Gatekeeper or SmartScreen warning):
+Signing and notarization run when the credentials are present as GitHub secrets, and are skipped otherwise. An unsigned macOS build is ad-hoc signed (`scripts/adhoc-sign.cjs`), so Gatekeeper offers **System Settings → Privacy & Security → Open Anyway** after the first launch attempt instead of calling the app damaged; Windows shows a SmartScreen warning. The secrets:
 
 - macOS: `CSC_LINK` (base64 `.p12` of the Developer ID Application certificate), `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
 - Windows: `WIN_CSC_LINK` and `WIN_CSC_KEY_PASSWORD` (Authenticode `.pfx`), or Azure Trusted Signing variables as electron-builder documents them.
