@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, nativeImage, nativeTheme } from 'electron';
 import { UPDATE_DIALOG_CHOICE, UPDATE_DIALOG_SIZE } from './update-dialog-channels';
+import { focusWindow } from './window';
 
 export type UpdateDialogKind = 'ready' | 'available';
 export type UpdateChoice = 'install' | 'download' | 'later' | 'skip';
@@ -150,7 +151,8 @@ export function focusUpdateDialog(): boolean {
     return false;
   }
 
-  current.focus();
+  // Restores a minimized prompt too.
+  focusWindow(current);
 
   return true;
 }
