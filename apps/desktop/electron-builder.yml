@@ -15,6 +15,9 @@ protocols:
   - name: Flexkit Studio
     schemes:
       - flexkit
+# Without a Developer ID the macOS app is ad-hoc signed (see scripts/adhoc-sign.cjs).
+# afterPack, not afterSign: electron-builder skips afterSign when it signed nothing.
+afterPack: scripts/adhoc-sign.cjs
 mac:
   category: public.app-category.productivity
   # Signing and notarization happen when the Apple credentials are present in
