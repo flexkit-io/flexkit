@@ -1,6 +1,8 @@
 import type { PluginConnection, PluginScope, PluginTools } from './plugin-types';
 import { put } from '@vercel/blob/client';
 import { convertRecordedAudioToPcm } from './agent/dictation';
+import { getDesktop } from '../../core/desktop';
+import { flexkitDomain } from '../../core/domains';
 import type {
   ActivityItem,
   ActivityItemState,
@@ -148,6 +150,12 @@ export interface ApiClient {
 function getApiRootDomain(): string {
   if (typeof window === 'undefined') {
     return 'flexkit.io';
+  }
+
+  // The desktop app serves the Studio on its own scheme (`flexkit://app`), so
+  // its page hostname says nothing; the backend it was built for does.
+  if (getDesktop()) {
+    return flexkitDomain;
   }
 
   const { hostname } = window.location;

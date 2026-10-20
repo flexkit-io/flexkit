@@ -18,3 +18,5 @@ export const IPC = {
 
 /** Argument the preload reads the app version from (`--flexkit-version=1.2.3`). */
 export const VERSION_ARGUMENT = '--flexkit-version=';
+/** Argument the preload reads the Flexkit domain from (`--flexkit-domain=flexkit.io`). */
+export const DOMAIN_ARGUMENT = '--flexkit-domain=';

@@ -8,6 +8,8 @@ export interface FlexkitDesktopBridge {
   platform: 'darwin' | 'win32' | 'linux';
   /** Installed app version; it tracks the `@flexkit/studio` version it bundles. */
   version: string;
+  /** The Flexkit domain the app was built against (`flexkit.io`, or `flexkit.test` for local builds). */
+  domain: string;
   /** The URL the OAuth login hands the session code to; the app registered its scheme with the OS. */
   loginCallback: string;
   /** Dock (macOS) or taskbar badge; 0 clears it. */

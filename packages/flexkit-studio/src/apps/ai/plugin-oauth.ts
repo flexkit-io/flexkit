@@ -92,6 +92,11 @@ export async function connectPluginPopup(
   await new Promise<void>((resolve, reject) => {
     let polling = false;
     let finished = false;
+    // Once the popup leaves for the provider, `popup.closed` says nothing:
+    // providers isolate their pages (Cross-Origin-Opener-Policy), which severs
+    // the opener and reports the window as closed while it is open. From then
+    // on only the transaction's status (and the timeout) ends the wait.
+    let handedOff = false;
     const finish = (error?: Error) => {
       if (finished) {
         return;
@@ -135,7 +140,7 @@ export async function connectPluginPopup(
         return;
       }
 
-      if (popup.closed && status.status === 'pending') {
+      if (!handedOff && popup.closed && status.status === 'pending') {
         finish(new Error('Connection window was closed.'));
 
         return;
@@ -153,6 +158,7 @@ export async function connectPluginPopup(
       const payload = event.data as { type?: string; transactionId?: string; status?: string; error?: string };
 
       if (payload.type === 'flexkit:plugin-oauth-ready' && payload.transactionId === transaction.transactionId) {
+        handedOff = true;
         popup.postMessage(
           {
             type: 'flexkit:plugin-oauth-start',
