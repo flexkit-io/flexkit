@@ -11,7 +11,7 @@ The downloadable Studio for macOS and Windows. It is `@flexkit/studio` in **host
 - Native notifications come from the Studio's Activity poller, which keeps running while the window is closed (macOS keeps the app open). Web Push is not used in the app.
 - A provider login leaves for the system browser with a nonce (`state`) the Flexkit backend echoes to `flexkit://auth/callback`; the app exchanges the code only for the login it started (`src/main/login-state.ts`), and the login expires after ten minutes.
 - Pages get only the permissions the Studio needs (`src/main/permissions.ts`): notifications, the clipboard and the microphone for dictation. On macOS the microphone also needs the system's consent, which the usage description in `electron-builder.yml` and the audio-input entitlement make possible.
-- Updates come from the GitHub release the app was published with (`electron-updater`); they download in the background and the Studio's app bar offers to restart.
+- Updates come from the GitHub release the app was published with (`electron-updater`). They download in the background; a downloaded update is offered in a dialog (install and relaunch, install on quit, or skip that version), the Studio's app bar shows "Restart to update" as a fallback, and unless skipped it installs on the next quit. "Check for Updates…" in the menu reports every outcome in a dialog.
 
 ## Develop
 

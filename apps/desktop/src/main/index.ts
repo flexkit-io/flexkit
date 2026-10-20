@@ -197,7 +197,7 @@ if (setupDeepLinks(handleOsUrl, () => {
 
     const updater = setupUpdater(getWindow);
 
-    Menu.setApplicationMenu(buildApplicationMenu({ getWindow, checkForUpdates: () => updater.checkForUpdates(true) }));
+    Menu.setApplicationMenu(buildApplicationMenu({ getWindow, checkForUpdates: () => void updater.checkForUpdates(true) }));
 
     // Only the Studio window may talk to the main process.
     const fromStudio = (event: { sender: { id: number } }): boolean => event.sender.id === getWindow()?.webContents.id;
