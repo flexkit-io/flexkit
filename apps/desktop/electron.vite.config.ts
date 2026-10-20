@@ -23,7 +23,10 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        input: resolve(__dirname, 'src/preload/index.ts'),
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          'update-dialog': resolve(__dirname, 'src/preload/update-dialog.ts'),
+        },
       },
     },
   },
