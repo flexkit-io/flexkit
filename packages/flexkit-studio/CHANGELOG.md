@@ -1,5 +1,13 @@
 # @flexkit/studio
 
+## 0.2.14
+
+### Patch Changes
+
+- 170a8fa: Plugin connections from the desktop app trust the Flexkit backend the app was built for; the page hostname inside the app says nothing about it.
+- 170a8fa: Connecting a plugin no longer fails with "Connection window was closed" while the provider's sign-in page is open: providers isolate their pages, which made the popup look closed to the Studio. The wait now ends with the connection's status (or the timeout) once the popup has left for the provider.
+  - @flexkit/schema@0.2.14
+
 ## 0.2.13
 
 ### Patch Changes
