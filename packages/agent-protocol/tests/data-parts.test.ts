@@ -63,3 +63,28 @@ describe('dataPartSchema', () => {
     assert.equal(schema.safeParse({ pluginId: 'notion', pluginName: 'Notion', scope: 'team' }).success, false);
   });
 });
+
+describe('knowledge parts', () => {
+  it('validates a finished search with citations and a source read', () => {
+    const citation = {
+      excerpt: 'Returns are accepted within 30 days.',
+      locator: { page: 3, headingPath: ['Returns', 'Window'] },
+      passageId: 'v1:17',
+      sourceId: 'src1',
+      sourceTitle: 'Return policy',
+      versionId: 'v1',
+    };
+    const search = dataPartSchema.shape['knowledge-search'];
+    const read = dataPartSchema.shape['read-source'];
+
+    assert.ok(search.safeParse({ query: 'returns', status: 'loading' }).success);
+    assert.ok(search.safeParse({ query: 'returns', results: [citation], status: 'done' }).success);
+    assert.equal(search.safeParse({ query: 'returns', status: 'nope' }).success, false);
+    assert.equal(search.safeParse({ query: 'returns', results: [{ ...citation, locator: { page: 0 } }], status: 'done' }).success, false);
+    assert.ok(read.safeParse({ sourceId: 'src1', status: 'loading' }).success);
+    assert.ok(read.safeParse({ sourceId: 'src1', sourceTitle: 'Return policy', locator: { slide: 2 }, status: 'done' }).success);
+    assert.equal(read.safeParse({ status: 'done' }).success, false);
+    assert.ok(DATA_PART_TYPES.includes('knowledge-search'));
+    assert.ok(DATA_PART_TYPES.includes('read-source'));
+  });
+});

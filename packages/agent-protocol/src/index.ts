@@ -3,11 +3,15 @@ export {
   dataPartSchema,
   errorSchema,
   isDataPartType,
+  knowledgeCitationSchema,
+  knowledgeLocatorSchema,
   userQuestionAnswerSchema,
   userQuestionSchema,
   type DataPart,
   type DataPartMessageType,
   type DataPartType,
+  type KnowledgeCitation,
+  type KnowledgeLocator,
 } from './data-parts';
 export type {
   ActivityItem,
