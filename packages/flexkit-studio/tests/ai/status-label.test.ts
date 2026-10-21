@@ -29,7 +29,10 @@ describe('getCommittedReasoningText', () => {
   });
 
   it('commits at a sentence end when it comes after the last line break', () => {
-    assert.equal(getCommittedReasoningText('First line\nThe schema is ready. Then I'), 'First line\nThe schema is ready.');
+    assert.equal(
+      getCommittedReasoningText('First line\nThe schema is ready. Then I'),
+      'First line\nThe schema is ready.'
+    );
   });
 
   it('accepts question and exclamation marks as terminators', () => {
@@ -44,7 +47,10 @@ describe('getCommittedReasoningText', () => {
 
 describe('getReasoningStatusLabel', () => {
   it('uses the latest committed bold heading', () => {
-    assert.equal(getReasoningStatusLabel('**Planning the search**\n\nI need', { streaming: true }), 'Planning the search');
+    assert.equal(
+      getReasoningStatusLabel('**Planning the search**\n\nI need', { streaming: true }),
+      'Planning the search'
+    );
   });
 
   it('uses the first sentence of the latest committed paragraph', () => {
@@ -63,11 +69,17 @@ describe('getReasoningStatusLabel', () => {
   });
 
   it('uses the whole text once the reasoning is done', () => {
-    assert.equal(getReasoningStatusLabel('Looking at the trailing line', { streaming: false }), 'Looking at the trailing line');
+    assert.equal(
+      getReasoningStatusLabel('Looking at the trailing line', { streaming: false }),
+      'Looking at the trailing line'
+    );
   });
 
   it('strips markdown headings, lists, links, and emphasis', () => {
-    assert.equal(getReasoningStatusLabel('# Checking *the* [docs](https://x.y)\n', { streaming: true }), 'Checking the docs');
+    assert.equal(
+      getReasoningStatusLabel('# Checking *the* [docs](https://x.y)\n', { streaming: true }),
+      'Checking the docs'
+    );
     assert.equal(getReasoningStatusLabel('- Reading `config.json`\n', { streaming: true }), 'Reading config.json');
   });
 
@@ -78,14 +90,20 @@ describe('getReasoningStatusLabel', () => {
   });
 
   it('truncates long lines at a word boundary with an ellipsis', () => {
-    const line = 'The quick brown fox jumps over the lazy dog while the sleepy cat watches from the windowsill all afternoon\n';
+    const line =
+      'The quick brown fox jumps over the lazy dog while the sleepy cat watches from the windowsill all afternoon\n';
     const label = getReasoningStatusLabel(line, { streaming: true });
 
     assert.ok(label);
     assert.ok(label.length <= 73);
     assert.ok(label.endsWith('…'));
     assert.ok(!label.slice(0, -1).endsWith(' '));
-    assert.ok(label.slice(0, -1).split(' ').every((word) => line.includes(word)));
+    assert.ok(
+      label
+        .slice(0, -1)
+        .split(' ')
+        .every((word) => line.includes(word))
+    );
   });
 });
 
@@ -106,10 +124,7 @@ describe('truncateLabel and stripInlineMarkdown', () => {
 describe('getLiveStatusLabel', () => {
   it('skips step markers and uses streaming reasoning', () => {
     const label = getLiveStatusLabel(
-      message([
-        { state: 'streaming', text: '**Reading mail**\n', type: 'reasoning' },
-        { type: 'step-start' },
-      ])
+      message([{ state: 'streaming', text: '**Reading mail**\n', type: 'reasoning' }, { type: 'step-start' }])
     );
 
     assert.equal(label, 'Reading mail');
@@ -123,32 +138,53 @@ describe('getLiveStatusLabel', () => {
 
   it('names a pending approval and in-flight tool calls', () => {
     assert.equal(
-      getLiveStatusLabel(message([dataPart('data-mutation-approval', { approvalId: 'a', operationsSummary: 'x', status: 'pending' })])),
+      getLiveStatusLabel(
+        message([dataPart('data-mutation-approval', { approvalId: 'a', operationsSummary: 'x', status: 'pending' })])
+      ),
       'Awaiting approval'
     );
     assert.equal(
-      getLiveStatusLabel(message([dataPart('data-mutation-approval', { approvalId: 'a', operationsSummary: 'x', status: 'executed' })])),
+      getLiveStatusLabel(
+        message([dataPart('data-mutation-approval', { approvalId: 'a', operationsSummary: 'x', status: 'executed' })])
+      ),
       null
     );
     assert.equal(
       getLiveStatusLabel(message([dataPart('data-web-search', { query: 'flexkit', status: 'loading' })])),
       'Searching the web for "flexkit"'
     );
-    assert.equal(getLiveStatusLabel(message([dataPart('data-web-search', { query: 'flexkit', status: 'done' })])), null);
     assert.equal(
-      getLiveStatusLabel(message([dataPart('data-plugin-call', { pluginId: 'gmail', status: 'loading', tool: 'search_threads' })])),
+      getLiveStatusLabel(message([dataPart('data-web-search', { query: 'flexkit', status: 'done' })])),
+      null
+    );
+    assert.equal(
+      getLiveStatusLabel(
+        message([dataPart('data-plugin-call', { pluginId: 'gmail', status: 'loading', tool: 'search_threads' })])
+      ),
       'Calling gmail: search threads'
     );
     assert.equal(
-      getLiveStatusLabel(message([dataPart('data-run-command', { args: ['-la'], command: 'ls', sandboxId: 's', status: 'running' })])),
+      getLiveStatusLabel(
+        message([dataPart('data-run-command', { args: ['-la'], command: 'ls', sandboxId: 's', status: 'running' })])
+      ),
       'Running ls -la'
     );
-    assert.equal(getLiveStatusLabel(message([dataPart('data-load-skill', { skillName: 'Reports', status: 'loading' })])), 'Loading skill "Reports"');
     assert.equal(
-      getLiveStatusLabel(message([dataPart('data-subtask', { status: 'running', subtaskId: 's', title: 'Check invoices' })])),
+      getLiveStatusLabel(message([dataPart('data-load-skill', { skillName: 'Reports', status: 'loading' })])),
+      'Loading skill "Reports"'
+    );
+    assert.equal(
+      getLiveStatusLabel(
+        message([dataPart('data-subtask', { status: 'running', subtaskId: 's', title: 'Check invoices' })])
+      ),
       'Running subtask: Check invoices'
     );
-    assert.equal(getLiveStatusLabel(message([dataPart('data-subtask', { status: 'done', subtaskId: 's', title: 'Check invoices' })])), null);
+    assert.equal(
+      getLiveStatusLabel(
+        message([dataPart('data-subtask', { status: 'done', subtaskId: 's', title: 'Check invoices' })])
+      ),
+      null
+    );
   });
 });
 
@@ -164,12 +200,18 @@ describe('plan labels', () => {
 
   it('fills gaps with the current plan step and yields to tool labels', () => {
     assert.equal(getLiveStatusLabel(message([plan])), 'Step 2 of 3: Classify by urgency');
-    assert.equal(getLiveStatusLabel(message([plan, { state: 'done', text: 'r', type: 'reasoning' }])), 'Step 2 of 3: Classify by urgency');
+    assert.equal(
+      getLiveStatusLabel(message([plan, { state: 'done', text: 'r', type: 'reasoning' }])),
+      'Step 2 of 3: Classify by urgency'
+    );
     assert.equal(
       getLiveStatusLabel(message([plan, dataPart('data-search-schema', { status: 'loading' })])),
       'Searching schema'
     );
-    assert.equal(getLiveStatusLabel(message([plan, dataPart('data-search-schema', { status: 'done' })])), 'Step 2 of 3: Classify by urgency');
+    assert.equal(
+      getLiveStatusLabel(message([plan, dataPart('data-search-schema', { status: 'done' })])),
+      'Step 2 of 3: Classify by urgency'
+    );
     assert.equal(isHiddenReplayPart(plan), true);
     assert.equal(getRollingStatusError(plan), null);
   });
@@ -182,11 +224,18 @@ describe('isHiddenReplayPart and getRollingStatusError', () => {
     assert.equal(isHiddenReplayPart({ state: 'done', text: 'Why', type: 'reasoning' }), true);
     assert.equal(isHiddenReplayPart({ type: 'step-start' }), true);
     assert.equal(isHiddenReplayPart(dataPart('data-search-schema', { status: 'done' })), true);
-    assert.equal(isHiddenReplayPart(dataPart('data-plugin-call', { pluginId: 'gmail', status: 'done', tool: 't' })), true);
+    assert.equal(
+      isHiddenReplayPart(dataPart('data-plugin-call', { pluginId: 'gmail', status: 'done', tool: 't' })),
+      true
+    );
   });
 
   it('hides GraphQL and schema failures, which the agent corrects on its own', () => {
-    const graphqlError = { error: { message: 'GraphQL request failed with status 400' }, operationType: 'query', status: 'error' };
+    const graphqlError = {
+      error: { message: 'GraphQL request failed with status 400' },
+      operationType: 'query',
+      status: 'error',
+    };
 
     assert.equal(getRollingStatusError(dataPart('data-execute-graphql', graphqlError)), null);
     assert.equal(getRollingStatusError(dataPart('data-validate-graphql', { query: 'q', status: 'error' })), null);
@@ -200,7 +249,9 @@ describe('isHiddenReplayPart and getRollingStatusError', () => {
     assert.equal(isHiddenReplayPart(failed), false);
     assert.equal(getRollingStatusError(failed), 'Command failed: npm test');
     assert.equal(
-      getRollingStatusError(dataPart('data-web-search', { error: { message: 'Rate limited' }, query: 'q', status: 'error' })),
+      getRollingStatusError(
+        dataPart('data-web-search', { error: { message: 'Rate limited' }, query: 'q', status: 'error' })
+      ),
       'Rate limited'
     );
     assert.equal(getRollingStatusError(dataPart('data-web-search', { query: 'q', status: 'done' })), null);
@@ -210,10 +261,18 @@ describe('isHiddenReplayPart and getRollingStatusError', () => {
   it('hides Jev-cleared plugin calls unless they failed, and keeps human decisions', () => {
     const base = { approvalId: 'a', operationsSummary: 'Call gmail: search_threads' };
 
-    assert.equal(isHiddenReplayPart(dataPart('data-mutation-approval', { ...base, reason: jevReason, status: 'executed' })), true);
-    assert.equal(isHiddenReplayPart(dataPart('data-mutation-approval', { ...base, reason: jevReason, status: 'error' })), false);
     assert.equal(
-      isHiddenReplayPart(dataPart('data-mutation-approval', { ...base, decidedBy: 'member', reason: jevReason, status: 'executed' })),
+      isHiddenReplayPart(dataPart('data-mutation-approval', { ...base, reason: jevReason, status: 'executed' })),
+      true
+    );
+    assert.equal(
+      isHiddenReplayPart(dataPart('data-mutation-approval', { ...base, reason: jevReason, status: 'error' })),
+      false
+    );
+    assert.equal(
+      isHiddenReplayPart(
+        dataPart('data-mutation-approval', { ...base, decidedBy: 'member', reason: jevReason, status: 'executed' })
+      ),
       false
     );
     assert.equal(isHiddenReplayPart(dataPart('data-mutation-approval', { ...base, status: 'pending' })), false);
@@ -230,7 +289,10 @@ describe('question status', () => {
     const question = { questionId: 'q', questions: [], status: 'pending' };
 
     assert.equal(getLiveStatusLabel(message([dataPart('data-user-question', question)])), 'Waiting for your answer');
-    assert.equal(getLiveStatusLabel(message([dataPart('data-user-question', { ...question, status: 'answered' })])), null);
+    assert.equal(
+      getLiveStatusLabel(message([dataPart('data-user-question', { ...question, status: 'answered' })])),
+      null
+    );
   });
 });
 
@@ -248,5 +310,30 @@ describe('export status', () => {
       isHiddenReplayPart(dataPart('data-export-records', { ...exporting, error: { message: 'x' }, status: 'error' })),
       false
     );
+  });
+});
+
+describe('knowledge parts', () => {
+  it('reports the search and the read as status labels while they run', () => {
+    const search = dataPart('data-knowledge-search', { query: 'return window', status: 'loading' });
+    const read = dataPart('data-read-source', { sourceId: 's1', sourceTitle: 'Return policy', status: 'loading' });
+
+    assert.equal(getLiveStatusLabel(message([search])), 'Searching knowledge for "return window"');
+    assert.equal(getLiveStatusLabel(message([read])), 'Reading "Return policy"');
+    assert.equal(
+      getLiveStatusLabel(message([dataPart('data-read-source', { sourceId: 's1', status: 'loading' })])),
+      'Reading a document'
+    );
+  });
+
+  it('keeps the finished search as a card and hides a finished read', () => {
+    const search = dataPart('data-knowledge-search', { query: 'x', results: [], status: 'done' });
+    const read = dataPart('data-read-source', { sourceId: 's1', status: 'done' });
+    const failedRead = dataPart('data-read-source', { sourceId: 's1', status: 'error' });
+
+    assert.equal(isHiddenReplayPart(search), false);
+    assert.equal(isHiddenReplayPart(read), true);
+    assert.equal(isHiddenReplayPart(failedRead), false);
+    assert.equal(getRollingStatusError(failedRead), 'Failed to read the document');
   });
 });

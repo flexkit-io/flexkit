@@ -4,15 +4,19 @@ import type { TextUIPart, UIMessage, UIMessageChunk } from 'ai';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { parseJsonEventStream, readUIMessageStream, uiMessageChunkSchema } from 'ai';
 import {
+  BookOpenIcon,
   BotIcon,
   CheckCircle2Icon,
   CheckIcon,
+  ChevronDownIcon,
   CircleSlashIcon,
   CloudUploadIcon,
+  CornerDownRightIcon,
   DatabaseZapIcon,
   DownloadIcon,
-  LinkIcon,
   FileTextIcon,
+  LibraryIcon,
+  LinkIcon,
   LoaderCircle,
   MessageCircleQuestionIcon,
   MessageSquareIcon,
@@ -21,7 +25,6 @@ import {
   ShieldIcon,
   XCircleIcon,
   XIcon,
-  CornerDownRightIcon,
 } from 'lucide-react';
 import { useConfig } from '../../core/config/config-context';
 import { Button, MessageResponse } from '../../ui';
@@ -63,6 +66,9 @@ import type { DataPart } from '@flexkit/agent-protocol';
 import type { AutomationApproval, AutomationRun } from './types';
 import { watchSchemaDeployment } from './schema-deploy-watch';
 import { MessageAttachments } from './agent/attachments';
+import { Link } from 'react-router-dom';
+import { Sources, SourcesContent, SourcesTrigger } from '../../ui';
+import { getKnowledgeSourcePath, groupCitationsBySource, summarizeKnowledgeSearch } from './knowledge-parts';
 import { MonitorEventCard } from './agent/monitor-parts';
 import { PluginConnectCard } from './agent/plugin-connect-card';
 
@@ -681,6 +687,10 @@ export function MessagePart({
     return isStrayFence ? null : <TextPart part={part} />;
   }
 
+  if (part.type === 'data-knowledge-search') {
+    return <KnowledgeSearchPart message={getPartData<ReplayDataParts['knowledge-search']>(part)} />;
+  }
+
   if (part.type === 'data-generating-files') {
     return <GenerateFilesPart message={getPartData<ReplayDataParts['generating-files']>(part)} />;
   }
@@ -1143,6 +1153,89 @@ function ToolDeliveryPart({ message }: { message: ReplayDataParts['tool-delivery
       }
       title={`${providerLabel} Delivery`}
     />
+  );
+}
+
+/**
+ * A Search Knowledge call: the query while it runs, then the documents and
+ * passages the agent got back, each linking to its page in the Knowledge app.
+ */
+function KnowledgeSearchPart({ message }: { message: ReplayDataParts['knowledge-search'] }): JSX.Element {
+  const { currentProjectId } = useConfig();
+
+  if (message.status === 'loading') {
+    return (
+      <StatusToolPart
+        icon={<LibraryIcon className="fk:size-3.5" />}
+        loading
+        message={`Searching knowledge for "${message.query}"`}
+        title="Knowledge search"
+      />
+    );
+  }
+
+  if (message.status === 'error') {
+    return (
+      <StatusToolPart
+        error={message.error?.message ?? 'The knowledge search failed'}
+        icon={<LibraryIcon className="fk:size-3.5" />}
+        loading={false}
+        message={message.error?.message ?? 'The knowledge search failed'}
+        title="Knowledge search"
+      />
+    );
+  }
+
+  const sources = groupCitationsBySource(message.results);
+
+  return (
+    <ToolMessage>
+      <ToolHeader>
+        <LibraryIcon className="fk:size-3.5" />
+        <span>Knowledge search</span>
+      </ToolHeader>
+      <p className="fk:mt-1 fk:text-xs fk:text-muted-foreground">{summarizeKnowledgeSearch(message)}</p>
+      {sources.length > 0 ? (
+        <Sources className="fk:mb-0 fk:mt-2">
+          <SourcesTrigger count={sources.length}>
+            <p className="fk:font-medium">
+              {sources.length === 1 ? 'Show the cited passages' : `Show passages from ${String(sources.length)} documents`}
+            </p>
+            <ChevronDownIcon className="fk:size-4" />
+          </SourcesTrigger>
+          <SourcesContent className="fk:w-full">
+            {sources.map((source) => (
+              <div className="fk:flex fk:flex-col fk:gap-1.5" key={source.sourceId}>
+                {currentProjectId ? (
+                  <Link
+                    className="fk:flex fk:w-fit fk:items-center fk:gap-2 fk:font-medium fk:text-foreground fk:underline-offset-2 fk:hover:underline"
+                    to={getKnowledgeSourcePath(currentProjectId, source.sourceId)}
+                  >
+                    <BookOpenIcon className="fk:size-4" />
+                    <span>{source.sourceTitle}</span>
+                  </Link>
+                ) : (
+                  <span className="fk:flex fk:items-center fk:gap-2 fk:font-medium fk:text-foreground">
+                    <BookOpenIcon className="fk:size-4" />
+                    <span>{source.sourceTitle}</span>
+                  </span>
+                )}
+                <ul className="fk:flex fk:flex-col fk:gap-1.5 fk:pl-6">
+                  {source.passages.map((passage) => (
+                    <li className="fk:text-xs fk:text-muted-foreground" key={passage.passageId}>
+                      {passage.locator ? (
+                        <span className="fk:mr-1 fk:font-medium fk:text-foreground/80">{passage.locator}:</span>
+                      ) : null}
+                      <span className="fk:italic">“{passage.excerpt}”</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </SourcesContent>
+        </Sources>
+      ) : null}
+    </ToolMessage>
   );
 }
 

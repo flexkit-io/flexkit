@@ -17,6 +17,7 @@ const ROLLING_STATUS_PART_TYPES = new Set<string>([
   'data-load-skill',
   'data-plan',
   'data-plugin-call',
+  'data-read-source',
   'data-run-command',
   'data-search-schema',
   'data-update-memory',
@@ -222,6 +223,26 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
     return data.status === 'running' ? truncateLabel(`Running subtask: ${data.title}`) : null;
   }
 
+  if (part.type === 'data-knowledge-search') {
+    const data = getPartData<ReplayDataParts['knowledge-search']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.query ? truncateLabel(`Searching knowledge for "${data.query}"`) : 'Searching knowledge';
+  }
+
+  if (part.type === 'data-read-source') {
+    const data = getPartData<ReplayDataParts['read-source']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.sourceTitle ? truncateLabel(`Reading "${data.sourceTitle}"`) : 'Reading a document';
+  }
+
   return null;
 }
 
@@ -261,6 +282,8 @@ export function getRollingStatusError(part: ReplayMessagePart): string | null {
       return 'Failed to update memory';
     case 'data-plugin-call':
       return `Plugin call failed: ${String(data.pluginId ?? '')}: ${humanizeToolName(String(data.tool ?? ''))}`;
+    case 'data-read-source':
+      return 'Failed to read the document';
     default:
       return 'The tool call failed';
   }

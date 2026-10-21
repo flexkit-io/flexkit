@@ -30,6 +30,8 @@ export interface KnowledgeApi {
   /** Uploads a document to the file store, then registers it; resolves once indexing is queued or the file was already there. */
   addFile: (_file: File, _options?: { signal?: AbortSignal }) => Promise<RegisterKnowledgeSourceResult>;
   addUrl: (_input: { title?: string; url: string }) => Promise<RegisterKnowledgeSourceResult>;
+  /** Promotes a file the caller attached to a chat: the platform copies it into the knowledge folder. */
+  addChatAttachment: (_input: { filename: string; url: string }) => Promise<RegisterKnowledgeSourceResult>;
   deleteSource: (_sourceId: string) => Promise<{ deleted: true }>;
   reingestSource: (_sourceId: string) => Promise<{ job: KnowledgeJob }>;
   updateSource: (_sourceId: string, _patch: KnowledgeSourcePatch) => Promise<{ source: KnowledgeSource }>;
@@ -164,6 +166,7 @@ export function createKnowledgeApi(projectId: string): KnowledgeApi {
       return register({ kind: 'upload', pathname: tokenData.pathname });
     },
     addUrl: ({ title, url }) => register({ kind: 'url', url, ...(title ? { title } : {}) }),
+    addChatAttachment: ({ filename, url }) => register({ filename, kind: 'chat-attachment', url }),
     deleteSource: (sourceId) =>
       request<{ deleted: true }>(`${basePath}/sources/${encodeURIComponent(sourceId)}`, {
         fallback: 'The document could not be removed.',

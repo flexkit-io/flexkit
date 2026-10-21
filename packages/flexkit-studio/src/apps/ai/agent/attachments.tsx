@@ -1,6 +1,7 @@
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FileIcon, XIcon } from 'lucide-react';
+import { AddToKnowledgeButton } from './add-to-knowledge';
 import {
   Dialog,
   DialogClose,
@@ -300,11 +301,14 @@ function getFileTypeLabel(filename: string, mediaType: string | undefined): stri
 
 /** Card-style chip for non-image files: icon tile, filename, and type. */
 function FileChip({
+  action,
   file,
   href,
   isUploading = false,
   onRemove,
 }: {
+  /** An overlay control in the chip's corner, such as the add-to-Knowledge button on sent files. */
+  action?: ReactNode;
   file: { filename: string; mediaType?: string };
   href?: string;
   isUploading?: boolean;
@@ -339,6 +343,7 @@ function FileChip({
         <div className={chipClassName}>{content}</div>
       )}
       {onRemove ? <ChipRemoveButton label={`Remove ${file.filename}`} onRemove={onRemove} /> : null}
+      {action}
     </div>
   );
 }
@@ -434,7 +439,12 @@ export function MessageAttachments({ attachments }: { attachments: AgentChatAtta
       {files.length > 0 ? (
         <div className="fk:flex fk:flex-wrap fk:justify-end fk:gap-2">
           {files.map((attachment) => (
-            <FileChip file={attachment} href={attachment.url} key={attachment.url} />
+            <FileChip
+              action={<AddToKnowledgeButton attachment={attachment} />}
+              file={attachment}
+              href={attachment.url}
+              key={attachment.url}
+            />
           ))}
         </div>
       ) : null}
