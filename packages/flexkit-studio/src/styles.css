@@ -1007,12 +1007,32 @@ pre {
 
 /* Desktop app (Electron): the navbar doubles as the window's title bar. It
    can be dragged, except where it is interactive, and on macOS it leaves room
-   for the window controls drawn over the top-left corner. */
+   for the window controls drawn over the top-left corner.
+   Since Chromium 152 (Electron 44) `app-region` is inherited, so every element
+   rendered inside the navbar reports its own draggable rectangle unless it
+   opts out. That includes the search dropdown, whose rows are plain
+   `role="option"` elements: clicks on them started a window drag instead of
+   reaching the page. The whole cmdk widget (input and results) opts out, as do
+   inline listboxes, menus and dialogs. */
 html[data-desktop-platform] .flexkit-navbar {
   -webkit-app-region: drag;
 }
 
-html[data-desktop-platform] .flexkit-navbar :is(a, button, input, textarea, select, [role='button'], [role='combobox']) {
+html[data-desktop-platform]
+  .flexkit-navbar
+  :is(
+    a,
+    button,
+    input,
+    textarea,
+    select,
+    [role='button'],
+    [role='combobox'],
+    [role='listbox'],
+    [role='menu'],
+    [role='dialog'],
+    [cmdk-root]
+  ) {
   -webkit-app-region: no-drag;
 }
 
