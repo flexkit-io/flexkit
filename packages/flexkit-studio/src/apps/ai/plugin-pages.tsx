@@ -311,7 +311,14 @@ export function CatalogHeader(): JSX.Element {
   const { pathname } = useLocation();
   const onPlugins = /\/ai\/plugins\/?$/.test(pathname);
   const onSkills = pathname.includes('/ai/skills');
-  const value = onSkills ? 'skills' : 'plugins';
+  const onKnowledge = pathname.includes('/ai/knowledge');
+  let value = 'plugins';
+
+  if (onSkills) {
+    value = 'skills';
+  } else if (onKnowledge) {
+    value = 'knowledge';
+  }
 
   return (
     <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-center fk:gap-2">
@@ -324,14 +331,11 @@ export function CatalogHeader(): JSX.Element {
       <Tabs
         value={value}
         onValueChange={(next) => {
-          const destination = next === 'skills' ? 'skills' : 'plugins';
-          const alreadyThere = next === 'skills' ? onSkills : onPlugins;
-
-          if (alreadyThere) {
+          if (next === value) {
             return;
           }
 
-          navigate(aiSectionPath(pathname, destination));
+          navigate(aiSectionPath(pathname, next));
         }}
       >
         <TabsList>
@@ -348,6 +352,7 @@ export function CatalogHeader(): JSX.Element {
             Plugins
           </TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
+          <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
         </TabsList>
       </Tabs>
     </div>

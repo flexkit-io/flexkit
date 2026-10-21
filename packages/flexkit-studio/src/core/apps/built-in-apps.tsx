@@ -83,6 +83,12 @@ const aiSkillsPage = lazyElement(() =>
 const aiCreateSkillPage = lazyElement(() =>
   import('../../apps/ai/skills-pages').then((m) => ({ default: m.CreateSkillPage }))
 );
+const aiKnowledgePage = lazyElement(() =>
+  import('../../apps/ai/knowledge-pages').then((m) => ({ default: m.KnowledgePage }))
+);
+const aiKnowledgeSourcePage = lazyElement(() =>
+  import('../../apps/ai/knowledge-pages').then((m) => ({ default: m.KnowledgeSourcePage }))
+);
 const aiSkillDetailPage = lazyElement(() =>
   import('../../apps/ai/skills-pages').then((m) => ({ default: m.SkillDetailPage }))
 );
@@ -156,6 +162,14 @@ export const builtInApps: AppOptions[] = [
       {
         component: aiSkillDetailPage,
         path: 'skills/:skillId',
+      },
+      {
+        component: aiKnowledgePage,
+        path: 'knowledge',
+      },
+      {
+        component: aiKnowledgeSourcePage,
+        path: 'knowledge/:sourceId',
       },
     ],
   },

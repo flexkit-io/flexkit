@@ -77,7 +77,8 @@ export function AutomationsSidebar(): JSX.Element {
   const isRunHistory = pathname.endsWith('/ai/runs');
   const isApprovals = pathname.endsWith('/ai/approvals');
   const isActivity = pathname.endsWith('/ai/activity') || pathname.includes('/ai/activity/');
-  const isPlugins = pathname.includes('/ai/plugins') || pathname.includes('/ai/skills');
+  const isPlugins =
+    pathname.includes('/ai/plugins') || pathname.includes('/ai/skills') || pathname.includes('/ai/knowledge');
   const isAutomations = pathname.includes('/ai/automations');
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query.trim(), SEARCH_DEBOUNCE_MS);
