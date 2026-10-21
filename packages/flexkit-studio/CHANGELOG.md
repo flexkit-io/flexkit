@@ -1,5 +1,13 @@
 # @flexkit/studio
 
+## 0.2.17
+
+### Patch Changes
+
+- f90e59e: Desktop app: search results can be clicked and hovered again. Chromium 152 (Electron 44) made `app-region` inherited, so the dropdown rows inside the draggable navbar started a window drag instead of receiving the click; the search widget and inline popovers now opt out of the drag region.
+- Updated dependencies [e786744]
+  - @flexkit/agent-protocol@0.3.10
+
 ## 0.2.16
 
 ### Patch Changes
