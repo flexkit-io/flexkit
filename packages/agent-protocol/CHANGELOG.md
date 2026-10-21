@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.10
+
+### Patch Changes
+
+- e786744: Add the `knowledge-search` and `read-source` data parts, plus the `KnowledgeCitation` and `KnowledgeLocator` schemas, for the agent's new knowledge tools. The chat can list the sources an answer used and open each citation at its page, slide or heading.
+
 ## 0.3.9
 
 ### Patch Changes
