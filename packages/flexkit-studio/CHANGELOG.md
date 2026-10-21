@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.18
+
+### Patch Changes
+
+- e794dcb: Add the Knowledge app: upload documents or add public web pages, follow their indexing, control which spaces and the agent can read them, browse their passages, re-index or remove them.
+
 ## 0.2.17
 
 ### Patch Changes
