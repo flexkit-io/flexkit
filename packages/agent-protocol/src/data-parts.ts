@@ -33,6 +33,27 @@ export const userQuestionAnswerSchema = z.object({
   selected: z.array(z.string()),
 });
 
+/** Where a passage sits in its knowledge source: page (PDF), slide (PowerPoint) or heading path (Word, Markdown, HTML). */
+export const knowledgeLocatorSchema = z.object({
+  headingPath: z.array(z.string()).optional(),
+  page: z.number().int().positive().optional(),
+  slide: z.number().int().positive().optional(),
+});
+
+/** One passage the Search Knowledge tool returned; the chat lists it under "Used N sources". */
+export const knowledgeCitationSchema = z.object({
+  excerpt: z.string(),
+  locator: knowledgeLocatorSchema,
+  passageId: z.string(),
+  sourceId: z.string(),
+  sourceTitle: z.string(),
+  versionId: z.string(),
+});
+
+export type KnowledgeLocator = z.infer<typeof knowledgeLocatorSchema>;
+
+export type KnowledgeCitation = z.infer<typeof knowledgeCitationSchema>;
+
 export const dataPartSchema = z.object({
   /** The agent needs a plugin connected (or reconnected): the chat shows a connect card. */
   'plugin-connection': z.object({ pluginId: z.string(), connectionId: z.string().optional() }),
@@ -128,6 +149,21 @@ export const dataPartSchema = z.object({
   }),
   'web-search': z.object({
     query: z.string(),
+    status: z.enum(['loading', 'done', 'error']),
+    error: errorSchema.optional(),
+  }),
+  /** A search over the project's knowledge sources; `results` holds the citations once it finished. */
+  'knowledge-search': z.object({
+    query: z.string(),
+    results: z.array(knowledgeCitationSchema).optional(),
+    status: z.enum(['loading', 'done', 'error']),
+    error: errorSchema.optional(),
+  }),
+  /** The agent reading a window of one knowledge source. */
+  'read-source': z.object({
+    sourceId: z.string(),
+    sourceTitle: z.string().optional(),
+    locator: knowledgeLocatorSchema.optional(),
     status: z.enum(['loading', 'done', 'error']),
     error: errorSchema.optional(),
   }),
