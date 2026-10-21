@@ -105,29 +105,40 @@ function SectionTitle({ children }: { children: string }): JSX.Element {
 }
 
 function PassageList({ projectId, source }: { projectId: string; source: KnowledgeSource }): JSX.Element {
-  const passageCount = source.currentVersion?.status === 'published' ? source.currentVersion.passageCount : 0;
-  const [pageCount, setPageCount] = useState(1);
+  const version = source.currentVersion?.status === 'published' ? source.currentVersion : null;
+  const passageCount = version?.passageCount ?? 0;
+  const versionId = version?.id ?? null;
   const getPassagesKey = (pageIndex: number): string | null => {
-    if (passageCount === 0 || pageIndex >= pageCount) {
+    if (!versionId || pageIndex * KNOWLEDGE_PASSAGES_PAGE_SIZE >= passageCount) {
       return null;
     }
 
     const from = pageIndex * KNOWLEDGE_PASSAGES_PAGE_SIZE;
-
-    return knowledgePaths(projectId).passages(source.id, {
+    const path = knowledgePaths(projectId).passages(source.id, {
       from,
       to: Math.min(from + KNOWLEDGE_PASSAGES_PAGE_SIZE - 1, passageCount - 1),
     });
+
+    // The version is part of the key, so a re-index swaps the pages instead
+    // of serving the retired ones; the server ignores the extra parameter.
+    return `${path}&version=${encodeURIComponent(versionId)}`;
   };
   const {
     data: pages,
     error,
     isLoading,
+    setSize,
+    size,
   } = useSWRInfinite<KnowledgePassagesPage>(getPassagesKey, fetcher, {
     revalidateFirstPage: false,
   });
   const passages: KnowledgePassage[] = pages?.flatMap((page) => page.passages) ?? [];
   const loaded = passages.length;
+
+  // A new version starts from its first page again.
+  useEffect(() => {
+    void setSize(1);
+  }, [setSize, versionId]);
 
   if (passageCount === 0) {
     return <p className="fk:text-sm fk:text-muted-foreground">Passages appear here once the document is indexed.</p>;
@@ -162,7 +173,7 @@ function PassageList({ projectId, source }: { projectId: string; source: Knowled
         </div>
       ) : null}
       {loaded < passageCount && !isLoading ? (
-        <Button className="fk:w-fit" size="sm" variant="outline" onClick={() => setPageCount((count) => count + 1)}>
+        <Button className="fk:w-fit" size="sm" variant="outline" onClick={() => void setSize(size + 1)}>
           Show more ({String(loaded)} of {String(passageCount)})
         </Button>
       ) : null}
@@ -323,7 +334,9 @@ export function Source(): JSX.Element {
     return <PageMessage>Select a document.</PageMessage>;
   }
 
-  if (error) {
+  // A failed background refresh keeps the last good data on screen; only a
+  // document that never loaded is reported as missing.
+  if (error && !data) {
     return <PageMessage>This document does not exist or is not shared with you.</PageMessage>;
   }
 
