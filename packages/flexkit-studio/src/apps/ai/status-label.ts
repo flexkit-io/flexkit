@@ -17,6 +17,7 @@ const ROLLING_STATUS_PART_TYPES = new Set<string>([
   'data-load-skill',
   'data-plan',
   'data-plugin-call',
+  'data-read-source',
   'data-run-command',
   'data-search-schema',
   'data-update-memory',
@@ -222,6 +223,26 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
     return data.status === 'running' ? truncateLabel(`Running subtask: ${data.title}`) : null;
   }
 
+  if (part.type === 'data-knowledge-search') {
+    const data = getPartData<ReplayDataParts['knowledge-search']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.query ? truncateLabel(`Searching knowledge for "${data.query}"`) : 'Searching knowledge';
+  }
+
+  if (part.type === 'data-read-source') {
+    const data = getPartData<ReplayDataParts['read-source']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.sourceTitle ? truncateLabel(`Reading "${data.sourceTitle}"`) : 'Reading a document';
+  }
+
   return null;
 }
 
@@ -231,7 +252,12 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
  * missteps: it reads the error and corrects the next call. Showing them would
  * only tell the user about a problem they cannot act on.
  */
-const AGENT_INTERNAL_ERROR_PART_TYPES = new Set<string>(['data-execute-graphql', 'data-search-schema', 'data-validate-graphql']);
+const AGENT_INTERNAL_ERROR_PART_TYPES = new Set<string>([
+  'data-execute-graphql',
+  'data-read-source',
+  'data-search-schema',
+  'data-validate-graphql',
+]);
 
 export function getRollingStatusError(part: ReplayMessagePart): string | null {
   if (!isRollingStatusPartType(part.type) || part.type === 'data-plan' || AGENT_INTERNAL_ERROR_PART_TYPES.has(part.type)) {
@@ -278,6 +304,11 @@ export function isHiddenReplayPart(part: ReplayMessagePart): boolean {
 
   if (isRollingStatusPartType(part.type)) {
     return getRollingStatusError(part) === null;
+  }
+
+  // While a knowledge search runs the status line shows it; the card appears once it has results.
+  if (part.type === 'data-knowledge-search') {
+    return getPartData<ReplayDataParts['knowledge-search']>(part).status === 'loading';
   }
 
   if (part.type === 'data-mutation-approval') {
