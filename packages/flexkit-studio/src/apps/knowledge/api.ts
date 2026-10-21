@@ -20,6 +20,12 @@ export class KnowledgeApiError extends Error {
   }
 }
 
+export interface ProjectSpace {
+  code: string;
+  id: string;
+  label: string;
+}
+
 export interface KnowledgeApi {
   /** Uploads a document to the file store, then registers it; resolves once indexing is queued or the file was already there. */
   addFile: (_file: File, _options?: { signal?: AbortSignal }) => Promise<RegisterKnowledgeSourceResult>;
@@ -29,11 +35,32 @@ export interface KnowledgeApi {
   updateSource: (_sourceId: string, _patch: KnowledgeSourcePatch) => Promise<{ source: KnowledgeSource }>;
 }
 
+export class FetcherError extends Error {
+  status: number;
+
+  constructor(status: number, message = 'Request failed') {
+    super(message);
+    this.name = 'FetcherError';
+    this.status = status;
+  }
+}
+
+export const fetcher = async <T>(url: string): Promise<T> => {
+  const response = await fetch(url, { credentials: 'include' });
+
+  if (!response.ok) {
+    throw new FetcherError(response.status);
+  }
+
+  return (await response.json()) as T;
+};
+
 export function knowledgePaths(projectId: string): {
   job: (_jobId: string) => string;
   passages: (_sourceId: string, _options: { from: number; to: number }) => string;
   source: (_sourceId: string) => string;
   sources: (_options?: { limit?: number; offset?: number; search?: string; status?: KnowledgeSourceStatus }) => string;
+  spaces: string;
 } {
   const basePath = `/api/flexkit/${projectId}/knowledge`;
 
@@ -57,7 +84,13 @@ export function knowledgePaths(projectId: string): {
 
       return `${basePath}/sources?${params.toString()}`;
     },
+    spaces: `/api/flexkit/${projectId}/spaces`,
   };
+}
+
+/** Whether an SWR key is a page of the document list, whatever its filters. */
+export function isKnowledgeListKey(key: unknown): boolean {
+  return typeof key === 'string' && key.includes('/knowledge/sources?');
 }
 
 async function readError(response: Response, fallback: string): Promise<KnowledgeApiError> {

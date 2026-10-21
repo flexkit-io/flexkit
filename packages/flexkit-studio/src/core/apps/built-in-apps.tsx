@@ -4,6 +4,7 @@ import {
   Bot as BotIcon,
   FileStack as FileStackIcon,
   Layout as LayoutIcon,
+  LibraryIcon,
   SquarePlay as SquarePlayIcon,
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
@@ -39,6 +40,13 @@ const deskEditEntity = lazyElement(() =>
 // Asset Manager
 const assetManagerRoot = lazyElement(() =>
   import('../../apps/asset-manager/root').then((m) => ({ default: m.Root }))
+);
+
+// Knowledge
+const knowledgeRoot = lazyElement(() => import('../../apps/knowledge/root').then((m) => ({ default: m.Root })));
+const knowledgeList = lazyElement(() => import('../../apps/knowledge/list').then((m) => ({ default: m.List })));
+const knowledgeSource = lazyElement(() =>
+  import('../../apps/knowledge/source').then((m) => ({ default: m.Source }))
 );
 
 // Explorer
@@ -82,12 +90,6 @@ const aiSkillsPage = lazyElement(() =>
 );
 const aiCreateSkillPage = lazyElement(() =>
   import('../../apps/ai/skills-pages').then((m) => ({ default: m.CreateSkillPage }))
-);
-const aiKnowledgePage = lazyElement(() =>
-  import('../../apps/ai/knowledge-pages').then((m) => ({ default: m.KnowledgePage }))
-);
-const aiKnowledgeSourcePage = lazyElement(() =>
-  import('../../apps/ai/knowledge-pages').then((m) => ({ default: m.KnowledgeSourcePage }))
 );
 const aiSkillDetailPage = lazyElement(() =>
   import('../../apps/ai/skills-pages').then((m) => ({ default: m.SkillDetailPage }))
@@ -163,14 +165,6 @@ export const builtInApps: AppOptions[] = [
         component: aiSkillDetailPage,
         path: 'skills/:skillId',
       },
-      {
-        component: aiKnowledgePage,
-        path: 'knowledge',
-      },
-      {
-        component: aiKnowledgeSourcePage,
-        path: 'knowledge/:sourceId',
-      },
     ],
   },
   {
@@ -197,6 +191,22 @@ export const builtInApps: AppOptions[] = [
     title: 'Asset Manager',
     component: assetManagerRoot,
     routes: [],
+  },
+  {
+    name: 'knowledge',
+    icon: <LibraryIcon strokeWidth={1.5} />,
+    title: 'Knowledge',
+    component: knowledgeRoot,
+    routes: [
+      {
+        component: knowledgeList,
+        path: '',
+      },
+      {
+        component: knowledgeSource,
+        path: ':sourceId',
+      },
+    ],
   },
   {
     name: 'explorer',

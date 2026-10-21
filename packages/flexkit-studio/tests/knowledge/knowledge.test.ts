@@ -15,7 +15,7 @@ import {
   type KnowledgeJob,
   type KnowledgeSource,
   type KnowledgeVersion,
-} from '../../src/apps/ai/knowledge';
+} from '../../src/apps/knowledge/knowledge';
 
 function version(overrides: Partial<KnowledgeVersion> = {}): KnowledgeVersion {
   return {

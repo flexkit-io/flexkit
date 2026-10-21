@@ -12,7 +12,6 @@ export default defineConfig({
     'tests/ai/activity.test.ts',
     'tests/ai/question-parts.test.ts',
     'tests/ai/plugin-connect-state.test.ts',
-    'tests/ai/knowledge.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests/ai',
