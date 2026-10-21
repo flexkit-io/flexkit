@@ -65,15 +65,11 @@ describe('groupCitationsBySource', () => {
 describe('summarizeKnowledgeSearch and paths', () => {
   it('counts passages and documents, and says when nothing matched', () => {
     assert.equal(
-      summarizeKnowledgeSearch({
-        query: 'returns',
-        results: [citation(), citation({ passageId: 'v1:18' })],
-        status: 'done',
-      }),
+      summarizeKnowledgeSearch('returns', groupCitationsBySource([citation(), citation({ passageId: 'v1:18' })])),
       '2 passages from 1 document for "returns"'
     );
-    assert.equal(summarizeKnowledgeSearch({ query: 'x', results: [], status: 'done' }), 'No passages matched "x"');
-    assert.equal(summarizeKnowledgeSearch({ query: 'x', status: 'done' }), 'No passages matched "x"');
+    assert.equal(summarizeKnowledgeSearch('x', groupCitationsBySource([])), 'No passages matched "x"');
+    assert.equal(summarizeKnowledgeSearch('x', groupCitationsBySource(undefined)), 'No passages matched "x"');
   });
 
   it('links to the document page of the Knowledge app', () => {

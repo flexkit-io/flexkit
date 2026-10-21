@@ -317,23 +317,28 @@ describe('knowledge parts', () => {
   it('reports the search and the read as status labels while they run', () => {
     const search = dataPart('data-knowledge-search', { query: 'return window', status: 'loading' });
     const read = dataPart('data-read-source', { sourceId: 's1', sourceTitle: 'Return policy', status: 'loading' });
+    const untitledRead = dataPart('data-read-source', { sourceId: 's1', status: 'loading' });
 
     assert.equal(getLiveStatusLabel(message([search])), 'Searching knowledge for "return window"');
     assert.equal(getLiveStatusLabel(message([read])), 'Reading "Return policy"');
-    assert.equal(
-      getLiveStatusLabel(message([dataPart('data-read-source', { sourceId: 's1', status: 'loading' })])),
-      'Reading a document'
-    );
+    assert.equal(getLiveStatusLabel(message([untitledRead])), 'Reading a document');
   });
 
-  it('keeps the finished search as a card and hides a finished read', () => {
+  it('shows the search as a card only once it finished, and never shows a read', () => {
+    const loadingSearch = dataPart('data-knowledge-search', { query: 'x', status: 'loading' });
     const search = dataPart('data-knowledge-search', { query: 'x', results: [], status: 'done' });
     const read = dataPart('data-read-source', { sourceId: 's1', status: 'done' });
-    const failedRead = dataPart('data-read-source', { sourceId: 's1', status: 'error' });
+    const failedRead = dataPart('data-read-source', {
+      error: { message: 'The source does not exist.' },
+      sourceId: 's1',
+      status: 'error',
+    });
 
+    assert.equal(isHiddenReplayPart(loadingSearch), true);
     assert.equal(isHiddenReplayPart(search), false);
     assert.equal(isHiddenReplayPart(read), true);
-    assert.equal(isHiddenReplayPart(failedRead), false);
-    assert.equal(getRollingStatusError(failedRead), 'Failed to read the document');
+    // A bad source id is the agent's own misstep: it searches again, the user sees nothing.
+    assert.equal(isHiddenReplayPart(failedRead), true);
+    assert.equal(getRollingStatusError(failedRead), null);
   });
 });

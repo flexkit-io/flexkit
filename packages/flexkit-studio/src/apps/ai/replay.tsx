@@ -27,7 +27,8 @@ import {
   XIcon,
 } from 'lucide-react';
 import { useConfig } from '../../core/config/config-context';
-import { Button, MessageResponse } from '../../ui';
+import { Link } from 'react-router-dom';
+import { Button, MessageResponse, Sources, SourcesContent, SourcesTrigger } from '../../ui';
 import useSWR from 'swr';
 import { createApiClient, fetcher, paths } from './api';
 import { ApprovalCard } from './approval-card';
@@ -66,8 +67,6 @@ import type { DataPart } from '@flexkit/agent-protocol';
 import type { AutomationApproval, AutomationRun } from './types';
 import { watchSchemaDeployment } from './schema-deploy-watch';
 import { MessageAttachments } from './agent/attachments';
-import { Link } from 'react-router-dom';
-import { Sources, SourcesContent, SourcesTrigger } from '../../ui';
 import { getKnowledgeSourcePath, groupCitationsBySource, summarizeKnowledgeSearch } from './knowledge-parts';
 import { MonitorEventCard } from './agent/monitor-parts';
 import { PluginConnectCard } from './agent/plugin-connect-card';
@@ -1157,22 +1156,14 @@ function ToolDeliveryPart({ message }: { message: ReplayDataParts['tool-delivery
 }
 
 /**
- * A Search Knowledge call: the query while it runs, then the documents and
- * passages the agent got back, each linking to its page in the Knowledge app.
+ * A finished Search Knowledge call: the documents and passages the agent got
+ * back, each linking to its page in the Knowledge app. While the search runs
+ * only the status line mentions it (see `isHiddenReplayPart`).
  */
 function KnowledgeSearchPart({ message }: { message: ReplayDataParts['knowledge-search'] }): JSX.Element {
   const { currentProjectId } = useConfig();
-
-  if (message.status === 'loading') {
-    return (
-      <StatusToolPart
-        icon={<LibraryIcon className="fk:size-3.5" />}
-        loading
-        message={`Searching knowledge for "${message.query}"`}
-        title="Knowledge search"
-      />
-    );
-  }
+  // The replay re-renders on a timer while a turn streams; group once per result set.
+  const sources = useMemo(() => groupCitationsBySource(message.results), [message.results]);
 
   if (message.status === 'error') {
     return (
@@ -1186,15 +1177,13 @@ function KnowledgeSearchPart({ message }: { message: ReplayDataParts['knowledge-
     );
   }
 
-  const sources = groupCitationsBySource(message.results);
-
   return (
     <ToolMessage>
       <ToolHeader>
         <LibraryIcon className="fk:size-3.5" />
         <span>Knowledge search</span>
       </ToolHeader>
-      <p className="fk:mt-1 fk:text-xs fk:text-muted-foreground">{summarizeKnowledgeSearch(message)}</p>
+      <p className="fk:mt-1 fk:text-xs fk:text-muted-foreground">{summarizeKnowledgeSearch(message.query, sources)}</p>
       {sources.length > 0 ? (
         <Sources className="fk:mb-0 fk:mt-2">
           <SourcesTrigger count={sources.length}>

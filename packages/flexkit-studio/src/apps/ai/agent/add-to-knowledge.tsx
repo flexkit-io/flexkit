@@ -4,9 +4,12 @@ import { CheckIcon, LibraryIcon, LoaderCircle } from 'lucide-react';
 import { useConfig } from '../../../core/config/config-context';
 import { useCanMutate } from '../../../core/permissions';
 import { toast, Tooltip, TooltipContent, TooltipTrigger } from '../../../ui';
-import { createKnowledgeApi, KnowledgeApiError } from '../../knowledge/api';
+import { createKnowledgeApi } from '../../knowledge/api';
 import { getKnowledgeFileProblem } from '../../knowledge/knowledge';
+import { announceRegistered, describeApiError, invalidateKnowledgeLists } from '../../knowledge/shared';
 import type { AgentChatAttachment } from '../types';
+
+type AddState = 'idle' | 'adding' | 'added';
 
 /**
  * Promotes a document the user attached to a chat into Knowledge, where the
@@ -17,34 +20,27 @@ export function AddToKnowledgeButton({ attachment }: { attachment: AgentChatAtta
   const { currentProjectId } = useConfig();
   const canMutate = useCanMutate();
   const api = useMemo(() => (currentProjectId ? createKnowledgeApi(currentProjectId) : null), [currentProjectId]);
-  const [state, setState] = useState<'idle' | 'adding' | 'added'>('idle');
+  const [state, setState] = useState<AddState>('idle');
   const supported = getKnowledgeFileProblem({ name: attachment.filename, size: attachment.sizeBytes }) === null;
 
   if (!api || !canMutate || !supported) {
     return null;
   }
 
-  async function add(): Promise<void> {
-    if (state !== 'idle') {
-      return;
-    }
+  const knowledgeApi = api;
 
+  async function add(): Promise<void> {
     setState('adding');
 
     try {
-      const result = await api!.addChatAttachment({ filename: attachment.filename, url: attachment.url });
+      const result = await knowledgeApi.addChatAttachment({ filename: attachment.filename, url: attachment.url });
 
-      if (result.duplicate) {
-        toast.info(`"${result.source.title}" is already in Knowledge.`);
-      } else {
-        toast.success(`Added ${attachment.filename} to Knowledge. Indexing starts now.`);
-      }
-
+      announceRegistered(result, attachment.filename);
+      // An open Knowledge list stays mounted behind this app; it must learn about the new document.
+      void invalidateKnowledgeLists();
       setState('added');
     } catch (error) {
-      const message = error instanceof KnowledgeApiError || error instanceof Error ? error.message : '';
-
-      toast.error(message || `${attachment.filename} could not be added to Knowledge.`);
+      toast.error(describeApiError(error, `${attachment.filename} could not be added to Knowledge.`));
       setState('idle');
     }
   }
@@ -61,15 +57,19 @@ export function AddToKnowledgeButton({ attachment }: { attachment: AgentChatAtta
   return (
     <Tooltip>
       <TooltipTrigger asChild>
+        {/* Not `disabled`: a disabled button swallows pointer events and the tooltip could never explain the check. */}
         <button
+          aria-disabled={state !== 'idle'}
           aria-label={`${label}: ${attachment.filename}`}
-          className="fk:absolute fk:top-1 fk:right-1 fk:z-10 fk:flex fk:size-5 fk:items-center fk:justify-center fk:rounded-full fk:border fk:border-border fk:bg-background fk:text-foreground fk:shadow-sm fk:transition-colors fk:hover:bg-accent fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:disabled:cursor-default fk:disabled:hover:bg-background fk:corner-squircle"
-          disabled={state !== 'idle'}
+          className="fk:absolute fk:top-1 fk:right-1 fk:z-10 fk:flex fk:size-5 fk:items-center fk:justify-center fk:rounded-full fk:border fk:border-border fk:bg-background fk:text-foreground fk:shadow-sm fk:transition-colors fk:hover:bg-accent fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:aria-disabled:cursor-default fk:aria-disabled:hover:bg-background fk:corner-squircle"
           type="button"
           onClick={(event) => {
             event.stopPropagation();
             event.preventDefault();
-            void add();
+
+            if (state === 'idle') {
+              void add();
+            }
           }}
         >
           {icon}

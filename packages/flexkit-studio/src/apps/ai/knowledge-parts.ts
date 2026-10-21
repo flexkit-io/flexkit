@@ -5,8 +5,7 @@
  */
 import type { ReplayDataParts } from './replay';
 
-export type KnowledgeSearchData = ReplayDataParts['knowledge-search'];
-export type KnowledgeCitation = NonNullable<KnowledgeSearchData['results']>[number];
+export type KnowledgeCitation = NonNullable<ReplayDataParts['knowledge-search']['results']>[number];
 
 export interface CitedPassage {
   excerpt: string;
@@ -71,17 +70,15 @@ export function getKnowledgeSourcePath(projectId: string, sourceId: string): str
   return `/${encodeURIComponent(projectId)}/knowledge/${encodeURIComponent(sourceId)}`;
 }
 
-/** Header of the search card once it finished. */
-export function summarizeKnowledgeSearch(data: KnowledgeSearchData): string {
-  const passages = data.results?.length ?? 0;
+/** Header of the search card once it finished, from the citations already grouped per document. */
+export function summarizeKnowledgeSearch(query: string, sources: CitedSource[]): string {
+  const passages = sources.reduce((total, source) => total + source.passages.length, 0);
 
   if (passages === 0) {
-    return `No passages matched "${data.query}"`;
+    return `No passages matched "${query}"`;
   }
 
-  const sources = groupCitationsBySource(data.results).length;
-
-  return `${String(passages)} ${passages === 1 ? 'passage' : 'passages'} from ${String(sources)} ${
-    sources === 1 ? 'document' : 'documents'
-  } for "${data.query}"`;
+  return `${String(passages)} ${passages === 1 ? 'passage' : 'passages'} from ${String(sources.length)} ${
+    sources.length === 1 ? 'document' : 'documents'
+  } for "${query}"`;
 }
