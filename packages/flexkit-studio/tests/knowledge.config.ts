@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['tests/knowledge/knowledge.test.ts'],
+  entry: ['tests/knowledge/knowledge.test.ts', 'tests/knowledge/record-links.test.ts'],
   format: ['esm'],
   outDir: 'build/tests/knowledge',
   removeNodeProtocol: false,

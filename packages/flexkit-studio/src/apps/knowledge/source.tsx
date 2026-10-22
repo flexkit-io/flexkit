@@ -52,6 +52,7 @@ import {
   type KnowledgeSource,
   type KnowledgeSourceDetail,
 } from './knowledge';
+import { LinkedRecordsSection } from './record-links';
 import {
   describeApiError,
   invalidateKnowledgeLists,
@@ -497,6 +498,10 @@ export function Source(): JSX.Element {
               source={source}
               onSaved={(saved) => void mutate({ job, source: saved }, { revalidate: false })}
             />
+          </section>
+          <Separator />
+          <section className="fk:flex fk:flex-col fk:gap-4">
+            <LinkedRecordsSection api={api} projectId={projectId} source={source} />
           </section>
           <Separator />
           <section className="fk:flex fk:flex-col fk:gap-4">
