@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, nativeTheme, shell } from 'electron';
+import { app, autoUpdater, BrowserWindow, nativeTheme, shell } from 'electron';
 import windowStateKeeper from 'electron-window-state';
 import { APP_ORIGIN, DOMAIN_ARGUMENT, VERSION_ARGUMENT } from './constants';
 
@@ -25,6 +25,19 @@ let quitting = false;
 
 app.once('before-quit', () => {
   quitting = true;
+});
+
+// Installing an update (Squirrel.Mac's `quitAndInstall`, emulated by
+// electron-updater elsewhere) closes every window first and only quits once
+// they are gone, without `before-quit`. This event comes just before that;
+// without it the Studio window would hide itself and the quit never happen.
+// A failed install leaves the app running, so closing goes back to hiding.
+autoUpdater.on('before-quit-for-update', () => {
+  quitting = true;
+});
+
+autoUpdater.on('error', () => {
+  quitting = false;
 });
 
 export interface StudioWindowOptions {
