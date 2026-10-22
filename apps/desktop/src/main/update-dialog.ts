@@ -5,7 +5,8 @@ import { UPDATE_DIALOG_CHOICE, UPDATE_DIALOG_SIZE } from './update-dialog-channe
 import { focusWindow } from './window';
 
 export type UpdateDialogKind = 'ready' | 'available';
-export type UpdateChoice = 'install' | 'download' | 'later' | 'skip';
+/** `dismiss`: the window was closed without a choice. */
+export type UpdateChoice = 'install' | 'download' | 'later' | 'skip' | 'dismiss';
 
 export interface UpdateDialogOptions {
   kind: UpdateDialogKind;
@@ -21,7 +22,7 @@ export interface UpdateDialogResult {
 
 /** What the preload sends back: the checkbox whenever it changes, and the choice when a button is pressed. */
 export interface UpdateDialogResponse {
-  choice: UpdateChoice | 'checkbox';
+  choice: Exclude<UpdateChoice, 'dismiss'> | 'checkbox';
   autoDownload: boolean;
 }
 
@@ -136,7 +137,7 @@ function page(options: UpdateDialogOptions): string {
       <p>${escapeHtml(body)}</p>
     </div>
   </div>
-  <label><input type="checkbox" id="auto"${options.autoDownload ? ' checked' : ''}> Automatically download and install updates in the future</label>
+  <label><input type="checkbox" id="auto"${options.autoDownload ? ' checked' : ''}> Automatically download updates in the future</label>
   <div class="buttons">${buttonHtml.replace('</button>', '</button><span class="spacer"></span>')}</div>
 </main>
 </body>
@@ -159,8 +160,8 @@ export function focusUpdateDialog(): boolean {
 
 /**
  * The update prompt, as its own small window (icon, title, text, the
- * auto-download checkbox and the choices in a row). Closing it counts as
- * "later". Only this window's page may answer.
+ * auto-download checkbox and the choices in a row). Closing it answers
+ * "dismiss". Only this window's page may answer.
  */
 export function showUpdateDialog(options: UpdateDialogOptions): Promise<UpdateDialogResult> {
   const { parent } = options;
@@ -191,7 +192,7 @@ export function showUpdateDialog(options: UpdateDialogOptions): Promise<UpdateDi
 
   return new Promise<UpdateDialogResult>((resolve) => {
     let settled = false;
-    // Closing the window with its close button answers "later" with the
+    // Closing the window with its close button answers "dismiss" with the
     // checkbox as last seen.
     let { autoDownload } = options;
     const settle = (result: UpdateDialogResult): void => {
@@ -246,7 +247,7 @@ export function showUpdateDialog(options: UpdateDialogOptions): Promise<UpdateDi
 
     ipcMain.on(UPDATE_DIALOG_SIZE, onSize);
     ipcMain.on(UPDATE_DIALOG_CHOICE, onChoice);
-    window.on('closed', () => settle({ choice: 'later', autoDownload }));
+    window.on('closed', () => settle({ choice: 'dismiss', autoDownload }));
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     window.webContents.on('will-navigate', (event) => event.preventDefault());
 
