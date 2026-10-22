@@ -23,7 +23,7 @@ function isWebUrl(url: string): boolean {
 // Studio keeps polling Activity and notifying. Quitting closes it for real.
 let quitting = false;
 
-app.once('before-quit', () => {
+app.on('before-quit', () => {
   quitting = true;
 });
 
@@ -31,14 +31,14 @@ app.once('before-quit', () => {
 // electron-updater elsewhere) closes every window first and only quits once
 // they are gone, without `before-quit`. This event comes just before that;
 // without it the Studio window would hide itself and the quit never happen.
-// A failed install leaves the app running, so closing goes back to hiding.
 autoUpdater.on('before-quit-for-update', () => {
   quitting = true;
 });
 
-autoUpdater.on('error', () => {
+/** The quit did not happen (an update failed to install): closing the window hides it again. */
+export function cancelQuit(): void {
   quitting = false;
-});
+}
 
 export interface StudioWindowOptions {
   version: string;

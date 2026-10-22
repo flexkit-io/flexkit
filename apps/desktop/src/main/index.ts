@@ -10,7 +10,7 @@ import { buildApplicationMenu } from './menu';
 import { setupPermissions } from './permissions';
 import { registerAppProtocol, registerAppScheme, restrictApiToStudio } from './protocol';
 import { createSessionStore, SessionStoreError } from './session-store';
-import { installUpdate, setupUpdater } from './updater';
+import { setupUpdater } from './updater';
 import { createStudioWindow, focusWindow } from './window';
 
 registerAppScheme();
@@ -218,7 +218,7 @@ if (setupDeepLinks(handleOsUrl, () => {
 
     ipcMain.on(IPC.installUpdate, (event) => {
       if (fromStudio(event)) {
-        installUpdate();
+        updater.installUpdate();
       }
     });
 

@@ -5,7 +5,8 @@ import type { BrowserWindow, MessageBoxOptions, MessageBoxReturnValue } from 'el
 import { autoUpdater } from 'electron-updater';
 import { IPC } from './constants';
 import { focusUpdateDialog, showUpdateDialog } from './update-dialog';
-import { focusWindow } from './window';
+import type { UpdateChoice } from './update-dialog';
+import { cancelQuit, focusWindow } from './window';
 
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
@@ -13,21 +14,31 @@ const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
  * Updates come from the GitHub release the app was published with. By
  * default they download in the background and a dialog then offers to
  * install (now, on quit, or skip that version); with automatic downloads
- * turned off the dialog asks before downloading. The Studio's app bar shows
- * "Restart to update" as well, and unless skipped a downloaded update
- * installs on the next quit. "Check for Updates…" reports every outcome.
+ * turned off the dialog asks before downloading. "Check for Updates…"
+ * reports every outcome.
+ *
+ * The app decides about every version before anything is downloaded or
+ * handed to the platform updater: a skipped version is not downloaded again
+ * unless the person checks for updates themselves, and a downloaded update is
+ * only staged for the quit-time install (Squirrel on macOS, the installer's
+ * quit handler on Windows) once the person has chosen "Install on Quit",
+ * because a staged update cannot be taken back. The Studio's app bar shows
+ * "Restart to update" from that moment on. One version per run: once an
+ * update is downloaded, newer releases wait for the next start.
  */
 export interface Updater {
   /** `interactive`: the person asked (menu), so every outcome gets a dialog. */
   checkForUpdates: (interactive?: boolean) => Promise<void>;
-  /** The version downloaded and waiting for a restart, if any: the Studio asks when it mounts. */
+  /** The version that installs on the next quit, if any: the Studio asks when it mounts. */
   getDownloadedVersion: () => string | null;
+  /** Quits into the downloaded update (dialog and the Studio's "Restart to update"). */
+  installUpdate: () => void;
 }
 
 /** Persisted in the user-data folder. */
 interface UpdateSettings {
   autoDownload: boolean;
-  /** "Skip This Version": not offered again, and not installed on quit. */
+  /** "Skip This Version": neither downloaded nor offered again. */
   skippedVersion: string | null;
 }
 
@@ -73,6 +84,7 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
         }
       },
       getDownloadedVersion: () => null,
+      installUpdate: () => {},
     };
   }
 
@@ -82,12 +94,18 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
     writeFileSync(settingsFile, JSON.stringify(settings), { mode: 0o600 });
   };
 
+  /** Downloaded in this run; the only version this run deals with from then on. */
   let downloadedVersion: string | null = null;
-  // Each prompt shows once per version per run; a skipped version is not
-  // prompted for unless the person checks for updates themselves.
+  /** Handed to the platform updater after "Install on Quit": installs on quit, shown in the Studio. */
+  let stagedVersion: string | null = null;
+  /** The staging in progress, if any; checks and installs wait for it. */
+  let staging: Promise<void> | null = null;
+  // Each prompt shows once per version per run (a dismissed prompt returns
+  // with the next check); a skipped version is not prompted for unless the
+  // person checks for updates themselves.
   let offeredVersion: string | null = null;
   let promptedVersion: string | null = null;
-  let promptRequested = false;
+  let installing = false;
   let checking: Promise<void> | null = null;
   let interactiveCheck: Promise<void> | null = null;
   // One prompt at a time: a second request brings the open one to the front.
@@ -106,19 +124,78 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
     return prompt;
   };
 
-  autoUpdater.autoDownload = settings.autoDownload;
-  autoUpdater.autoInstallOnAppQuit = true;
+  // Downloads and the quit-time install are both decided here, not by
+  // electron-updater. `autoInstallOnAppQuit` means "the platform updater has
+  // the file": it is off for the download that leads to the dialog and turned
+  // on by "Install on Quit" (Windows reads it again when quitting; on macOS
+  // `quitAndInstall` fetches the update itself while it is off).
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  const describe = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+  const reportFailure = (message: string, error: unknown): Promise<void> =>
+    showSheet({ type: 'error', title: 'Update failed', message, detail: describe(error) }).then(() => undefined);
+
+  const download = (): void => {
+    autoUpdater.downloadUpdate().catch((error: unknown) => {
+      console.warn('[flexkit] Update download failed:', describe(error));
+    });
+  };
+
+  /**
+   * "Install on Quit": hands the downloaded file to the platform updater. The
+   * second `downloadUpdate` finds the file in electron-updater's cache (the
+   * release information is the one in memory since the download, as the feed
+   * is not read again in this run) and only repeats the hand-over, this time
+   * with the quit-time flag on. The Studio learns about it once that is done.
+   */
+  const stage = (version: string): void => {
+    autoUpdater.autoInstallOnAppQuit = true;
+    staging = autoUpdater
+      .downloadUpdate()
+      .then(
+        () => {
+          stagedVersion = version;
+          getWindow()?.webContents.send(IPC.updateDownloaded, { version });
+        },
+        (error: unknown) => {
+          autoUpdater.autoInstallOnAppQuit = false;
+          console.warn('[flexkit] Update staging failed:', describe(error));
+
+          return reportFailure(`Flexkit Studio ${version} could not be prepared to install on quit.`, error);
+        }
+      )
+      .finally(() => {
+        staging = null;
+      });
+  };
 
   /** Persists what the dialog was answered: the checkbox, and whether this version is skipped. */
-  const record = (version: string, choice: 'install' | 'download' | 'later' | 'skip', autoDownload: boolean): void => {
+  const record = (version: string, choice: UpdateChoice, autoDownload: boolean): void => {
     settings.autoDownload = autoDownload;
-    autoUpdater.autoDownload = autoDownload;
-    settings.skippedVersion = choice === 'skip' ? version : null;
-    autoUpdater.autoInstallOnAppQuit = choice !== 'skip';
+
+    if (choice !== 'dismiss') {
+      settings.skippedVersion = choice === 'skip' ? version : null;
+    }
+
     saveSettings();
   };
 
-  /** The update is downloaded: install now, on quit, or skip. */
+  const installUpdate = (): void => {
+    if (installing) {
+      return;
+    }
+
+    installing = true;
+    // A staging in progress has asked Squirrel for the file already: a second
+    // request would fail, so `quitAndInstall` waits for the first one.
+    void (staging ?? Promise.resolve()).then(() => {
+      autoUpdater.quitAndInstall();
+    });
+  };
+
+  /** The update is downloaded: install now, on quit, or skip. Closing the dialog decides nothing. */
   const promptToInstall = (version: string): Promise<void> =>
     withPrompt(async () => {
       promptedVersion = version;
@@ -129,6 +206,10 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
 
       if (choice === 'install') {
         installUpdate();
+      } else if (choice === 'later') {
+        stage(version);
+      } else if (choice === 'dismiss') {
+        promptedVersion = null;
       }
     });
 
@@ -142,37 +223,69 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
       record(version, choice, autoDownload);
 
       if (choice === 'download') {
-        promptRequested = true;
-        autoUpdater.downloadUpdate().catch((error: unknown) => {
-          console.warn('[flexkit] Update download failed:', error instanceof Error ? error.message : error);
-        });
+        download();
+      } else if (choice === 'dismiss') {
+        offeredVersion = null;
       }
     });
 
+  /** Already installing on quit: offer to restart now (a staged update cannot be skipped anymore). */
+  const promptToRestart = async (version: string): Promise<void> => {
+    const { response } = await showSheet({
+      type: 'info',
+      title: 'Update ready',
+      message: `Flexkit Studio ${version} installs when you quit.`,
+      detail: 'Restart now to use it right away.',
+      buttons: ['Restart Now', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+
+    if (response === 0) {
+      installUpdate();
+    }
+  };
+
   autoUpdater.on('update-downloaded', (info) => {
-    downloadedVersion = info.version;
-    getWindow()?.webContents.send(IPC.updateDownloaded, { version: info.version });
-    // A skipped version stays out of the quit-time install, also after a relaunch.
-    autoUpdater.autoInstallOnAppQuit = info.version !== settings.skippedVersion;
-
-    const requested = promptRequested;
-
-    promptRequested = false;
-
-    if (promptedVersion === info.version || (!requested && info.version === settings.skippedVersion)) {
+    // The hand-over after "Install on Quit" ends here too.
+    if (downloadedVersion !== null) {
       return;
     }
 
+    downloadedVersion = info.version;
     void promptToInstall(info.version);
   });
 
   autoUpdater.on('error', (error) => {
-    console.warn('[flexkit] Update check failed:', error.message);
+    console.warn('[flexkit] Update error:', error.message);
+
+    // An install that did not go through leaves the app running; closing the
+    // window hides it again, and the person learns why.
+    if (installing) {
+      installing = false;
+      cancelQuit();
+      void reportFailure('Flexkit Studio could not install the update.', error);
+    }
   });
 
   const check = async (interactive: boolean): Promise<void> => {
-    if (interactive && downloadedVersion !== null) {
-      await promptToInstall(downloadedVersion);
+    if (staging !== null) {
+      await staging;
+    }
+
+    if (stagedVersion !== null) {
+      if (interactive) {
+        await promptToRestart(stagedVersion);
+      }
+
+      return;
+    }
+
+    // Downloaded in this run: offer to install, never read the feed again.
+    if (downloadedVersion !== null) {
+      if (interactive || promptedVersion !== downloadedVersion) {
+        await promptToInstall(downloadedVersion);
+      }
 
       return;
     }
@@ -187,7 +300,7 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
           type: 'error',
           title: 'Update check failed',
           message: 'Flexkit Studio could not check for updates.',
-          detail: error instanceof Error ? error.message : String(error),
+          detail: describe(error),
         });
       }
 
@@ -209,37 +322,30 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
 
     const { version } = result.updateInfo;
 
-    // Already downloaded in this run (the background check prompted, or the
-    // dialog was dismissed): offer to install, never to download again.
-    if (downloadedVersion === version) {
-      if (interactive || (promptedVersion !== version && version !== settings.skippedVersion)) {
-        await promptToInstall(version);
-      }
-
+    // Decided before download: a skipped version comes back only when asked.
+    if (!interactive && version === settings.skippedVersion) {
       return;
     }
 
     if (!settings.autoDownload) {
-      if (interactive || (offeredVersion !== version && version !== settings.skippedVersion)) {
+      if (interactive || offeredVersion !== version) {
         await promptToDownload(version);
       }
 
       return;
     }
 
-    if (!interactive) {
-      return;
-    }
+    // `update-downloaded` then prompts.
+    download();
 
-    // The download is under way (`autoDownload`); `update-downloaded` then
-    // prompts, even for a version that was skipped before.
-    promptRequested = true;
-    await showSheet({
-      type: 'info',
-      title: 'Update available',
-      message: 'A new version of Flexkit Studio is available!',
-      detail: `Flexkit Studio ${version} is downloading in the background. You'll be asked to install it as soon as it's ready.`,
-    });
+    if (interactive) {
+      await showSheet({
+        type: 'info',
+        title: 'Update available',
+        message: 'A new version of Flexkit Studio is available!',
+        detail: `Flexkit Studio ${version} is downloading in the background. You'll be asked to install it as soon as it's ready.`,
+      });
+    }
   };
 
   function checkForUpdates(interactive = false): Promise<void> {
@@ -271,29 +377,5 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
   void checkForUpdates();
   setInterval(() => void checkForUpdates(), CHECK_INTERVAL_MS).unref();
 
-  return { checkForUpdates, getDownloadedVersion: () => downloadedVersion };
-}
-
-// One install at a time: electron-updater's macOS updater does not
-// de-duplicate, and a second call would ask Squirrel to fetch again.
-let installing = false;
-
-autoUpdater.on('error', () => {
-  installing = false;
-});
-
-/** Quits into the downloaded update (dialog and the Studio's "Restart to update"). */
-export function installUpdate(): void {
-  if (installing) {
-    return;
-  }
-
-  installing = true;
-  // On macOS the update is staged with Squirrel only when this flag was on at
-  // download time, and `quitAndInstall` re-triggers the staging only when the
-  // flag is off (electron-updater `MacUpdater`): with it off, an unstaged
-  // update (one skipped at download time) still installs instead of waiting
-  // forever. Staged updates and Windows ignore the flag here.
-  autoUpdater.autoInstallOnAppQuit = false;
-  autoUpdater.quitAndInstall();
+  return { checkForUpdates, getDownloadedVersion: () => stagedVersion, installUpdate };
 }
