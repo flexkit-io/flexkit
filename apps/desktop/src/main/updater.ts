@@ -274,6 +274,26 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): Updater {
   return { checkForUpdates, getDownloadedVersion: () => downloadedVersion };
 }
 
+// One install at a time: electron-updater's macOS updater does not
+// de-duplicate, and a second call would ask Squirrel to fetch again.
+let installing = false;
+
+autoUpdater.on('error', () => {
+  installing = false;
+});
+
+/** Quits into the downloaded update (dialog and the Studio's "Restart to update"). */
 export function installUpdate(): void {
+  if (installing) {
+    return;
+  }
+
+  installing = true;
+  // On macOS the update is staged with Squirrel only when this flag was on at
+  // download time, and `quitAndInstall` re-triggers the staging only when the
+  // flag is off (electron-updater `MacUpdater`): with it off, an unstaged
+  // update (one skipped at download time) still installs instead of waiting
+  // forever. Staged updates and Windows ignore the flag here.
+  autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.quitAndInstall();
 }
