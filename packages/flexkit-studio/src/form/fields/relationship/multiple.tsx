@@ -100,7 +100,11 @@ export default function MultipleRelationship({
     schema,
   });
   const previewLimit = 12;
-  const previewItems = rows.length ? rows.slice(0, previewLimit).map((row) => row[displayAttributeName] as string) : [];
+  // Keyed by id: two related records may share a label (e.g. the same
+  // product name in two packagings), which would collide as React keys.
+  const previewItems = rows.length
+    ? rows.slice(0, previewLimit).map((row) => ({ id: row._id, label: row[displayAttributeName] as string }))
+    : [];
   const hasMorePreviewItems = Math.max(rows.length, defaultValue.count ?? 0) > previewItems.length;
   const [getData, { loading, data }] = useLazyQuery<EntityQueryResults & EntityQueryAggregate>(gql`
     ${entityQuery.query}
@@ -151,8 +155,7 @@ export default function MultipleRelationship({
     setRows(uniqBy(prop('_id'), [...(selectedRows as []), ...initialRows]));
   }, [data, defaultValue.count, initialRows, relationships, relationshipId]);
 
-  const pendingConnections =
-    (relationships[relationshipId]?.connect as MultipleRelationshipConnection | null) ?? [];
+  const pendingConnections = (relationships[relationshipId]?.connect as MultipleRelationshipConnection | null) ?? [];
   const pendingDisconnectIds = relationships[relationshipId]?.disconnect ?? [];
   const existingRelationshipIds = new Set(initialRows.map((row) => row._id));
   const pendingDisconnectIdSet = new Set(pendingDisconnectIds);
@@ -278,11 +281,11 @@ export default function MultipleRelationship({
                       {previewItems.map((item) => (
                         <Badge
                           className="fk:mr-2 fk:mt-1.5 fk:max-w-60 fk:justify-start fk:rounded-xs fk:corner-squircle"
-                          key={item}
-                          title={item}
+                          key={item.id}
+                          title={item.label}
                           variant="secondary"
                         >
-                          <span className="fk:min-w-0 fk:truncate">{item}</span>
+                          <span className="fk:min-w-0 fk:truncate">{item.label}</span>
                         </Badge>
                       ))}
                       {hasMorePreviewItems ? (
