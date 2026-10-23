@@ -22,6 +22,8 @@ type Props = {
   isFocused: boolean; // whether the drawer is the last one open
   onFormChange?: Dispatch<SetStateAction<boolean>>; // a callback executed everyt time the form changes its state
   onClose: () => void;
+  /** Pinned under the scrollable body; the body shrinks to make room for it. */
+  panel?: ReactNode;
   title: string;
 };
 
@@ -34,6 +36,7 @@ export default function DrawerModal({
   isFocused,
   onFormChange: _onFormChange,
   onClose,
+  panel,
   title,
 }: Props): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
@@ -117,9 +120,10 @@ export default function DrawerModal({
           </Button>
         </DrawerHeader>
         <Separator />
-        <div className="fk:min-h-0 fk:px-10 fk:pt-6 fk:h-full fk:overflow-y-auto fk:pb-16" data-vaul-no-drag>
+        <div className="fk:min-h-0 fk:flex-1 fk:px-10 fk:pt-6 fk:overflow-y-auto fk:pb-16" data-vaul-no-drag>
           {children}
         </div>
+        {panel}
       </DrawerContent>
     </Drawer>
   );

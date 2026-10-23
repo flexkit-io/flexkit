@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useDeferredValue, useMemo, useState } from 'react';
-import { LibraryIcon, LoaderCircle, PaperclipIcon, SearchIcon, Unlink2Icon } from 'lucide-react';
+import { ChevronRightIcon, LibraryIcon, LoaderCircle, PaperclipIcon, SearchIcon, Unlink2Icon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { useAppContext } from '../../core/app-context';
@@ -15,6 +15,9 @@ import { useEntityQuery } from '../../graphql-client/use-entity-query';
 import {
   Badge,
   Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -48,15 +51,6 @@ import {
 import { describeApiError, invalidateKnowledgeLinks, SourceIcon, StatusBadge, useProjectKnowledge } from './shared';
 
 const PICKER_PAGE_SIZE = 50;
-
-function SectionHeading({ children, icon }: { children: string; icon: JSX.Element }): JSX.Element {
-  return (
-    <div className="fk:flex fk:items-center fk:gap-2">
-      {icon}
-      <h3 className="fk:text-sm fk:font-semibold fk:tracking-tight">{children}</h3>
-    </div>
-  );
-}
 
 function DetachButton({
   disabled,
@@ -217,11 +211,11 @@ function AttachDocumentDialog({
 }
 
 /**
- * The documents attached to one record, shown on the record itself in the
- * Desk: open them, attach another, detach one. The agent searches these
- * first when a question is about this record.
+ * The documents attached to one record, pinned under the record form in the
+ * Desk as a collapsible panel: open them, attach another, detach one. The
+ * agent searches these first when a question is about this record.
  */
-export function RecordKnowledgeSection({
+export function RecordKnowledgePanel({
   entityName,
   entityNamePlural,
   recordId,
@@ -234,6 +228,7 @@ export function RecordKnowledgeSection({
 }): JSX.Element | null {
   const { api, projectId } = useProjectKnowledge();
   const canMutate = useCanMutate();
+  const [isOpen, setIsOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [detachingId, setDetachingId] = useState<string | null>(null);
   const record = useMemo<KnowledgeRecordRef>(() => ({ entity: entityName, recordId }), [entityName, recordId]);
@@ -248,7 +243,7 @@ export function RecordKnowledgeSection({
   }
 
   // The platform answers 404 for an entity it does not know, which can
-  // happen while a schema change is still deploying; the section then stays out of the way.
+  // happen while a schema change is still deploying; the panel then stays out of the way.
   if (error instanceof FetcherError && error.status === 404) {
     return null;
   }
@@ -329,22 +324,47 @@ export function RecordKnowledgeSection({
   }
 
   // The record drawer is mounted by the actions manager outside any app, so
-  // it carries no tooltip provider of its own.
+  // it carries no tooltip provider of its own. The panel is a flex child of
+  // the drawer: collapsed it is one row, open it claims half the height and
+  // scrolls inside, so the form above stays visible and scrollable.
   return (
     <TooltipProvider>
-      <section className="fk:flex fk:flex-col fk:gap-3" data-knowledge-record-section>
-        <div className="fk:flex fk:items-center fk:justify-between fk:gap-2">
-          <SectionHeading icon={<LibraryIcon className="fk:size-4 fk:text-muted-foreground" />}>
-            Knowledge
-          </SectionHeading>
-          <PermissionTooltip disabled={!canMutate}>
-            <Button disabled={!canMutate} size="sm" variant="outline" onClick={() => setIsPickerOpen(true)}>
-              <PaperclipIcon />
-              Attach document
-            </Button>
-          </PermissionTooltip>
+      <Collapsible
+        className={`fk:flex fk:shrink-0 fk:flex-col fk:border-t ${isOpen ? 'fk:h-1/2' : ''}`}
+        data-knowledge-record-panel
+        open={isOpen}
+        onOpenChange={setIsOpen}
+      >
+        <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2 fk:px-10 fk:py-2">
+          <CollapsibleTrigger asChild>
+            <button
+              className="fk:flex fk:min-w-0 fk:flex-1 fk:items-center fk:gap-2 fk:rounded-md fk:py-1 fk:text-left fk:text-sm fk:font-semibold fk:tracking-tight fk:hover:text-foreground/80 fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring"
+              type="button"
+            >
+              <ChevronRightIcon
+                className={`fk:size-4 fk:shrink-0 fk:text-muted-foreground fk:transition-transform ${isOpen ? 'fk:rotate-90' : ''}`}
+              />
+              <LibraryIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
+              Knowledge
+              {data ? (
+                <Badge className="fk:corner-squircle" variant="outline">
+                  {sources.length}
+                </Badge>
+              ) : null}
+            </button>
+          </CollapsibleTrigger>
+          {isOpen ? (
+            <PermissionTooltip disabled={!canMutate}>
+              <Button disabled={!canMutate} size="sm" variant="outline" onClick={() => setIsPickerOpen(true)}>
+                <PaperclipIcon />
+                Attach document
+              </Button>
+            </PermissionTooltip>
+          ) : null}
         </div>
-        {body}
+        <CollapsibleContent className="fk:min-h-0 fk:flex-1 fk:overflow-y-auto fk:px-10 fk:pb-6">
+          {body}
+        </CollapsibleContent>
         <AttachDocumentDialog
           api={api}
           attachedIds={attachedIds}
@@ -358,7 +378,7 @@ export function RecordKnowledgeSection({
           }}
           onOpenChange={setIsPickerOpen}
         />
-      </section>
+      </Collapsible>
     </TooltipProvider>
   );
 }

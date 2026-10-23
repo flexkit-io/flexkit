@@ -25,8 +25,7 @@ import { useDispatch } from './actions-context';
 import SaveButton from './save-button';
 import Loading from './loading';
 import { useAuth } from '../auth/auth-context';
-import { RecordKnowledgeSection } from '../apps/knowledge/record-links';
-import { Separator } from '../ui/primitives/separator';
+import { RecordKnowledgePanel } from '../apps/knowledge/record-links';
 import { type Action, type ActionEditEntity } from './types';
 
 type Props = {
@@ -259,6 +258,16 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
         handleClose(action._id);
       }}
       onFormChange={() => {}}
+      panel={
+        entitySchema ? (
+          <RecordKnowledgePanel
+            entityName={entityName}
+            entityNamePlural={entityNamePlural}
+            recordId={entityId}
+            recordLabel={entityIdentifier as string}
+          />
+        ) : null
+      }
       title={entityIdentifier as string}
     >
       {isInitialLoading || !hasData ? (
@@ -277,13 +286,6 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
             ref={ref}
             schema={schema}
             setIsDirty={setFormIsDirty}
-          />
-          <Separator className="fk:my-8" />
-          <RecordKnowledgeSection
-            entityName={entityName}
-            entityNamePlural={entityNamePlural}
-            recordId={entityId}
-            recordLabel={entityIdentifier as string}
           />
         </>
       )}
