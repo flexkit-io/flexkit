@@ -330,7 +330,7 @@ export function RecordKnowledgePanel({
   return (
     <TooltipProvider>
       <Collapsible
-        className={`fk:flex fk:shrink-0 fk:flex-col fk:border-t ${isOpen ? 'fk:h-1/2' : ''}`}
+        className={`fk:z-10 fk:flex fk:shrink-0 fk:flex-col fk:border-t fk:bg-background ${isOpen ? 'fk:h-1/2' : ''}`}
         data-knowledge-record-panel
         open={isOpen}
         onOpenChange={setIsOpen}
