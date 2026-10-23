@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useDeferredValue, useMemo, useState } from 'react';
-import { ChevronRightIcon, LibraryIcon, LoaderCircle, PaperclipIcon, SearchIcon, Unlink2Icon } from 'lucide-react';
+import { BookOpenTextIcon, ChevronRightIcon, LoaderCircle, PaperclipIcon, SearchIcon, Unlink2Icon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { useAppContext } from '../../core/app-context';
@@ -344,7 +344,7 @@ export function RecordKnowledgePanel({
               <ChevronRightIcon
                 className={`fk:size-4 fk:shrink-0 fk:text-muted-foreground fk:transition-transform ${isOpen ? 'fk:rotate-90' : ''}`}
               />
-              <LibraryIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
+              <BookOpenTextIcon className="fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
               Knowledge
               {data ? (
                 <Badge className="fk:corner-squircle" variant="outline">
