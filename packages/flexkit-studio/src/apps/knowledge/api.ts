@@ -1,6 +1,7 @@
 import { put } from '@vercel/blob/client';
 import type {
   KnowledgeJob,
+  KnowledgeRecordRef,
   KnowledgeSource,
   KnowledgeSourcePatch,
   KnowledgeSourceStatus,
@@ -33,7 +34,10 @@ export interface KnowledgeApi {
   /** Promotes a file the caller attached to a chat: the platform copies it into the knowledge folder. */
   addChatAttachment: (_input: { filename: string; url: string }) => Promise<RegisterKnowledgeSourceResult>;
   deleteSource: (_sourceId: string) => Promise<{ deleted: true }>;
+  /** Attaches the document to a record; `linked` is false when it already was. */
+  linkSource: (_sourceId: string, _record: KnowledgeRecordRef) => Promise<{ linked: boolean }>;
   reingestSource: (_sourceId: string) => Promise<{ job: KnowledgeJob }>;
+  unlinkSource: (_sourceId: string, _record: KnowledgeRecordRef) => Promise<{ unlinked: boolean }>;
   updateSource: (_sourceId: string, _patch: KnowledgeSourcePatch) => Promise<{ source: KnowledgeSource }>;
 }
 
@@ -59,7 +63,11 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 
 export function knowledgePaths(projectId: string): {
   job: (_jobId: string) => string;
+  /** The records a document is attached to. */
+  links: (_sourceId: string) => string;
   passages: (_sourceId: string, _options: { from: number; to: number }) => string;
+  /** The documents attached to a record. */
+  recordSources: (_record: KnowledgeRecordRef) => string;
   source: (_sourceId: string) => string;
   sources: (_options?: { limit?: number; offset?: number; search?: string; status?: KnowledgeSourceStatus }) => string;
   spaces: string;
@@ -68,8 +76,11 @@ export function knowledgePaths(projectId: string): {
 
   return {
     job: (jobId) => `${basePath}/jobs/${encodeURIComponent(jobId)}`,
+    links: (sourceId) => `${basePath}/sources/${encodeURIComponent(sourceId)}/links`,
     passages: (sourceId, { from, to }) =>
       `${basePath}/sources/${encodeURIComponent(sourceId)}/passages?from=${String(from)}&to=${String(to)}`,
+    recordSources: ({ entity, recordId }) =>
+      `${basePath}/records/${encodeURIComponent(entity)}/${encodeURIComponent(recordId)}/sources`,
     source: (sourceId) => `${basePath}/sources/${encodeURIComponent(sourceId)}`,
     sources: (options = {}) => {
       const { limit = 25, offset = 0, search, status } = options;
@@ -93,6 +104,14 @@ export function knowledgePaths(projectId: string): {
 /** Whether an SWR key is a page of the document list, whatever its filters. */
 export function isKnowledgeListKey(key: unknown): boolean {
   return typeof key === 'string' && key.includes('/knowledge/sources?');
+}
+
+/** Whether an SWR key lists the documents of a record or the records of a document. */
+export function isKnowledgeLinkKey(key: unknown): boolean {
+  return (
+    typeof key === 'string' &&
+    (key.includes('/knowledge/records/') || (key.includes('/knowledge/sources/') && key.endsWith('/links')))
+  );
 }
 
 async function readError(response: Response, fallback: string): Promise<KnowledgeApiError> {
@@ -172,11 +191,22 @@ export function createKnowledgeApi(projectId: string): KnowledgeApi {
         fallback: 'The document could not be removed.',
         method: 'DELETE',
       }),
+    linkSource: (sourceId, record) =>
+      request<{ linked: boolean }>(`${basePath}/sources/${encodeURIComponent(sourceId)}/links`, {
+        body: JSON.stringify(record),
+        fallback: 'The document could not be attached.',
+        method: 'POST',
+      }),
     reingestSource: (sourceId) =>
       request<{ job: KnowledgeJob }>(`${basePath}/sources/${encodeURIComponent(sourceId)}/reingest`, {
         fallback: 'The document could not be re-indexed.',
         method: 'POST',
       }),
+    unlinkSource: (sourceId, { entity, recordId }) =>
+      request<{ unlinked: boolean }>(
+        `${basePath}/sources/${encodeURIComponent(sourceId)}/links/${encodeURIComponent(entity)}/${encodeURIComponent(recordId)}`,
+        { fallback: 'The document could not be detached.', method: 'DELETE' }
+      ),
     updateSource: (sourceId, patch) =>
       request<{ source: KnowledgeSource }>(`${basePath}/sources/${encodeURIComponent(sourceId)}`, {
         body: JSON.stringify(patch),

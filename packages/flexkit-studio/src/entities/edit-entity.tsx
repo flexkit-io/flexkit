@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
@@ -27,13 +27,20 @@ import Loading from './loading';
 import { useAuth } from '../auth/auth-context';
 import { type Action, type ActionEditEntity } from './types';
 
+// Loaded on demand: the record drawer is part of the always-mounted root,
+// and the Knowledge module should only download when a record opens.
+const RecordKnowledgePanel = lazy(() =>
+  import('../apps/knowledge/record-links').then((m) => ({ default: m.RecordKnowledgePanel }))
+);
+
 type Props = {
   action: ActionEditEntity;
   depth: number;
   isFocused: boolean;
+  nested?: ReactNode;
 };
 
-export default function EditEntity({ action, depth, isFocused }: Props): JSX.Element {
+export default function EditEntity({ action, depth, isFocused, nested }: Props): JSX.Element {
   const { entityId, entityNamePlural } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const { currentProject, currentProjectId } = useConfig();
@@ -253,10 +260,22 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       depth={depth}
       forceClose={forceClose}
       isFocused={isFocused}
+      nested={nested}
       onClose={() => {
         handleClose(action._id);
       }}
       onFormChange={() => {}}
+      panel={
+        entitySchema ? (
+          <Suspense fallback={null}>
+            <RecordKnowledgePanel
+              entityName={entityName}
+              recordId={entityId}
+              recordLabel={entityIdentifier as string}
+            />
+          </Suspense>
+        ) : null
+      }
       title={entityIdentifier as string}
     >
       {isInitialLoading || !hasData ? (

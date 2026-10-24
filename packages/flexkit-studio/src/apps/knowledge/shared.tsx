@@ -4,7 +4,13 @@ import { FileTextIcon, GlobeIcon, LoaderCircle } from 'lucide-react';
 import { mutate as mutateGlobal } from 'swr';
 import { useConfig } from '../../core/config/config-context';
 import { Badge, toast } from '../../ui';
-import { createKnowledgeApi, isKnowledgeListKey, KnowledgeApiError, type KnowledgeApi } from './api';
+import {
+  createKnowledgeApi,
+  isKnowledgeLinkKey,
+  isKnowledgeListKey,
+  KnowledgeApiError,
+  type KnowledgeApi,
+} from './api';
 import type { KnowledgeSource, KnowledgeStatusTone, RegisterKnowledgeSourceResult } from './knowledge';
 
 const STATUS_TONE_CLASSES: { [tone in KnowledgeStatusTone]: string } = {
@@ -24,6 +30,11 @@ export function useProjectKnowledge(): { api: KnowledgeApi | null; projectId: st
 /** Drops every cached page of the document list, so the next visit fetches it afresh. */
 export function invalidateKnowledgeLists(): Promise<unknown> {
   return mutateGlobal(isKnowledgeListKey, undefined, { revalidate: true });
+}
+
+/** Drops every cached link listing (a record's documents, a document's records) after a link changed. */
+export function invalidateKnowledgeLinks(): Promise<unknown> {
+  return mutateGlobal(isKnowledgeLinkKey, undefined, { revalidate: true });
 }
 
 export function describeApiError(error: unknown, fallback: string): string {

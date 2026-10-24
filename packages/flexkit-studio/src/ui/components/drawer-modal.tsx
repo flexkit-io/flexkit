@@ -1,7 +1,7 @@
 'use client';
 
-import type { JSX } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import type { CSSProperties, JSX } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { X as CloseIcon } from 'lucide-react';
 import { Button } from '../primitives/button';
@@ -9,19 +9,38 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { Separator } from '../primitives/separator';
 import { Skeleton } from '../primitives/skeleton';
 
+/**
+ * How many drawers the current stack holds. The drawers behind the frontmost
+ * one share the room beside it, so each slides out by less as the stack grows
+ * and the bottom one never leaves the viewport.
+ */
+const DrawerStackContext = createContext(1);
+
+export function DrawerStackProvider({ children, size }: { children: ReactNode; size: number }): JSX.Element {
+  return <DrawerStackContext.Provider value={Math.max(1, size)}>{children}</DrawerStackContext.Provider>;
+}
+
 type Props = {
   actions: ReactNode;
   beforeClose?: () => boolean;
   children: ReactNode;
-  depth: number; // how many drawers are open, to control the width of the drawers
+  /** @deprecated Stacking is handled by nesting (`nested`); kept for callers that still pass it. */
+  depth?: number;
   /**
    * Close the drawer without running `beforeClose` (used after confirming discard).
-   * Lets Vaul release its body lock instead of hard-unmounting an open drawer.
    */
   forceClose?: boolean;
-  isFocused: boolean; // whether the drawer is the last one open
+  /** @deprecated The frontmost nested drawer handles Escape by itself; kept for callers that still pass it. */
+  isFocused?: boolean;
+  /**
+   * The drawer opened on top of this one. Rendering it inside this drawer's
+   * tree makes it a nested drawer: this one stays mounted and slides aside.
+   */
+  nested?: ReactNode;
   onFormChange?: Dispatch<SetStateAction<boolean>>; // a callback executed everyt time the form changes its state
   onClose: () => void;
+  /** Pinned under the scrollable body; the body shrinks to make room for it. */
+  panel?: ReactNode;
   title: string;
 };
 
@@ -29,97 +48,90 @@ export default function DrawerModal({
   actions,
   beforeClose,
   children,
-  depth,
+  depth: _depth,
   forceClose = false,
-  isFocused,
+  isFocused: _isFocused,
+  nested,
   onFormChange: _onFormChange,
   onClose,
+  panel,
   title,
 }: Props): JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
-  const gutter = depth * (50 / depth);
+  const stackSize = useContext(DrawerStackContext);
+  // Levels above the bottom drawer; the stack CSS splits the room by this.
+  const stackStyle = { '--stack-levels': stackSize - 1 } as CSSProperties;
 
-  const closeDrawer = useCallback(() => {
-    setIsOpen(false);
-    globalThis.setTimeout(() => {
-      onClose();
-    }, 150);
-  }, [onClose]);
-
-  const handleClose = useCallback(() => {
+  /** Asks `beforeClose` and closes when allowed; returns whether it did. */
+  const handleClose = useCallback((): boolean => {
     if (forceClose) {
-      return;
+      return false;
     }
 
     const shouldClose = beforeClose ? beforeClose() : true;
 
     if (!shouldClose) {
-      return;
+      return false;
     }
 
-    closeDrawer();
-  }, [beforeClose, closeDrawer, forceClose]);
+    setIsOpen(false);
+
+    return true;
+  }, [beforeClose, forceClose]);
 
   useEffect(() => {
     if (!forceClose) {
       return;
     }
 
-    closeDrawer();
-  }, [closeDrawer, forceClose]);
-
-  const onEscapeKeyPressed = useCallback(
-    (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && isFocused) {
-        handleClose();
-      }
-    },
-    [handleClose, isFocused]
-  );
+    setIsOpen(false);
+  }, [forceClose]);
 
   useEffect(() => {
     setIsOpen(true);
-    // overwrite "background: black" set by Vaul in the body, and add missing bottom: 0 style
-    globalThis.document.body.classList.add('fk-drawer-fix');
-
-    return () => {
-      globalThis.document.body.classList.remove('fk-drawer-fix');
-    };
   }, []);
-
-  useEffect(() => {
-    globalThis.document.addEventListener('keydown', onEscapeKeyPressed, false);
-
-    return () => {
-      globalThis.document.removeEventListener('keydown', onEscapeKeyPressed, false);
-    };
-  }, [onEscapeKeyPressed]);
 
   return (
     <Drawer
-      direction="right"
-      dismissible={false}
-      onClose={() => {
-        handleClose();
+      disablePointerDismissal
+      onOpenChange={(open, eventDetails) => {
+        // A vetoed close (unsaved changes) must also cancel the gesture that
+        // asked for it, or a swipe leaves the popup in its dismissed pose.
+        if (!open && !handleClose()) {
+          eventDetails.cancel();
+        }
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          onClose();
+        }
       }}
       open={isOpen}
+      swipeDirection="right"
     >
-      <DrawerContent style={isFocused ? {} : { maxWidth: `calc(100% - ${gutter.toString()}px)` }}>
+      <DrawerContent style={stackStyle}>
         <DrawerHeader className="fk:px-10">
           <DrawerTitle className="fk:w-full">
             {title ? title : <Skeleton className="fk:h-5 fk:w-[120px]" />}
           </DrawerTitle>
           <DrawerDescription className="fk:sr-only">{title ? title : 'Loading form'}</DrawerDescription>
           {actions}
-          <Button className="" onClick={handleClose} size="icon" variant="ghost">
+          <Button
+            className=""
+            onClick={() => {
+              handleClose();
+            }}
+            size="icon"
+            variant="ghost"
+          >
             <CloseIcon className="fk:h-4 fk:w-4" />
             <span className="fk:sr-only">Close</span>
           </Button>
         </DrawerHeader>
         <Separator />
-        <div className="fk:min-h-0 fk:px-10 fk:pt-6 fk:h-full fk:overflow-y-auto fk:pb-16" data-vaul-no-drag>
-          {children}
-        </div>
+        <div className="fk:min-h-0 fk:flex-1 fk:px-10 fk:pt-6 fk:overflow-y-auto fk:pb-16">{children}</div>
+        {panel}
+        {nested}
       </DrawerContent>
     </Drawer>
   );
