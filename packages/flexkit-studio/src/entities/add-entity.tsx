@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
@@ -30,9 +30,10 @@ type Props = {
   action: ActionAddEntity;
   depth: number;
   isFocused: boolean;
+  nested?: ReactNode;
 };
 
-export default function AddEntity({ action, depth, isFocused }: Props): JSX.Element {
+export default function AddEntity({ action, depth, isFocused, nested }: Props): JSX.Element {
   const { entityName } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const canMutate = useCanMutate();
@@ -140,6 +141,7 @@ export default function AddEntity({ action, depth, isFocused }: Props): JSX.Elem
       depth={depth}
       forceClose={forceClose}
       isFocused={isFocused}
+      nested={nested}
       onClose={() => {
         handleClose(action._id);
       }}

@@ -5,6 +5,8 @@
  */
 import type { ReplayDataParts } from './replay';
 
+export { getKnowledgeSourcePath } from '../knowledge/knowledge';
+
 export type KnowledgeCitation = NonNullable<ReplayDataParts['knowledge-search']['results']>[number];
 
 export interface CitedPassage {
@@ -63,11 +65,6 @@ export function groupCitationsBySource(results: KnowledgeCitation[] | undefined)
   }
 
   return [...sources.values()];
-}
-
-/** The document page in the Knowledge app; absolute so it works from any app. */
-export function getKnowledgeSourcePath(projectId: string, sourceId: string): string {
-  return `/${encodeURIComponent(projectId)}/knowledge/${encodeURIComponent(sourceId)}`;
 }
 
 /** Header of the search card once it finished, from the citations already grouped per document. */

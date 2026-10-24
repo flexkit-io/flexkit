@@ -111,6 +111,29 @@ export interface KnowledgePassagesPage {
   version: { id: string; passageCount: number };
 }
 
+/** A record a document is attached to, as the platform lists it. */
+export interface KnowledgeLink {
+  entity: string;
+  entityPlural: string;
+  recordId: string;
+  /** The record's display value when the platform could read it; null when the Studio must resolve it. */
+  title: string | null;
+  createdAt: string;
+}
+
+export interface KnowledgeLinksList {
+  links: KnowledgeLink[];
+}
+
+export interface KnowledgeRecordSources {
+  sources: KnowledgeSource[];
+}
+
+export interface KnowledgeRecordRef {
+  entity: string;
+  recordId: string;
+}
+
 export interface KnowledgeSourcePatch {
   agentVisible?: boolean;
   spaces?: string[];
@@ -123,6 +146,9 @@ export type RegisterKnowledgeSourceResult =
   | { duplicate?: false; job: KnowledgeJob; source: KnowledgeSource; version: KnowledgeVersion };
 
 export const KNOWLEDGE_MAX_FILE_BYTES = 20 * 1024 * 1024;
+
+/** Links a document can hold, mirroring the platform's cap so the picker can say so before the request. */
+export const KNOWLEDGE_MAX_LINKS_PER_SOURCE = 200;
 
 export const KNOWLEDGE_MAX_TITLE_LENGTH = 200;
 
@@ -343,4 +369,60 @@ export function formatKnowledgeWarning(warning: string): string {
 /** The spaces a source will carry after toggling one; empty means every member. */
 export function toggleSpaceCode(current: string[], code: string): string[] {
   return current.includes(code) ? current.filter((entry) => entry !== code) : [...current, code];
+}
+
+/** The document page in the Knowledge app; absolute so it works from any app. */
+export function getKnowledgeSourcePath(projectId: string, sourceId: string): string {
+  return `/${encodeURIComponent(projectId)}/knowledge/${encodeURIComponent(sourceId)}`;
+}
+
+/**
+ * What a linked record is called: the label the Studio resolved from the
+ * record itself, else what the platform could read, else a shortened id so
+ * the row still identifies the record.
+ */
+export function getKnowledgeLinkLabel(
+  link: Pick<KnowledgeLink, 'recordId' | 'title'>,
+  resolved?: string | null
+): string {
+  const text = resolved?.trim() || (link.title ?? '').trim();
+
+  if (text) {
+    return text;
+  }
+
+  return link.recordId.length > 12 ? `${link.recordId.slice(0, 8)}…` : link.recordId;
+}
+
+export interface KnowledgeLinkGroup {
+  entity: string;
+  entityPlural: string;
+  links: KnowledgeLink[];
+}
+
+/** Links grouped per entity in first-seen order, so each group resolves its labels with one query. */
+export function groupKnowledgeLinks(links: KnowledgeLink[]): KnowledgeLinkGroup[] {
+  const groups = new Map<string, KnowledgeLinkGroup>();
+
+  for (const link of links) {
+    let group = groups.get(link.entityPlural);
+
+    if (!group) {
+      group = { entity: link.entity, entityPlural: link.entityPlural, links: [] };
+      groups.set(link.entityPlural, group);
+    }
+
+    group.links.push(link);
+  }
+
+  return [...groups.values()];
+}
+
+/** The documents a picker may still attach to a record: the ones not attached yet, usable ones first. */
+export function getAttachableSources(sources: KnowledgeSource[], attachedIds: Iterable<string>): KnowledgeSource[] {
+  const attached = new Set(attachedIds);
+
+  return sources
+    .filter((source) => !attached.has(source.id))
+    .sort((a, b) => Number(b.status === 'ready') - Number(a.status === 'ready'));
 }

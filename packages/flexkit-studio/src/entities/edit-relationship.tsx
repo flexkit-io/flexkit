@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { find, propEq } from 'ramda';
 import type { ColumnDef } from '@tanstack/react-table';
 import { LoaderCircle, Search as SearchIcon, Upload as UploadIcon } from 'lucide-react';
@@ -30,6 +30,7 @@ type Props = {
   action: ActionEditRelationship;
   depth: number;
   isFocused: boolean;
+  nested?: ReactNode;
 };
 
 const PAGE_SIZE = 25;
@@ -46,7 +47,7 @@ function getLoadingColumns(columns: object[]): ColumnDef<AttributeValue>[] {
   })) as unknown as ColumnDef<AttributeValue>[];
 }
 
-export default function EditRelationship({ action, depth, isFocused }: Props): JSX.Element {
+export default function EditRelationship({ action, depth, isFocused, nested }: Props): JSX.Element {
   const actionDispatch = useDispatch();
   const appDispatch = useAppDispatch();
   const { relationships, scope } = useAppContext();
@@ -373,6 +374,7 @@ export default function EditRelationship({ action, depth, isFocused }: Props): J
       }
       depth={depth}
       isFocused={isFocused}
+      nested={nested}
       onClose={() => {
         handleClose(action._id);
       }}
