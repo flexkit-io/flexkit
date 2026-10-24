@@ -1,10 +1,10 @@
 import { lazy, Suspense } from 'react';
 import type { ComponentType, JSX } from 'react';
 import {
+  BookOpenText as BookOpenTextIcon,
   Bot as BotIcon,
   FileStack as FileStackIcon,
   Layout as LayoutIcon,
-  LibraryIcon,
   SquarePlay as SquarePlayIcon,
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
@@ -38,25 +38,19 @@ const deskEditEntity = lazyElement(() =>
 );
 
 // Asset Manager
-const assetManagerRoot = lazyElement(() =>
-  import('../../apps/asset-manager/root').then((m) => ({ default: m.Root }))
-);
+const assetManagerRoot = lazyElement(() => import('../../apps/asset-manager/root').then((m) => ({ default: m.Root })));
 
 // Knowledge
 const knowledgeRoot = lazyElement(() => import('../../apps/knowledge/root').then((m) => ({ default: m.Root })));
 const knowledgeList = lazyElement(() => import('../../apps/knowledge/list').then((m) => ({ default: m.List })));
-const knowledgeSource = lazyElement(() =>
-  import('../../apps/knowledge/source').then((m) => ({ default: m.Source }))
-);
+const knowledgeSource = lazyElement(() => import('../../apps/knowledge/source').then((m) => ({ default: m.Source })));
 
 // Explorer
 const explorerRoot = lazyElement(() => import('../../apps/explorer/root').then((m) => ({ default: m.Root })));
 
 // AI
 const aiRoot = lazyElement(() => import('../../apps/ai/root').then((m) => ({ default: m.Root })));
-const aiPluginsPage = lazyElement(() =>
-  import('../../apps/ai/plugin-pages').then((m) => ({ default: m.PluginsPage }))
-);
+const aiPluginsPage = lazyElement(() => import('../../apps/ai/plugin-pages').then((m) => ({ default: m.PluginsPage })));
 const aiInstalledPluginsPage = lazyElement(() =>
   import('../../apps/ai/plugin-pages').then((m) => ({ default: m.InstalledPluginsPage }))
 );
@@ -69,9 +63,7 @@ const aiAgentChatPage = lazyElement(() =>
 const aiAutomationsPage = lazyElement(() =>
   import('../../apps/ai/pages').then((m) => ({ default: m.AutomationsPage }))
 );
-const aiRunHistoryPage = lazyElement(() =>
-  import('../../apps/ai/pages').then((m) => ({ default: m.RunHistoryPage }))
-);
+const aiRunHistoryPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.RunHistoryPage })));
 const aiApprovalsPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.ApprovalsPage })));
 const aiActivityPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.ActivityPage })));
 const aiActivityItemPage = lazyElement(() =>
@@ -85,9 +77,7 @@ const aiAutomationDetailPage = lazyElement(() =>
 );
 const aiRunsPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.RunsPage })));
 const aiRunDetailPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.RunDetailPage })));
-const aiSkillsPage = lazyElement(() =>
-  import('../../apps/ai/skills-pages').then((m) => ({ default: m.SkillsPage }))
-);
+const aiSkillsPage = lazyElement(() => import('../../apps/ai/skills-pages').then((m) => ({ default: m.SkillsPage })));
 const aiCreateSkillPage = lazyElement(() =>
   import('../../apps/ai/skills-pages').then((m) => ({ default: m.CreateSkillPage }))
 );
@@ -194,7 +184,7 @@ export const builtInApps: AppOptions[] = [
   },
   {
     name: 'knowledge',
-    icon: <LibraryIcon strokeWidth={1.5} />,
+    icon: <BookOpenTextIcon strokeWidth={1.5} />,
     title: 'Knowledge',
     component: knowledgeRoot,
     routes: [
