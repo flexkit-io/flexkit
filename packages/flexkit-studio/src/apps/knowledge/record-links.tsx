@@ -190,7 +190,7 @@ function AttachDocumentDialog({
         <DialogHeader>
           <DialogTitle>Attach a document</DialogTitle>
           <DialogDescription>
-            Questions about {recordLabel} are answered from its attached documents first.
+            Documents attached to {recordLabel} are searched before the rest of Knowledge when a question is about it.
           </DialogDescription>
         </DialogHeader>
         <div className="fk:relative">
@@ -213,7 +213,7 @@ function AttachDocumentDialog({
 /**
  * The documents attached to one record, pinned under the record form in the
  * Desk as a collapsible panel: open them, attach another, detach one. The
- * agent searches these first when a question is about this record.
+ * agent searches these before the rest of Knowledge when a question is about this record.
  */
 export function RecordKnowledgePanel({
   entityName,
@@ -281,8 +281,8 @@ export function RecordKnowledgePanel({
   } else if (sources.length === 0) {
     body = (
       <p className="fk:text-sm fk:text-muted-foreground">
-        No documents attached. Attach a manual, spec or contract and the agent answers questions about this record from
-        it first.
+        No documents attached. Attach a manual, spec or contract and the agent will use it alongside the record's data
+        when asked about this record.
       </p>
     );
   } else {
@@ -335,7 +335,7 @@ export function RecordKnowledgePanel({
         open={isOpen}
         onOpenChange={setIsOpen}
       >
-        <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2 fk:px-10 fk:py-2">
+        <div className="fk:flex fk:shrink-0 fk:items-center fk:gap-2 fk:pl-4 fk:pr-10 fk:py-2">
           <CollapsibleTrigger asChild>
             <button
               className="fk:flex fk:min-w-0 fk:flex-1 fk:items-center fk:gap-2 fk:rounded-md fk:py-1 fk:text-left fk:text-sm fk:font-semibold fk:tracking-tight fk:hover:text-foreground/80 fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring"
@@ -567,8 +567,8 @@ export function LinkedRecordsSection({
   } else if (groups.length === 0) {
     body = (
       <p className="fk:text-sm fk:text-muted-foreground">
-        Not attached to any record. Open a record in the Desk and use "Attach document" to make this the first place the
-        agent looks for questions about it.
+        Not attached to any record. Open a record in the Desk and use "Attach document" so the agent searches this
+        document before the rest of Knowledge when asked about that record.
       </p>
     );
   } else {
