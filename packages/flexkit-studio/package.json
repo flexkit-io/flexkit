@@ -94,6 +94,7 @@
   "dependencies": {
     "@ai-sdk/react": "3.0.118",
     "@apollo/client": "4.0.9",
+    "@base-ui/react": "1.9.0",
     "@codemirror/commands": "6.11.0",
     "@codemirror/lang-markdown": "6.5.2",
     "@codemirror/language": "6.12.4",
@@ -173,7 +174,6 @@
     "use-debounce": "10.0.3",
     "use-stick-to-bottom": "1.1.6",
     "uuid": "^9.0.1",
-    "vaul": "1.1.2",
     "zod": "4.4.3"
   },
   "peerDependencies": {

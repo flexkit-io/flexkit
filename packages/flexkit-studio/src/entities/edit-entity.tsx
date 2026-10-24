@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
 import { gql } from '@apollo/client';
@@ -32,9 +32,10 @@ type Props = {
   action: ActionEditEntity;
   depth: number;
   isFocused: boolean;
+  nested?: ReactNode;
 };
 
-export default function EditEntity({ action, depth, isFocused }: Props): JSX.Element {
+export default function EditEntity({ action, depth, isFocused, nested }: Props): JSX.Element {
   const { entityId, entityNamePlural } = action.payload;
   const ref = useRef<SubmitHandle>(null);
   const { currentProject, currentProjectId } = useConfig();
@@ -254,6 +255,7 @@ export default function EditEntity({ action, depth, isFocused }: Props): JSX.Ele
       depth={depth}
       forceClose={forceClose}
       isFocused={isFocused}
+      nested={nested}
       onClose={() => {
         handleClose(action._id);
       }}

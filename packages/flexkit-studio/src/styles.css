@@ -244,11 +244,6 @@ body {
   height: 100%;
 }
 
-.fk-drawer-fix {
-  background: hsl(var(--background)) !important;
-  bottom: 0;
-}
-
 /* ProseMirror editor styles */
 .ProseMirror {
   @apply fk:p-4 fk:px-6;
@@ -444,11 +439,6 @@ div[data-youtube-video] > iframe {
 .ProseMirror-selectednode iframe {
   transition: outline 0.15s;
   outline: 6px solid #fbbf24;
-}
-
-/* Needed so the drag handle of TipTap is correctly positioned when the editor is inside a modal (tiptap-extension-global-drag-handle) */
-[data-vaul-drawer] {
-  transform: scale(1);
 }
 
 @media only screen and (max-width: 480px) {
