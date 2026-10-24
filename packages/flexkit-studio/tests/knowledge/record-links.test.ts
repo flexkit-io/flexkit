@@ -60,6 +60,7 @@ describe('link paths', () => {
     assert.equal(isKnowledgeLinkKey(paths.recordSources({ entity: 'product', recordId: 'r1' })), true);
     assert.equal(isKnowledgeLinkKey(paths.source('s1')), false);
     assert.equal(isKnowledgeLinkKey(paths.sources()), false);
+    assert.equal(isKnowledgeLinkKey('/api/flexkit/p1/automations/a1/links'), false);
     assert.equal(isKnowledgeLinkKey(null), false);
   });
 

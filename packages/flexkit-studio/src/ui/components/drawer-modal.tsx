@@ -62,18 +62,21 @@ export default function DrawerModal({
   // Levels above the bottom drawer; the stack CSS splits the room by this.
   const stackStyle = { '--stack-levels': stackSize - 1 } as CSSProperties;
 
-  const handleClose = useCallback(() => {
+  /** Asks `beforeClose` and closes when allowed; returns whether it did. */
+  const handleClose = useCallback((): boolean => {
     if (forceClose) {
-      return;
+      return false;
     }
 
     const shouldClose = beforeClose ? beforeClose() : true;
 
     if (!shouldClose) {
-      return;
+      return false;
     }
 
     setIsOpen(false);
+
+    return true;
   }, [beforeClose, forceClose]);
 
   useEffect(() => {
@@ -91,9 +94,11 @@ export default function DrawerModal({
   return (
     <Drawer
       disablePointerDismissal
-      onOpenChange={(open) => {
-        if (!open) {
-          handleClose();
+      onOpenChange={(open, eventDetails) => {
+        // A vetoed close (unsaved changes) must also cancel the gesture that
+        // asked for it, or a swipe leaves the popup in its dismissed pose.
+        if (!open && !handleClose()) {
+          eventDetails.cancel();
         }
       }}
       onOpenChangeComplete={(open) => {
@@ -111,7 +116,14 @@ export default function DrawerModal({
           </DrawerTitle>
           <DrawerDescription className="fk:sr-only">{title ? title : 'Loading form'}</DrawerDescription>
           {actions}
-          <Button className="" onClick={handleClose} size="icon" variant="ghost">
+          <Button
+            className=""
+            onClick={() => {
+              handleClose();
+            }}
+            size="icon"
+            variant="ghost"
+          >
             <CloseIcon className="fk:h-4 fk:w-4" />
             <span className="fk:sr-only">Close</span>
           </Button>

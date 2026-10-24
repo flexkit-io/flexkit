@@ -3,10 +3,11 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { BookOpenTextIcon, ChevronRightIcon, LoaderCircle, PaperclipIcon, SearchIcon, Unlink2Icon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
+import useSWRInfinite from 'swr/infinite';
 import { useAppContext } from '../../core/app-context';
 import { useConfig } from '../../core/config/config-context';
 import { getDisplayAttribute } from '../../core/get-display-attribute';
-import type { Entity } from '../../core/types';
+import type { Attribute, Entity } from '../../core/types';
 import { useCanMutate } from '../../core/permissions';
 import { useDispatch } from '../../entities/actions-context';
 import { getEntitySchema } from '../../graphql-client/queries';
@@ -48,7 +49,14 @@ import {
   type KnowledgeSource,
   type KnowledgeSourcesList,
 } from './knowledge';
-import { describeApiError, invalidateKnowledgeLinks, SourceIcon, StatusBadge, useProjectKnowledge } from './shared';
+import {
+  describeApiError,
+  InfiniteScrollSentinel,
+  invalidateKnowledgeLinks,
+  SourceIcon,
+  StatusBadge,
+  useProjectKnowledge,
+} from './shared';
 
 const PICKER_PAGE_SIZE = 50;
 
@@ -106,12 +114,32 @@ function AttachDocumentDialog({
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search.trim());
   const [attachingId, setAttachingId] = useState<string | null>(null);
-  const { data, error, isLoading } = useSWR<KnowledgeSourcesList>(
-    open ? knowledgePaths(projectId).sources({ limit: PICKER_PAGE_SIZE, search: deferredSearch || undefined }) : null,
-    fetcher,
-    { keepPreviousData: true }
+  const getPageKey = (pageIndex: number, previousPage: KnowledgeSourcesList | null): string | null => {
+    if (!open || (previousPage && !previousPage.hasMore)) {
+      return null;
+    }
+
+    return knowledgePaths(projectId).sources({
+      limit: PICKER_PAGE_SIZE,
+      offset: pageIndex * PICKER_PAGE_SIZE,
+      search: deferredSearch || undefined,
+    });
+  };
+  // Paged like the document list: the attached ones are hidden client-side,
+  // so a record with many documents attached must be able to reach the next page.
+  const {
+    data: pages,
+    error,
+    isLoading,
+    setSize,
+    size,
+  } = useSWRInfinite<KnowledgeSourcesList>(getPageKey, fetcher, { keepPreviousData: true });
+  const candidates = useMemo(
+    () => getAttachableSources(pages?.flatMap((page) => page.sources) ?? [], attachedIds),
+    [attachedIds, pages]
   );
-  const candidates = useMemo(() => getAttachableSources(data?.sources ?? [], attachedIds), [attachedIds, data]);
+  const hasMore = pages?.[pages.length - 1]?.hasMore ?? false;
+  const isLoadingMore = pages !== undefined && size > pages.length;
 
   async function attach(source: KnowledgeSource): Promise<void> {
     setAttachingId(source.id);
@@ -133,7 +161,7 @@ function AttachDocumentDialog({
 
   if (error) {
     body = <p className="fk:py-6 fk:text-center fk:text-sm fk:text-destructive">The documents could not be loaded.</p>;
-  } else if (isLoading && !data) {
+  } else if (isLoading && !pages) {
     body = (
       <div aria-busy="true" className="fk:flex fk:flex-col fk:gap-3 fk:py-2">
         <Skeleton className="fk:h-10 fk:w-full" />
@@ -141,7 +169,7 @@ function AttachDocumentDialog({
         <Skeleton className="fk:h-10 fk:w-full" />
       </div>
     );
-  } else if (candidates.length === 0) {
+  } else if (candidates.length === 0 && !hasMore) {
     body = (
       <p className="fk:py-6 fk:text-center fk:text-sm fk:text-muted-foreground">
         {deferredSearch
@@ -180,6 +208,16 @@ function AttachDocumentDialog({
             </li>
           );
         })}
+        {hasMore && !isLoadingMore ? (
+          <li aria-hidden>
+            <InfiniteScrollSentinel onVisible={() => void setSize((current) => current + 1)} />
+          </li>
+        ) : null}
+        {isLoadingMore ? (
+          <li className="fk:flex fk:justify-center fk:py-2">
+            <LoaderCircle className="fk:size-4 fk:animate-spin fk:text-muted-foreground" />
+          </li>
+        ) : null}
       </ul>
     );
   }
@@ -217,12 +255,10 @@ function AttachDocumentDialog({
  */
 export function RecordKnowledgePanel({
   entityName,
-  entityNamePlural,
   recordId,
   recordLabel,
 }: {
   entityName: string;
-  entityNamePlural: string;
   recordId: string;
   recordLabel: string;
 }): JSX.Element | null {
@@ -232,13 +268,14 @@ export function RecordKnowledgePanel({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [detachingId, setDetachingId] = useState<string | null>(null);
   const record = useMemo<KnowledgeRecordRef>(() => ({ entity: entityName, recordId }), [entityName, recordId]);
+  // Built-in entities (assets, tags) are not something a document is about, so they are not even asked.
+  const isLinkable = !entityName.startsWith('_');
   const { data, error, isLoading, mutate } = useSWR<KnowledgeRecordSources>(
-    projectId ? knowledgePaths(projectId).recordSources(record) : null,
+    projectId && isLinkable ? knowledgePaths(projectId).recordSources(record) : null,
     fetcher
   );
 
-  // Built-in entities (assets, tags) are not something a document is about.
-  if (!api || !projectId || entityName.startsWith('_')) {
+  if (!api || !projectId || !isLinkable) {
     return null;
   }
 
@@ -258,7 +295,8 @@ export function RecordKnowledgePanel({
     try {
       await knowledgeApi.unlinkSource(source.id, record);
       toast.success(`Detached "${source.title}".`);
-      await mutate({ sources: sources.filter((entry) => entry.id !== source.id) }, { revalidate: true });
+      // The global invalidation below revalidates this key too; one refetch is enough.
+      await mutate({ sources: sources.filter((entry) => entry.id !== source.id) }, { revalidate: false });
       void invalidateKnowledgeLinks();
     } catch (detachError) {
       toast.error(describeApiError(detachError, 'The document could not be detached.'));
@@ -371,9 +409,9 @@ export function RecordKnowledgePanel({
           open={isPickerOpen}
           projectId={projectId}
           record={record}
-          recordLabel={recordLabel || `this ${entityNamePlural.replace(/s$/, '') || entityName}`}
+          recordLabel={recordLabel || `this ${entityName}`}
           onAttached={(source) => {
-            void mutate({ sources: [...sources, source] }, { revalidate: true });
+            void mutate({ sources: [...sources, source] }, { revalidate: false });
             void invalidateKnowledgeLinks();
           }}
           onOpenChange={setIsPickerOpen}
@@ -391,9 +429,8 @@ type RecordLabels = { [recordId: string]: string };
  * from the node; a space-scoped one lives on other nodes, so the Studio asks
  * the data itself, the way the Desk grid does. Only called for a deployed entity.
  */
-function useRecordLabels(group: KnowledgeLinkGroup, schema: Entity[]): RecordLabels {
+function useRecordLabels(group: KnowledgeLinkGroup, schema: Entity[], displayAttribute: Attribute): RecordLabels {
   const { scope } = useAppContext();
-  const displayAttribute = getDisplayAttribute(getEntitySchema(schema, group.entityPlural));
   const ids = group.links.map((link) => link.recordId);
   const { data } = useEntityQuery({
     entityNamePlural: group.entityPlural,
@@ -406,10 +443,6 @@ function useRecordLabels(group: KnowledgeLinkGroup, schema: Entity[]): RecordLab
 
   return useMemo(() => {
     const labels: RecordLabels = {};
-
-    if (!displayAttribute) {
-      return labels;
-    }
 
     for (const item of (data ?? []) as MappedEntityItem[]) {
       const value = item[displayAttribute.name];
@@ -434,16 +467,21 @@ function LinkedRecordGroup(props: LinkedRecordGroupProps): JSX.Element {
   const { currentProject } = useConfig();
   const schema = useMemo(() => currentProject?.schema ?? [], [currentProject]);
   const entitySchema = getEntitySchema(schema, props.group.entityPlural);
+  const displayAttribute = getDisplayAttribute(entitySchema);
 
-  // The query builder throws for an entity it does not know, which can
-  // happen between a deploy and the next schema load; such a group shows what the platform knew.
-  if (!entitySchema) {
-    return <LinkedRecordRows {...props} entityLabel={props.group.entityPlural} labels={{}} />;
+  // The query builder throws for an entity it does not know or that has no
+  // attributes yet, which can happen between a deploy and the next schema
+  // load; such a group shows what the platform knew.
+  if (!entitySchema || !displayAttribute) {
+    return (
+      <LinkedRecordRows {...props} entityLabel={entitySchema?.menu?.label ?? props.group.entityPlural} labels={{}} />
+    );
   }
 
   return (
     <ResolvedLinkedRecordGroup
       {...props}
+      displayAttribute={displayAttribute}
       schema={schema}
       entityLabel={entitySchema.menu?.label ?? props.group.entityPlural}
     />
@@ -451,11 +489,12 @@ function LinkedRecordGroup(props: LinkedRecordGroupProps): JSX.Element {
 }
 
 function ResolvedLinkedRecordGroup({
+  displayAttribute,
   entityLabel,
   schema,
   ...props
-}: LinkedRecordGroupProps & { entityLabel: string; schema: Entity[] }): JSX.Element {
-  const labels = useRecordLabels(props.group, schema);
+}: LinkedRecordGroupProps & { displayAttribute: Attribute; entityLabel: string; schema: Entity[] }): JSX.Element {
+  const labels = useRecordLabels(props.group, schema, displayAttribute);
 
   return <LinkedRecordRows {...props} entityLabel={entityLabel} labels={labels} />;
 }
@@ -543,7 +582,7 @@ export function LinkedRecordsSection({
       toast.success('Detached.');
       await mutate(
         { links: links.filter((entry) => entry.entity !== link.entity || entry.recordId !== link.recordId) },
-        { revalidate: true }
+        { revalidate: false }
       );
       void invalidateKnowledgeLinks();
     } catch (detachError) {

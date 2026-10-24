@@ -147,9 +147,6 @@ export type RegisterKnowledgeSourceResult =
 
 export const KNOWLEDGE_MAX_FILE_BYTES = 20 * 1024 * 1024;
 
-/** Links a document can hold, mirroring the platform's cap so the picker can say so before the request. */
-export const KNOWLEDGE_MAX_LINKS_PER_SOURCE = 200;
-
 export const KNOWLEDGE_MAX_TITLE_LENGTH = 200;
 
 /** Passages the API returns per page of a source. */

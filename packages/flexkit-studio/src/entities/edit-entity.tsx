@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX, ReactNode } from 'react';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
@@ -25,8 +25,13 @@ import { useDispatch } from './actions-context';
 import SaveButton from './save-button';
 import Loading from './loading';
 import { useAuth } from '../auth/auth-context';
-import { RecordKnowledgePanel } from '../apps/knowledge/record-links';
 import { type Action, type ActionEditEntity } from './types';
+
+// Loaded on demand: the record drawer is part of the always-mounted root,
+// and the Knowledge module should only download when a record opens.
+const RecordKnowledgePanel = lazy(() =>
+  import('../apps/knowledge/record-links').then((m) => ({ default: m.RecordKnowledgePanel }))
+);
 
 type Props = {
   action: ActionEditEntity;
@@ -262,12 +267,13 @@ export default function EditEntity({ action, depth, isFocused, nested }: Props):
       onFormChange={() => {}}
       panel={
         entitySchema ? (
-          <RecordKnowledgePanel
-            entityName={entityName}
-            entityNamePlural={entityNamePlural}
-            recordId={entityId}
-            recordLabel={entityIdentifier as string}
-          />
+          <Suspense fallback={null}>
+            <RecordKnowledgePanel
+              entityName={entityName}
+              recordId={entityId}
+              recordLabel={entityIdentifier as string}
+            />
+          </Suspense>
         ) : null
       }
       title={entityIdentifier as string}

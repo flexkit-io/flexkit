@@ -108,7 +108,10 @@ export function isKnowledgeListKey(key: unknown): boolean {
 
 /** Whether an SWR key lists the documents of a record or the records of a document. */
 export function isKnowledgeLinkKey(key: unknown): boolean {
-  return typeof key === 'string' && (key.includes('/knowledge/records/') || key.endsWith('/links'));
+  return (
+    typeof key === 'string' &&
+    (key.includes('/knowledge/records/') || (key.includes('/knowledge/sources/') && key.endsWith('/links')))
+  );
 }
 
 async function readError(response: Response, fallback: string): Promise<KnowledgeApiError> {
