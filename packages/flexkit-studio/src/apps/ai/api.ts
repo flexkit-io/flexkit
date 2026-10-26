@@ -49,6 +49,21 @@ export interface StartAgentChatResult {
   turn: AgentChatTurn;
 }
 
+/** Lowercase hex SHA-256 of a file, or undefined where the browser cannot hash (insecure contexts). */
+async function sha256Hex(file: File): Promise<string | undefined> {
+  if (typeof crypto === 'undefined' || !crypto.subtle) {
+    return undefined;
+  }
+
+  try {
+    const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return undefined;
+  }
+}
+
 /** Thrown when the API refuses an upload; `code` lets the UI tailor the message. */
 export class AgentUploadError extends Error {
   code: string | null;
@@ -75,7 +90,9 @@ export interface ApiClient {
     _id: string,
     _input: { label?: string | null; primary?: true }
   ) => Promise<{ connection: PluginConnection }>;
-  pluginOAuthStatus: (_id: string) => Promise<{ id: string; status: 'pending' | 'exchanging' | 'complete' | 'failed'; expires_at: string }>;
+  pluginOAuthStatus: (
+    _id: string
+  ) => Promise<{ id: string; status: 'pending' | 'exchanging' | 'complete' | 'failed'; expires_at: string }>;
   disconnectPlugin: (_id: string) => Promise<{ success: boolean }>;
   installPlugin: (_id: string) => Promise<unknown>;
   setPluginPolicy: (_id: string, _input: { enabled: boolean; allowPersonal: boolean }) => Promise<{ success: boolean }>;
@@ -127,7 +144,10 @@ export interface ApiClient {
   /** JSON transcript of a finished run (owners and developers). */
   getTranscriptUrl: (_runId: string) => string;
   /** Lists delivery channels of `connectionId`, or of the provider's primary project account when omitted. */
-  listChannels: (_provider: AutomationToolProvider, _connectionId?: string | null) => Promise<{
+  listChannels: (
+    _provider: AutomationToolProvider,
+    _connectionId?: string | null
+  ) => Promise<{
     channels: AutomationToolChannel[];
     errorMessage?: string;
     success: boolean;
@@ -145,7 +165,6 @@ export interface ApiClient {
     _state: Extract<ActivityItemState, 'unread' | 'read' | 'dismissed'>
   ) => Promise<{ item: ActivityItem }>;
 }
-
 
 function getApiRootDomain(): string {
   if (typeof window === 'undefined') {
@@ -205,14 +224,28 @@ export function createApiClient(projectId: string): ApiClient {
   }
 
   return {
-    connectPlugins: (input) => request(`${projectBasePath}/plugins/connect`, { method: 'POST', body: JSON.stringify(input) }),
+    connectPlugins: (input) =>
+      request(`${projectBasePath}/plugins/connect`, { method: 'POST', body: JSON.stringify(input) }),
     pluginOAuthStatus: (id) => request(`${projectBasePath}/plugins/oauth-transactions/${encodeURIComponent(id)}`),
     updatePluginConnection: (id, input) =>
-      request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(input) }),
-    disconnectPlugin: (id) => request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-    installPlugin: (id) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/installation`, { method: 'PUT', body: JSON.stringify({}) }),
-    setPluginPolicy: (id, input) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/policy`, { method: 'PATCH', body: JSON.stringify(input) }),
-    refreshPluginTools: (id) => request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}/tools/refresh`, { method: 'POST' }),
+      request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      }),
+    disconnectPlugin: (id) =>
+      request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    installPlugin: (id) =>
+      request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/installation`, {
+        method: 'PUT',
+        body: JSON.stringify({}),
+      }),
+    setPluginPolicy: (id, input) =>
+      request(`${projectBasePath}/plugins/${encodeURIComponent(id)}/policy`, {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      }),
+    refreshPluginTools: (id) =>
+      request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}/tools/refresh`, { method: 'POST' }),
     cancelRun: async (runId) =>
       request<MutationResult>(`${automationsBasePath}/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' }),
     createAgentChat: async (input) =>
@@ -311,14 +344,19 @@ export function createApiClient(projectId: string): ApiClient {
     uploadAgentChatAttachment: async (file, signal) => {
       // The platform issues a token scoped to one pathname, type and size; the
       // browser then writes the bytes to the store directly, so large files
-      // never pass through the API function body limit.
-      const tokenResponse = await fetch(`${projectBasePath}/agent/uploads`, {
-        body: JSON.stringify({ filename: file.name, mediaType: file.type || null, sizeBytes: file.size }),
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
-        signal,
-      });
+      // never pass through the API function body limit. The hash is computed
+      // alongside: Knowledge documents are keyed by it, so the platform can tell
+      // later whether this file is already one.
+      const [tokenResponse, sha256] = await Promise.all([
+        fetch(`${projectBasePath}/agent/uploads`, {
+          body: JSON.stringify({ filename: file.name, mediaType: file.type || null, sizeBytes: file.size }),
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          signal,
+        }),
+        sha256Hex(file),
+      ]);
       const tokenData = (await tokenResponse.json()) as {
         code?: string;
         error?: string;
@@ -347,6 +385,7 @@ export function createApiClient(projectId: string): ApiClient {
         mediaType: tokenData.mediaType,
         sizeBytes: file.size,
         url: blob.url,
+        ...(sha256 ? { sha256 } : {}),
       };
     },
     decideApproval: async (approvalId, input) => {
@@ -511,7 +550,12 @@ export function paths(projectId: string): {
   run: (_runId: string) => string;
   runHistory: (_scope: 'mine' | 'team', _offset?: number, _limit?: number) => string;
   skill: (_skillId: string) => string;
-  skills: (_options?: { limit?: number; offset?: number; search?: string; visibility?: AutomationVisibility[] }) => string;
+  skills: (_options?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    visibility?: AutomationVisibility[];
+  }) => string;
   spaces: string;
   /** Members for pickers; with a space id, only members who can see that space. */
   members: (_spaceId?: string | null) => string;
