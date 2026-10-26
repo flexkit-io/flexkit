@@ -12,7 +12,7 @@ import {
   usePromptInputController,
 } from '../../../ui';
 import type { ApiClient } from '../api';
-import type { AgentChatAttachment, AgentChatPart } from '../types';
+import type { AgentChatAttachment } from '../types';
 
 /** Mirrors the platform limits so invalid files are rejected before upload. */
 export const ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024;
@@ -392,23 +392,7 @@ export function ComposerAttachments({ uploads }: { uploads: AttachmentUploads })
   );
 }
 
-/** Attachments of a persisted user message, read from its `file` parts. */
-export function getAttachmentsFromParts(parts: AgentChatPart[] | null | undefined): AgentChatAttachment[] {
-  if (!Array.isArray(parts)) {
-    return [];
-  }
-
-  return parts
-    .filter((part) => part.type === 'file' && typeof part.url === 'string')
-    .map((part) => ({
-      filename: part.filename ?? 'file',
-      mediaType: part.mediaType ?? 'application/octet-stream',
-      sizeBytes: part.sizeBytes ?? 0,
-      url: part.url ?? '',
-      ...(part.sha256 ? { sha256: part.sha256 } : {}),
-      ...(part.knowledgeSourceId !== undefined ? { knowledgeSourceId: part.knowledgeSourceId } : {}),
-    }));
-}
+export { getAttachmentsFromParts } from '../attachment-state';
 
 /** Attachments rendered with a sent user message: image thumbnails plus file chips. */
 export function MessageAttachments({ attachments }: { attachments: AgentChatAttachment[] }): JSX.Element | null {

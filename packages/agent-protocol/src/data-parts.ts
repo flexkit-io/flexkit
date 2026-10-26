@@ -249,7 +249,14 @@ export const dataPartSchema = z.object({
    */
   'mid-turn-message': z.object({
     attachments: z.array(
-      z.object({ filename: z.string(), mediaType: z.string(), sizeBytes: z.number(), url: z.string() })
+      z.object({
+        filename: z.string(),
+        mediaType: z.string(),
+        sizeBytes: z.number(),
+        url: z.string(),
+        sha256: z.string().optional(),
+        knowledgeSourceId: z.string().nullable().optional(),
+      })
     ),
     messageId: z.string(),
     monitorEvent: monitorEventSchema.optional(),

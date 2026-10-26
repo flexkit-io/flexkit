@@ -1,3 +1,4 @@
+import { getKnowledgeFileProblem } from '../knowledge/knowledge';
 import type { PluginConnection, PluginScope, PluginTools } from './plugin-types';
 import { put } from '@vercel/blob/client';
 import { convertRecordedAudioToPcm } from './agent/dictation';
@@ -355,7 +356,8 @@ export function createApiClient(projectId: string): ApiClient {
           method: 'POST',
           signal,
         }),
-        sha256Hex(file),
+        // Only files Knowledge can index are worth hashing; a screenshot never matches a document.
+        getKnowledgeFileProblem({ name: file.name, size: file.size }) === null ? sha256Hex(file) : undefined,
       ]);
       const tokenData = (await tokenResponse.json()) as {
         code?: string;
