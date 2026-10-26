@@ -567,8 +567,9 @@ export function RecordKnowledgePanel({
       <div className="fk:flex fk:flex-col fk:gap-4">
         {sources.length === 0 ? (
           <p className="fk:text-sm fk:text-muted-foreground">
-            No documents attached. Attach a manual, spec or contract and the agent will use it alongside the record's
-            data when asked about this record.
+            {inherited.length > 0
+              ? 'No documents attached to this record itself; the ones below apply to every record of its type.'
+              : "No documents attached. Attach a manual, spec or contract and the agent will use it alongside the record's data when asked about this record."}
           </p>
         ) : (
           <SourceRows
