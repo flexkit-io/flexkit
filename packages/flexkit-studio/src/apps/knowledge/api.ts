@@ -1,6 +1,7 @@
 import { put } from '@vercel/blob/client';
 import type {
   KnowledgeJob,
+  KnowledgeLinkTarget,
   KnowledgeRecordRef,
   KnowledgeSource,
   KnowledgeSourcePatch,
@@ -34,10 +35,10 @@ export interface KnowledgeApi {
   /** Promotes a file the caller attached to a chat: the platform copies it into the knowledge folder. */
   addChatAttachment: (_input: { filename: string; url: string }) => Promise<RegisterKnowledgeSourceResult>;
   deleteSource: (_sourceId: string) => Promise<{ deleted: true }>;
-  /** Attaches the document to a record; `linked` is false when it already was. */
-  linkSource: (_sourceId: string, _record: KnowledgeRecordRef) => Promise<{ linked: boolean }>;
+  /** Attaches the document to a record, or to every record of an entity type; `linked` is false when it already was. */
+  linkSource: (_sourceId: string, _target: KnowledgeLinkTarget) => Promise<{ linked: boolean }>;
   reingestSource: (_sourceId: string) => Promise<{ job: KnowledgeJob }>;
-  unlinkSource: (_sourceId: string, _record: KnowledgeRecordRef) => Promise<{ unlinked: boolean }>;
+  unlinkSource: (_sourceId: string, _target: KnowledgeLinkTarget) => Promise<{ unlinked: boolean }>;
   updateSource: (_sourceId: string, _patch: KnowledgeSourcePatch) => Promise<{ source: KnowledgeSource }>;
 }
 
@@ -62,8 +63,10 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 };
 
 export function knowledgePaths(projectId: string): {
+  /** The documents attached to every record of an entity type. */
+  entitySources: (_entity: string) => string;
   job: (_jobId: string) => string;
-  /** The records a document is attached to. */
+  /** The records a document is attached to, and the entity types it applies to. */
   links: (_sourceId: string) => string;
   passages: (_sourceId: string, _options: { from: number; to: number }) => string;
   /** The documents attached to a record. */
@@ -75,6 +78,7 @@ export function knowledgePaths(projectId: string): {
   const basePath = `/api/flexkit/${projectId}/knowledge`;
 
   return {
+    entitySources: (entity) => `${basePath}/entities/${encodeURIComponent(entity)}/sources`,
     job: (jobId) => `${basePath}/jobs/${encodeURIComponent(jobId)}`,
     links: (sourceId) => `${basePath}/sources/${encodeURIComponent(sourceId)}/links`,
     passages: (sourceId, { from, to }) =>
@@ -106,11 +110,13 @@ export function isKnowledgeListKey(key: unknown): boolean {
   return typeof key === 'string' && key.includes('/knowledge/sources?');
 }
 
-/** Whether an SWR key lists the documents of a record or the records of a document. */
+/** Whether an SWR key lists the documents of a record or an entity type, or the links of a document. */
 export function isKnowledgeLinkKey(key: unknown): boolean {
   return (
     typeof key === 'string' &&
-    (key.includes('/knowledge/records/') || (key.includes('/knowledge/sources/') && key.endsWith('/links')))
+    (key.includes('/knowledge/records/') ||
+      key.includes('/knowledge/entities/') ||
+      (key.includes('/knowledge/sources/') && key.endsWith('/links')))
   );
 }
 
@@ -191,9 +197,9 @@ export function createKnowledgeApi(projectId: string): KnowledgeApi {
         fallback: 'The document could not be removed.',
         method: 'DELETE',
       }),
-    linkSource: (sourceId, record) =>
+    linkSource: (sourceId, target) =>
       request<{ linked: boolean }>(`${basePath}/sources/${encodeURIComponent(sourceId)}/links`, {
-        body: JSON.stringify(record),
+        body: JSON.stringify(target),
         fallback: 'The document could not be attached.',
         method: 'POST',
       }),
@@ -204,7 +210,9 @@ export function createKnowledgeApi(projectId: string): KnowledgeApi {
       }),
     unlinkSource: (sourceId, { entity, recordId }) =>
       request<{ unlinked: boolean }>(
-        `${basePath}/sources/${encodeURIComponent(sourceId)}/links/${encodeURIComponent(entity)}/${encodeURIComponent(recordId)}`,
+        `${basePath}/sources/${encodeURIComponent(sourceId)}/links/${encodeURIComponent(entity)}${
+          recordId === undefined ? '' : `/${encodeURIComponent(recordId)}`
+        }`,
         { fallback: 'The document could not be detached.', method: 'DELETE' }
       ),
     updateSource: (sourceId, patch) =>

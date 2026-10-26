@@ -121,17 +121,37 @@ export interface KnowledgeLink {
   createdAt: string;
 }
 
+/** An entity type a document applies to: every record of the type inherits it. */
+export interface KnowledgeEntityLink {
+  entity: string;
+  entityPlural: string;
+}
+
 export interface KnowledgeLinksList {
   links: KnowledgeLink[];
+  entities: KnowledgeEntityLink[];
 }
 
 export interface KnowledgeRecordSources {
+  /** Attached to the record itself. */
+  sources: KnowledgeSource[];
+  /** Attached to the record's entity type (and not to the record). */
+  inherited: KnowledgeSource[];
+}
+
+export interface KnowledgeEntitySources {
   sources: KnowledgeSource[];
 }
 
 export interface KnowledgeRecordRef {
   entity: string;
   recordId: string;
+}
+
+/** What a document is attached to: a record, or every record of the entity when `recordId` is absent. */
+export interface KnowledgeLinkTarget {
+  entity: string;
+  recordId?: string;
 }
 
 export interface KnowledgeSourcePatch {
@@ -422,4 +442,35 @@ export function getAttachableSources(sources: KnowledgeSource[], attachedIds: It
   return sources
     .filter((source) => !attached.has(source.id))
     .sort((a, b) => Number(b.status === 'ready') - Number(a.status === 'ready'));
+}
+
+/** Whether documents may be attached to the entity: built-in ones (assets, tags) are not something a document is about. */
+export function isKnowledgeLinkableEntity(entityName: string): boolean {
+  return !entityName.startsWith('_');
+}
+
+/** The deployed entity with this name, if the Studio knows it. */
+export function findEntityByName<T extends { name: string }>(schema: T[], entityName: string): T | undefined {
+  return schema.find((entity) => entity.name === entityName);
+}
+
+/** How an entity type is called in the Knowledge views: its sidebar label, else its plural. */
+export function getEntityLinkLabel(entity: { menu?: { label?: string }; plural: string }): string {
+  return entity.menu?.label?.trim() || entity.plural;
+}
+
+/**
+ * The entity types a document can still be attached to: the project's own
+ * entities (built-in ones such as assets and tags are not something a
+ * document is about) minus the ones already linked, by label.
+ */
+export function getLinkableEntities<T extends { menu?: { label?: string }; name: string; plural: string }>(
+  schema: T[],
+  linked: Iterable<Pick<KnowledgeEntityLink, 'entity'>>
+): T[] {
+  const taken = new Set([...linked].map((link) => link.entity));
+
+  return schema
+    .filter((entity) => isKnowledgeLinkableEntity(entity.name) && !taken.has(entity.name))
+    .sort((a, b) => getEntityLinkLabel(a).localeCompare(getEntityLinkLabel(b)));
 }

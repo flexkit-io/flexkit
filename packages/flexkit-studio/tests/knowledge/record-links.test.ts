@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { isKnowledgeLinkKey, knowledgePaths } from '../../src/apps/knowledge/api';
 import {
+  findEntityByName,
   getAttachableSources,
+  getEntityLinkLabel,
   getKnowledgeLinkLabel,
   getKnowledgeSourcePath,
+  getLinkableEntities,
   groupKnowledgeLinks,
+  isKnowledgeLinkableEntity,
   type KnowledgeLink,
   type KnowledgeSource,
 } from '../../src/apps/knowledge/knowledge';
@@ -51,6 +55,7 @@ describe('link paths', () => {
       paths.recordSources({ entity: 'product', recordId: 'a/b' }),
       '/api/flexkit/p1/knowledge/records/product/a%2Fb/sources'
     );
+    assert.equal(paths.entitySources('a/b'), '/api/flexkit/p1/knowledge/entities/a%2Fb/sources');
   });
 
   it('recognises both link listings as keys to drop after a change', () => {
@@ -58,6 +63,7 @@ describe('link paths', () => {
 
     assert.equal(isKnowledgeLinkKey(paths.links('s1')), true);
     assert.equal(isKnowledgeLinkKey(paths.recordSources({ entity: 'product', recordId: 'r1' })), true);
+    assert.equal(isKnowledgeLinkKey(paths.entitySources('product')), true);
     assert.equal(isKnowledgeLinkKey(paths.source('s1')), false);
     assert.equal(isKnowledgeLinkKey(paths.sources()), false);
     assert.equal(isKnowledgeLinkKey('/api/flexkit/p1/automations/a1/links'), false);
@@ -114,6 +120,39 @@ describe('getAttachableSources', () => {
     assert.deepEqual(
       candidates.map((entry) => entry.id),
       ['ready', 'busy', 'failed']
+    );
+  });
+});
+
+describe('entity-type links', () => {
+  const schema = [
+    { name: 'supplier', plural: 'suppliers', menu: { label: 'Vendors' } },
+    { name: 'product', plural: 'products' },
+    { name: '_asset', plural: '_assets' },
+    { name: 'order', plural: 'orders', menu: { label: '  ' } },
+  ];
+
+  it('names an entity by its sidebar label, else its plural', () => {
+    assert.equal(getEntityLinkLabel(schema[0]!), 'Vendors');
+    assert.equal(getEntityLinkLabel(schema[1]!), 'products');
+    assert.equal(getEntityLinkLabel(schema[3]!), 'orders');
+  });
+
+  it('knows which entities a document can be about, and finds one by name', () => {
+    assert.equal(isKnowledgeLinkableEntity('product'), true);
+    assert.equal(isKnowledgeLinkableEntity('_asset'), false);
+    assert.equal(findEntityByName(schema, 'product')?.plural, 'products');
+    assert.equal(findEntityByName(schema, 'nope'), undefined);
+  });
+
+  it('offers the project entities not linked yet, by label, never the built-in ones', () => {
+    assert.deepEqual(
+      getLinkableEntities(schema, []).map((entity) => entity.name),
+      ['order', 'product', 'supplier']
+    );
+    assert.deepEqual(
+      getLinkableEntities(schema, [{ entity: 'product' }, { entity: '_asset' }]).map((entity) => entity.name),
+      ['order', 'supplier']
     );
   });
 });
