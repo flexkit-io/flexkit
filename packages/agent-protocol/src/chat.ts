@@ -33,6 +33,13 @@ export interface AgentChatAttachment {
   mediaType: string;
   sizeBytes: number;
   url: string;
+  /** Lowercase hex SHA-256 of the file, computed by the Studio while uploading. */
+  sha256?: string;
+  /**
+   * Set by the platform when a chat is read: the Knowledge document with the
+   * same content the reader may see, or null when there is none.
+   */
+  knowledgeSourceId?: string | null;
 }
 
 /** UIMessage-shaped part persisted for finished turns. */
@@ -47,6 +54,10 @@ export interface AgentChatPart {
   output?: unknown;
   /** `file` parts: byte size of a user attachment. */
   sizeBytes?: number;
+  /** `file` parts: SHA-256 of the attachment when the Studio computed it. */
+  sha256?: string;
+  /** `file` parts: the Knowledge document with the same content the reader may see, or null; set when a chat is read. */
+  knowledgeSourceId?: string | null;
   state?: string;
   text?: string;
   toolCallId?: string;
@@ -111,7 +122,10 @@ export interface AgentChatFollowUp {
  * A follow-up either joined the running turn, answered the question that turn
  * waits on, or, when that turn had already ended, started the next one.
  */
-export type AgentChatFollowUpResult = { followUp: AgentChatFollowUp } | { question: AgentChatQuestion } | { turn: AgentChatTurn };
+export type AgentChatFollowUpResult =
+  | { followUp: AgentChatFollowUp }
+  | { question: AgentChatQuestion }
+  | { turn: AgentChatTurn };
 
 export type AgentChatQuestionItem = z.infer<typeof userQuestionSchema>;
 export type AgentChatQuestionAnswer = z.infer<typeof userQuestionAnswerSchema>;
@@ -135,4 +149,6 @@ export interface AgentChatQuestion {
 }
 
 /** Body of `POST .../chats/:chatId/questions/:questionId/answer`. */
-export type AgentChatQuestionResponse = { action: 'answer'; answers: AgentChatQuestionAnswer[] } | { action: 'dismiss' };
+export type AgentChatQuestionResponse =
+  | { action: 'answer'; answers: AgentChatQuestionAnswer[] }
+  | { action: 'dismiss' };

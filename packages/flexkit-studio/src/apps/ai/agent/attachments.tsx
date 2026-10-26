@@ -12,7 +12,7 @@ import {
   usePromptInputController,
 } from '../../../ui';
 import type { ApiClient } from '../api';
-import type { AgentChatAttachment, AgentChatPart } from '../types';
+import type { AgentChatAttachment } from '../types';
 
 /** Mirrors the platform limits so invalid files are rejected before upload. */
 export const ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024;
@@ -203,13 +203,7 @@ function isImageMediaType(mediaType: string | undefined): boolean {
  * Fullscreen view of one image attachment. The image is centred and grows to
  * fill the viewport but never beyond its intrinsic size.
  */
-function ImagePreviewDialog({
-  image,
-  onClose,
-}: {
-  image: PreviewableImage | null;
-  onClose: () => void;
-}): JSX.Element {
+function ImagePreviewDialog({ image, onClose }: { image: PreviewableImage | null; onClose: () => void }): JSX.Element {
   return (
     <Dialog onOpenChange={(open) => (open ? undefined : onClose())} open={image !== null}>
       <DialogContent
@@ -267,7 +261,9 @@ function ImageThumbnail({
   sizeClassName: string;
 }): JSX.Element {
   return (
-    <div className={`fk:relative fk:shrink-0 fk:overflow-hidden fk:rounded-xl fk:bg-muted ${sizeClassName} fk:corner-squircle`}>
+    <div
+      className={`fk:relative fk:shrink-0 fk:overflow-hidden fk:rounded-xl fk:bg-muted ${sizeClassName} fk:corner-squircle`}
+    >
       <button
         aria-label={`Preview ${image.filename}`}
         className="fk:block fk:size-full fk:cursor-zoom-in fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring"
@@ -321,7 +317,9 @@ function FileChip({
       </div>
       <div className="fk:min-w-0 fk:pr-4 fk:text-left">
         <div className="fk:truncate fk:text-sm fk:font-medium fk:text-foreground">{file.filename}</div>
-        <div className="fk:truncate fk:text-xs fk:text-muted-foreground">{getFileTypeLabel(file.filename, file.mediaType)}</div>
+        <div className="fk:truncate fk:text-xs fk:text-muted-foreground">
+          {getFileTypeLabel(file.filename, file.mediaType)}
+        </div>
       </div>
     </>
   );
@@ -394,21 +392,7 @@ export function ComposerAttachments({ uploads }: { uploads: AttachmentUploads })
   );
 }
 
-/** Attachments of a persisted user message, read from its `file` parts. */
-export function getAttachmentsFromParts(parts: AgentChatPart[] | null | undefined): AgentChatAttachment[] {
-  if (!Array.isArray(parts)) {
-    return [];
-  }
-
-  return parts
-    .filter((part) => part.type === 'file' && typeof part.url === 'string')
-    .map((part) => ({
-      filename: part.filename ?? 'file',
-      mediaType: part.mediaType ?? 'application/octet-stream',
-      sizeBytes: part.sizeBytes ?? 0,
-      url: part.url ?? '',
-    }));
-}
+export { getAttachmentsFromParts } from '../attachment-state';
 
 /** Attachments rendered with a sent user message: image thumbnails plus file chips. */
 export function MessageAttachments({ attachments }: { attachments: AgentChatAttachment[] }): JSX.Element | null {

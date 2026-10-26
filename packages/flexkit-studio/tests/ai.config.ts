@@ -13,6 +13,7 @@ export default defineConfig({
     'tests/ai/question-parts.test.ts',
     'tests/ai/plugin-connect-state.test.ts',
     'tests/ai/knowledge-parts.test.ts',
+    'tests/ai/attachment-state.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests/ai',
