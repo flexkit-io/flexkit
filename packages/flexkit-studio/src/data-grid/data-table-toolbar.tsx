@@ -20,6 +20,7 @@ import { DataTableSortedBy } from './data-table-sorted-by';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityDeleteMutation, getEntityDeleteWhere } from '../graphql-client/queries';
 import { getEntityListQueryName, scheduleEntityListRemoval } from '../graphql-client/refetch-entity-lists';
+import { isKnowledgeLinkableEntity } from '../apps/knowledge/knowledge';
 
 // Loaded on demand: the Knowledge module should only download when a list of
 // a linkable entity is in view, the way the record drawer loads its panel.
@@ -197,11 +198,9 @@ export function DataTableToolbar<TData>({
           </Button>
         </PermissionTooltip>
       ) : null}
-      {entityName && !entityName.startsWith('_') ? (
+      {entityName && isKnowledgeLinkableEntity(entityName) ? (
         <Suspense fallback={null}>
-          <span className="fk:mr-2">
-            <EntityKnowledgeButton entityName={entityName} />
-          </span>
+          <EntityKnowledgeButton entityName={entityName} />
         </Suspense>
       ) : null}
       <PermissionTooltip disabled={!canMutate}>

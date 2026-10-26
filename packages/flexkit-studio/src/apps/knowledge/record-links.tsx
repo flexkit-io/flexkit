@@ -54,6 +54,7 @@ import {
 } from '../../ui';
 import { fetcher, FetcherError, knowledgePaths, type KnowledgeApi } from './api';
 import {
+  findEntityByName,
   getAttachableSources,
   getEntityLinkLabel,
   getKnowledgeKindLabel,
@@ -61,6 +62,7 @@ import {
   getKnowledgeSourcePath,
   getLinkableEntities,
   groupKnowledgeLinks,
+  isKnowledgeLinkableEntity,
   summarizeKnowledgeStatus,
   type KnowledgeEntityLink,
   type KnowledgeEntitySources,
@@ -327,8 +329,8 @@ export function EntityKnowledgeButton({ entityName }: { entityName: string }): J
   const { api, projectId } = useProjectKnowledge();
   const { currentProject } = useConfig();
   const [isOpen, setIsOpen] = useState(false);
-  const entitySchema = currentProject?.schema.find((entity) => entity.name === entityName);
-  const isLinkable = Boolean(entitySchema) && !entityName.startsWith('_');
+  const entitySchema = findEntityByName(currentProject?.schema ?? [], entityName);
+  const isLinkable = Boolean(entitySchema) && isKnowledgeLinkableEntity(entityName);
   const { data, error } = useSWR<KnowledgeEntitySources>(
     projectId && isLinkable ? knowledgePaths(projectId).entitySources(entityName) : null,
     fetcher
@@ -344,7 +346,7 @@ export function EntityKnowledgeButton({ entityName }: { entityName: string }): J
     <>
       <Button
         aria-label={`Knowledge for every ${getEntityLinkLabel(entitySchema)}`}
-        className="fk:h-8"
+        className="fk:mr-2 fk:h-8"
         data-knowledge-entity-button
         size="sm"
         variant="outline"
@@ -480,7 +482,11 @@ function EntityKnowledgeDialog({
           target={target}
           targetLabel={entityLabel}
           onAttached={(source) => {
-            void mutate({ sources: [...sources, source] }, { revalidate: false });
+            // "Already attached" (a stale picker in another tab) must not list the document twice.
+            void mutate(
+              { sources: sources.some((entry) => entry.id === source.id) ? sources : [...sources, source] },
+              { revalidate: false }
+            );
             void invalidateKnowledgeLinks();
           }}
           onOpenChange={setIsPickerOpen}
@@ -511,10 +517,10 @@ export function RecordKnowledgePanel({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [detachingId, setDetachingId] = useState<string | null>(null);
   const record = useMemo<KnowledgeRecordRef>(() => ({ entity: entityName, recordId }), [entityName, recordId]);
-  const entitySchema = currentProject?.schema.find((entity) => entity.name === entityName);
+  const entitySchema = findEntityByName(currentProject?.schema ?? [], entityName);
   const entityLabel = entitySchema ? getEntityLinkLabel(entitySchema) : entityName;
   // Built-in entities (assets, tags) are not something a document is about, so they are not even asked.
-  const isLinkable = !entityName.startsWith('_');
+  const isLinkable = isKnowledgeLinkableEntity(entityName);
   const { data, error, isLoading, mutate } = useSWR<KnowledgeRecordSources>(
     projectId && isLinkable ? knowledgePaths(projectId).recordSources(record) : null,
     fetcher
@@ -648,9 +654,13 @@ export function RecordKnowledgePanel({
           target={record}
           targetLabel={recordLabel || `this ${entityName}`}
           onAttached={(source) => {
-            // A document that applied to the whole type now hangs on the record itself.
+            // A document that applied to the whole type now hangs on the record itself; one that
+            // was already attached (a stale picker in another tab) is not listed twice.
             void mutate(
-              { sources: [...sources, source], inherited: inherited.filter((entry) => entry.id !== source.id) },
+              {
+                sources: sources.some((entry) => entry.id === source.id) ? sources : [...sources, source],
+                inherited: inherited.filter((entry) => entry.id !== source.id),
+              },
               { revalidate: false }
             );
             void invalidateKnowledgeLinks();
@@ -715,7 +725,11 @@ function LinkedRecordGroup(props: LinkedRecordGroupProps): JSX.Element {
   // load; such a group shows what the platform knew.
   if (!entitySchema || !displayAttribute) {
     return (
-      <LinkedRecordRows {...props} entityLabel={entitySchema?.menu?.label ?? props.group.entityPlural} labels={{}} />
+      <LinkedRecordRows
+        {...props}
+        entityLabel={entitySchema ? getEntityLinkLabel(entitySchema) : props.group.entityPlural}
+        labels={{}}
+      />
     );
   }
 
@@ -724,7 +738,7 @@ function LinkedRecordGroup(props: LinkedRecordGroupProps): JSX.Element {
       {...props}
       displayAttribute={displayAttribute}
       schema={schema}
-      entityLabel={entitySchema.menu?.label ?? props.group.entityPlural}
+      entityLabel={getEntityLinkLabel(entitySchema)}
     />
   );
 }
@@ -856,6 +870,8 @@ export function LinkedRecordsSection({
   }
 
   async function attachEntity(entity: Entity): Promise<void> {
+    setDetachingKey(`${entity.name}:+`);
+
     try {
       const result = await api.linkSource(source.id, { entity: entity.name });
 
@@ -876,6 +892,8 @@ export function LinkedRecordsSection({
       void invalidateKnowledgeLinks();
     } catch (attachError) {
       toast.error(describeApiError(attachError, 'The document could not be attached.'));
+    } finally {
+      setDetachingKey(null);
     }
   }
 
@@ -916,8 +934,8 @@ export function LinkedRecordsSection({
   return (
     <>
       <AppliesToEntities
+        busy={detachingKey !== null}
         canMutate={canMutate}
-        detachingKey={detachingKey}
         entities={entities}
         isLoading={isLoading && !data}
         onAttach={(entity) => void attachEntity(entity)}
@@ -946,15 +964,16 @@ export function LinkedRecordsSection({
  * document attached to a type is searched first for any record of it.
  */
 function AppliesToEntities({
+  busy,
   canMutate,
-  detachingKey,
   entities,
   isLoading,
   onAttach,
   onDetach,
 }: {
+  /** An attach or detach is in flight: no second one until it answers. */
+  busy: boolean;
   canMutate: boolean;
-  detachingKey: string | null;
   entities: KnowledgeEntityLink[];
   isLoading: boolean;
   onAttach: (_entity: Entity) => void;
@@ -965,7 +984,7 @@ function AppliesToEntities({
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const candidates = useMemo(() => getLinkableEntities(schema, entities), [entities, schema]);
   const labelOf = (link: KnowledgeEntityLink): string => {
-    const entity = schema.find((candidate) => candidate.name === link.entity);
+    const entity = findEntityByName(schema, link.entity);
 
     return entity ? getEntityLinkLabel(entity) : link.entityPlural;
   };
@@ -1005,7 +1024,7 @@ function AppliesToEntities({
                       <button
                         aria-label={`No longer apply to every ${label}`}
                         className="fk:rounded-sm fk:p-0.5 fk:text-muted-foreground fk:hover:text-foreground fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:disabled:opacity-50"
-                        disabled={detachingKey !== null}
+                        disabled={busy}
                         type="button"
                         onClick={() => onDetach(link)}
                       >
@@ -1036,7 +1055,7 @@ function AppliesToEntities({
                     {candidates.map((entity) => (
                       <CommandItem
                         key={entity.name}
-                        keywords={[entity.name, entity.plural]}
+                        keywords={[getEntityLinkLabel(entity), entity.name, entity.plural]}
                         value={entity.name}
                         onSelect={() => {
                           setIsPickerOpen(false);

@@ -444,6 +444,16 @@ export function getAttachableSources(sources: KnowledgeSource[], attachedIds: It
     .sort((a, b) => Number(b.status === 'ready') - Number(a.status === 'ready'));
 }
 
+/** Whether documents may be attached to the entity: built-in ones (assets, tags) are not something a document is about. */
+export function isKnowledgeLinkableEntity(entityName: string): boolean {
+  return !entityName.startsWith('_');
+}
+
+/** The deployed entity with this name, if the Studio knows it. */
+export function findEntityByName<T extends { name: string }>(schema: T[], entityName: string): T | undefined {
+  return schema.find((entity) => entity.name === entityName);
+}
+
 /** How an entity type is called in the Knowledge views: its sidebar label, else its plural. */
 export function getEntityLinkLabel(entity: { menu?: { label?: string }; plural: string }): string {
   return entity.menu?.label?.trim() || entity.plural;
@@ -461,6 +471,6 @@ export function getLinkableEntities<T extends { menu?: { label?: string }; name:
   const taken = new Set([...linked].map((link) => link.entity));
 
   return schema
-    .filter((entity) => !entity.name.startsWith('_') && !taken.has(entity.name))
+    .filter((entity) => isKnowledgeLinkableEntity(entity.name) && !taken.has(entity.name))
     .sort((a, b) => getEntityLinkLabel(a).localeCompare(getEntityLinkLabel(b)));
 }

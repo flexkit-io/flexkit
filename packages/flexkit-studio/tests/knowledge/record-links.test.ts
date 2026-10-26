@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { isKnowledgeLinkKey, knowledgePaths } from '../../src/apps/knowledge/api';
 import {
+  findEntityByName,
   getAttachableSources,
   getEntityLinkLabel,
   getKnowledgeLinkLabel,
   getKnowledgeSourcePath,
   getLinkableEntities,
   groupKnowledgeLinks,
+  isKnowledgeLinkableEntity,
   type KnowledgeLink,
   type KnowledgeSource,
 } from '../../src/apps/knowledge/knowledge';
@@ -134,6 +136,13 @@ describe('entity-type links', () => {
     assert.equal(getEntityLinkLabel(schema[0]!), 'Vendors');
     assert.equal(getEntityLinkLabel(schema[1]!), 'products');
     assert.equal(getEntityLinkLabel(schema[3]!), 'orders');
+  });
+
+  it('knows which entities a document can be about, and finds one by name', () => {
+    assert.equal(isKnowledgeLinkableEntity('product'), true);
+    assert.equal(isKnowledgeLinkableEntity('_asset'), false);
+    assert.equal(findEntityByName(schema, 'product')?.plural, 'products');
+    assert.equal(findEntityByName(schema, 'nope'), undefined);
   });
 
   it('offers the project entities not linked yet, by label, never the built-in ones', () => {
