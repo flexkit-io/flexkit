@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import type { JSX } from 'react';
 import { find, propEq } from 'ramda';
 import type { Table } from '@tanstack/react-table';
@@ -20,6 +20,12 @@ import { DataTableSortedBy } from './data-table-sorted-by';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityDeleteMutation, getEntityDeleteWhere } from '../graphql-client/queries';
 import { getEntityListQueryName, scheduleEntityListRemoval } from '../graphql-client/refetch-entity-lists';
+
+// Loaded on demand: the Knowledge module should only download when a list of
+// a linkable entity is in view, the way the record drawer loads its panel.
+const EntityKnowledgeButton = lazy(() =>
+  import('../apps/knowledge/record-links').then((m) => ({ default: m.EntityKnowledgeButton }))
+);
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
@@ -113,11 +119,7 @@ export function DataTableToolbar<TData>({
 
               table.resetRowSelection();
               // Drop rows immediately, then soft-refetch counts/pages.
-              await scheduleEntityListRemoval(
-                apolloClient,
-                getEntityListQueryName(entityName, schema),
-                idsToDelete
-              );
+              await scheduleEntityListRemoval(apolloClient, getEntityListQueryName(entityName, schema), idsToDelete);
               toast.success(idsToDelete.length > 1 ? 'Items successfully deleted.' : 'Item successfully deleted.');
             } catch {
               toast.error('Failed to delete selected items.');
@@ -195,9 +197,16 @@ export function DataTableToolbar<TData>({
           </Button>
         </PermissionTooltip>
       ) : null}
+      {entityName && !entityName.startsWith('_') ? (
+        <Suspense fallback={null}>
+          <span className="fk:mr-2">
+            <EntityKnowledgeButton entityName={entityName} />
+          </span>
+        </Suspense>
+      ) : null}
       <PermissionTooltip disabled={!canMutate}>
         <Button
-          className="fk:ml-auto fk:h-8 fk:lg:flex"
+          className="fk:h-8 fk:lg:flex"
           disabled={isDeleting || !canMutate}
           onClick={handleCreate}
           size="sm"

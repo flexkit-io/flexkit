@@ -1,6 +1,16 @@
 import type { JSX } from 'react';
 import { useDeferredValue, useMemo, useState } from 'react';
-import { BookOpenTextIcon, ChevronRightIcon, LoaderCircle, PaperclipIcon, SearchIcon, Unlink2Icon } from 'lucide-react';
+import {
+  BookOpenTextIcon,
+  ChevronRightIcon,
+  LayersIcon,
+  LoaderCircle,
+  PaperclipIcon,
+  PlusIcon,
+  SearchIcon,
+  Unlink2Icon,
+  XIcon,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
@@ -19,6 +29,12 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -26,6 +42,9 @@ import {
   DialogTitle,
   Input,
   PermissionTooltip,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Skeleton,
   toast,
   Tooltip,
@@ -36,14 +55,19 @@ import {
 import { fetcher, FetcherError, knowledgePaths, type KnowledgeApi } from './api';
 import {
   getAttachableSources,
+  getEntityLinkLabel,
   getKnowledgeKindLabel,
   getKnowledgeLinkLabel,
   getKnowledgeSourcePath,
+  getLinkableEntities,
   groupKnowledgeLinks,
   summarizeKnowledgeStatus,
+  type KnowledgeEntityLink,
+  type KnowledgeEntitySources,
   type KnowledgeLink,
   type KnowledgeLinkGroup,
   type KnowledgeLinksList,
+  type KnowledgeLinkTarget,
   type KnowledgeRecordRef,
   type KnowledgeRecordSources,
   type KnowledgeSource,
@@ -99,8 +123,8 @@ function AttachDocumentDialog({
   onOpenChange,
   open,
   projectId,
-  record,
-  recordLabel,
+  target,
+  targetLabel,
 }: {
   api: KnowledgeApi;
   attachedIds: string[];
@@ -108,8 +132,10 @@ function AttachDocumentDialog({
   onOpenChange: (_open: boolean) => void;
   open: boolean;
   projectId: string;
-  record: KnowledgeRecordRef;
-  recordLabel: string;
+  /** A record, or an entity type when it names no record. */
+  target: KnowledgeLinkTarget;
+  /** How the target is called in the dialog copy: a record title, or an entity label. */
+  targetLabel: string;
 }): JSX.Element {
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search.trim());
@@ -145,7 +171,7 @@ function AttachDocumentDialog({
     setAttachingId(source.id);
 
     try {
-      const result = await api.linkSource(source.id, record);
+      const result = await api.linkSource(source.id, target);
 
       toast.success(result.linked ? `Attached "${source.title}".` : `"${source.title}" was already attached.`);
       onAttached(source);
@@ -228,7 +254,9 @@ function AttachDocumentDialog({
         <DialogHeader>
           <DialogTitle>Attach a document</DialogTitle>
           <DialogDescription>
-            Documents attached to {recordLabel} are searched before the rest of Knowledge when a question is about it.
+            {target.recordId === undefined
+              ? `Documents attached to every ${targetLabel} are searched before the rest of Knowledge when a question is about one of them, or about ${targetLabel} in general.`
+              : `Documents attached to ${targetLabel} are searched before the rest of Knowledge when a question is about it.`}
           </DialogDescription>
         </DialogHeader>
         <div className="fk:relative">
@@ -243,6 +271,220 @@ function AttachDocumentDialog({
           />
         </div>
         {body}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Document rows shared by the record panel and the entity dialog: icon, title, kind and status, plus an optional action. */
+function SourceRows({
+  projectId,
+  renderAction,
+  sources,
+}: {
+  projectId: string;
+  renderAction?: (_source: KnowledgeSource) => JSX.Element | null;
+  sources: KnowledgeSource[];
+}): JSX.Element {
+  return (
+    <ul className="fk:flex fk:flex-col fk:gap-1 fk:-mx-2">
+      {sources.map((source) => {
+        const status = summarizeKnowledgeStatus(source);
+
+        return (
+          <li
+            className="fk:flex fk:min-w-0 fk:items-center fk:gap-2 fk:rounded-lg fk:px-2 fk:py-1.5 fk:corner-squircle"
+            key={source.id}
+          >
+            <Link
+              className="fk:flex fk:min-w-0 fk:flex-1 fk:items-center fk:gap-3 fk:rounded-md fk:hover:underline fk:underline-offset-2"
+              to={getKnowledgeSourcePath(projectId, source.id)}
+            >
+              <SourceIcon source={source} />
+              <span className="fk:min-w-0 fk:flex-1">
+                <span className="fk:block fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
+                <span className="fk:block fk:truncate fk:text-xs fk:text-muted-foreground">
+                  {getKnowledgeKindLabel(source)} · {status.detail}
+                </span>
+              </span>
+            </Link>
+            <StatusBadge label={status.label} tone={status.tone} />
+            {renderAction?.(source)}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * The documents attached to every record of an entity type, behind a button
+ * in the Desk list toolbar: open them, attach another, detach one. Only the
+ * project's own entities qualify, and the button stays out while the schema
+ * is unknown.
+ */
+export function EntityKnowledgeButton({ entityName }: { entityName: string }): JSX.Element | null {
+  const { api, projectId } = useProjectKnowledge();
+  const { currentProject } = useConfig();
+  const [isOpen, setIsOpen] = useState(false);
+  const entitySchema = currentProject?.schema.find((entity) => entity.name === entityName);
+  const isLinkable = Boolean(entitySchema) && !entityName.startsWith('_');
+  const { data, error } = useSWR<KnowledgeEntitySources>(
+    projectId && isLinkable ? knowledgePaths(projectId).entitySources(entityName) : null,
+    fetcher
+  );
+
+  if (!api || !projectId || !entitySchema || !isLinkable || (error instanceof FetcherError && error.status === 404)) {
+    return null;
+  }
+
+  const count = data?.sources.length ?? 0;
+
+  return (
+    <>
+      <Button
+        aria-label={`Knowledge for every ${getEntityLinkLabel(entitySchema)}`}
+        className="fk:h-8"
+        data-knowledge-entity-button
+        size="sm"
+        variant="outline"
+        onClick={() => setIsOpen(true)}
+      >
+        <BookOpenTextIcon />
+        Knowledge
+        {count > 0 ? (
+          <Badge className="fk:corner-squircle" variant="secondary">
+            {count}
+          </Badge>
+        ) : null}
+      </Button>
+      <EntityKnowledgeDialog
+        api={api}
+        entityLabel={getEntityLinkLabel(entitySchema)}
+        entityName={entityName}
+        open={isOpen}
+        projectId={projectId}
+        onOpenChange={setIsOpen}
+      />
+    </>
+  );
+}
+
+function EntityKnowledgeDialog({
+  api,
+  entityLabel,
+  entityName,
+  onOpenChange,
+  open,
+  projectId,
+}: {
+  api: KnowledgeApi;
+  entityLabel: string;
+  entityName: string;
+  onOpenChange: (_open: boolean) => void;
+  open: boolean;
+  projectId: string;
+}): JSX.Element {
+  const canMutate = useCanMutate();
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [detachingId, setDetachingId] = useState<string | null>(null);
+  const { data, error, isLoading, mutate } = useSWR<KnowledgeEntitySources>(
+    knowledgePaths(projectId).entitySources(entityName),
+    fetcher
+  );
+  const sources = data?.sources ?? [];
+  const target = useMemo<KnowledgeLinkTarget>(() => ({ entity: entityName }), [entityName]);
+
+  async function detach(source: KnowledgeSource): Promise<void> {
+    setDetachingId(source.id);
+
+    try {
+      await api.unlinkSource(source.id, target);
+      toast.success(`"${source.title}" no longer applies to every ${entityLabel}.`);
+      await mutate({ sources: sources.filter((entry) => entry.id !== source.id) }, { revalidate: false });
+      void invalidateKnowledgeLinks();
+    } catch (detachError) {
+      toast.error(describeApiError(detachError, 'The document could not be detached.'));
+    } finally {
+      setDetachingId(null);
+    }
+  }
+
+  let body: JSX.Element;
+
+  if (error) {
+    body = <p className="fk:text-sm fk:text-destructive">The documents could not be loaded.</p>;
+  } else if (isLoading && !data) {
+    body = (
+      <div aria-busy="true" className="fk:flex fk:flex-col fk:gap-2">
+        <Skeleton className="fk:h-9 fk:w-full" />
+        <Skeleton className="fk:h-9 fk:w-2/3" />
+      </div>
+    );
+  } else if (sources.length === 0) {
+    body = (
+      <p className="fk:text-sm fk:text-muted-foreground">
+        No documents apply to every {entityLabel} yet. Attach a guide, a policy or a spec that holds for all of them and
+        the agent searches it first when asked about any {entityLabel}, or about {entityLabel} in general.
+      </p>
+    );
+  } else {
+    body = (
+      <SourceRows
+        projectId={projectId}
+        sources={sources}
+        renderAction={(source) =>
+          canMutate ? (
+            <DetachButton
+              disabled={detachingId !== null}
+              label={`Detach ${source.title}`}
+              onClick={() => void detach(source)}
+            />
+          ) : null
+        }
+      />
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="fk:sm:max-w-lg" data-knowledge-entity-dialog>
+        <DialogHeader>
+          <DialogTitle className="fk:flex fk:items-center fk:gap-2">
+            <BookOpenTextIcon className="fk:size-4 fk:text-muted-foreground" />
+            Knowledge for every {entityLabel}
+            {data ? (
+              <Badge className="fk:corner-squircle" variant="outline">
+                {sources.length}
+              </Badge>
+            ) : null}
+          </DialogTitle>
+          <DialogDescription>
+            Documents attached here apply to every {entityLabel}; each record can hold its own on top.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="fk:max-h-80 fk:overflow-y-auto">{body}</div>
+        <div className="fk:flex fk:justify-end">
+          <PermissionTooltip disabled={!canMutate}>
+            <Button disabled={!canMutate} size="sm" variant="outline" onClick={() => setIsPickerOpen(true)}>
+              <PaperclipIcon />
+              Attach document
+            </Button>
+          </PermissionTooltip>
+        </div>
+        <AttachDocumentDialog
+          api={api}
+          attachedIds={sources.map((source) => source.id)}
+          open={isPickerOpen}
+          projectId={projectId}
+          target={target}
+          targetLabel={entityLabel}
+          onAttached={(source) => {
+            void mutate({ sources: [...sources, source] }, { revalidate: false });
+            void invalidateKnowledgeLinks();
+          }}
+          onOpenChange={setIsPickerOpen}
+        />
       </DialogContent>
     </Dialog>
   );
@@ -263,11 +505,14 @@ export function RecordKnowledgePanel({
   recordLabel: string;
 }): JSX.Element | null {
   const { api, projectId } = useProjectKnowledge();
+  const { currentProject } = useConfig();
   const canMutate = useCanMutate();
   const [isOpen, setIsOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [detachingId, setDetachingId] = useState<string | null>(null);
   const record = useMemo<KnowledgeRecordRef>(() => ({ entity: entityName, recordId }), [entityName, recordId]);
+  const entitySchema = currentProject?.schema.find((entity) => entity.name === entityName);
+  const entityLabel = entitySchema ? getEntityLinkLabel(entitySchema) : entityName;
   // Built-in entities (assets, tags) are not something a document is about, so they are not even asked.
   const isLinkable = !entityName.startsWith('_');
   const { data, error, isLoading, mutate } = useSWR<KnowledgeRecordSources>(
@@ -286,6 +531,7 @@ export function RecordKnowledgePanel({
   }
 
   const sources = data?.sources ?? [];
+  const inherited = data?.inherited ?? [];
   const attachedIds = sources.map((source) => source.id);
   const knowledgeApi = api;
 
@@ -296,7 +542,7 @@ export function RecordKnowledgePanel({
       await knowledgeApi.unlinkSource(source.id, record);
       toast.success(`Detached "${source.title}".`);
       // The global invalidation below revalidates this key too; one refetch is enough.
-      await mutate({ sources: sources.filter((entry) => entry.id !== source.id) }, { revalidate: false });
+      await mutate({ sources: sources.filter((entry) => entry.id !== source.id), inherited }, { revalidate: false });
       void invalidateKnowledgeLinks();
     } catch (detachError) {
       toast.error(describeApiError(detachError, 'The document could not be detached.'));
@@ -316,48 +562,38 @@ export function RecordKnowledgePanel({
         <Skeleton className="fk:h-9 fk:w-2/3" />
       </div>
     );
-  } else if (sources.length === 0) {
-    body = (
-      <p className="fk:text-sm fk:text-muted-foreground">
-        No documents attached. Attach a manual, spec or contract and the agent will use it alongside the record's data
-        when asked about this record.
-      </p>
-    );
   } else {
     body = (
-      <ul className="fk:flex fk:flex-col fk:gap-1 fk:-mx-2">
-        {sources.map((source) => {
-          const status = summarizeKnowledgeStatus(source);
-
-          return (
-            <li
-              className="fk:flex fk:min-w-0 fk:items-center fk:gap-2 fk:rounded-lg fk:px-2 fk:py-1.5 fk:corner-squircle"
-              key={source.id}
-            >
-              <Link
-                className="fk:flex fk:min-w-0 fk:flex-1 fk:items-center fk:gap-3 fk:rounded-md fk:hover:underline fk:underline-offset-2"
-                to={getKnowledgeSourcePath(projectId, source.id)}
-              >
-                <SourceIcon source={source} />
-                <span className="fk:min-w-0 fk:flex-1">
-                  <span className="fk:block fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
-                  <span className="fk:block fk:truncate fk:text-xs fk:text-muted-foreground">
-                    {getKnowledgeKindLabel(source)} · {status.detail}
-                  </span>
-                </span>
-              </Link>
-              <StatusBadge label={status.label} tone={status.tone} />
-              {canMutate ? (
+      <div className="fk:flex fk:flex-col fk:gap-4">
+        {sources.length === 0 ? (
+          <p className="fk:text-sm fk:text-muted-foreground">
+            No documents attached. Attach a manual, spec or contract and the agent will use it alongside the record's
+            data when asked about this record.
+          </p>
+        ) : (
+          <SourceRows
+            projectId={projectId}
+            sources={sources}
+            renderAction={(source) =>
+              canMutate ? (
                 <DetachButton
                   disabled={detachingId !== null}
                   label={`Detach ${source.title}`}
                   onClick={() => void detach(source)}
                 />
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+              ) : null
+            }
+          />
+        )}
+        {inherited.length > 0 ? (
+          <div className="fk:flex fk:flex-col fk:gap-1" data-knowledge-inherited>
+            <span className="fk:text-xs fk:font-medium fk:uppercase fk:tracking-wide fk:text-muted-foreground">
+              Applies to every {entityLabel}
+            </span>
+            <SourceRows projectId={projectId} sources={inherited} />
+          </div>
+        ) : null}
+      </div>
     );
   }
 
@@ -386,7 +622,7 @@ export function RecordKnowledgePanel({
               Knowledge
               {data ? (
                 <Badge className="fk:corner-squircle" variant="outline">
-                  {sources.length}
+                  {sources.length + inherited.length}
                 </Badge>
               ) : null}
             </button>
@@ -408,10 +644,14 @@ export function RecordKnowledgePanel({
           attachedIds={attachedIds}
           open={isPickerOpen}
           projectId={projectId}
-          record={record}
-          recordLabel={recordLabel || `this ${entityName}`}
+          target={record}
+          targetLabel={recordLabel || `this ${entityName}`}
           onAttached={(source) => {
-            void mutate({ sources: [...sources, source] }, { revalidate: false });
+            // A document that applied to the whole type now hangs on the record itself.
+            void mutate(
+              { sources: [...sources, source], inherited: inherited.filter((entry) => entry.id !== source.id) },
+              { revalidate: false }
+            );
             void invalidateKnowledgeLinks();
           }}
           onOpenChange={setIsPickerOpen}
@@ -572,6 +812,7 @@ export function LinkedRecordsSection({
     fetcher
   );
   const links = useMemo(() => data?.links ?? [], [data]);
+  const entities = useMemo(() => data?.entities ?? [], [data]);
   const groups = useMemo(() => groupKnowledgeLinks(links), [links]);
 
   async function detach(link: KnowledgeLink): Promise<void> {
@@ -581,7 +822,10 @@ export function LinkedRecordsSection({
       await api.unlinkSource(source.id, { entity: link.entity, recordId: link.recordId });
       toast.success('Detached.');
       await mutate(
-        { links: links.filter((entry) => entry.entity !== link.entity || entry.recordId !== link.recordId) },
+        {
+          links: links.filter((entry) => entry.entity !== link.entity || entry.recordId !== link.recordId),
+          entities,
+        },
         { revalidate: false }
       );
       void invalidateKnowledgeLinks();
@@ -589,6 +833,48 @@ export function LinkedRecordsSection({
       toast.error(describeApiError(detachError, 'The document could not be detached.'));
     } finally {
       setDetachingKey(null);
+    }
+  }
+
+  async function detachEntity(link: KnowledgeEntityLink): Promise<void> {
+    setDetachingKey(`${link.entity}:*`);
+
+    try {
+      await api.unlinkSource(source.id, { entity: link.entity });
+      toast.success('Detached.');
+      await mutate(
+        { links, entities: entities.filter((entry) => entry.entity !== link.entity) },
+        { revalidate: false }
+      );
+      void invalidateKnowledgeLinks();
+    } catch (detachError) {
+      toast.error(describeApiError(detachError, 'The document could not be detached.'));
+    } finally {
+      setDetachingKey(null);
+    }
+  }
+
+  async function attachEntity(entity: Entity): Promise<void> {
+    try {
+      const result = await api.linkSource(source.id, { entity: entity.name });
+
+      toast.success(
+        result.linked
+          ? `Applies to every ${getEntityLinkLabel(entity)} now.`
+          : `Already applied to every ${getEntityLinkLabel(entity)}.`
+      );
+      await mutate(
+        {
+          links,
+          entities: entities.some((entry) => entry.entity === entity.name)
+            ? entities
+            : [...entities, { entity: entity.name, entityPlural: entity.plural }],
+        },
+        { revalidate: false }
+      );
+      void invalidateKnowledgeLinks();
+    } catch (attachError) {
+      toast.error(describeApiError(attachError, 'The document could not be attached.'));
     }
   }
 
@@ -628,7 +914,15 @@ export function LinkedRecordsSection({
 
   return (
     <>
-      <div className="fk:flex fk:items-center fk:gap-2">
+      <AppliesToEntities
+        canMutate={canMutate}
+        detachingKey={detachingKey}
+        entities={entities}
+        isLoading={isLoading && !data}
+        onAttach={(entity) => void attachEntity(entity)}
+        onDetach={(link) => void detachEntity(link)}
+      />
+      <div className="fk:mt-2 fk:flex fk:items-center fk:gap-2">
         <PaperclipIcon className="fk:size-4 fk:text-muted-foreground" />
         <h3 className="fk:text-sm fk:font-semibold fk:tracking-tight">Linked records</h3>
         {links.length > 0 ? (
@@ -642,5 +936,122 @@ export function LinkedRecordsSection({
       </p>
       {body}
     </>
+  );
+}
+
+/**
+ * The entity types a document applies to, on the document page: chips for
+ * the current ones, and a picker over the project's remaining entities. A
+ * document attached to a type is searched first for any record of it.
+ */
+function AppliesToEntities({
+  canMutate,
+  detachingKey,
+  entities,
+  isLoading,
+  onAttach,
+  onDetach,
+}: {
+  canMutate: boolean;
+  detachingKey: string | null;
+  entities: KnowledgeEntityLink[];
+  isLoading: boolean;
+  onAttach: (_entity: Entity) => void;
+  onDetach: (_link: KnowledgeEntityLink) => void;
+}): JSX.Element {
+  const { currentProject } = useConfig();
+  const schema = useMemo(() => currentProject?.schema ?? [], [currentProject]);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const candidates = useMemo(() => getLinkableEntities(schema, entities), [entities, schema]);
+  const labelOf = (link: KnowledgeEntityLink): string => {
+    const entity = schema.find((candidate) => candidate.name === link.entity);
+
+    return entity ? getEntityLinkLabel(entity) : link.entityPlural;
+  };
+
+  return (
+    <div className="fk:flex fk:flex-col fk:gap-3" data-knowledge-applies-to>
+      <div className="fk:flex fk:items-center fk:gap-2">
+        <LayersIcon className="fk:size-4 fk:text-muted-foreground" />
+        <h3 className="fk:text-sm fk:font-semibold fk:tracking-tight">Applies to</h3>
+        {entities.length > 0 ? (
+          <Badge className="fk:corner-squircle" variant="outline">
+            {entities.length}
+          </Badge>
+        ) : null}
+      </div>
+      <p className="fk:text-sm fk:text-muted-foreground">
+        Attach this document to a whole entity type and the agent searches it before the rest of Knowledge for every
+        record of that type, and for questions about the type in general.
+      </p>
+      {isLoading ? (
+        <Skeleton className="fk:h-7 fk:w-1/3" />
+      ) : (
+        <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
+          {entities.map((link) => {
+            const label = labelOf(link);
+
+            return (
+              <Badge
+                className="fk:gap-1 fk:py-1 fk:pl-2.5 fk:pr-1 fk:corner-squircle"
+                key={link.entity}
+                variant="secondary"
+              >
+                <span className="fk:capitalize">{label}</span>
+                {canMutate ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        aria-label={`No longer apply to every ${label}`}
+                        className="fk:rounded-sm fk:p-0.5 fk:text-muted-foreground fk:hover:text-foreground fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:disabled:opacity-50"
+                        disabled={detachingKey !== null}
+                        type="button"
+                        onClick={() => onDetach(link)}
+                      >
+                        <XIcon className="fk:size-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>No longer apply to every {label}</TooltipContent>
+                  </Tooltip>
+                ) : null}
+              </Badge>
+            );
+          })}
+          <Popover open={isPickerOpen} onOpenChange={setIsPickerOpen}>
+            <PermissionTooltip disabled={!canMutate}>
+              <PopoverTrigger asChild>
+                <Button className="fk:h-7" disabled={!canMutate || candidates.length === 0} size="sm" variant="outline">
+                  <PlusIcon />
+                  Add entity type
+                </Button>
+              </PopoverTrigger>
+            </PermissionTooltip>
+            <PopoverContent align="start" className="fk:w-64 fk:p-0">
+              <Command>
+                <CommandInput placeholder="Search entity types" />
+                <CommandList>
+                  <CommandEmpty>No entity type matches.</CommandEmpty>
+                  <CommandGroup>
+                    {candidates.map((entity) => (
+                      <CommandItem
+                        key={entity.name}
+                        keywords={[entity.name, entity.plural]}
+                        value={entity.name}
+                        onSelect={() => {
+                          setIsPickerOpen(false);
+                          onAttach(entity);
+                        }}
+                      >
+                        <span className="fk:capitalize">{getEntityLinkLabel(entity)}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+    </div>
   );
 }
