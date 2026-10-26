@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useMemo, useState } from 'react';
-import { CheckIcon, LibraryIcon, LoaderCircle } from 'lucide-react';
+import { BookOpenTextIcon, CheckIcon, LoaderCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
 import { useConfig } from '../../../core/config/config-context';
@@ -59,7 +59,7 @@ export function AddToKnowledgeButton({ attachment }: { attachment: AgentChatAtta
   }
 
   let label = 'Add to Knowledge';
-  let icon = <LibraryIcon className="fk:size-3" />;
+  let icon = <BookOpenTextIcon className="fk:size-3" />;
 
   if (state.kind === 'adding') {
     icon = <LoaderCircle className="fk:size-3 fk:animate-spin" />;
