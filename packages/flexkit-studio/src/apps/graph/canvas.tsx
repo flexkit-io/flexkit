@@ -270,6 +270,8 @@ export function GraphCanvas({
   const rendererRef = useRef<Renderer | null>(null);
   const layoutRef = useRef<FA2LayoutSupervisor | null>(null);
   const layoutTimerRef = useRef<number | null>(null);
+  /** The node under the pointer while one is dragged, with the pointer's graph position. */
+  const dragRef = useRef<{ node: string; x: number; y: number } | null>(null);
   const settleTimerRef = useRef<number | null>(null);
   const layoutDeadlineRef = useRef<number | null>(null);
   /** Nodes held still for the running layout so only newcomers move. */
@@ -333,10 +335,31 @@ export function GraphCanvas({
 
       heldRef.current = new Set(hold.filter((key) => graph.hasNode(key)));
       heldRef.current.forEach((key) => graph.setNodeAttribute(key, 'fixed', true));
+
+      // Nothing free to move (say, a dragged node without neighbours): a run would never settle.
+      if (!graph.someNode((_key, attributes) => !attributes.fixed)) {
+        stopLayout();
+
+        return;
+      }
+
       const inferred = forceAtlas2.inferSettings(graph);
       const layout = new FA2LayoutSupervisor(graph, {
         // Gentle gravity keeps loose parts near the rest; the extra slowdown keeps the motion calm.
         settings: { ...inferred, adjustSizes: true, gravity: 0.2, slowDown: (inferred.slowDown ?? 1) * 2 },
+        // A dragged node stays under the pointer: the worker's positions are
+        // overridden for it, and with a reducer set the supervisor reads the
+        // graph's positions back into the worker, so the neighbours follow.
+        outputReducer: (key: string, attributes: NodeAttributes): NodeAttributes => {
+          const drag = dragRef.current;
+
+          if (drag && drag.node === key) {
+            attributes.x = drag.x;
+            attributes.y = drag.y;
+          }
+
+          return attributes;
+        },
       });
       const startedAt = performance.now();
       const tracker = new PositionTracker(graph);
@@ -346,9 +369,25 @@ export function GraphCanvas({
       layoutDeadlineRef.current = startedAt + budgetMs;
       layout.start();
       callbacksRef.current.onLayoutChange(true);
-      layoutTimerRef.current = window.setTimeout(stopLayout, budgetMs);
+      // While a node is dragged the layout runs on: the budget is extended and settling does not stop it.
+      const onBudget = (): void => {
+        if (dragRef.current) {
+          layoutDeadlineRef.current = performance.now() + budgetMs;
+          layoutTimerRef.current = window.setTimeout(onBudget, budgetMs);
+        } else {
+          stopLayout();
+        }
+      };
+      layoutTimerRef.current = window.setTimeout(onBudget, budgetMs);
       settleTimerRef.current = window.setInterval(() => {
         const movement = tracker.measure();
+
+        if (dragRef.current) {
+          quietSamples = 0;
+
+          return;
+        }
+
         // The worker needs a moment to spawn; quiet samples before its first
         // positions arrive say nothing about the layout.
         hasMoved = hasMoved || movement.max > 0;
@@ -511,13 +550,40 @@ export function GraphCanvas({
     });
     renderer.on('enterNode', ({ node }) => applyHover(node));
     renderer.on('leaveNode', () => applyHover(null));
+    // Dragging a node pulls its neighbours along: the layout runs while the
+    // drag lasts with the node held under the pointer, so a cluster can be
+    // pulled apart. Everything else is held, so the rest of the canvas
+    // stays still, and a canvas without relationships has nothing to pull on.
+    const holdAllBut = (node: string): string[] => {
+      const free = new Set([node, ...graph.neighbors(node)]);
+
+      return graph.nodes().filter((key) => key === node || !free.has(key));
+    };
     renderer.on('nodeDragStart', ({ node }) => {
-      // A running layout would pull the node away from the pointer.
-      stopLayout();
-      graph.setNodeAttribute(node, 'fixed', true);
+      dragRef.current = { node, x: graph.getNodeAttribute(node, 'x'), y: graph.getNodeAttribute(node, 'y') };
+
+      if (graph.size > 0) {
+        startLayout(layoutBudget(graph.order), holdAllBut(node));
+      } else {
+        stopLayout();
+        graph.setNodeAttribute(node, 'fixed', true);
+      }
+    });
+    renderer.on('nodeDrag', ({ node }) => {
+      if (dragRef.current?.node === node) {
+        dragRef.current.x = graph.getNodeAttribute(node, 'x');
+        dragRef.current.y = graph.getNodeAttribute(node, 'y');
+      }
     });
     renderer.on('nodeDragEnd', ({ node }) => {
+      const wasRunning = dragRef.current !== null && layoutRef.current !== null;
+      dragRef.current = null;
       callbacksRef.current.onPin(node);
+
+      // The node stays where it was dropped while its neighbours settle around it.
+      if (wasRunning) {
+        startLayout(layoutBudget(graph.order), holdAllBut(node));
+      }
     });
 
     const camera = renderer.getCamera();
@@ -548,7 +614,7 @@ export function GraphCanvas({
       hoverRef.current = { key: null, nodes: [], edges: [] };
       renderer.kill();
     };
-  }, [theme, mountAttempt, apiRef, stopLayout, applyHover]);
+  }, [theme, mountAttempt, apiRef, startLayout, stopLayout, applyHover]);
 
   // Scene changes: sync the graph, then let the layout settle the new nodes.
   useEffect(() => {
