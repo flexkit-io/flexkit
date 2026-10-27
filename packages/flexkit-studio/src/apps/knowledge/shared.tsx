@@ -186,35 +186,38 @@ export function InfiniteScrollSentinel({ onVisible }: { onVisible: () => void })
  * it so the copy, the download link and the busy rules stay the same.
  */
 export function SourceActionsMenu({
-  api,
   isBusy = false,
   onOpen,
   onRemoved,
-  projectId,
   source,
   trigger = 'row',
 }: {
-  api: KnowledgeApi;
   /** Another action on the document is in flight; removing waits for it. */
   isBusy?: boolean;
   /** Offered as the first item when given (the document page is already open). */
   onOpen?: () => void;
   /** The document is gone: drop it from the list, or leave its page. The list invalidation is done here. */
   onRemoved: () => void;
-  projectId: string;
   source: KnowledgeSource;
   /** How the button looks: a quiet icon in a row or card, an outlined one next to page actions. */
   trigger?: 'row' | 'page';
-}): JSX.Element {
+}): JSX.Element | null {
+  const { api, projectId } = useProjectKnowledge();
   const canMutate = useCanMutate();
   const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
+
+  if (!api || !projectId) {
+    return null;
+  }
+
+  const knowledgeApi = api;
 
   async function remove(): Promise<void> {
     setIsRemoving(true);
 
     try {
-      await api.deleteSource(source.id);
+      await knowledgeApi.deleteSource(source.id);
       toast.success(`Removed "${source.title}".`);
       setIsConfirmingRemoval(false);
       onRemoved();

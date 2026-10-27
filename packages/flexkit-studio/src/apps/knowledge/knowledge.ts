@@ -1,3 +1,5 @@
+import { getLocalStorage } from '../../core/local-storage';
+
 /**
  * Types and pure helpers of the Knowledge section: documents the team adds
  * so the agent can search and cite them. Everything here runs without React
@@ -500,9 +502,7 @@ const VIEW_MODE_STORAGE_KEY = 'flexkit-knowledge:viewMode';
 /** The list is the default; the choice is remembered per browser, like the asset manager's. */
 export function getStoredKnowledgeViewMode(): KnowledgeViewMode {
   try {
-    const stored = typeof localStorage === 'undefined' ? null : localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-
-    return stored === 'grid' ? 'grid' : 'list';
+    return getLocalStorage()?.getItem(VIEW_MODE_STORAGE_KEY) === 'grid' ? 'grid' : 'list';
   } catch {
     return 'list';
   }
@@ -510,7 +510,7 @@ export function getStoredKnowledgeViewMode(): KnowledgeViewMode {
 
 export function setStoredKnowledgeViewMode(mode: KnowledgeViewMode): void {
   try {
-    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    getLocalStorage()?.setItem(VIEW_MODE_STORAGE_KEY, mode);
   } catch {
     // Private mode or blocked storage: the choice lasts for the session only.
   }

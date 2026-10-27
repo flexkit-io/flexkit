@@ -68,6 +68,20 @@ import { useKnowledgeStatusFilter } from './sidebar';
 
 const KNOWLEDGE_PAGE_SIZE = 25;
 const LIST_POLL_INTERVAL_MS = 3_000;
+/** Typing pauses this long before the list asks the platform; each ask now searches the documents' text too. */
+const SEARCH_DEBOUNCE_MS = 250;
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+
+    return () => clearTimeout(timer);
+  }, [delayMs, value]);
+
+  return debounced;
+}
 
 const EMPTY_BY_FILTER = {
   failed: 'No document failed to index.',
@@ -298,11 +312,26 @@ interface SourceActions {
   onRemoved: (_source: KnowledgeSource) => void;
 }
 
-type SourceItemProps = SourceActions & { api: KnowledgeApi; projectId: string; source: KnowledgeSource };
+type SourceItemProps = SourceActions & { source: KnowledgeSource };
 
-/** A click on the row opens the document, unless it landed on a link or control of its own. */
+/**
+ * A plain click on the row opens the document. Clicks that bubbled up from
+ * a portal (the menu, the removal dialog), modified clicks (the title link
+ * handles new tabs itself) and clicks on the row's own controls are not.
+ */
 function handleRowClick(event: MouseEvent<HTMLElement>, open: () => void): void {
-  if (event.defaultPrevented || (event.target as Element).closest('a, button, [role=menu]')) {
+  const target = event.target as Node;
+
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey ||
+    !event.currentTarget.contains(target) ||
+    (target as Element).closest('a, button')
+  ) {
     return;
   }
 
@@ -315,7 +344,7 @@ function handleRowClick(event: MouseEvent<HTMLElement>, open: () => void): void 
  * manager. The whole row is clickable for the mouse; the link carries the
  * keyboard and assistive tech.
  */
-function SourceListRow({ api, projectId, source, ...actions }: SourceItemProps): JSX.Element {
+function SourceListRow({ source, ...actions }: SourceItemProps): JSX.Element {
   const status = summarizeKnowledgeStatus(source);
   // What went wrong, or what is happening, matters at every width; the passage count can wait for a wide one.
   const detailClass = status.tone === 'ready' ? 'fk:hidden fk:xl:inline' : 'fk:hidden fk:md:inline';
@@ -368,8 +397,6 @@ function SourceListRow({ api, projectId, source, ...actions }: SourceItemProps):
       </TableCell>
       <TableCell className="fk:w-12 fk:pr-2 fk:text-right">
         <SourceActionsMenu
-          api={api}
-          projectId={projectId}
           source={source}
           onOpen={() => actions.onOpen(source)}
           onRemoved={() => actions.onRemoved(source)}
@@ -379,12 +406,7 @@ function SourceListRow({ api, projectId, source, ...actions }: SourceItemProps):
   );
 }
 
-function SourceTable({
-  api,
-  projectId,
-  sources,
-  ...actions
-}: SourceActions & { api: KnowledgeApi; projectId: string; sources: KnowledgeSource[] }): JSX.Element {
+function SourceTable({ sources, ...actions }: SourceActions & { sources: KnowledgeSource[] }): JSX.Element {
   return (
     <Table data-knowledge-list>
       <TableHeader>
@@ -401,7 +423,7 @@ function SourceTable({
       </TableHeader>
       <TableBody>
         {sources.map((source) => (
-          <SourceListRow api={api} key={source.id} projectId={projectId} source={source} {...actions} />
+          <SourceListRow key={source.id} source={source} {...actions} />
         ))}
       </TableBody>
     </Table>
@@ -437,7 +459,7 @@ function SourcePreview({ source }: { source: KnowledgeSource }): JSX.Element {
   );
 }
 
-function SourceCard({ api, projectId, source, ...actions }: SourceItemProps): JSX.Element {
+function SourceCard({ source, ...actions }: SourceItemProps): JSX.Element {
   const status = summarizeKnowledgeStatus(source);
   const meta = [getKnowledgeKindLabel(source)];
 
@@ -466,8 +488,6 @@ function SourceCard({ api, projectId, source, ...actions }: SourceItemProps): JS
         <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
         <span className="fk:pointer-events-auto fk:-my-1 fk:-mr-1.5">
           <SourceActionsMenu
-            api={api}
-            projectId={projectId}
             source={source}
             onOpen={() => actions.onOpen(source)}
             onRemoved={() => actions.onRemoved(source)}
@@ -487,16 +507,11 @@ function SourceCard({ api, projectId, source, ...actions }: SourceItemProps): JS
   );
 }
 
-function SourceGrid({
-  api,
-  projectId,
-  sources,
-  ...actions
-}: SourceActions & { api: KnowledgeApi; projectId: string; sources: KnowledgeSource[] }): JSX.Element {
+function SourceGrid({ sources, ...actions }: SourceActions & { sources: KnowledgeSource[] }): JSX.Element {
   return (
     <div className={GRID_CLASSES} data-knowledge-grid>
       {sources.map((source) => (
-        <SourceCard api={api} key={source.id} projectId={projectId} source={source} {...actions} />
+        <SourceCard key={source.id} source={source} {...actions} />
       ))}
     </div>
   );
@@ -524,6 +539,7 @@ export function List(): JSX.Element {
   const isViewing = useIsViewing();
   const status = useKnowledgeStatusFilter();
   const [search, setSearch] = useState('');
+  const query = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
   const [viewMode, setViewMode] = useState<KnowledgeViewMode>(() => getStoredKnowledgeViewMode());
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -536,7 +552,7 @@ export function List(): JSX.Element {
     return knowledgePaths(projectId).sources({
       limit: KNOWLEDGE_PAGE_SIZE,
       offset: pageIndex * KNOWLEDGE_PAGE_SIZE,
-      search: search.trim() || undefined,
+      search: query || undefined,
       status,
     });
   };
@@ -571,6 +587,15 @@ export function List(): JSX.Element {
     setIsBusy(sources.some((source) => isKnowledgeSourceBusy(source)));
   }, [sources]);
 
+  // A new search starts from its first page.
+  const setSizeRef = useRef(setSize);
+
+  setSizeRef.current = setSize;
+
+  useEffect(() => {
+    void setSizeRef.current(1);
+  }, [query]);
+
   if (!projectId || !api) {
     return <PageMessage>Select a project to manage its knowledge.</PageMessage>;
   }
@@ -584,7 +609,7 @@ export function List(): JSX.Element {
 
   let emptyMessage = `No documents yet. Upload ${KNOWLEDGE_FORMATS_LABEL} files, or add a public web page, and the agent will search and cite them.`;
 
-  if (search.trim()) {
+  if (query) {
     emptyMessage = 'No document title or content matches your search.';
   } else if (status) {
     emptyMessage = EMPTY_BY_FILTER[status];
@@ -592,7 +617,8 @@ export function List(): JSX.Element {
 
   const actions: SourceActions = {
     onOpen: (source) => void navigate(source.id),
-    // Drop the row at once; the global invalidation refetches the pages and counts behind it.
+    // Drop the row at once, then let this hook refetch its pages: the global
+    // list invalidation clears other caches but never revalidates an infinite hook.
     onRemoved: (removed) =>
       void mutate(
         (current) =>
@@ -601,14 +627,14 @@ export function List(): JSX.Element {
             count: Math.max(0, page.count - 1),
             sources: page.sources.filter((entry) => entry.id !== removed.id),
           })),
-        { revalidate: false }
+        { revalidate: true }
       ),
   };
   let content: JSX.Element =
     viewMode === 'grid' ? (
-      <SourceGrid api={api} projectId={projectId} sources={sources} {...actions} />
+      <SourceGrid sources={sources} {...actions} />
     ) : (
-      <SourceTable api={api} projectId={projectId} sources={sources} {...actions} />
+      <SourceTable sources={sources} {...actions} />
     );
 
   if (isInitialLoading) {
@@ -640,10 +666,7 @@ export function List(): JSX.Element {
                 className="fk:w-full fk:max-w-sm"
                 placeholder="Search by title or content…"
                 value={search}
-                onChange={(event) => {
-                  void setSize(1);
-                  setSearch(event.target.value);
-                }}
+                onChange={(event) => setSearch(event.target.value)}
               />
               {total > 0 ? (
                 <span className="fk:text-sm fk:text-muted-foreground">

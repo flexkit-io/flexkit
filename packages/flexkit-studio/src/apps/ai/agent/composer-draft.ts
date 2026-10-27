@@ -3,6 +3,8 @@
  * Studio) and coming back restores what was typed.
  */
 
+import { getLocalStorage } from '../../../core/local-storage';
+
 export const COMPOSER_DRAFT_STORAGE_PREFIX = 'flexkit:agent:draft:';
 
 /** The draft id of the New chat page, which has no chat id yet. */
@@ -11,7 +13,7 @@ export const NEW_CHAT_DRAFT_ID = 'new';
 export type DraftStorage = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
 
 function defaultStorage(): DraftStorage | null {
-  return typeof localStorage === 'undefined' ? null : localStorage;
+  return getLocalStorage();
 }
 
 export function getComposerDraftKey(projectId: string, chatId: string | undefined): string {

@@ -1,13 +1,11 @@
+import { getLocalStorage } from '../local-storage';
+
 export const LAST_PROJECT_STORAGE_KEY = 'flexkit-studio:lastProjectId';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
 function defaultStorage(): StorageLike | undefined {
-  try {
-    return typeof localStorage === 'undefined' ? undefined : localStorage;
-  } catch {
-    return undefined;
-  }
+  return getLocalStorage() ?? undefined;
 }
 
 /** Project the user opened last on this browser, or null. Storage failures are ignored. */

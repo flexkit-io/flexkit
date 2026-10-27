@@ -405,9 +405,7 @@ export function Source(): JSX.Element {
               </Button>
             </PermissionTooltip>
             <SourceActionsMenu
-              api={api}
               isBusy={isWorking}
-              projectId={projectId}
               source={source}
               trigger="page"
               onRemoved={() => navigate('..', { relative: 'path' })}
