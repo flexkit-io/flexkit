@@ -1,16 +1,7 @@
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import { formatDistance } from 'date-fns';
-import {
-  ArrowLeft,
-  BookOpenIcon,
-  DownloadIcon,
-  EllipsisVerticalIcon,
-  ExternalLinkIcon,
-  LoaderCircle,
-  RefreshCwIcon,
-  Trash2,
-} from 'lucide-react';
+import { ArrowLeft, BookOpenIcon, ExternalLinkIcon, LoaderCircle, RefreshCwIcon } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
@@ -22,11 +13,6 @@ import {
   AlertDescription,
   Button,
   Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Input,
   Label,
   PermissionTooltip,
@@ -39,16 +25,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '../../ui';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../ui/primitives/alert-dialog';
 import { fetcher, knowledgePaths, type KnowledgeApi, type ProjectSpace } from './api';
 import {
   formatFileSize,
@@ -70,6 +46,7 @@ import {
   describeApiError,
   invalidateKnowledgeLists,
   PageMessage,
+  SourceActionsMenu,
   SourceIcon,
   StatusBadge,
   useProjectKnowledge,
@@ -332,8 +309,6 @@ export function Source(): JSX.Element {
   const canMutate = useCanMutate();
   const isViewing = useIsViewing();
   const [isBusy, setIsBusy] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
   const { data, error, isLoading, mutate } = useSWR<KnowledgeSourceDetail>(
     projectId && sourceId ? knowledgePaths(projectId).source(sourceId) : null,
@@ -362,7 +337,7 @@ export function Source(): JSX.Element {
   const { job, source } = data;
   const status = summarizeKnowledgeStatus(source, job);
   const version = source.currentVersion;
-  const isWorking = isDeleting || isReindexing;
+  const isWorking = isReindexing;
 
   async function reindex(): Promise<void> {
     setIsReindexing(true);
@@ -376,20 +351,6 @@ export function Source(): JSX.Element {
       toast.error(describeApiError(reindexError, 'The document could not be re-indexed.'));
     } finally {
       setIsReindexing(false);
-    }
-  }
-
-  async function remove(): Promise<void> {
-    setIsDeleting(true);
-
-    try {
-      await api!.deleteSource(source.id);
-      toast.success(`Removed "${source.title}".`);
-      await invalidateKnowledgeLists();
-      navigate('..', { relative: 'path' });
-    } catch (deleteError) {
-      toast.error(describeApiError(deleteError, 'The document could not be removed.'));
-      setIsDeleting(false);
     }
   }
 
@@ -443,55 +404,14 @@ export function Source(): JSX.Element {
                 Re-index
               </Button>
             </PermissionTooltip>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button aria-label="More actions" data-knowledge-source-menu size="icon-sm" variant="outline">
-                  <EllipsisVerticalIcon className="fk:size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {source.path ? (
-                  <DropdownMenuItem asChild>
-                    <a download={source.title} href={knowledgePaths(projectId).file(source.id)}>
-                      <DownloadIcon />
-                      Download
-                    </a>
-                  </DropdownMenuItem>
-                ) : null}
-                {source.originUrl ? (
-                  <DropdownMenuItem asChild>
-                    <a href={source.originUrl} rel="noreferrer" target="_blank">
-                      <ExternalLinkIcon />
-                      Open page
-                    </a>
-                  </DropdownMenuItem>
-                ) : null}
-                {source.path || source.originUrl ? <DropdownMenuSeparator /> : null}
-                <DropdownMenuItem
-                  disabled={!canMutate || isWorking}
-                  variant="destructive"
-                  onSelect={() => setIsConfirmingRemoval(true)}
-                >
-                  <Trash2 />
-                  Remove
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <AlertDialog open={isConfirmingRemoval} onOpenChange={setIsConfirmingRemoval}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remove this document?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    "{source.title}" and its indexed passages are deleted for everyone. Answers the agent gave earlier
-                    keep their citations, but the document can no longer be opened.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => void remove()}>Remove document</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <SourceActionsMenu
+              api={api}
+              isBusy={isWorking}
+              projectId={projectId}
+              source={source}
+              trigger="page"
+              onRemoved={() => navigate('..', { relative: 'path' })}
+            />
           </div>
         }
         title={source.title}

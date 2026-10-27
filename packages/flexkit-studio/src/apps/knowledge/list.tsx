@@ -1,18 +1,8 @@
 import type { ChangeEvent, FormEvent, JSX, MouseEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, formatDistance } from 'date-fns';
-import {
-  DownloadIcon,
-  EllipsisVerticalIcon,
-  ExternalLinkIcon,
-  LayoutGridIcon,
-  LinkIcon,
-  ListIcon,
-  LoaderCircle,
-  Trash2Icon,
-  UploadIcon,
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { LayoutGridIcon, LinkIcon, ListIcon, LoaderCircle, UploadIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import useSWRInfinite from 'swr/infinite';
 import { useIsViewing } from '../../core/apps/app-active';
 import { useCanMutate } from '../../core/permissions';
@@ -21,11 +11,6 @@ import {
   AlertDescription,
   Badge,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Table,
   TableBody,
   TableCell,
@@ -51,16 +36,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '../../ui';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../../ui/primitives/alert-dialog';
 import { AssetDropZone } from '../asset-manager/data-grid/asset-drop-zone';
 import { fetcher, knowledgePaths, type KnowledgeApi } from './api';
 import {
@@ -82,10 +57,10 @@ import {
 import {
   announceRegistered,
   describeApiError,
-  invalidateKnowledgeLists,
   InfiniteScrollSentinel,
   KnowledgeTypeIcon,
   PageMessage,
+  SourceActionsMenu,
   StatusBadge,
   useProjectKnowledge,
 } from './shared';
@@ -314,141 +289,55 @@ interface SourceActions {
   onRemoved: (_source: KnowledgeSource) => void;
 }
 
-/**
- * The row and card menu: open, download the original file (web pages open
- * their address instead), remove. Clicks inside never reach the row behind.
- */
-function SourceMenu({
-  api,
-  projectId,
-  source,
-  ...actions
-}: SourceActions & { api: KnowledgeApi; projectId: string; source: KnowledgeSource }): JSX.Element {
-  const canMutate = useCanMutate();
-  const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
-  const [isRemoving, setIsRemoving] = useState(false);
+type SourceItemProps = SourceActions & { api: KnowledgeApi; projectId: string; source: KnowledgeSource };
 
-  async function remove(): Promise<void> {
-    setIsRemoving(true);
-
-    try {
-      await api.deleteSource(source.id);
-      toast.success(`Removed "${source.title}".`);
-      actions.onRemoved(source);
-      void invalidateKnowledgeLists();
-    } catch (removeError) {
-      toast.error(describeApiError(removeError, 'The document could not be removed.'));
-    } finally {
-      setIsRemoving(false);
-      setIsConfirmingRemoval(false);
-    }
+/** A click on the row opens the document, unless it landed on a link or control of its own. */
+function handleRowClick(event: MouseEvent<HTMLElement>, open: () => void): void {
+  if (event.defaultPrevented || (event.target as Element).closest('a, button, [role=menu]')) {
+    return;
   }
 
-  return (
-    <span
-      className="fk:contents"
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => event.stopPropagation()}
-    >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            aria-label={`Actions for ${source.title}`}
-            className="fk:size-8 fk:shrink-0 fk:text-muted-foreground"
-            data-knowledge-menu
-            size="icon"
-            variant="ghost"
-          >
-            <EllipsisVerticalIcon className="fk:size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => actions.onOpen(source)}>Open</DropdownMenuItem>
-          {source.path ? (
-            <DropdownMenuItem asChild>
-              <a download={source.title} href={knowledgePaths(projectId).file(source.id)}>
-                <DownloadIcon />
-                Download
-              </a>
-            </DropdownMenuItem>
-          ) : null}
-          {source.originUrl ? (
-            <DropdownMenuItem asChild>
-              <a href={source.originUrl} rel="noreferrer" target="_blank">
-                <ExternalLinkIcon />
-                Open page
-              </a>
-            </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled={!canMutate} variant="destructive" onSelect={() => setIsConfirmingRemoval(true)}>
-            <Trash2Icon />
-            Remove
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <AlertDialog open={isConfirmingRemoval} onOpenChange={setIsConfirmingRemoval}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove this document?</AlertDialogTitle>
-            <AlertDialogDescription>
-              "{source.title}" and its indexed passages are deleted for everyone. Answers the agent gave earlier keep
-              their citations, but the document can no longer be opened.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isRemoving}
-              onClick={(event: MouseEvent) => {
-                event.preventDefault();
-                void remove();
-              }}
-            >
-              {isRemoving ? <LoaderCircle className="fk:animate-spin" /> : null}
-              Remove document
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </span>
-  );
+  open();
 }
 
-/** One line of the list: the type mark, the title, then the status and facts in columns, like a file manager. */
-function SourceListRow({
-  api,
-  projectId,
-  source,
-  ...actions
-}: SourceActions & { api: KnowledgeApi; projectId: string; source: KnowledgeSource }): JSX.Element {
+/**
+ * One line of the list: the type mark, the title as a real link (so it can
+ * be opened in a new tab), then the status and facts in columns, like a file
+ * manager. The whole row is clickable for the mouse; the link carries the
+ * keyboard and assistive tech.
+ */
+function SourceListRow({ api, projectId, source, ...actions }: SourceItemProps): JSX.Element {
   const status = summarizeKnowledgeStatus(source);
-  const open = (): void => actions.onOpen(source);
+  // What went wrong, or what is happening, matters at every width; the passage count can wait for a wide one.
+  const detailClass = status.tone === 'ready' ? 'fk:hidden fk:xl:inline' : 'fk:hidden fk:md:inline';
 
   return (
     <TableRow
       className="fk:h-12 fk:cursor-pointer"
       data-knowledge-row
-      tabIndex={0}
-      onClick={open}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          open();
-        }
-      }}
+      onClick={(event) => handleRowClick(event, () => actions.onOpen(source))}
     >
       <TableCell className="fk:max-w-0 fk:w-full">
         <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-3">
           <KnowledgeTypeIcon source={source} />
-          <span className="fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
+          <Link
+            className="fk:truncate fk:text-sm fk:font-medium fk:hover:underline fk:underline-offset-2 fk:focus-visible:outline-none fk:focus-visible:underline"
+            to={source.id}
+          >
+            {source.title}
+          </Link>
           {!source.agentVisible ? <HiddenBadge /> : null}
         </span>
       </TableCell>
       <TableCell className="fk:whitespace-nowrap">
         <span className="fk:flex fk:items-center fk:gap-2">
           <StatusBadge label={status.label} tone={status.tone} />
-          <span className="fk:hidden fk:text-xs fk:text-muted-foreground fk:xl:inline">{status.detail}</span>
+          <span
+            className={`${detailClass} fk:max-w-64 fk:truncate fk:text-xs fk:text-muted-foreground`}
+            title={status.detail}
+          >
+            {status.detail}
+          </span>
         </span>
       </TableCell>
       <TableCell className="fk:hidden fk:whitespace-nowrap fk:text-muted-foreground fk:md:table-cell">
@@ -468,7 +357,13 @@ function SourceListRow({
         </Tooltip>
       </TableCell>
       <TableCell className="fk:w-12 fk:pr-2 fk:text-right">
-        <SourceMenu api={api} projectId={projectId} source={source} {...actions} />
+        <SourceActionsMenu
+          api={api}
+          projectId={projectId}
+          source={source}
+          onOpen={() => actions.onOpen(source)}
+          onRemoved={() => actions.onRemoved(source)}
+        />
       </TableCell>
     </TableRow>
   );
@@ -532,12 +427,7 @@ function SourcePreview({ source }: { source: KnowledgeSource }): JSX.Element {
   );
 }
 
-function SourceCard({
-  api,
-  projectId,
-  source,
-  ...actions
-}: SourceActions & { api: KnowledgeApi; projectId: string; source: KnowledgeSource }): JSX.Element {
+function SourceCard({ api, projectId, source, ...actions }: SourceItemProps): JSX.Element {
   const status = summarizeKnowledgeStatus(source);
   const meta = [getKnowledgeKindLabel(source)];
 
@@ -545,25 +435,33 @@ function SourceCard({
     meta.push(formatFileSize(source.size));
   }
 
-  // The card is a div with an open button laid over it, so the menu button can live inside.
+  meta.push(status.detail);
+
+  // A link laid over the card opens the document (so it can be opened in a
+  // new tab too); the menu button sits above it. The title tooltip lives on
+  // the card itself, which does receive the pointer.
   return (
     <div
-      className="fk:relative fk:flex fk:min-w-0 fk:flex-col fk:gap-3 fk:rounded-xl fk:border fk:bg-card fk:p-3 fk:transition-colors fk:hover:bg-accent/60 fk:has-[>button:focus-visible]:ring-2 fk:has-[>button:focus-visible]:ring-ring fk:corner-squircle"
+      className="fk:relative fk:flex fk:min-w-0 fk:flex-col fk:gap-3 fk:rounded-xl fk:border fk:bg-card fk:p-3 fk:transition-colors fk:hover:bg-accent/60 fk:has-[>a:focus-visible]:ring-2 fk:has-[>a:focus-visible]:ring-ring fk:corner-squircle"
       data-knowledge-card
+      title={source.title}
     >
-      <button
+      <Link
         aria-label={`Open ${source.title}`}
         className="fk:absolute fk:inset-0 fk:rounded-xl fk:focus-visible:outline-none fk:corner-squircle"
-        type="button"
-        onClick={() => actions.onOpen(source)}
+        to={source.id}
       />
       <span className="fk:pointer-events-none fk:relative fk:flex fk:min-w-0 fk:items-center fk:gap-2">
         <KnowledgeTypeIcon source={source} />
-        <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-sm fk:font-medium" title={source.title}>
-          {source.title}
-        </span>
+        <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
         <span className="fk:pointer-events-auto fk:-my-1 fk:-mr-1.5">
-          <SourceMenu api={api} projectId={projectId} source={source} {...actions} />
+          <SourceActionsMenu
+            api={api}
+            projectId={projectId}
+            source={source}
+            onOpen={() => actions.onOpen(source)}
+            onRemoved={() => actions.onRemoved(source)}
+          />
         </span>
       </span>
       <span className="fk:pointer-events-none fk:relative">

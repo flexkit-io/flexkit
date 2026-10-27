@@ -249,25 +249,48 @@ export function parseKnowledgeUrl(value: string): { error: string } | { url: str
   return { url: url.toString() };
 }
 
-export function getKnowledgeKindLabel(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): string {
+export type KnowledgeTypeTone = 'red' | 'blue' | 'amber' | 'violet' | 'slate' | 'teal';
+
+export interface KnowledgeFormat {
+  /** How people call the format: "PDF", "Word", "Web page". */
+  label: string;
+  /** Short code printed on the type mark, as a file manager would. */
+  code: string;
+  tone: KnowledgeTypeTone;
+}
+
+const WEB_PAGE_FORMAT: KnowledgeFormat = { code: 'WEB', label: 'Web page', tone: 'teal' };
+const TEXT_FORMAT: KnowledgeFormat = { code: 'TXT', label: 'Text', tone: 'slate' };
+
+/** The formats the platform indexes, by media type; anything else it accepts reads as text. */
+export const KNOWLEDGE_FORMATS: { readonly [mimeType: string]: KnowledgeFormat } = {
+  'application/pdf': { code: 'PDF', label: 'PDF', tone: 'red' },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {
+    code: 'DOC',
+    label: 'Word',
+    tone: 'blue',
+  },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
+    code: 'PPT',
+    label: 'PowerPoint',
+    tone: 'amber',
+  },
+  'text/markdown': { code: 'MD', label: 'Markdown', tone: 'violet' },
+  'text/html': { code: 'HTML', label: 'HTML', tone: 'teal' },
+  'text/plain': TEXT_FORMAT,
+};
+
+/** The format of a document: a web page by its kind, else by its media type. */
+export function getKnowledgeFormat(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): KnowledgeFormat {
   if (source.kind === 'url') {
-    return 'Web page';
+    return WEB_PAGE_FORMAT;
   }
 
-  switch (source.mimeType) {
-    case 'application/pdf':
-      return 'PDF';
-    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-      return 'Word';
-    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
-      return 'PowerPoint';
-    case 'text/markdown':
-      return 'Markdown';
-    case 'text/html':
-      return 'HTML';
-    default:
-      return 'Text';
-  }
+  return KNOWLEDGE_FORMATS[source.mimeType] ?? TEXT_FORMAT;
+}
+
+export function getKnowledgeKindLabel(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): string {
+  return getKnowledgeFormat(source).label;
 }
 
 export type KnowledgeStatusTone = 'muted' | 'ready' | 'busy' | 'error';
@@ -500,32 +523,11 @@ export function setStoredKnowledgeViewMode(mode: KnowledgeViewMode): void {
   }
 }
 
-export type KnowledgeTypeTone = 'red' | 'blue' | 'amber' | 'violet' | 'slate' | 'teal';
+export type KnowledgeTypeBadge = Pick<KnowledgeFormat, 'code' | 'tone'>;
 
-export interface KnowledgeTypeBadge {
-  /** Short label, as a file manager prints it on the icon. */
-  code: string;
-  tone: KnowledgeTypeTone;
-}
-
-/** The colored type mark of a document, by its format: red PDFs, blue Word files, amber slides, teal web pages. */
+/** The colored type mark of a document, from the same format table as its label. */
 export function getKnowledgeTypeBadge(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): KnowledgeTypeBadge {
-  if (source.kind === 'url') {
-    return { code: 'WEB', tone: 'teal' };
-  }
+  const { code, tone } = getKnowledgeFormat(source);
 
-  switch (source.mimeType) {
-    case 'application/pdf':
-      return { code: 'PDF', tone: 'red' };
-    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-      return { code: 'DOC', tone: 'blue' };
-    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
-      return { code: 'PPT', tone: 'amber' };
-    case 'text/markdown':
-      return { code: 'MD', tone: 'violet' };
-    case 'text/html':
-      return { code: 'HTML', tone: 'teal' };
-    default:
-      return { code: 'TXT', tone: 'slate' };
-  }
+  return { code, tone };
 }

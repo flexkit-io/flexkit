@@ -15,8 +15,11 @@ import {
   type KnowledgeJob,
   type KnowledgeSource,
   type KnowledgeVersion,
+  getKnowledgeFormat,
   getKnowledgeTypeBadge,
   getStoredKnowledgeViewMode,
+  KNOWLEDGE_FORMATS,
+  setStoredKnowledgeViewMode,
 } from '../../src/apps/knowledge/knowledge';
 
 function version(overrides: Partial<KnowledgeVersion> = {}): KnowledgeVersion {
@@ -253,8 +256,70 @@ describe('getKnowledgeTypeBadge', () => {
   });
 });
 
-describe('getStoredKnowledgeViewMode', () => {
-  it('defaults to the list when nothing is stored or storage is unavailable', () => {
+describe('getKnowledgeFormat', () => {
+  it('names and marks every format from the same table, so label and mark never disagree', () => {
+    for (const [mimeType, format] of Object.entries(KNOWLEDGE_FORMATS)) {
+      const entry = source({ mimeType });
+
+      assert.equal(getKnowledgeKindLabel(entry), format.label);
+      assert.deepEqual(getKnowledgeTypeBadge(entry), { code: format.code, tone: format.tone });
+    }
+
+    assert.equal(getKnowledgeFormat(source({ mimeType: 'application/octet-stream' })).label, 'Text');
+  });
+});
+
+describe('knowledge view mode', () => {
+  function withStorage(store: Map<string, string> | null, run: () => void): void {
+    const original = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const stub =
+      store === null
+        ? {
+            getItem: () => {
+              throw new Error('blocked');
+            },
+            setItem: () => {
+              throw new Error('blocked');
+            },
+          }
+        : {
+            getItem: (key: string) => store.get(key) ?? null,
+            setItem: (key: string, value: string) => void store.set(key, value),
+          };
+
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: stub });
+
+    try {
+      run();
+    } finally {
+      if (original) {
+        Object.defineProperty(globalThis, 'localStorage', original);
+      } else {
+        delete (globalThis as { localStorage?: unknown }).localStorage;
+      }
+    }
+  }
+
+  it('defaults to the list and remembers the grid, ignoring anything else stored', () => {
     assert.equal(getStoredKnowledgeViewMode(), 'list');
+
+    withStorage(new Map(), () => {
+      assert.equal(getStoredKnowledgeViewMode(), 'list');
+      setStoredKnowledgeViewMode('grid');
+      assert.equal(getStoredKnowledgeViewMode(), 'grid');
+      setStoredKnowledgeViewMode('list');
+      assert.equal(getStoredKnowledgeViewMode(), 'list');
+    });
+
+    withStorage(new Map([['flexkit-knowledge:viewMode', 'foo']]), () => {
+      assert.equal(getStoredKnowledgeViewMode(), 'list');
+    });
+  });
+
+  it('survives blocked storage', () => {
+    withStorage(null, () => {
+      assert.equal(getStoredKnowledgeViewMode(), 'list');
+      assert.doesNotThrow(() => setStoredKnowledgeViewMode('grid'));
+    });
   });
 });

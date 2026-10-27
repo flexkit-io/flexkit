@@ -1,17 +1,48 @@
-import type { JSX } from 'react';
-import { useEffect, useMemo, useRef } from 'react';
-import { FileTextIcon, GlobeIcon, LoaderCircle } from 'lucide-react';
+import type { JSX, MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DownloadIcon,
+  EllipsisVerticalIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  GlobeIcon,
+  LoaderCircle,
+  Trash2Icon,
+} from 'lucide-react';
 import { mutate as mutateGlobal } from 'swr';
 import { useConfig } from '../../core/config/config-context';
-import { Badge, toast } from '../../ui';
+import { useCanMutate } from '../../core/permissions';
+import {
+  Badge,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  toast,
+} from '../../ui';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../ui/primitives/alert-dialog';
 import {
   createKnowledgeApi,
   isKnowledgeLinkKey,
   isKnowledgeListKey,
   KnowledgeApiError,
+  knowledgePaths,
   type KnowledgeApi,
 } from './api';
 import {
+  getKnowledgeKindLabel,
   getKnowledgeTypeBadge,
   type KnowledgeSource,
   type KnowledgeStatusTone,
@@ -99,9 +130,10 @@ export function KnowledgeTypeIcon({
   const badge = getKnowledgeTypeBadge(source);
   const Glyph = source.kind === 'url' ? GlobeIcon : FileTextIcon;
 
+  // The code is for the eye; a screen reader hears the format's name.
   return (
     <span
-      aria-label={badge.code}
+      aria-label={getKnowledgeKindLabel(source)}
       className={`fk:relative fk:flex fk:size-6 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-md fk:corner-squircle ${TYPE_TONE_CLASSES[badge.tone]} ${className}`}
       data-knowledge-type={badge.code}
       role="img"
@@ -148,4 +180,127 @@ export function InfiniteScrollSentinel({ onVisible }: { onVisible: () => void })
   }, []);
 
   return <div aria-hidden className="fk:h-px" ref={sentinelRef} />;
+}
+
+/**
+ * The actions of one document, behind a three-dots button: open (lists
+ * only), download the original file (web pages open their address instead)
+ * and remove, behind one confirmation. The list and the document page share
+ * it so the copy, the download link and the busy rules stay the same.
+ */
+export function SourceActionsMenu({
+  api,
+  isBusy = false,
+  onOpen,
+  onRemoved,
+  projectId,
+  source,
+  trigger = 'row',
+}: {
+  api: KnowledgeApi;
+  /** Another action on the document is in flight; removing waits for it. */
+  isBusy?: boolean;
+  /** Offered as the first item when given (the document page is already open). */
+  onOpen?: () => void;
+  /** The document is gone: drop it from the list, or leave its page. The list invalidation is done here. */
+  onRemoved: () => void;
+  projectId: string;
+  source: KnowledgeSource;
+  /** How the button looks: a quiet icon in a row or card, an outlined one next to page actions. */
+  trigger?: 'row' | 'page';
+}): JSX.Element {
+  const canMutate = useCanMutate();
+  const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  async function remove(): Promise<void> {
+    setIsRemoving(true);
+
+    try {
+      await api.deleteSource(source.id);
+      toast.success(`Removed "${source.title}".`);
+      setIsConfirmingRemoval(false);
+      onRemoved();
+      void invalidateKnowledgeLists();
+    } catch (removeError) {
+      toast.error(describeApiError(removeError, 'The document could not be removed.'));
+    } finally {
+      setIsRemoving(false);
+    }
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            aria-label={`Actions for ${source.title}`}
+            className={trigger === 'row' ? 'fk:size-8 fk:shrink-0 fk:text-muted-foreground' : undefined}
+            data-knowledge-menu
+            size="icon-sm"
+            variant={trigger === 'row' ? 'ghost' : 'outline'}
+          >
+            <EllipsisVerticalIcon className="fk:size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {onOpen ? <DropdownMenuItem onSelect={onOpen}>Open</DropdownMenuItem> : null}
+          {source.path ? (
+            <DropdownMenuItem asChild>
+              <a href={knowledgePaths(projectId).file(source.id)}>
+                <DownloadIcon />
+                Download
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          {source.originUrl ? (
+            <DropdownMenuItem asChild>
+              <a href={source.originUrl} rel="noreferrer" target="_blank">
+                <ExternalLinkIcon />
+                Open page
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          {onOpen || source.path || source.originUrl ? <DropdownMenuSeparator /> : null}
+          <DropdownMenuItem
+            disabled={!canMutate || isBusy}
+            variant="destructive"
+            onSelect={() => setIsConfirmingRemoval(true)}
+          >
+            <Trash2Icon />
+            Remove
+          </DropdownMenuItem>
+          {canMutate ? null : (
+            <DropdownMenuLabel className="fk:max-w-56 fk:whitespace-normal fk:text-xs fk:font-normal fk:text-muted-foreground">
+              Your member role cannot remove documents.
+            </DropdownMenuLabel>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog open={isConfirmingRemoval} onOpenChange={setIsConfirmingRemoval}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{source.title}" and its indexed passages are deleted for everyone. Answers the agent gave earlier keep
+              their citations, but the document can no longer be opened.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isRemoving}
+              onClick={(event: MouseEvent) => {
+                event.preventDefault();
+                void remove();
+              }}
+            >
+              {isRemoving ? <LoaderCircle className="fk:animate-spin" /> : null}
+              Remove document
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 }
