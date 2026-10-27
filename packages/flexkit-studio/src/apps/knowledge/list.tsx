@@ -1,7 +1,7 @@
 import type { ChangeEvent, FormEvent, JSX, MouseEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, formatDistance } from 'date-fns';
-import { LayoutGridIcon, LinkIcon, ListIcon, LoaderCircle, UploadIcon } from 'lucide-react';
+import { LayoutGridIcon, LinkIcon, ListIcon, LoaderCircle, SearchIcon, UploadIcon, XIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import useSWRInfinite from 'swr/infinite';
 import { useIsViewing } from '../../core/apps/app-active';
@@ -543,6 +543,7 @@ export function List(): JSX.Element {
   const [viewMode, setViewMode] = useState<KnowledgeViewMode>(() => getStoredKnowledgeViewMode());
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isBusy, setIsBusy] = useState(false);
   const getSourcesKey = (pageIndex: number, previousPage: KnowledgeSourcesList | null): string | null => {
     if (!projectId || (previousPage && !previousPage.hasMore)) {
@@ -661,13 +662,31 @@ export function List(): JSX.Element {
               </p>
             </div>
             <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-3">
-              <Input
-                aria-label="Search documents"
-                className="fk:w-full fk:max-w-sm"
-                placeholder="Search by title or content…"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+              <div className="fk:relative fk:w-full fk:max-w-sm">
+                <SearchIcon className="fk:pointer-events-none fk:absolute fk:left-2.5 fk:top-1/2 fk:size-4 fk:-translate-y-1/2 fk:text-muted-foreground" />
+                <Input
+                  aria-label="Search documents"
+                  className="fk:pl-8 fk:pr-9"
+                  placeholder="Search by title or content…"
+                  ref={searchInputRef}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search ? (
+                  <Button
+                    aria-label="Clear search"
+                    className="fk:absolute fk:right-1.5 fk:top-1/2 fk:flex fk:size-6 fk:-translate-y-1/2 fk:items-center fk:justify-center fk:rounded-full fk:bg-transparent fk:text-muted-foreground fk:hover:bg-foreground/10 fk:hover:text-foreground fk:corner-squircle"
+                    data-knowledge-clear-search
+                    type="button"
+                    onClick={() => {
+                      setSearch('');
+                      searchInputRef.current?.focus();
+                    }}
+                  >
+                    <XIcon className="fk:size-4" />
+                  </Button>
+                ) : null}
+              </div>
               {total > 0 ? (
                 <span className="fk:text-sm fk:text-muted-foreground">
                   {total.toLocaleString()} {total === 1 ? 'document' : 'documents'}
