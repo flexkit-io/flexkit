@@ -184,29 +184,27 @@ export function Root(): JSX.Element {
             <div className="fk:absolute fk:left-3 fk:top-3 fk:z-10 fk:flex fk:items-center fk:gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <SidebarTrigger className="fk:h-8 fk:w-8 fk:rounded-lg fk:border fk:bg-background fk:shadow-xs" />
+                  <SidebarTrigger className="fk:h-8 fk:w-8 fk:rounded-lg fk:hover:bg-transparent fk:dark:hover:bg-transparent" />
                 </TooltipTrigger>
                 <TooltipContent>Toggle Sidebar</TooltipContent>
               </Tooltip>
-              <div className="fk:relative fk:h-10 fk:w-72">
-                <GraphToolbar
-                  hasNodes={nodeCount > 0}
-                  hasSelection={selectedNode !== undefined}
-                  isLoading={isLoading}
-                  onClear={() => dispatch({ type: 'clear' })}
-                  onExpand={() => {
-                    if (state.selected) {
-                      void expandAll(state.selected);
-                    }
-                  }}
-                  onFit={() => canvasApi.current?.fit()}
-                  onHide={() => {
-                    if (state.selected) {
-                      hide(state.selected);
-                    }
-                  }}
-                />
-              </div>
+              <GraphToolbar
+                hasNodes={nodeCount > 0}
+                hasSelection={selectedNode !== undefined}
+                isLoading={isLoading}
+                onClear={() => dispatch({ type: 'clear' })}
+                onExpand={() => {
+                  if (state.selected) {
+                    void expandAll(state.selected);
+                  }
+                }}
+                onFit={() => canvasApi.current?.fit()}
+                onHide={() => {
+                  if (state.selected) {
+                    hide(state.selected);
+                  }
+                }}
+              />
             </div>
             {nodeCount > 0 ? null : (
               <div className="fk:pointer-events-none fk:absolute fk:inset-0 fk:flex fk:items-center fk:justify-center fk:p-8 fk:text-center fk:text-sm fk:text-muted-foreground">
