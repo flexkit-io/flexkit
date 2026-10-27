@@ -1,7 +1,7 @@
 import type { ChangeEvent, FormEvent, JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { formatDistance } from 'date-fns';
-import { LinkIcon, LoaderCircle, UploadIcon } from 'lucide-react';
+import { format, formatDistance } from 'date-fns';
+import { LayoutGridIcon, LinkIcon, ListIcon, LoaderCircle, UploadIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useSWRInfinite from 'swr/infinite';
 import { useIsViewing } from '../../core/apps/app-active';
@@ -11,6 +11,14 @@ import {
   AlertDescription,
   Badge,
   Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  ToggleGroup,
+  ToggleGroupItem,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -34,21 +42,24 @@ import {
   formatFileSize,
   getKnowledgeFileProblem,
   getKnowledgeKindLabel,
+  getStoredKnowledgeViewMode,
   isKnowledgeSourceBusy,
   KNOWLEDGE_ACCEPT,
   KNOWLEDGE_FORMATS_LABEL,
   KNOWLEDGE_MAX_TITLE_LENGTH,
   parseKnowledgeUrl,
+  setStoredKnowledgeViewMode,
   summarizeKnowledgeStatus,
   type KnowledgeSource,
   type KnowledgeSourcesList,
+  type KnowledgeViewMode,
 } from './knowledge';
 import {
   announceRegistered,
   describeApiError,
   InfiniteScrollSentinel,
+  KnowledgeTypeIcon,
   PageMessage,
-  SourceIcon,
   StatusBadge,
   useProjectKnowledge,
 } from './shared';
@@ -63,17 +74,35 @@ const EMPTY_BY_FILTER = {
   ready: 'No document is ready yet.',
 };
 
-function KnowledgeListSkeleton(): JSX.Element {
+function KnowledgeListSkeleton({ viewMode }: { viewMode: KnowledgeViewMode }): JSX.Element {
+  const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+  if (viewMode === 'grid') {
+    return (
+      <div aria-busy="true" className={GRID_CLASSES}>
+        <span className="fk:sr-only">Loading documents</span>
+        {ids.map((id) => (
+          <div className="fk:flex fk:flex-col fk:gap-3 fk:rounded-xl fk:border fk:p-3 fk:corner-squircle" key={id}>
+            <span className="fk:flex fk:items-center fk:gap-2">
+              <Skeleton className="fk:size-6 fk:rounded-md" />
+              <Skeleton className="fk:h-4 fk:flex-1" />
+            </span>
+            <Skeleton className="fk:aspect-[4/3] fk:w-full fk:rounded-lg" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div aria-busy="true" className="fk:flex fk:flex-col fk:gap-1">
+    <div aria-busy="true" className="fk:flex fk:flex-col">
       <span className="fk:sr-only">Loading documents</span>
-      {['a', 'b', 'c', 'd'].map((id) => (
-        <div className="fk:-mx-3 fk:flex fk:items-center fk:gap-3 fk:px-3 fk:py-2" key={id}>
-          <Skeleton className="fk:size-10 fk:shrink-0 fk:rounded-lg" />
-          <span className="fk:flex fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-1.5">
-            <Skeleton className="fk:h-4 fk:w-48" />
-            <Skeleton className="fk:h-4 fk:w-32" />
-          </span>
+      {ids.map((id) => (
+        <div className="fk:flex fk:h-12 fk:items-center fk:gap-3 fk:border-b fk:px-3" key={id}>
+          <Skeleton className="fk:size-6 fk:shrink-0 fk:rounded-md" />
+          <Skeleton className="fk:h-4 fk:w-1/3" />
+          <Skeleton className="fk:ml-auto fk:h-4 fk:w-16" />
+          <Skeleton className="fk:hidden fk:h-4 fk:w-24 fk:md:block" />
         </div>
       ))}
     </div>
@@ -240,7 +269,127 @@ function AddUrlDialog({
   );
 }
 
-function SourceRow({ onOpen, source }: { onOpen: () => void; source: KnowledgeSource }): JSX.Element {
+const GRID_CLASSES = 'fk:grid fk:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] fk:gap-4';
+
+function formatAdded(iso: string): string {
+  return format(new Date(iso), 'MMM d, yyyy');
+}
+
+function HiddenBadge(): JSX.Element {
+  return (
+    <Badge className="fk:shrink-0 fk:corner-squircle" variant="outline">
+      Hidden from agent
+    </Badge>
+  );
+}
+
+/** One line of the list: the type mark, the title, then the status and facts in columns, like a file manager. */
+function SourceListRow({ onOpen, source }: { onOpen: () => void; source: KnowledgeSource }): JSX.Element {
+  const status = summarizeKnowledgeStatus(source);
+
+  return (
+    <TableRow
+      className="fk:h-12 fk:cursor-pointer"
+      data-knowledge-row
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <TableCell className="fk:max-w-0 fk:w-full">
+        <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-3">
+          <KnowledgeTypeIcon source={source} />
+          <span className="fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
+          {!source.agentVisible ? <HiddenBadge /> : null}
+        </span>
+      </TableCell>
+      <TableCell className="fk:whitespace-nowrap">
+        <span className="fk:flex fk:items-center fk:gap-2">
+          <StatusBadge label={status.label} tone={status.tone} />
+          <span className="fk:hidden fk:text-xs fk:text-muted-foreground fk:xl:inline">{status.detail}</span>
+        </span>
+      </TableCell>
+      <TableCell className="fk:hidden fk:whitespace-nowrap fk:text-muted-foreground fk:md:table-cell">
+        {getKnowledgeKindLabel(source)}
+      </TableCell>
+      <TableCell className="fk:hidden fk:whitespace-nowrap fk:text-right fk:tabular-nums fk:text-muted-foreground fk:md:table-cell">
+        {source.size === null ? '—' : formatFileSize(source.size)}
+      </TableCell>
+      <TableCell className="fk:hidden fk:whitespace-nowrap fk:text-muted-foreground fk:sm:table-cell">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>{formatAdded(source.createdAt)}</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            Updated {formatDistance(new Date(source.updatedAt), new Date(), { addSuffix: true })}
+          </TooltipContent>
+        </Tooltip>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function SourceTable({
+  onOpen,
+  sources,
+}: {
+  onOpen: (_source: KnowledgeSource) => void;
+  sources: KnowledgeSource[];
+}): JSX.Element {
+  return (
+    <Table data-knowledge-list>
+      <TableHeader>
+        <TableRow className="fk:hover:bg-transparent">
+          <TableHead>Name</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="fk:hidden fk:md:table-cell">Type</TableHead>
+          <TableHead className="fk:hidden fk:text-right fk:md:table-cell">Size</TableHead>
+          <TableHead className="fk:hidden fk:sm:table-cell">Added</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sources.map((source) => (
+          <SourceListRow key={source.id} source={source} onOpen={() => onOpen(source)} />
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+/**
+ * The card's thumbnail: the opening text of the document laid out like a
+ * small page, the way a file manager shows the first page. Documents still
+ * indexing, or without text, show their type mark instead.
+ */
+function SourcePreview({ source }: { source: KnowledgeSource }): JSX.Element {
+  const preview = source.preview?.trim();
+
+  return (
+    <div className="fk:relative fk:aspect-[4/3] fk:overflow-hidden fk:rounded-lg fk:bg-muted fk:corner-squircle">
+      {preview ? (
+        <div
+          aria-hidden
+          className="fk:absolute fk:inset-x-4 fk:top-3 fk:bottom-0 fk:overflow-hidden fk:rounded-t-sm fk:bg-background fk:px-3 fk:pt-3 fk:shadow-sm"
+        >
+          <p className="fk:whitespace-pre-line fk:text-[9px] fk:leading-[1.45] fk:text-foreground/80 fk:select-none">
+            {preview}
+          </p>
+          <span className="fk:pointer-events-none fk:absolute fk:inset-x-0 fk:bottom-0 fk:h-10 fk:bg-gradient-to-t fk:from-background fk:to-transparent" />
+        </div>
+      ) : (
+        <div className="fk:flex fk:h-full fk:items-center fk:justify-center">
+          <KnowledgeTypeIcon className="fk:size-12! fk:rounded-xl! fk:[&>svg]:size-6" source={source} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SourceCard({ onOpen, source }: { onOpen: () => void; source: KnowledgeSource }): JSX.Element {
   const status = summarizeKnowledgeStatus(source);
   const meta = [getKnowledgeKindLabel(source)];
 
@@ -248,31 +397,42 @@ function SourceRow({ onOpen, source }: { onOpen: () => void; source: KnowledgeSo
     meta.push(formatFileSize(source.size));
   }
 
-  meta.push(status.detail);
-
   return (
     <button
-      className="fk:-mx-3 fk:flex fk:min-w-0 fk:items-center fk:gap-3 fk:rounded-lg fk:px-3 fk:py-2 fk:text-left fk:transition-colors fk:hover:bg-accent fk:focus-visible:bg-accent fk:focus-visible:outline-none fk:corner-squircle"
+      className="fk:flex fk:min-w-0 fk:flex-col fk:gap-3 fk:rounded-xl fk:border fk:bg-card fk:p-3 fk:text-left fk:transition-colors fk:hover:bg-accent/60 fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:corner-squircle"
+      data-knowledge-card
       type="button"
       onClick={onOpen}
     >
-      <SourceIcon source={source} />
-      <span className="fk:min-w-0 fk:flex-1">
-        <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-2">
-          <span className="fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
-          {!source.agentVisible ? (
-            <Badge className="fk:shrink-0 fk:corner-squircle" variant="outline">
-              Hidden from agent
-            </Badge>
-          ) : null}
+      <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-2">
+        <KnowledgeTypeIcon source={source} />
+        <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-sm fk:font-medium" title={source.title}>
+          {source.title}
         </span>
-        <span className="fk:block fk:truncate fk:text-sm fk:text-muted-foreground">{meta.join(' · ')}</span>
       </span>
-      <span className="fk:hidden fk:shrink-0 fk:text-xs fk:text-muted-foreground fk:sm:block">
-        {formatDistance(new Date(source.updatedAt), new Date(), { addSuffix: true })}
+      <SourcePreview source={source} />
+      <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-2">
+        <StatusBadge label={status.label} tone={status.tone} />
+        <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-xs fk:text-muted-foreground">{meta.join(' · ')}</span>
+        {!source.agentVisible ? <HiddenBadge /> : null}
       </span>
-      <StatusBadge label={status.label} tone={status.tone} />
     </button>
+  );
+}
+
+function SourceGrid({
+  onOpen,
+  sources,
+}: {
+  onOpen: (_source: KnowledgeSource) => void;
+  sources: KnowledgeSource[];
+}): JSX.Element {
+  return (
+    <div className={GRID_CLASSES} data-knowledge-grid>
+      {sources.map((source) => (
+        <SourceCard key={source.id} source={source} onOpen={() => onOpen(source)} />
+      ))}
+    </div>
   );
 }
 
@@ -298,6 +458,7 @@ export function List(): JSX.Element {
   const isViewing = useIsViewing();
   const status = useKnowledgeStatusFilter();
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<KnowledgeViewMode>(() => getStoredKnowledgeViewMode());
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -363,16 +524,16 @@ export function List(): JSX.Element {
     emptyMessage = EMPTY_BY_FILTER[status];
   }
 
-  let content: JSX.Element = (
-    <div className="fk:flex fk:flex-col fk:gap-1">
-      {sources.map((source) => (
-        <SourceRow key={source.id} source={source} onOpen={() => navigate(source.id)} />
-      ))}
-    </div>
-  );
+  const open = (source: KnowledgeSource): void => void navigate(source.id);
+  let content: JSX.Element =
+    viewMode === 'grid' ? (
+      <SourceGrid sources={sources} onOpen={open} />
+    ) : (
+      <SourceTable sources={sources} onOpen={open} />
+    );
 
   if (isInitialLoading) {
-    content = <KnowledgeListSkeleton />;
+    content = <KnowledgeListSkeleton viewMode={viewMode} />;
   } else if (sources.length === 0) {
     content = (
       <Alert>
@@ -386,18 +547,18 @@ export function List(): JSX.Element {
       <ListHeader />
       <AssetDropZone disabled={!canMutate} onDropFiles={addFiles}>
         <div className="fk:min-h-0 fk:flex-1 fk:overflow-auto">
-          <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-4xl fk:flex-col fk:gap-8 fk:py-6 fk:pl-4 fk:pr-6">
+          <div className="fk:flex fk:w-full fk:flex-col fk:gap-5 fk:py-4 fk:pl-4 fk:pr-6">
             <div>
-              <h2 className="fk:text-2xl fk:font-semibold">Documents for your team and agents</h2>
-              <p className="fk:mt-2 fk:text-muted-foreground">
-                Policies, manuals, specs and other reference material. People read them here; the agent searches them
+              <h2 className="fk:text-2xl fk:font-semibold">Documents</h2>
+              <p className="fk:mt-1 fk:text-sm fk:text-muted-foreground">
+                Policies, manuals, specs and other reference material for your team and agents. The agent searches them
                 when a question needs them and cites the passage it used.
               </p>
             </div>
             <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-3">
               <Input
                 aria-label="Search documents"
-                className="fk:w-full fk:max-w-xs"
+                className="fk:w-full fk:max-w-sm"
                 placeholder="Search documents…"
                 value={search}
                 onChange={(event) => {
@@ -411,6 +572,26 @@ export function List(): JSX.Element {
                 </span>
               ) : null}
               <div className="fk:ml-auto fk:flex fk:items-center fk:gap-2">
+                <ToggleGroup
+                  aria-label="Layout"
+                  size="sm"
+                  type="single"
+                  value={viewMode}
+                  variant="outline"
+                  onValueChange={(value) => {
+                    if (value === 'list' || value === 'grid') {
+                      setViewMode(value);
+                      setStoredKnowledgeViewMode(value);
+                    }
+                  }}
+                >
+                  <ToggleGroupItem aria-label="List layout" value="list">
+                    <ListIcon className="fk:size-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem aria-label="Grid layout" value="grid">
+                    <LayoutGridIcon className="fk:size-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
                 <PermissionTooltip disabled={!canMutate}>
                   <Button disabled={!canMutate} size="sm" variant="outline" onClick={() => setIsUrlDialogOpen(true)}>
                     <LinkIcon />

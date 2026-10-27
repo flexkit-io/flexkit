@@ -57,6 +57,8 @@ export interface KnowledgeSource {
   updatedAt: string;
   /** The published version, or the newest one while the first ingestion runs. */
   currentVersion: KnowledgeVersion | null;
+  /** The opening of the document's text, carried by listings for the grid's cards. */
+  preview?: string | null;
 }
 
 export interface KnowledgeJobProgress {
@@ -473,4 +475,57 @@ export function getLinkableEntities<T extends { menu?: { label?: string }; name:
   return schema
     .filter((entity) => isKnowledgeLinkableEntity(entity.name) && !taken.has(entity.name))
     .sort((a, b) => getEntityLinkLabel(a).localeCompare(getEntityLinkLabel(b)));
+}
+
+export type KnowledgeViewMode = 'list' | 'grid';
+
+const VIEW_MODE_STORAGE_KEY = 'flexkit-knowledge:viewMode';
+
+/** The list is the default; the choice is remembered per browser, like the asset manager's. */
+export function getStoredKnowledgeViewMode(): KnowledgeViewMode {
+  try {
+    const stored = typeof localStorage === 'undefined' ? null : localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+
+    return stored === 'grid' ? 'grid' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+
+export function setStoredKnowledgeViewMode(mode: KnowledgeViewMode): void {
+  try {
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+  } catch {
+    // Private mode or blocked storage: the choice lasts for the session only.
+  }
+}
+
+export type KnowledgeTypeTone = 'red' | 'blue' | 'amber' | 'violet' | 'slate' | 'teal';
+
+export interface KnowledgeTypeBadge {
+  /** Short label, as a file manager prints it on the icon. */
+  code: string;
+  tone: KnowledgeTypeTone;
+}
+
+/** The colored type mark of a document, by its format: red PDFs, blue Word files, amber slides, teal web pages. */
+export function getKnowledgeTypeBadge(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): KnowledgeTypeBadge {
+  if (source.kind === 'url') {
+    return { code: 'WEB', tone: 'teal' };
+  }
+
+  switch (source.mimeType) {
+    case 'application/pdf':
+      return { code: 'PDF', tone: 'red' };
+    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+      return { code: 'DOC', tone: 'blue' };
+    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+      return { code: 'PPT', tone: 'amber' };
+    case 'text/markdown':
+      return { code: 'MD', tone: 'violet' };
+    case 'text/html':
+      return { code: 'HTML', tone: 'teal' };
+    default:
+      return { code: 'TXT', tone: 'slate' };
+  }
 }

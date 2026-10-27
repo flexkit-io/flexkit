@@ -11,7 +11,13 @@ import {
   KnowledgeApiError,
   type KnowledgeApi,
 } from './api';
-import type { KnowledgeSource, KnowledgeStatusTone, RegisterKnowledgeSourceResult } from './knowledge';
+import {
+  getKnowledgeTypeBadge,
+  type KnowledgeSource,
+  type KnowledgeStatusTone,
+  type KnowledgeTypeTone,
+  type RegisterKnowledgeSourceResult,
+} from './knowledge';
 
 const STATUS_TONE_CLASSES: { [tone in KnowledgeStatusTone]: string } = {
   busy: 'fk:bg-amber-500/15 fk:text-amber-700 fk:dark:text-amber-400',
@@ -70,6 +76,38 @@ export function StatusBadge({ label, tone }: { label: string; tone: KnowledgeSta
       {tone === 'busy' ? <LoaderCircle className="fk:size-3 fk:animate-spin" /> : null}
       {label}
     </Badge>
+  );
+}
+
+const TYPE_TONE_CLASSES: { [tone in KnowledgeTypeTone]: string } = {
+  amber: 'fk:bg-amber-500 fk:text-white',
+  blue: 'fk:bg-blue-600 fk:text-white',
+  red: 'fk:bg-red-600 fk:text-white',
+  slate: 'fk:bg-slate-500 fk:text-white',
+  teal: 'fk:bg-teal-600 fk:text-white',
+  violet: 'fk:bg-violet-600 fk:text-white',
+};
+
+/** The document's format as a small colored mark, the way a file manager tags PDFs red and documents blue. */
+export function KnowledgeTypeIcon({
+  className = '',
+  source,
+}: {
+  className?: string;
+  source: Pick<KnowledgeSource, 'kind' | 'mimeType'>;
+}): JSX.Element {
+  const badge = getKnowledgeTypeBadge(source);
+  const Glyph = source.kind === 'url' ? GlobeIcon : FileTextIcon;
+
+  return (
+    <span
+      aria-label={badge.code}
+      className={`fk:relative fk:flex fk:size-6 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-md fk:corner-squircle ${TYPE_TONE_CLASSES[badge.tone]} ${className}`}
+      data-knowledge-type={badge.code}
+      role="img"
+    >
+      <Glyph className="fk:size-3.5" strokeWidth={2.25} />
+    </span>
   );
 }
 

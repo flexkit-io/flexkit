@@ -15,6 +15,8 @@ import {
   type KnowledgeJob,
   type KnowledgeSource,
   type KnowledgeVersion,
+  getKnowledgeTypeBadge,
+  getStoredKnowledgeViewMode,
 } from '../../src/apps/knowledge/knowledge';
 
 function version(overrides: Partial<KnowledgeVersion> = {}): KnowledgeVersion {
@@ -223,5 +225,36 @@ describe('locator, warning and space helpers', () => {
   it('toggles a space code in and out of the list', () => {
     assert.deepEqual(toggleSpaceCode([], 'eu'), ['eu']);
     assert.deepEqual(toggleSpaceCode(['eu', 'us'], 'eu'), ['us']);
+  });
+});
+
+describe('getKnowledgeTypeBadge', () => {
+  it('marks each format with the color a file manager would', () => {
+    assert.deepEqual(getKnowledgeTypeBadge(source({ mimeType: 'application/pdf' })), { code: 'PDF', tone: 'red' });
+    assert.deepEqual(
+      getKnowledgeTypeBadge(
+        source({ mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+      ),
+      { code: 'DOC', tone: 'blue' }
+    );
+    assert.deepEqual(
+      getKnowledgeTypeBadge(
+        source({ mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
+      ),
+      { code: 'PPT', tone: 'amber' }
+    );
+    assert.deepEqual(getKnowledgeTypeBadge(source({ mimeType: 'text/markdown' })), { code: 'MD', tone: 'violet' });
+    assert.deepEqual(getKnowledgeTypeBadge(source({ mimeType: 'text/plain' })), { code: 'TXT', tone: 'slate' });
+    assert.deepEqual(getKnowledgeTypeBadge(source({ mimeType: 'text/html' })), { code: 'HTML', tone: 'teal' });
+    assert.deepEqual(getKnowledgeTypeBadge(source({ kind: 'url', mimeType: 'text/html' })), {
+      code: 'WEB',
+      tone: 'teal',
+    });
+  });
+});
+
+describe('getStoredKnowledgeViewMode', () => {
+  it('defaults to the list when nothing is stored or storage is unavailable', () => {
+    assert.equal(getStoredKnowledgeViewMode(), 'list');
   });
 });
