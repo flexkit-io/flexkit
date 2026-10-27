@@ -4,6 +4,7 @@ import { useCallback, useReducer, useState } from 'react';
 import type { Dispatch } from 'react';
 import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
+import { USER_QUERY_CONTEXT } from '../../graphql-client/graphql-context';
 import { toast } from '../../ui';
 import type { Attribute, Entity } from '../../core/types';
 import {
@@ -16,6 +17,7 @@ import {
   nodeKey,
   type GraphRecord,
 } from './graph';
+import { graphFromQueryResult, type QueryResult, type QueryRun } from './query';
 import { EMPTY_SCENE, sceneReducer, type SceneAction, type SceneState } from './scene';
 
 /** Which records to load: given ids (with their first hop when `expand`), or a sample. */
@@ -31,12 +33,14 @@ export interface SceneApi {
   expandAll: (key: string) => Promise<void>;
   /** Loads the next page of one relationship of a node. */
   expandAttribute: (key: string, attribute: Attribute) => Promise<void>;
+  /** Runs any GraphQL query and draws its result, replacing the canvas unless `append`. */
+  runQuery: (query: string, options: { append: boolean }) => Promise<QueryRun>;
 }
 
 type RecordsResult = { [plural: string]: GraphRecord[] };
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'The records could not be loaded.';
+  return error instanceof Error ? error.message : 'The request failed.';
 }
 
 /**
@@ -135,5 +139,61 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
     [client, schema, scope, state.fetched, state.nodes]
   );
 
-  return { state, dispatch, isLoading: pending > 0, loadRecords, expandAll, expandAttribute };
+  const runQuery = useCallback(
+    async (query: string, { append }: { append: boolean }): Promise<QueryRun> => {
+      const startedAt = performance.now();
+      let document;
+
+      try {
+        document = gql(query);
+      } catch (error) {
+        return { data: null, error: errorMessage(error), elapsedMs: 0, nodes: 0, edges: 0 };
+      }
+
+      setPending((count) => count + 1);
+
+      try {
+        // Not cached: a partial result would overwrite the records Desk reads cache-first.
+        const result = await client.query<QueryResult>({
+          query: document,
+          fetchPolicy: 'no-cache',
+          errorPolicy: 'all',
+          context: USER_QUERY_CONTEXT,
+        });
+        const data = result.data ?? null;
+        const graph = graphFromQueryResult({ data, schema, scope });
+
+        // A failed query, or one that draws nothing, leaves the canvas as it
+        // was; partial data beside errors is added to it rather than replacing it.
+        if (graph.nodes.length > 0) {
+          if (!append && !result.error) {
+            dispatch({ type: 'clear' });
+          }
+
+          dispatch({ type: 'merge', data: graph });
+        }
+
+        return {
+          data,
+          error: result.error ? result.error.message : null,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          nodes: graph.nodes.length,
+          edges: graph.edges.length,
+        };
+      } catch (error) {
+        return {
+          data: null,
+          error: errorMessage(error),
+          elapsedMs: Math.round(performance.now() - startedAt),
+          nodes: 0,
+          edges: 0,
+        };
+      } finally {
+        setPending((count) => count - 1);
+      }
+    },
+    [client, schema, scope]
+  );
+
+  return { state, dispatch, isLoading: pending > 0, loadRecords, expandAll, expandAttribute, runQuery };
 }
