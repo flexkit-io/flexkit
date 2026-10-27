@@ -1026,6 +1026,28 @@ html[data-desktop-platform]
   -webkit-app-region: no-drag;
 }
 
+/* Chromium builds the draggable region from layout rectangles in document
+   order, regardless of stacking: a `drag` rectangle is added, a `no-drag` one
+   subtracted. Layers portaled to the end of `<body>` (drawers, dialogs) are
+   painted over the navbar but are not its descendants, so the strip of them
+   that overlaps the navbar stayed draggable: the close button in a drawer's
+   header, for one, swallowed clicks and started a window drag instead.
+   The opt-out goes on each layer's full-window viewport or overlay, not on the
+   popup: the popup slides in with a transform, and Chromium 152 (Electron 44)
+   only rebuilds the region after a layout, so the popup's rectangle would be
+   its off-screen starting position until something else lays out. The
+   viewport and overlays are untransformed and only exist while the layer is
+   open, so the navbar stops dragging exactly while a layer covers it. */
+html[data-desktop-platform]
+  :is(
+    [data-slot='drawer-viewport'],
+    [data-slot='dialog-overlay'],
+    [data-slot='sheet-overlay'],
+    [data-slot='alert-dialog-overlay']
+  ) {
+  -webkit-app-region: no-drag;
+}
+
 html[data-desktop-platform='darwin'] .flexkit-navbar {
   padding-left: 6.5rem;
 }
