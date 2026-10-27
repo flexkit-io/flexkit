@@ -10,6 +10,16 @@ import {
   Trash2Icon,
 } from 'lucide-react';
 import { mutate as mutateGlobal } from 'swr';
+// File type icons: Untitled UI's free file icons, Solid variant. The set is
+// published as the MIT package `@untitledui/file-icons`; the page below shows
+// every icon and offers each as SVG or JSX should another format need one.
+// https://www.untitledui.com/resources/file-icons
+import { Document } from '@untitledui/file-icons/dist/solid/document.mjs';
+import { Docx } from '@untitledui/file-icons/dist/solid/docx.mjs';
+import { Html } from '@untitledui/file-icons/dist/solid/html.mjs';
+import { Pdf } from '@untitledui/file-icons/dist/solid/pdf.mjs';
+import { Pptx } from '@untitledui/file-icons/dist/solid/pptx.mjs';
+import { Txt } from '@untitledui/file-icons/dist/solid/txt.mjs';
 import { useConfig } from '../../core/config/config-context';
 import { useCanMutate } from '../../core/permissions';
 import {
@@ -42,11 +52,10 @@ import {
   type KnowledgeApi,
 } from './api';
 import {
-  getKnowledgeKindLabel,
-  getKnowledgeTypeBadge,
+  getKnowledgeFormat,
+  type KnowledgeFileIcon,
   type KnowledgeSource,
   type KnowledgeStatusTone,
-  type KnowledgeTypeTone,
   type RegisterKnowledgeSourceResult,
 } from './knowledge';
 
@@ -110,35 +119,36 @@ export function StatusBadge({ label, tone }: { label: string; tone: KnowledgeSta
   );
 }
 
-const TYPE_TONE_CLASSES: { [tone in KnowledgeTypeTone]: string } = {
-  amber: 'fk:bg-amber-500 fk:text-white',
-  blue: 'fk:bg-blue-600 fk:text-white',
-  red: 'fk:bg-red-600 fk:text-white',
-  slate: 'fk:bg-slate-500 fk:text-white',
-  teal: 'fk:bg-teal-600 fk:text-white',
-  violet: 'fk:bg-violet-600 fk:text-white',
+const FILE_ICONS: { [icon in KnowledgeFileIcon]: typeof Pdf } = {
+  document: Document,
+  docx: Docx,
+  html: Html,
+  pdf: Pdf,
+  pptx: Pptx,
+  txt: Txt,
 };
 
-/** The document's format as a small colored mark, the way a file manager tags PDFs red and documents blue. */
+/** The document's format as its file icon; the format's name is what a screen reader hears. */
 export function KnowledgeTypeIcon({
   className = '',
+  size = 24,
   source,
 }: {
   className?: string;
+  size?: number;
   source: Pick<KnowledgeSource, 'kind' | 'mimeType'>;
 }): JSX.Element {
-  const badge = getKnowledgeTypeBadge(source);
-  const Glyph = source.kind === 'url' ? GlobeIcon : FileTextIcon;
+  const format = getKnowledgeFormat(source);
+  const Icon = FILE_ICONS[format.icon];
 
-  // The code is for the eye; a screen reader hears the format's name.
   return (
     <span
-      aria-label={getKnowledgeKindLabel(source)}
-      className={`fk:relative fk:flex fk:size-6 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-md fk:corner-squircle ${TYPE_TONE_CLASSES[badge.tone]} ${className}`}
-      data-knowledge-type={badge.code}
+      aria-label={format.label}
+      className={`fk:flex fk:shrink-0 fk:items-center fk:justify-center ${className}`}
+      data-knowledge-type={format.icon}
       role="img"
     >
-      <Glyph className="fk:size-3.5" strokeWidth={2.25} />
+      <Icon size={size} />
     </span>
   );
 }

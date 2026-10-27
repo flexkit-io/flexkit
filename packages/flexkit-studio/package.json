@@ -136,6 +136,7 @@
     "@tiptap/html": "2.27.1",
     "@tiptap/pm": "2.27.1",
     "@uiw/codemirror-themes": "4.25.11",
+    "@untitledui/file-icons": "0.0.9",
     "@vercel/blob": "0.25.0",
     "ai": "6.0.116",
     "boring-avatars": "2.0.4",

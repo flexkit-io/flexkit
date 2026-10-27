@@ -249,34 +249,25 @@ export function parseKnowledgeUrl(value: string): { error: string } | { url: str
   return { url: url.toString() };
 }
 
-export type KnowledgeTypeTone = 'red' | 'blue' | 'amber' | 'violet' | 'slate' | 'teal';
+/** The Untitled UI file icon drawn for a format (see `KnowledgeTypeIcon`). */
+export type KnowledgeFileIcon = 'pdf' | 'docx' | 'pptx' | 'document' | 'txt' | 'html';
 
 export interface KnowledgeFormat {
   /** How people call the format: "PDF", "Word", "Web page". */
   label: string;
-  /** Short code printed on the type mark, as a file manager would. */
-  code: string;
-  tone: KnowledgeTypeTone;
+  icon: KnowledgeFileIcon;
 }
 
-const WEB_PAGE_FORMAT: KnowledgeFormat = { code: 'WEB', label: 'Web page', tone: 'teal' };
-const TEXT_FORMAT: KnowledgeFormat = { code: 'TXT', label: 'Text', tone: 'slate' };
+const WEB_PAGE_FORMAT: KnowledgeFormat = { icon: 'html', label: 'Web page' };
+const TEXT_FORMAT: KnowledgeFormat = { icon: 'txt', label: 'Text' };
 
 /** The formats the platform indexes, by media type; anything else it accepts reads as text. */
 export const KNOWLEDGE_FORMATS: { readonly [mimeType: string]: KnowledgeFormat } = {
-  'application/pdf': { code: 'PDF', label: 'PDF', tone: 'red' },
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {
-    code: 'DOC',
-    label: 'Word',
-    tone: 'blue',
-  },
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation': {
-    code: 'PPT',
-    label: 'PowerPoint',
-    tone: 'amber',
-  },
-  'text/markdown': { code: 'MD', label: 'Markdown', tone: 'violet' },
-  'text/html': { code: 'HTML', label: 'HTML', tone: 'teal' },
+  'application/pdf': { icon: 'pdf', label: 'PDF' },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: 'docx', label: 'Word' },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: 'pptx', label: 'PowerPoint' },
+  'text/markdown': { icon: 'document', label: 'Markdown' },
+  'text/html': { icon: 'html', label: 'HTML' },
   'text/plain': TEXT_FORMAT,
 };
 
@@ -521,13 +512,4 @@ export function setStoredKnowledgeViewMode(mode: KnowledgeViewMode): void {
   } catch {
     // Private mode or blocked storage: the choice lasts for the session only.
   }
-}
-
-export type KnowledgeTypeBadge = Pick<KnowledgeFormat, 'code' | 'tone'>;
-
-/** The colored type mark of a document, from the same format table as its label. */
-export function getKnowledgeTypeBadge(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): KnowledgeTypeBadge {
-  const { code, tone } = getKnowledgeFormat(source);
-
-  return { code, tone };
 }

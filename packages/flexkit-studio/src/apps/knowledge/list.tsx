@@ -420,7 +420,7 @@ function SourcePreview({ source }: { source: KnowledgeSource }): JSX.Element {
         </div>
       ) : (
         <div className="fk:flex fk:h-full fk:items-center fk:justify-center">
-          <KnowledgeTypeIcon className="fk:size-12! fk:rounded-xl! fk:[&>svg]:size-6" source={source} />
+          <KnowledgeTypeIcon size={56} source={source} />
         </div>
       )}
     </div>

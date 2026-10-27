@@ -634,6 +634,9 @@ importers:
       '@uiw/codemirror-themes':
         specifier: 4.25.11
         version: 4.25.11(@codemirror/language@6.12.4)(@codemirror/state@6.7.2)(@codemirror/view@6.43.10)
+      '@untitledui/file-icons':
+        specifier: 0.0.9
+        version: 0.0.9(react@19.2.5)
       '@vercel/blob':
         specifier: 0.25.0
         version: 0.25.0
@@ -6049,6 +6052,11 @@ packages:
     resolution: {integrity: sha512-nAB74NfSNKknqQ1RrYj6uz8FcXEomu/MATJZxh/x+BArzN2U3JbOYC0APYzUIGhVY3m5hRxA8VPNdPBoG8txlA==}
     cpu: [x64]
     os: [win32]
+
+  '@untitledui/file-icons@0.0.9':
+    resolution: {integrity: sha512-wz3btNnSSv2hTujgyxEFL21oyjPtGTj3osU8ZEMe8nwdlmLQEILLe96NMg9b1ciiOC5UOWNDeYIt7IfxEM6qtg==}
+    peerDependencies:
+      react: '>= 18'
 
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
@@ -17638,6 +17646,10 @@ snapshots:
 
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
+
+  '@untitledui/file-icons@0.0.9(react@19.2.5)':
+    dependencies:
+      react: 19.2.5
 
   '@upsetjs/venn.js@2.0.0':
     optionalDependencies:

@@ -16,7 +16,6 @@ import {
   type KnowledgeSource,
   type KnowledgeVersion,
   getKnowledgeFormat,
-  getKnowledgeTypeBadge,
   getStoredKnowledgeViewMode,
   KNOWLEDGE_FORMATS,
   setStoredKnowledgeViewMode,
@@ -231,40 +230,20 @@ describe('locator, warning and space helpers', () => {
   });
 });
 
-describe('getKnowledgeTypeBadge', () => {
-  it('marks each format with the color a file manager would', () => {
-    assert.deepEqual(getKnowledgeTypeBadge(source({ mimeType: 'application/pdf' })), { code: 'PDF', tone: 'red' });
-    assert.deepEqual(
-      getKnowledgeTypeBadge(
-        source({ mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-      ),
-      { code: 'DOC', tone: 'blue' }
-    );
-    assert.deepEqual(
-      getKnowledgeTypeBadge(
-        source({ mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' })
-      ),
-      { code: 'PPT', tone: 'amber' }
-    );
-    assert.deepEqual(getKnowledgeTypeBadge(source({ mimeType: 'text/markdown' })), { code: 'MD', tone: 'violet' });
-    assert.deepEqual(getKnowledgeTypeBadge(source({ mimeType: 'text/plain' })), { code: 'TXT', tone: 'slate' });
-    assert.deepEqual(getKnowledgeTypeBadge(source({ mimeType: 'text/html' })), { code: 'HTML', tone: 'teal' });
-    assert.deepEqual(getKnowledgeTypeBadge(source({ kind: 'url', mimeType: 'text/html' })), {
-      code: 'WEB',
-      tone: 'teal',
-    });
-  });
-});
-
 describe('getKnowledgeFormat', () => {
-  it('names and marks every format from the same table, so label and mark never disagree', () => {
+  it('names and draws every format from the same table, so label and icon never disagree', () => {
     for (const [mimeType, format] of Object.entries(KNOWLEDGE_FORMATS)) {
       const entry = source({ mimeType });
 
       assert.equal(getKnowledgeKindLabel(entry), format.label);
-      assert.deepEqual(getKnowledgeTypeBadge(entry), { code: format.code, tone: format.tone });
+      assert.equal(getKnowledgeFormat(entry).icon, format.icon);
     }
 
+    assert.deepEqual(getKnowledgeFormat(source({ mimeType: 'application/pdf' })), { icon: 'pdf', label: 'PDF' });
+    assert.deepEqual(getKnowledgeFormat(source({ kind: 'url', mimeType: 'text/html' })), {
+      icon: 'html',
+      label: 'Web page',
+    });
     assert.equal(getKnowledgeFormat(source({ mimeType: 'application/octet-stream' })).label, 'Text');
   });
 });
