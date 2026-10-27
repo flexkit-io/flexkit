@@ -1,5 +1,11 @@
 # @flexkit/agent-protocol
 
+## 0.3.11
+
+### Patch Changes
+
+- 8d99f93: Chat attachments and file parts can carry the file's SHA-256 (`sha256`) and, when a chat is read, the Knowledge document with the same content (`knowledgeSourceId`).
+
 ## 0.3.10
 
 ### Patch Changes
