@@ -2,4 +2,4 @@
 '@flexkit/studio': patch
 ---
 
-New Graph app in the Studio: pick an entity and a sample size and see the records and their relationships as a force-laid-out graph on a WebGL canvas (sigma.js), with a legend per entity and a selection panel. First step of the graph exploration feature.
+New Graph app in the Studio: explore records as nodes and relationships on a WebGL canvas. Search a record or start from an entity, expand a node's relationships page by page, hide nodes, pin positions, switch entities on and off in the legend, and open a record from the inspector. Desk lists get an "Open in Graph" button for the selected records and the record drawer a "View in Graph" button.

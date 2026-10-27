@@ -1,18 +1,12 @@
 import type { JSX } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useConfig } from '../../core/config/config-context';
-import { SidebarInset, SidebarProvider } from '../../ui';
+import { readSidebarCookieState, SidebarInset, SidebarProvider } from '../../ui';
 import { AutomationsSidebar } from './sidebar';
-
-const SIDEBAR_COOKIE_NAME = 'flexkit:sidebar:state';
 
 export function Root(): JSX.Element {
   const { currentProjectId } = useConfig();
-  const defaultOpen =
-    document.cookie
-      .split('; ')
-      .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
-      ?.split('=')[1] !== 'false';
+  const defaultOpen = readSidebarCookieState();
 
   if (!currentProjectId) {
     return (

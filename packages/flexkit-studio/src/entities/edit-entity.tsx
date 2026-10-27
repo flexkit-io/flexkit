@@ -32,6 +32,7 @@ import { type Action, type ActionEditEntity } from './types';
 const RecordKnowledgePanel = lazy(() =>
   import('../apps/knowledge/record-links').then((m) => ({ default: m.RecordKnowledgePanel }))
 );
+const RecordGraphButton = lazy(() => import('../apps/graph/entry').then((m) => ({ default: m.RecordGraphButton })));
 
 type Props = {
   action: ActionEditEntity;
@@ -252,6 +253,21 @@ export default function EditEntity({ action, depth, isFocused, nested }: Props):
                 ))}
               </SelectContent>
             </Select>
+          ) : null}
+          {entitySchema ? (
+            <Suspense fallback={null}>
+              <RecordGraphButton
+                entityName={entitySchema.name}
+                onNavigate={() => {
+                  // Dirty edits get the usual prompt; the drawer stays over the
+                  // graph until they are saved or discarded.
+                  if (handleBeforeClose()) {
+                    handleClose(action._id);
+                  }
+                }}
+                recordId={entityId}
+              />
+            </Suspense>
           ) : null}
           <SaveButton handleSave={handleSave} isLoading={mutationData.loading} />
         </>

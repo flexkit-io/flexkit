@@ -14,6 +14,16 @@ import { Skeleton } from './skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip';
 
 const SIDEBAR_COOKIE_NAME = 'flexkit:sidebar:state';
+
+/** Whether the sidebar was last left open, as remembered in the cookie; open when unknown. */
+function readSidebarCookieState(): boolean {
+  return (
+    document.cookie
+      .split('; ')
+      .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+      ?.split('=')[1] !== 'false'
+  );
+}
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = '16rem';
 const SIDEBAR_WIDTH_MOBILE = '18rem';
@@ -654,6 +664,7 @@ function SidebarMenuSubButton({
 }
 
 export {
+  readSidebarCookieState,
   Sidebar,
   SidebarContent,
   SidebarFooter,
