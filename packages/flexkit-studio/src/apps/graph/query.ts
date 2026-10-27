@@ -2,8 +2,10 @@ import type { Attribute, Entity } from '../../core/types';
 import {
   captionOf,
   edgeOf,
+  formatDetailValue,
   getDisplaySelection,
   getEntity,
+  getEntityLabel,
   getGraphEntities,
   getRelationshipAttributes,
   nodeKey,
@@ -94,8 +96,8 @@ function relationshipOfKey(key: string, entity: Entity): Attribute | undefined {
   return getRelationshipAttributes(entity).find((attribute) => attribute.name === name);
 }
 
-/** The entity of a record: its `__typename` when the API sent one, else the field it came under. */
-export function entityOfRecord(record: GraphRecord, fallback: Entity, schema: Entity[]): Entity {
+/** The entity of a record: its `__typename` when the API sent one, else the field it came under, if that names one. */
+export function entityOfRecord(record: GraphRecord, fallback: Entity | undefined, schema: Entity[]): Entity | undefined {
   const typename = record.__typename;
 
   return (typeof typename === 'string' && getEntity(schema, typename)) || fallback;
@@ -121,11 +123,12 @@ export function captionFromRecord(record: GraphRecord, entity: Entity | undefine
 }
 
 /**
- * Nodes and edges from a query result: every object with an `_id` under a
- * root field named after an entity becomes a node, every relationship field
- * selected on it an edge to the related nodes. A record's `__typename`
- * decides its entity when present, so an alias cannot mislabel it. Fields
- * the schema does not know are ignored.
+ * Nodes and edges from a query result: every object with an `_id` whose
+ * `__typename` names an entity becomes a node, as does one under a root
+ * field named after an entity's plural when the typename is missing; every
+ * relationship field selected on it is an edge to the related nodes. A
+ * record seen again with a better caption is re-captioned. Fields the schema
+ * does not know are ignored.
  */
 export function graphFromQueryResult({
   data,
@@ -139,19 +142,22 @@ export function graphFromQueryResult({
   const nodes = new Map<string, GraphNode>();
   const edges = new Map<string, GraphEdge>();
 
-  const addRecord = (record: GraphRecord, fallback: Entity): GraphNode => {
+  const addRecord = (record: GraphRecord, fallback: Entity | undefined): GraphNode | null => {
     const entity = entityOfRecord(record, fallback, schema);
+
+    if (!entity) {
+      return null;
+    }
+
     const key = nodeKey(entity.name, record._id);
+    const label = captionFromRecord(record, entity, scope);
     const existing = nodes.get(key);
-    const node: GraphNode = existing ?? {
-      key,
-      entity: entity.name,
-      id: record._id,
-      label: captionFromRecord(record, entity, scope),
-    };
+    const node: GraphNode = existing ?? { key, entity: entity.name, id: record._id, label };
 
     if (!existing) {
       nodes.set(key, node);
+    } else if (existing.label === existing.id && label !== record._id) {
+      existing.label = label;
     }
 
     Object.entries(record).forEach(([field, value]) => {
@@ -165,7 +171,7 @@ export function graphFromQueryResult({
       collectRecords(value).forEach((relatedRecord) => {
         const target = addRecord(relatedRecord, relatedEntity);
 
-        if (target.key !== node.key) {
+        if (target && target.key !== node.key) {
           const edge = edgeOf(node, target, attribute);
 
           if (!edges.has(edge.key)) {
@@ -179,11 +185,8 @@ export function graphFromQueryResult({
   };
 
   Object.entries(data ?? {}).forEach(([field, value]) => {
-    const entity = entityOfRootField(field, schema);
-
-    if (entity) {
-      collectRecords(value).forEach((record) => addRecord(record, entity));
-    }
+    const fallback = entityOfRootField(field, schema);
+    collectRecords(value).forEach((record) => addRecord(record, fallback));
   });
 
   return { nodes: [...nodes.values()], edges: [...edges.values()], counts: {} };
@@ -203,49 +206,33 @@ export function exampleQueries(schema: Entity[], scope: string): ExampleQuery[] 
 
     return {
       entity: entity.name,
-      title: entity.menu?.label ?? entity.plural,
+      title: getEntityLabel(entity),
       query: `query {\n  ${entity.plural}(limit: 25) {\n    _id\n${display ? `    ${display}\n` : ''}${relationships.join('\n')}\n  }\n}`,
     };
   });
 }
 
+/** A table cell: related records as a count, scoped values through the inspector's formatter. */
 function formatCell(value: unknown, scope: string): string {
-  if (value === null || value === undefined) {
-    return '';
+  const records = collectRecords(value);
+
+  if (records.length > 0) {
+    return `${records.length} ${records.length === 1 ? 'record' : 'records'}`;
   }
 
-  if (Array.isArray(value)) {
-    const records = collectRecords(value);
-
-    if (records.length > 0) {
-      return `${records.length} ${records.length === 1 ? 'record' : 'records'}`;
-    }
-
-    const [first] = value as unknown[];
-
-    if (typeof first === 'object' && first !== null && scope in (first as object)) {
-      return formatCell((first as { [key: string]: unknown })[scope], scope);
-    }
-
-    return value.map((item) => formatCell(item, scope)).join(', ');
+  if (Array.isArray(value) && !(typeof value[0] === 'object' && value[0] !== null)) {
+    return value.map((item) => formatDetailValue(item, scope)).join(', ');
   }
 
-  if (typeof value === 'object') {
-    const records = collectRecords(value);
-
-    return records.length > 0
-      ? `${records.length} ${records.length === 1 ? 'record' : 'records'}`
-      : JSON.stringify(value);
-  }
-
-  return String(value);
+  return formatDetailValue(value, scope);
 }
 
-/** The root records of a result as a table: one column per selected field. */
+/** The root records of a result as a table: one column per field the shown rows select. */
 export function tableFromResult(data: QueryResult | null | undefined, scope: string): QueryTable {
   const records = Object.values(data ?? {}).flatMap(collectRecords);
+  const shown = records.slice(0, TABLE_ROW_LIMIT);
   const columns: string[] = [];
-  records.forEach((record) => {
+  shown.forEach((record) => {
     Object.keys(record).forEach((key) => {
       if (key !== '__typename' && !columns.includes(key)) {
         columns.push(key);
@@ -255,9 +242,9 @@ export function tableFromResult(data: QueryResult | null | undefined, scope: str
 
   return {
     columns,
-    rows: records
-      .slice(0, TABLE_ROW_LIMIT)
-      .map((record) => Object.fromEntries(columns.map((column) => [column, formatCell(record[column], scope)]))),
+    rows: shown.map((record) =>
+      Object.fromEntries(columns.map((column) => [column, formatCell(record[column], scope)]))
+    ),
     total: records.length,
   };
 }

@@ -32,12 +32,21 @@ function useGraphQLError(): GraphQLErrorContextValue {
   return ctx;
 }
 
+/**
+ * Context flag for operations the user writes themselves (the Graph app's
+ * Query view): a validation error there is a typo, not a deployment that
+ * drifted from the local schema, so it must not raise the mismatch banner.
+ */
+export const USER_QUERY_CONTEXT = { userQuery: true } as const;
+
 function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): ApolloLink {
-  return new ErrorLink(({ error }) => {
+  return new ErrorLink(({ error, operation }) => {
     const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(error);
 
     if (schemaMismatchMessage) {
-      setSchemaErrorMessage(schemaMismatchMessage);
+      if (operation.getContext().userQuery !== true) {
+        setSchemaErrorMessage(schemaMismatchMessage);
+      }
 
       return;
     }

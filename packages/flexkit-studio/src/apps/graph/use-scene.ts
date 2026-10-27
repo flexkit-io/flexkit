@@ -4,6 +4,7 @@ import { useCallback, useReducer, useState } from 'react';
 import type { Dispatch } from 'react';
 import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
+import { USER_QUERY_CONTEXT } from '../../graphql-client/graphql-context';
 import { toast } from '../../ui';
 import type { Attribute, Entity } from '../../core/types';
 import {
@@ -157,13 +158,15 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
           query: document,
           fetchPolicy: 'no-cache',
           errorPolicy: 'all',
+          context: USER_QUERY_CONTEXT,
         });
         const data = result.data ?? null;
         const graph = graphFromQueryResult({ data, schema, scope });
 
-        // A failed query, or one that draws nothing, leaves the canvas as it was.
+        // A failed query, or one that draws nothing, leaves the canvas as it
+        // was; partial data beside errors is added to it rather than replacing it.
         if (graph.nodes.length > 0) {
-          if (!append) {
+          if (!append && !result.error) {
             dispatch({ type: 'clear' });
           }
 

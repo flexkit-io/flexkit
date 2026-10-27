@@ -5,19 +5,25 @@ import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
 import { buildClientSchema, getIntrospectionQuery } from 'graphql';
 import type { GraphQLSchema, IntrospectionQuery } from 'graphql';
+import { USER_QUERY_CONTEXT } from '../../graphql-client/graphql-context';
 
-/** One introspection per deployed schema (project id + schema hash), so a deployment while the Studio is open refreshes it. */
-const schemaCache = new Map<string, Promise<GraphQLSchema>>();
+/** One introspection per project, keyed by its deployed schema hash so a deployment while the Studio is open refreshes it. */
+const schemaCache = new Map<string, { hash: string; schema: Promise<GraphQLSchema> }>();
 
-function introspect(client: ReturnType<typeof useApolloClient>, cacheKey: string): Promise<GraphQLSchema> {
-  const cached = schemaCache.get(cacheKey);
+function introspect(client: ReturnType<typeof useApolloClient>, projectId: string, hash: string): Promise<GraphQLSchema> {
+  const cached = schemaCache.get(projectId);
 
-  if (cached) {
-    return cached;
+  if (cached && cached.hash === hash) {
+    return cached.schema;
   }
 
-  const pending = client
-    .query<IntrospectionQuery>({ query: gql(getIntrospectionQuery()), fetchPolicy: 'network-only' })
+  // Not cached by Apollo: the introspection tree is large and only this hook reads it.
+  const schema = client
+    .query<IntrospectionQuery>({
+      query: gql(getIntrospectionQuery()),
+      fetchPolicy: 'no-cache',
+      context: USER_QUERY_CONTEXT,
+    })
     .then((result) => {
       if (!result.data) {
         throw new Error('The schema could not be introspected.');
@@ -25,10 +31,14 @@ function introspect(client: ReturnType<typeof useApolloClient>, cacheKey: string
 
       return buildClientSchema(result.data);
     });
-  pending.catch(() => schemaCache.delete(cacheKey));
-  schemaCache.set(cacheKey, pending);
+  schema.catch(() => {
+    if (schemaCache.get(projectId)?.schema === schema) {
+      schemaCache.delete(projectId);
+    }
+  });
+  schemaCache.set(projectId, { hash, schema });
 
-  return pending;
+  return schema;
 }
 
 /**
@@ -48,7 +58,7 @@ export function useGraphQLSchema(
     }
 
     let cancelled = false;
-    introspect(client, `${projectId}:${schemaHash ?? ''}`)
+    introspect(client, projectId, schemaHash ?? '')
       .then((loaded) => {
         if (!cancelled) {
           setSchema(loaded);

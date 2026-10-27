@@ -186,18 +186,17 @@ export function Root(): JSX.Element {
       />
       <SidebarInset className="fk:min-w-0">
         <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0" data-testid="graph-app">
-          {mode === 'query' ? (
-            <QueryPane
-              isRunning={isLoading}
-              key={currentProjectId}
-              onRun={runQuery}
-              projectId={currentProjectId}
-              schema={schema}
-              schemaHash={currentProject?.schemaHash ?? null}
-              scope={scopeField}
-              theme={theme}
-            />
-          ) : null}
+          <QueryPane
+            hidden={mode !== 'query'}
+            isRunning={isLoading}
+            key={currentProjectId}
+            onRun={runQuery}
+            projectId={currentProjectId}
+            schema={schema}
+            schemaHash={currentProject?.schemaHash ?? null}
+            scope={scopeField}
+            theme={theme}
+          />
           <div className="fk:relative fk:min-w-0 fk:flex-1 fk:overflow-hidden fk:bg-background">
             <div className="fk:pointer-events-none fk:absolute fk:left-3 fk:right-3 fk:top-3 fk:z-10 fk:flex fk:flex-wrap fk:items-start fk:justify-between fk:gap-2">
               <div className="fk:pointer-events-auto fk:flex fk:items-center fk:gap-2">

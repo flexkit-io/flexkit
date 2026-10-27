@@ -96,9 +96,10 @@ describe('captionFromRecord', () => {
 
 describe('entityOfRecord', () => {
   it('trusts the typename over the field the record came under', () => {
-    assert.equal(entityOfRecord({ _id: 'b1', __typename: 'brand' }, product, schema).name, 'brand');
-    assert.equal(entityOfRecord({ _id: 'b1', __typename: 'unknown' }, product, schema).name, 'product');
-    assert.equal(entityOfRecord({ _id: 'b1' }, product, schema).name, 'product');
+    assert.equal(entityOfRecord({ _id: 'b1', __typename: 'brand' }, product, schema)?.name, 'brand');
+    assert.equal(entityOfRecord({ _id: 'b1', __typename: 'unknown' }, product, schema)?.name, 'product');
+    assert.equal(entityOfRecord({ _id: 'b1' }, product, schema)?.name, 'product');
+    assert.equal(entityOfRecord({ _id: 'b1' }, undefined, schema), undefined);
   });
 });
 
@@ -139,6 +140,26 @@ describe('graphFromQueryResult', () => {
       nodes.map((node) => [node.key, node.label]),
       [['brand:b1', 'Fjell']]
     );
+  });
+
+  it('draws records under an aliased root field by their typename', () => {
+    const data = { latest: [{ _id: 'p1', __typename: 'product', sku: 'A1' }], total: 3 };
+    const { nodes } = graphFromQueryResult({ data, schema, scope: 'en' });
+
+    assert.deepEqual(
+      nodes.map((node) => [node.key, node.label]),
+      [['product:p1', 'A1']]
+    );
+  });
+
+  it('re-captions a record first seen with only its id', () => {
+    const data = {
+      products: [{ _id: 'p1', brand: [{ _id: 'b1' }] }],
+      brands: [{ _id: 'b1', title: 'Fjell' }],
+    };
+    const { nodes } = graphFromQueryResult({ data, schema, scope: 'en' });
+
+    assert.equal(nodes.find((node) => node.key === 'brand:b1')?.label, 'Fjell');
   });
 
   it('ignores fields the schema does not know and empty results', () => {
@@ -183,6 +204,15 @@ describe('tableFromResult', () => {
     assert.deepEqual(table.columns, ['_id', 'name', 'brand', 'price', 'flag', 'sku']);
     assert.deepEqual(table.rows[0], { _id: 'p1', name: 'Parka', brand: '1 record', price: '12.5', flag: '', sku: '' });
     assert.equal(table.total, 2);
+  });
+
+  it('falls back to the default scope and lists plain arrays', () => {
+    const table = tableFromResult(
+      { products: [{ _id: 'p1', name: [{ default: 'Parka', en: null }], tags: ['a', 'b'] }] },
+      'en'
+    );
+
+    assert.deepEqual(table.rows[0], { _id: 'p1', name: 'Parka', tags: 'a, b' });
   });
 });
 

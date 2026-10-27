@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { JSX } from 'react';
 import { ChevronDownIcon, LoaderCircleIcon, PlayIcon } from 'lucide-react';
-import { getLocalStorage } from '../../core/local-storage';
 import type { Entity } from '../../core/types';
 import {
   Button,
@@ -24,6 +23,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '../../ui';
+import { readComposerDraft, writeComposerDraft } from '../ai/agent/composer-draft';
 import { QueryEditor } from './query-editor';
 import {
   exampleQueries,
@@ -43,26 +43,12 @@ export interface QueryPaneProps {
   scope: string;
   theme: 'light' | 'dark';
   isRunning: boolean;
+  /** Kept mounted while the Explore view shows, so the last run survives the switch. */
+  hidden: boolean;
   onRun: (query: string, options: { append: boolean }) => Promise<QueryRun>;
 }
 
 type ResultTab = 'graph' | 'table' | 'json';
-
-function readStoredQuery(projectId: string): string {
-  try {
-    return getLocalStorage()?.getItem(queryStorageKey(projectId)) ?? '';
-  } catch {
-    return '';
-  }
-}
-
-function storeQuery(projectId: string, query: string): void {
-  try {
-    getLocalStorage()?.setItem(queryStorageKey(projectId), query);
-  } catch {
-    // Storage may be blocked; the query just is not remembered.
-  }
-}
 
 /**
  * The Query view: a GraphQL editor whose result is drawn on the canvas.
@@ -76,19 +62,32 @@ export function QueryPane({
   scope,
   theme,
   isRunning,
+  hidden,
   onRun,
 }: QueryPaneProps): JSX.Element {
-  const graphqlSchema = useGraphQLSchema(projectId, schemaHash);
+  // The schema is introspected once the view has been opened, not on every Graph visit.
+  const [opened, setOpened] = useState(!hidden);
+  const graphqlSchema = useGraphQLSchema(opened ? projectId : undefined, schemaHash);
   const examples = useMemo(() => exampleQueries(schema, scope), [schema, scope]);
-  const [query, setQuery] = useState(() => readStoredQuery(projectId) || examples[0]?.query || '');
+  const [query, setQuery] = useState(() => readComposerDraft(queryStorageKey(projectId)) || examples[0]?.query || '');
   const [append, setAppend] = useState(false);
   const [tab, setTab] = useState<ResultTab>('graph');
   const [run, setRun] = useState<QueryRun | null>(null);
-  const table = useMemo(() => (run?.data ? tableFromResult(run.data, scope) : null), [run, scope]);
-  const json = useMemo(() => (run?.data ? JSON.stringify(stripTypename(run.data), null, 2) : null), [run]);
+  // Built for the open tab only: a large result is not tabulated or pretty-printed unseen.
+  const table = useMemo(() => (tab === 'table' && run?.data ? tableFromResult(run.data, scope) : null), [tab, run, scope]);
+  const json = useMemo(
+    () => (tab === 'json' && run?.data ? JSON.stringify(stripTypename(run.data), null, 2) : null),
+    [tab, run]
+  );
 
   useEffect(() => {
-    storeQuery(projectId, query);
+    if (!hidden) {
+      setOpened(true);
+    }
+  }, [hidden]);
+
+  useEffect(() => {
+    writeComposerDraft(queryStorageKey(projectId), query);
   }, [projectId, query]);
 
   const execute = async (): Promise<void> => {
@@ -102,8 +101,9 @@ export function QueryPane({
   return (
     <section
       aria-label="Query"
-      className="fk:flex fk:w-[26rem] fk:shrink-0 fk:flex-col fk:border-r fk:bg-background"
+      className={`fk:w-[26rem] fk:shrink-0 fk:flex-col fk:border-r fk:bg-background ${hidden ? 'fk:hidden' : 'fk:flex'}`}
       data-testid="graph-query-pane"
+      hidden={hidden}
     >
       <div className="fk:flex fk:h-12 fk:shrink-0 fk:items-center fk:gap-2 fk:border-b fk:pl-4 fk:pr-3">
         <span className="fk:text-sm fk:font-semibold">Query</span>
