@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BookOpenIcon,
   DownloadIcon,
+  EllipsisVerticalIcon,
   ExternalLinkIcon,
   LoaderCircle,
   RefreshCwIcon,
@@ -21,6 +22,11 @@ import {
   AlertDescription,
   Button,
   Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Input,
   Label,
   PermissionTooltip,
@@ -42,7 +48,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '../../ui/primitives/alert-dialog';
 import { fetcher, knowledgePaths, type KnowledgeApi, type ProjectSpace } from './api';
 import {
@@ -328,6 +333,7 @@ export function Source(): JSX.Element {
   const isViewing = useIsViewing();
   const [isBusy, setIsBusy] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
   const { data, error, isLoading, mutate } = useSWR<KnowledgeSourceDetail>(
     projectId && sourceId ? knowledgePaths(projectId).source(sourceId) : null,
@@ -426,14 +432,6 @@ export function Source(): JSX.Element {
       <SourcePageHeader
         actions={
           <div className="fk:flex fk:items-center fk:gap-2">
-            {source.path ? (
-              <Button asChild size="sm" variant="outline">
-                <a download={source.title} href={knowledgePaths(projectId).file(source.id)}>
-                  <DownloadIcon />
-                  Download
-                </a>
-              </Button>
-            ) : null}
             <PermissionTooltip disabled={!canMutate}>
               <Button
                 disabled={!canMutate || isWorking || status.tone === 'busy'}
@@ -445,15 +443,41 @@ export function Source(): JSX.Element {
                 Re-index
               </Button>
             </PermissionTooltip>
-            <AlertDialog>
-              <PermissionTooltip disabled={!canMutate}>
-                <AlertDialogTrigger asChild>
-                  <Button disabled={!canMutate || isWorking} size="sm" variant="outline">
-                    <Trash2 />
-                    Remove
-                  </Button>
-                </AlertDialogTrigger>
-              </PermissionTooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button aria-label="More actions" data-knowledge-source-menu size="icon-sm" variant="outline">
+                  <EllipsisVerticalIcon className="fk:size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {source.path ? (
+                  <DropdownMenuItem asChild>
+                    <a download={source.title} href={knowledgePaths(projectId).file(source.id)}>
+                      <DownloadIcon />
+                      Download
+                    </a>
+                  </DropdownMenuItem>
+                ) : null}
+                {source.originUrl ? (
+                  <DropdownMenuItem asChild>
+                    <a href={source.originUrl} rel="noreferrer" target="_blank">
+                      <ExternalLinkIcon />
+                      Open page
+                    </a>
+                  </DropdownMenuItem>
+                ) : null}
+                {source.path || source.originUrl ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuItem
+                  disabled={!canMutate || isWorking}
+                  variant="destructive"
+                  onSelect={() => setIsConfirmingRemoval(true)}
+                >
+                  <Trash2 />
+                  Remove
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AlertDialog open={isConfirmingRemoval} onOpenChange={setIsConfirmingRemoval}>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Remove this document?</AlertDialogTitle>
