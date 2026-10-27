@@ -470,6 +470,10 @@ export function GraphCanvas({
         customEdgeState: { isNear: false, isSelected: false },
         customGraphState: { isDense: graph.order > DENSE_NODES, isZoomedIn: false },
         settings: {
+          // Every render starts with a resize, which would throw while the
+          // app is hidden but kept mounted; a hidden canvas renders at 1 px
+          // instead and the size observer restores it when it shows again.
+          allowInvalidContainer: true,
           itemSizesReference: 'screen',
           enableNodeDrag: true,
           renderEdgeLabels: false,
