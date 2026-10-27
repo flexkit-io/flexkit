@@ -58,11 +58,77 @@ function nodeSize(degree: number): number {
   return 5 + Math.min(10, Math.sqrt(degree) * 2);
 }
 
-function randomAround(x: number, y: number, radius: number): { x: number; y: number } {
-  const angle = Math.random() * Math.PI * 2;
-  const distance = radius * (0.5 + Math.random() * 0.5);
+type Point = { x: number; y: number };
 
-  return { x: x + Math.cos(angle) * distance, y: y + Math.sin(angle) * distance };
+/** The ring new nodes start on: wider the more of them share an anchor, so they do not explode apart. */
+function ringRadius(count: number): number {
+  return PLACEMENT_RADIUS * (0.8 + Math.sqrt(count) * 0.6);
+}
+
+/** Evenly spaced positions on a ring, with a little jitter so no two coincide. */
+function ringPositions(center: Point, count: number, radius: number): Point[] {
+  return Array.from({ length: count }, (_, index) => {
+    const angle = (index / count) * Math.PI * 2 + Math.random() * 0.3;
+    const distance = radius * (0.9 + Math.random() * 0.2);
+
+    return { x: center.x + Math.cos(angle) * distance, y: center.y + Math.sin(angle) * distance };
+  });
+}
+
+function isPositioned(graph: Graph<NodeAttributes, EdgeAttributes>, key: string): boolean {
+  return !Number.isNaN(graph.getNodeAttribute(key, 'x'));
+}
+
+/** Centre and reach of the nodes already placed, to put unanchored newcomers beyond them. */
+function placedExtent(
+  graph: Graph<NodeAttributes, EdgeAttributes>,
+  placed: string[]
+): { center: Point; reach: number } {
+  if (placed.length === 0) {
+    return { center: { x: 0, y: 0 }, reach: 0 };
+  }
+
+  const center = placed.reduce(
+    (sum, key) => ({ x: sum.x + graph.getNodeAttribute(key, 'x'), y: sum.y + graph.getNodeAttribute(key, 'y') }),
+    { x: 0, y: 0 }
+  );
+  center.x /= placed.length;
+  center.y /= placed.length;
+  const reach = placed.reduce(
+    (max, key) =>
+      Math.max(
+        max,
+        Math.hypot(graph.getNodeAttribute(key, 'x') - center.x, graph.getNodeAttribute(key, 'y') - center.y)
+      ),
+    0
+  );
+
+  return { center, reach };
+}
+
+/**
+ * Places new nodes: those sharing an anchor already on the canvas go on a
+ * ring around it, the rest on a ring beyond everything placed so far.
+ */
+function placeNewNodes(graph: Graph<NodeAttributes, EdgeAttributes>, added: string[]): void {
+  const placed = graph.nodes().filter((key) => !added.includes(key) && isPositioned(graph, key));
+  const groups = new Map<string | null, string[]>();
+  added.forEach((key) => {
+    const anchor =
+      graph.neighbors(key).find((neighbour) => !added.includes(neighbour) && isPositioned(graph, neighbour)) ?? null;
+    groups.set(anchor, [...(groups.get(anchor) ?? []), key]);
+  });
+  groups.forEach((keys, anchor) => {
+    const center = anchor ? { x: graph.getNodeAttribute(anchor, 'x'), y: graph.getNodeAttribute(anchor, 'y') } : null;
+    const positions = center
+      ? ringPositions(center, keys.length, ringRadius(keys.length))
+      : (() => {
+          const extent = placedExtent(graph, placed);
+
+          return ringPositions(extent.center, keys.length, extent.reach + ringRadius(keys.length));
+        })();
+    positions.forEach((position, index) => graph.mergeNodeAttributes(keys[index]!, position));
+  });
 }
 
 /**
@@ -123,15 +189,17 @@ class PositionTracker {
 
 /**
  * Adds the scene's new nodes and edges to the graph, drops the removed ones
- * and places new nodes next to a neighbour already on the canvas.
+ * and places new nodes around what is already on the canvas. Reports what
+ * was added and whether anything was placed before.
  */
 function syncGraph(
   graph: Graph<NodeAttributes, EdgeAttributes>,
   scene: SceneState,
   colors: { [entity: string]: string }
-): boolean {
+): { changed: boolean; added: string[]; hadNodes: boolean } {
   let changed = false;
   const added: string[] = [];
+  const hadNodes = graph.order > 0;
 
   graph.forEachNode((key) => {
     if (!scene.nodes[key]) {
@@ -169,13 +237,7 @@ function syncGraph(
     }
   });
 
-  added.forEach((key) => {
-    const anchor = graph.neighbors(key).find((neighbour) => !Number.isNaN(graph.getNodeAttribute(neighbour, 'x')));
-    const position = anchor
-      ? randomAround(graph.getNodeAttribute(anchor, 'x'), graph.getNodeAttribute(anchor, 'y'), PLACEMENT_RADIUS)
-      : randomAround(0, 0, PLACEMENT_RADIUS * 2);
-    graph.mergeNodeAttributes(key, position);
-  });
+  placeNewNodes(graph, added);
 
   if (changed) {
     graph.forEachNode((key) => {
@@ -183,7 +245,7 @@ function syncGraph(
     });
   }
 
-  return changed;
+  return { changed, added, hadNodes };
 }
 
 /**
@@ -210,6 +272,10 @@ export function GraphCanvas({
   const layoutTimerRef = useRef<number | null>(null);
   const settleTimerRef = useRef<number | null>(null);
   const layoutDeadlineRef = useRef<number | null>(null);
+  /** Nodes held still for the running layout so only newcomers move. */
+  const heldRef = useRef<Set<string>>(new Set());
+  const pinnedRef = useRef<SceneState['pinned']>(scene.pinned);
+  pinnedRef.current = scene.pinned;
   /** The hovered node and the nodes and edges marked around it. */
   const hoverRef = useRef<{ key: string | null; nodes: string[]; edges: string[] }>({
     key: null,
@@ -241,13 +307,23 @@ export function GraphCanvas({
       layoutDeadlineRef.current = null;
       callbacksRef.current.onLayoutChange(false);
     }
+
+    const graph = graphRef.current;
+    heldRef.current.forEach((key) => {
+      if (graph?.hasNode(key)) {
+        graph.setNodeAttribute(key, 'fixed', pinnedRef.current[key] === true);
+      }
+    });
+    heldRef.current = new Set();
   }, []);
 
   // The worker reads `fixed` only when it (re)builds its matrices, so a new
   // supervisor is needed whenever pins change while a layout runs. The
-  // layout stops once the nodes stop moving, or at the budget.
+  // layout stops once the nodes stop moving, or at the budget. Nodes in
+  // `hold` stay where they are, so adding to a settled canvas moves only
+  // the newcomers instead of shaking everything.
   const startLayout = useCallback(
-    (budgetMs: number): void => {
+    (budgetMs: number, hold: string[] = []): void => {
       const graph = graphRef.current;
       stopLayout();
 
@@ -255,8 +331,12 @@ export function GraphCanvas({
         return;
       }
 
+      heldRef.current = new Set(hold.filter((key) => graph.hasNode(key)));
+      heldRef.current.forEach((key) => graph.setNodeAttribute(key, 'fixed', true));
+      const inferred = forceAtlas2.inferSettings(graph);
       const layout = new FA2LayoutSupervisor(graph, {
-        settings: { ...forceAtlas2.inferSettings(graph), adjustSizes: true, gravity: 1 },
+        // Gentle gravity keeps loose parts near the rest; the extra slowdown keeps the motion calm.
+        settings: { ...inferred, adjustSizes: true, gravity: 0.2, slowDown: (inferred.slowDown ?? 1) * 2 },
       });
       const startedAt = performance.now();
       const tracker = new PositionTracker(graph);
@@ -478,7 +558,7 @@ export function GraphCanvas({
       return;
     }
 
-    const changed = syncGraph(graph, scene, colors);
+    const { changed, added, hadNodes } = syncGraph(graph, scene, colors);
 
     if (!changed) {
       return;
@@ -487,7 +567,17 @@ export function GraphCanvas({
     rendererRef.current?.setGraphState({ isDense: graph.order > DENSE_NODES });
     // Nodes added under the pointer get their hover marks; marks of dropped nodes go.
     applyHover(graph.hasNode(hoverRef.current.key ?? '') ? hoverRef.current.key : null);
-    startLayout(layoutBudget(graph.order));
+
+    // Nothing to pull on: a bare sample stays on its ring.
+    if (graph.size === 0) {
+      stopLayout();
+
+      return;
+    }
+
+    // Adding to a placed canvas: hold what is there, settle the newcomers.
+    const hold = hadNodes && added.length > 0 ? graph.nodes().filter((key) => !added.includes(key)) : [];
+    startLayout(layoutBudget(hold.length > 0 ? added.length : graph.order), hold);
     // Nodes and edges only change with the scene version; colours are applied by their own effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [scene.version]);
@@ -518,7 +608,7 @@ export function GraphCanvas({
     let pinsChanged = false;
     graph.forEachNode((key, attributes) => {
       renderer.setNodeState(key, { isHidden: hidden.has(attributes.entity), isHighlighted: key === scene.selected });
-      const fixed = scene.pinned[key] === true;
+      const fixed = scene.pinned[key] === true || heldRef.current.has(key);
 
       if ((attributes.fixed ?? false) !== fixed) {
         graph.setNodeAttribute(key, 'fixed', fixed);
