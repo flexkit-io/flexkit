@@ -36,6 +36,21 @@ export interface GraphInspectorProps {
 }
 
 type ConnectionCount = { aggregate?: { count?: { nodes?: number } } };
+
+/**
+ * Black or white, whichever reads better on a palette color (`#rrggbb`): the
+ * yellows and greens are too light for white text.
+ */
+function getTextColorOn(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((offset) => {
+    const channel = parseInt(hex.slice(offset, offset + 2), 16) / 255;
+
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+  return luminance > 0.3 ? '#0a0a0a' : '#ffffff';
+}
 type DetailsResult = { [plural: string]: (GraphRecord & { _updatedAt?: string })[] };
 
 /**
@@ -76,6 +91,7 @@ export function GraphInspector({
   const relationships = entity ? getRelationshipAttributes(entity) : [];
   const attributes = entity ? getDetailAttributes(entity) : [];
   const updatedAt = record?._updatedAt ? new Date(record._updatedAt) : null;
+  const color = colors[node.entity] ?? '#71717a';
 
   return (
     <aside
@@ -85,12 +101,10 @@ export function GraphInspector({
     >
       <div className="fk:flex fk:flex-col fk:gap-2">
         <div className="fk:flex fk:items-center fk:justify-between fk:gap-2">
-          <span className="fk:inline-flex fk:items-center fk:gap-1.5 fk:rounded-full fk:bg-muted fk:px-2 fk:py-0.5 fk:text-xs fk:font-medium">
-            <span
-              aria-hidden="true"
-              className="fk:size-2 fk:rounded-full"
-              style={{ backgroundColor: colors[node.entity] ?? '#71717a' }}
-            />
+          <span
+            className="fk:inline-flex fk:items-center fk:rounded-full fk:px-2 fk:py-0.5 fk:text-xs fk:font-medium"
+            style={{ backgroundColor: color, color: getTextColorOn(color) }}
+          >
             {entity ? getEntityLabel(entity) : node.entity}
           </span>
           <Button aria-label="Close" className="fk:size-7" onClick={onClose} size="icon" variant="ghost">
@@ -98,29 +112,28 @@ export function GraphInspector({
           </Button>
         </div>
         <h2 className="fk:text-base fk:font-semibold fk:leading-snug fk:break-words">{node.label}</h2>
-        <div className="fk:flex fk:flex-wrap fk:gap-2">
-          <Button className="fk:h-8" onClick={() => onOpenRecord(node.key)} size="sm">
-            <SquareArrowOutUpRightIcon className="fk:size-3.5" />
+        <div className="fk:flex fk:gap-1.5">
+          <Button onClick={() => onOpenRecord(node.key)} size="xs">
+            <SquareArrowOutUpRightIcon />
             Open record
           </Button>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 aria-label="Expand every relationship"
-                className="fk:h-8"
                 disabled={isLoading}
                 onClick={() => onExpandAll(node.key)}
-                size="sm"
+                size="xs"
                 variant="outline"
               >
-                {isLoading ? <LoaderCircleIcon className="fk:size-3.5 fk:animate-spin" /> : <ExpandIcon className="fk:size-3.5" />}
+                {isLoading ? <LoaderCircleIcon className="fk:animate-spin" /> : <ExpandIcon />}
                 Expand
               </Button>
             </TooltipTrigger>
             <TooltipContent>Load the first related records of every relationship</TooltipContent>
           </Tooltip>
-          <Button aria-label="Hide this node" className="fk:h-8" onClick={() => onHide(node.key)} size="sm" variant="outline">
-            <EyeOffIcon className="fk:size-3.5" />
+          <Button aria-label="Hide this node" onClick={() => onHide(node.key)} size="xs" variant="outline">
+            <EyeOffIcon />
             Hide
           </Button>
         </div>

@@ -51,7 +51,7 @@ function buildSearchRequest(entities: Entity[], q: string): SearchRequestProps |
   };
 }
 
-/** Count-store totals per entity for the "Start from" list; absent for space-bound entities. */
+/** Count-store totals per entity for the "Nodes" list; absent for space-bound entities. */
 function useTotals(entities: Entity[]): { [plural: string]: number } {
   const countable = useMemo(() => getTotalEntities(entities), [entities]);
   const document = useMemo(() => gql(countable.length > 0 ? buildTotalsQuery(countable) : 'query GraphTotals { __typename }'), [countable]);
@@ -140,7 +140,7 @@ export function GraphSidebar({
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Start from</SidebarGroupLabel>
+          <SidebarGroupLabel>Nodes</SidebarGroupLabel>
           <SidebarMenu>
             {entities.map((entity) => (
               <SidebarMenuItem key={entity.name}>
