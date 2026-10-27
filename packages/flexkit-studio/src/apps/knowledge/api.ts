@@ -65,6 +65,8 @@ export const fetcher = async <T>(url: string): Promise<T> => {
 export function knowledgePaths(projectId: string): {
   /** The documents attached to every record of an entity type. */
   entitySources: (_entity: string) => string;
+  /** The original file of an uploaded document, served under its name. */
+  file: (_sourceId: string) => string;
   job: (_jobId: string) => string;
   /** The records a document is attached to, and the entity types it applies to. */
   links: (_sourceId: string) => string;
@@ -79,6 +81,7 @@ export function knowledgePaths(projectId: string): {
 
   return {
     entitySources: (entity) => `${basePath}/entities/${encodeURIComponent(entity)}/sources`,
+    file: (sourceId) => `${basePath}/sources/${encodeURIComponent(sourceId)}/file`,
     job: (jobId) => `${basePath}/jobs/${encodeURIComponent(jobId)}`,
     links: (sourceId) => `${basePath}/sources/${encodeURIComponent(sourceId)}/links`,
     passages: (sourceId, { from, to }) =>

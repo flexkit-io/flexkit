@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import { formatDistance } from 'date-fns';
-import { ArrowLeft, BookOpenIcon, ExternalLinkIcon, LoaderCircle, RefreshCwIcon, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpenIcon, ExternalLinkIcon, LoaderCircle, RefreshCwIcon } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
@@ -25,17 +25,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '../../ui';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '../../ui/primitives/alert-dialog';
 import { fetcher, knowledgePaths, type KnowledgeApi, type ProjectSpace } from './api';
 import {
   formatFileSize,
@@ -57,6 +46,7 @@ import {
   describeApiError,
   invalidateKnowledgeLists,
   PageMessage,
+  SourceActionsMenu,
   SourceIcon,
   StatusBadge,
   useProjectKnowledge,
@@ -319,7 +309,6 @@ export function Source(): JSX.Element {
   const canMutate = useCanMutate();
   const isViewing = useIsViewing();
   const [isBusy, setIsBusy] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
   const { data, error, isLoading, mutate } = useSWR<KnowledgeSourceDetail>(
     projectId && sourceId ? knowledgePaths(projectId).source(sourceId) : null,
@@ -348,7 +337,7 @@ export function Source(): JSX.Element {
   const { job, source } = data;
   const status = summarizeKnowledgeStatus(source, job);
   const version = source.currentVersion;
-  const isWorking = isDeleting || isReindexing;
+  const isWorking = isReindexing;
 
   async function reindex(): Promise<void> {
     setIsReindexing(true);
@@ -362,20 +351,6 @@ export function Source(): JSX.Element {
       toast.error(describeApiError(reindexError, 'The document could not be re-indexed.'));
     } finally {
       setIsReindexing(false);
-    }
-  }
-
-  async function remove(): Promise<void> {
-    setIsDeleting(true);
-
-    try {
-      await api!.deleteSource(source.id);
-      toast.success(`Removed "${source.title}".`);
-      await invalidateKnowledgeLists();
-      navigate('..', { relative: 'path' });
-    } catch (deleteError) {
-      toast.error(describeApiError(deleteError, 'The document could not be removed.'));
-      setIsDeleting(false);
     }
   }
 
@@ -429,29 +404,12 @@ export function Source(): JSX.Element {
                 Re-index
               </Button>
             </PermissionTooltip>
-            <AlertDialog>
-              <PermissionTooltip disabled={!canMutate}>
-                <AlertDialogTrigger asChild>
-                  <Button disabled={!canMutate || isWorking} size="sm" variant="outline">
-                    <Trash2 />
-                    Remove
-                  </Button>
-                </AlertDialogTrigger>
-              </PermissionTooltip>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Remove this document?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    "{source.title}" and its indexed passages are deleted for everyone. Answers the agent gave earlier
-                    keep their citations, but the document can no longer be opened.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => void remove()}>Remove document</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <SourceActionsMenu
+              isBusy={isWorking}
+              source={source}
+              trigger="page"
+              onRemoved={() => navigate('..', { relative: 'path' })}
+            />
           </div>
         }
         title={source.title}

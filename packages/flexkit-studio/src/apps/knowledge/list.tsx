@@ -1,8 +1,8 @@
-import type { ChangeEvent, FormEvent, JSX } from 'react';
+import type { ChangeEvent, FormEvent, JSX, MouseEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { formatDistance } from 'date-fns';
-import { LinkIcon, LoaderCircle, UploadIcon } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { format, formatDistance } from 'date-fns';
+import { LayoutGridIcon, LinkIcon, ListIcon, LoaderCircle, SearchIcon, UploadIcon, XIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import useSWRInfinite from 'swr/infinite';
 import { useIsViewing } from '../../core/apps/app-active';
 import { useCanMutate } from '../../core/permissions';
@@ -11,6 +11,14 @@ import {
   AlertDescription,
   Badge,
   Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  ToggleGroup,
+  ToggleGroupItem,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -34,21 +42,25 @@ import {
   formatFileSize,
   getKnowledgeFileProblem,
   getKnowledgeKindLabel,
+  getStoredKnowledgeViewMode,
   isKnowledgeSourceBusy,
   KNOWLEDGE_ACCEPT,
   KNOWLEDGE_FORMATS_LABEL,
   KNOWLEDGE_MAX_TITLE_LENGTH,
   parseKnowledgeUrl,
+  setStoredKnowledgeViewMode,
   summarizeKnowledgeStatus,
   type KnowledgeSource,
   type KnowledgeSourcesList,
+  type KnowledgeViewMode,
 } from './knowledge';
 import {
   announceRegistered,
   describeApiError,
   InfiniteScrollSentinel,
+  KnowledgeTypeIcon,
   PageMessage,
-  SourceIcon,
+  SourceActionsMenu,
   StatusBadge,
   useProjectKnowledge,
 } from './shared';
@@ -56,6 +68,20 @@ import { useKnowledgeStatusFilter } from './sidebar';
 
 const KNOWLEDGE_PAGE_SIZE = 25;
 const LIST_POLL_INTERVAL_MS = 3_000;
+/** Typing pauses this long before the list asks the platform; each ask now searches the documents' text too. */
+const SEARCH_DEBOUNCE_MS = 250;
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+
+    return () => clearTimeout(timer);
+  }, [delayMs, value]);
+
+  return debounced;
+}
 
 const EMPTY_BY_FILTER = {
   failed: 'No document failed to index.',
@@ -63,17 +89,35 @@ const EMPTY_BY_FILTER = {
   ready: 'No document is ready yet.',
 };
 
-function KnowledgeListSkeleton(): JSX.Element {
+function KnowledgeListSkeleton({ viewMode }: { viewMode: KnowledgeViewMode }): JSX.Element {
+  const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+  if (viewMode === 'grid') {
+    return (
+      <div aria-busy="true" className={GRID_CLASSES}>
+        <span className="fk:sr-only">Loading documents</span>
+        {ids.map((id) => (
+          <div className="fk:flex fk:flex-col fk:gap-3 fk:rounded-xl fk:border fk:p-3 fk:corner-squircle" key={id}>
+            <span className="fk:flex fk:items-center fk:gap-2">
+              <Skeleton className="fk:size-6 fk:rounded-md" />
+              <Skeleton className="fk:h-4 fk:flex-1" />
+            </span>
+            <Skeleton className="fk:aspect-[4/3] fk:w-full fk:rounded-lg" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div aria-busy="true" className="fk:flex fk:flex-col fk:gap-1">
+    <div aria-busy="true" className="fk:flex fk:flex-col">
       <span className="fk:sr-only">Loading documents</span>
-      {['a', 'b', 'c', 'd'].map((id) => (
-        <div className="fk:-mx-3 fk:flex fk:items-center fk:gap-3 fk:px-3 fk:py-2" key={id}>
-          <Skeleton className="fk:size-10 fk:shrink-0 fk:rounded-lg" />
-          <span className="fk:flex fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-1.5">
-            <Skeleton className="fk:h-4 fk:w-48" />
-            <Skeleton className="fk:h-4 fk:w-32" />
-          </span>
+      {ids.map((id) => (
+        <div className="fk:flex fk:h-12 fk:items-center fk:gap-3 fk:border-b fk:px-3" key={id}>
+          <Skeleton className="fk:size-6 fk:shrink-0 fk:rounded-md" />
+          <Skeleton className="fk:h-4 fk:w-1/3" />
+          <Skeleton className="fk:ml-auto fk:h-4 fk:w-16" />
+          <Skeleton className="fk:hidden fk:h-4 fk:w-24 fk:md:block" />
         </div>
       ))}
     </div>
@@ -240,7 +284,182 @@ function AddUrlDialog({
   );
 }
 
-function SourceRow({ onOpen, source }: { onOpen: () => void; source: KnowledgeSource }): JSX.Element {
+const GRID_CLASSES = 'fk:grid fk:grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] fk:gap-4';
+
+function formatAdded(iso: string): string {
+  return format(new Date(iso), 'MMM d, yyyy');
+}
+
+function HiddenBadge(): JSX.Element {
+  return (
+    <Badge className="fk:shrink-0 fk:corner-squircle" variant="outline">
+      Hidden from agent
+    </Badge>
+  );
+}
+
+/** A search hit whose title does not carry the words: the text inside does. */
+function ContentMatchBadge(): JSX.Element {
+  return (
+    <Badge className="fk:shrink-0 fk:corner-squircle" data-knowledge-content-match variant="secondary">
+      In content
+    </Badge>
+  );
+}
+
+interface SourceActions {
+  onOpen: (_source: KnowledgeSource) => void;
+  onRemoved: (_source: KnowledgeSource) => void;
+}
+
+type SourceItemProps = SourceActions & { source: KnowledgeSource };
+
+/**
+ * A plain click on the row opens the document. Clicks that bubbled up from
+ * a portal (the menu, the removal dialog), modified clicks (the title link
+ * handles new tabs itself) and clicks on the row's own controls are not.
+ */
+function handleRowClick(event: MouseEvent<HTMLElement>, open: () => void): void {
+  const target = event.target as Node;
+
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey ||
+    !event.currentTarget.contains(target) ||
+    (target as Element).closest('a, button')
+  ) {
+    return;
+  }
+
+  open();
+}
+
+/**
+ * One line of the list: the type mark, the title as a real link (so it can
+ * be opened in a new tab), then the status and facts in columns, like a file
+ * manager. The whole row is clickable for the mouse; the link carries the
+ * keyboard and assistive tech.
+ */
+function SourceListRow({ source, ...actions }: SourceItemProps): JSX.Element {
+  const status = summarizeKnowledgeStatus(source);
+  // What went wrong, or what is happening, matters at every width; the passage count can wait for a wide one.
+  const detailClass = status.tone === 'ready' ? 'fk:hidden fk:xl:inline' : 'fk:hidden fk:md:inline';
+
+  return (
+    <TableRow
+      className="fk:h-12 fk:cursor-pointer"
+      data-knowledge-row
+      onClick={(event) => handleRowClick(event, () => actions.onOpen(source))}
+    >
+      <TableCell className="fk:max-w-0 fk:w-full">
+        <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-3">
+          <KnowledgeTypeIcon source={source} />
+          <Link
+            className="fk:truncate fk:text-sm fk:font-medium fk:hover:underline fk:underline-offset-2 fk:focus-visible:outline-none fk:focus-visible:underline"
+            to={source.id}
+          >
+            {source.title}
+          </Link>
+          {source.matchedIn === 'content' ? <ContentMatchBadge /> : null}
+          {!source.agentVisible ? <HiddenBadge /> : null}
+        </span>
+      </TableCell>
+      <TableCell className="fk:whitespace-nowrap">
+        <span className="fk:flex fk:items-center fk:gap-2">
+          <StatusBadge label={status.label} tone={status.tone} />
+          <span
+            className={`${detailClass} fk:max-w-64 fk:truncate fk:text-xs fk:text-muted-foreground`}
+            title={status.detail}
+          >
+            {status.detail}
+          </span>
+        </span>
+      </TableCell>
+      <TableCell className="fk:hidden fk:whitespace-nowrap fk:text-muted-foreground fk:md:table-cell">
+        {getKnowledgeKindLabel(source)}
+      </TableCell>
+      <TableCell className="fk:hidden fk:whitespace-nowrap fk:text-right fk:tabular-nums fk:text-muted-foreground fk:md:table-cell">
+        {source.size === null ? '—' : formatFileSize(source.size)}
+      </TableCell>
+      <TableCell className="fk:hidden fk:whitespace-nowrap fk:text-muted-foreground fk:sm:table-cell">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>{formatAdded(source.createdAt)}</span>
+          </TooltipTrigger>
+          <TooltipContent>
+            Updated {formatDistance(new Date(source.updatedAt), new Date(), { addSuffix: true })}
+          </TooltipContent>
+        </Tooltip>
+      </TableCell>
+      <TableCell className="fk:w-12 fk:pr-2 fk:text-right">
+        <SourceActionsMenu
+          source={source}
+          onOpen={() => actions.onOpen(source)}
+          onRemoved={() => actions.onRemoved(source)}
+        />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function SourceTable({ sources, ...actions }: SourceActions & { sources: KnowledgeSource[] }): JSX.Element {
+  return (
+    <Table data-knowledge-list>
+      <TableHeader>
+        <TableRow className="fk:hover:bg-transparent">
+          <TableHead>Name</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="fk:hidden fk:md:table-cell">Type</TableHead>
+          <TableHead className="fk:hidden fk:text-right fk:md:table-cell">Size</TableHead>
+          <TableHead className="fk:hidden fk:sm:table-cell">Added</TableHead>
+          <TableHead className="fk:w-12">
+            <span className="fk:sr-only">Actions</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {sources.map((source) => (
+          <SourceListRow key={source.id} source={source} {...actions} />
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+/**
+ * The card's thumbnail: the opening text of the document laid out like a
+ * small page, the way a file manager shows the first page. Documents still
+ * indexing, or without text, show their type mark instead.
+ */
+function SourcePreview({ source }: { source: KnowledgeSource }): JSX.Element {
+  const preview = source.preview?.trim();
+
+  return (
+    <div className="fk:relative fk:aspect-[4/3] fk:overflow-hidden fk:rounded-lg fk:bg-muted fk:corner-squircle">
+      {preview ? (
+        <div
+          aria-hidden
+          className="fk:absolute fk:inset-x-4 fk:top-3 fk:bottom-0 fk:overflow-hidden fk:rounded-t-sm fk:bg-background fk:px-3 fk:pt-3 fk:shadow-sm"
+        >
+          <p className="fk:whitespace-pre-line fk:text-[9px] fk:leading-[1.45] fk:text-foreground/80 fk:select-none">
+            {preview}
+          </p>
+          <span className="fk:pointer-events-none fk:absolute fk:inset-x-0 fk:bottom-0 fk:h-10 fk:bg-gradient-to-t fk:from-background fk:to-transparent" />
+        </div>
+      ) : (
+        <div className="fk:flex fk:h-full fk:items-center fk:justify-center">
+          <KnowledgeTypeIcon size={56} source={source} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SourceCard({ source, ...actions }: SourceItemProps): JSX.Element {
   const status = summarizeKnowledgeStatus(source);
   const meta = [getKnowledgeKindLabel(source)];
 
@@ -250,29 +469,51 @@ function SourceRow({ onOpen, source }: { onOpen: () => void; source: KnowledgeSo
 
   meta.push(status.detail);
 
+  // A link laid over the card opens the document (so it can be opened in a
+  // new tab too); the menu button sits above it. The title tooltip lives on
+  // the card itself, which does receive the pointer.
   return (
-    <button
-      className="fk:-mx-3 fk:flex fk:min-w-0 fk:items-center fk:gap-3 fk:rounded-lg fk:px-3 fk:py-2 fk:text-left fk:transition-colors fk:hover:bg-accent fk:focus-visible:bg-accent fk:focus-visible:outline-none fk:corner-squircle"
-      type="button"
-      onClick={onOpen}
+    <div
+      className="fk:relative fk:flex fk:min-w-0 fk:flex-col fk:gap-3 fk:rounded-xl fk:border fk:bg-card fk:p-3 fk:transition-colors fk:hover:bg-accent/60 fk:has-[>a:focus-visible]:ring-2 fk:has-[>a:focus-visible]:ring-ring fk:corner-squircle"
+      data-knowledge-card
+      title={source.title}
     >
-      <SourceIcon source={source} />
-      <span className="fk:min-w-0 fk:flex-1">
-        <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-2">
-          <span className="fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
-          {!source.agentVisible ? (
-            <Badge className="fk:shrink-0 fk:corner-squircle" variant="outline">
-              Hidden from agent
-            </Badge>
-          ) : null}
+      <Link
+        aria-label={`Open ${source.title}`}
+        className="fk:absolute fk:inset-0 fk:rounded-xl fk:focus-visible:outline-none fk:corner-squircle"
+        to={source.id}
+      />
+      <span className="fk:pointer-events-none fk:relative fk:flex fk:min-w-0 fk:items-center fk:gap-2">
+        <KnowledgeTypeIcon source={source} />
+        <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-sm fk:font-medium">{source.title}</span>
+        <span className="fk:pointer-events-auto fk:-my-1 fk:-mr-1.5">
+          <SourceActionsMenu
+            source={source}
+            onOpen={() => actions.onOpen(source)}
+            onRemoved={() => actions.onRemoved(source)}
+          />
         </span>
-        <span className="fk:block fk:truncate fk:text-sm fk:text-muted-foreground">{meta.join(' · ')}</span>
       </span>
-      <span className="fk:hidden fk:shrink-0 fk:text-xs fk:text-muted-foreground fk:sm:block">
-        {formatDistance(new Date(source.updatedAt), new Date(), { addSuffix: true })}
+      <span className="fk:pointer-events-none fk:relative">
+        <SourcePreview source={source} />
       </span>
-      <StatusBadge label={status.label} tone={status.tone} />
-    </button>
+      <span className="fk:pointer-events-none fk:relative fk:flex fk:min-w-0 fk:items-center fk:gap-2">
+        <StatusBadge label={status.label} tone={status.tone} />
+        <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-xs fk:text-muted-foreground">{meta.join(' · ')}</span>
+        {source.matchedIn === 'content' ? <ContentMatchBadge /> : null}
+        {!source.agentVisible ? <HiddenBadge /> : null}
+      </span>
+    </div>
+  );
+}
+
+function SourceGrid({ sources, ...actions }: SourceActions & { sources: KnowledgeSource[] }): JSX.Element {
+  return (
+    <div className={GRID_CLASSES} data-knowledge-grid>
+      {sources.map((source) => (
+        <SourceCard key={source.id} source={source} {...actions} />
+      ))}
+    </div>
   );
 }
 
@@ -298,8 +539,11 @@ export function List(): JSX.Element {
   const isViewing = useIsViewing();
   const status = useKnowledgeStatusFilter();
   const [search, setSearch] = useState('');
+  const query = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  const [viewMode, setViewMode] = useState<KnowledgeViewMode>(() => getStoredKnowledgeViewMode());
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [isBusy, setIsBusy] = useState(false);
   const getSourcesKey = (pageIndex: number, previousPage: KnowledgeSourcesList | null): string | null => {
     if (!projectId || (previousPage && !previousPage.hasMore)) {
@@ -309,7 +553,7 @@ export function List(): JSX.Element {
     return knowledgePaths(projectId).sources({
       limit: KNOWLEDGE_PAGE_SIZE,
       offset: pageIndex * KNOWLEDGE_PAGE_SIZE,
-      search: search.trim() || undefined,
+      search: query || undefined,
       status,
     });
   };
@@ -344,6 +588,15 @@ export function List(): JSX.Element {
     setIsBusy(sources.some((source) => isKnowledgeSourceBusy(source)));
   }, [sources]);
 
+  // A new search starts from its first page.
+  const setSizeRef = useRef(setSize);
+
+  setSizeRef.current = setSize;
+
+  useEffect(() => {
+    void setSizeRef.current(1);
+  }, [query]);
+
   if (!projectId || !api) {
     return <PageMessage>Select a project to manage its knowledge.</PageMessage>;
   }
@@ -357,22 +610,36 @@ export function List(): JSX.Element {
 
   let emptyMessage = `No documents yet. Upload ${KNOWLEDGE_FORMATS_LABEL} files, or add a public web page, and the agent will search and cite them.`;
 
-  if (search.trim()) {
-    emptyMessage = 'No documents match your search.';
+  if (query) {
+    emptyMessage = 'No document title or content matches your search.';
   } else if (status) {
     emptyMessage = EMPTY_BY_FILTER[status];
   }
 
-  let content: JSX.Element = (
-    <div className="fk:flex fk:flex-col fk:gap-1">
-      {sources.map((source) => (
-        <SourceRow key={source.id} source={source} onOpen={() => navigate(source.id)} />
-      ))}
-    </div>
-  );
+  const actions: SourceActions = {
+    onOpen: (source) => void navigate(source.id),
+    // Drop the row at once, then let this hook refetch its pages: the global
+    // list invalidation clears other caches but never revalidates an infinite hook.
+    onRemoved: (removed) =>
+      void mutate(
+        (current) =>
+          current?.map((page) => ({
+            ...page,
+            count: Math.max(0, page.count - 1),
+            sources: page.sources.filter((entry) => entry.id !== removed.id),
+          })),
+        { revalidate: true }
+      ),
+  };
+  let content: JSX.Element =
+    viewMode === 'grid' ? (
+      <SourceGrid sources={sources} {...actions} />
+    ) : (
+      <SourceTable sources={sources} {...actions} />
+    );
 
   if (isInitialLoading) {
-    content = <KnowledgeListSkeleton />;
+    content = <KnowledgeListSkeleton viewMode={viewMode} />;
   } else if (sources.length === 0) {
     content = (
       <Alert>
@@ -386,31 +653,66 @@ export function List(): JSX.Element {
       <ListHeader />
       <AssetDropZone disabled={!canMutate} onDropFiles={addFiles}>
         <div className="fk:min-h-0 fk:flex-1 fk:overflow-auto">
-          <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-4xl fk:flex-col fk:gap-8 fk:py-6 fk:pl-4 fk:pr-6">
+          <div className="fk:flex fk:w-full fk:flex-col fk:gap-5 fk:py-4 fk:pl-4 fk:pr-6">
             <div>
-              <h2 className="fk:text-2xl fk:font-semibold">Documents for your team and agents</h2>
-              <p className="fk:mt-2 fk:text-muted-foreground">
-                Policies, manuals, specs and other reference material. People read them here; the agent searches them
+              <h2 className="fk:text-2xl fk:font-semibold">Documents</h2>
+              <p className="fk:mt-1 fk:text-sm fk:text-muted-foreground">
+                Policies, manuals, specs and other reference material for your team and agents. The agent searches them
                 when a question needs them and cites the passage it used.
               </p>
             </div>
             <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-3">
-              <Input
-                aria-label="Search documents"
-                className="fk:w-full fk:max-w-xs"
-                placeholder="Search documents…"
-                value={search}
-                onChange={(event) => {
-                  void setSize(1);
-                  setSearch(event.target.value);
-                }}
-              />
+              <div className="fk:relative fk:w-full fk:max-w-sm">
+                <SearchIcon className="fk:pointer-events-none fk:absolute fk:left-2.5 fk:top-1/2 fk:size-4 fk:-translate-y-1/2 fk:text-muted-foreground" />
+                <Input
+                  aria-label="Search documents"
+                  className="fk:pl-8 fk:pr-9"
+                  placeholder="Search by title or content…"
+                  ref={searchInputRef}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search ? (
+                  <Button
+                    aria-label="Clear search"
+                    className="fk:absolute fk:right-1.5 fk:top-1/2 fk:flex fk:size-6 fk:-translate-y-1/2 fk:items-center fk:justify-center fk:rounded-full fk:bg-transparent fk:text-muted-foreground fk:hover:bg-foreground/10 fk:hover:text-foreground fk:corner-squircle"
+                    data-knowledge-clear-search
+                    type="button"
+                    onClick={() => {
+                      setSearch('');
+                      searchInputRef.current?.focus();
+                    }}
+                  >
+                    <XIcon className="fk:size-4" />
+                  </Button>
+                ) : null}
+              </div>
               {total > 0 ? (
                 <span className="fk:text-sm fk:text-muted-foreground">
                   {total.toLocaleString()} {total === 1 ? 'document' : 'documents'}
                 </span>
               ) : null}
               <div className="fk:ml-auto fk:flex fk:items-center fk:gap-2">
+                <ToggleGroup
+                  aria-label="Layout"
+                  size="sm"
+                  type="single"
+                  value={viewMode}
+                  variant="outline"
+                  onValueChange={(value) => {
+                    if (value === 'list' || value === 'grid') {
+                      setViewMode(value);
+                      setStoredKnowledgeViewMode(value);
+                    }
+                  }}
+                >
+                  <ToggleGroupItem aria-label="List layout" value="list">
+                    <ListIcon className="fk:size-4" />
+                  </ToggleGroupItem>
+                  <ToggleGroupItem aria-label="Grid layout" value="grid">
+                    <LayoutGridIcon className="fk:size-4" />
+                  </ToggleGroupItem>
+                </ToggleGroup>
                 <PermissionTooltip disabled={!canMutate}>
                   <Button disabled={!canMutate} size="sm" variant="outline" onClick={() => setIsUrlDialogOpen(true)}>
                     <LinkIcon />

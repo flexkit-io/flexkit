@@ -1,3 +1,5 @@
+import { getLocalStorage } from '../../core/local-storage';
+
 /**
  * Types and pure helpers of the Knowledge section: documents the team adds
  * so the agent can search and cite them. Everything here runs without React
@@ -57,6 +59,10 @@ export interface KnowledgeSource {
   updatedAt: string;
   /** The published version, or the newest one while the first ingestion runs. */
   currentVersion: KnowledgeVersion | null;
+  /** The opening of the document's text, carried by listings for the grid's cards. */
+  preview?: string | null;
+  /** When the list was searched: whether the title or the content matched. */
+  matchedIn?: 'title' | 'content' | null;
 }
 
 export interface KnowledgeJobProgress {
@@ -247,25 +253,39 @@ export function parseKnowledgeUrl(value: string): { error: string } | { url: str
   return { url: url.toString() };
 }
 
-export function getKnowledgeKindLabel(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): string {
+/** The Untitled UI file icon drawn for a format (see `KnowledgeTypeIcon`). */
+export type KnowledgeFileIcon = 'pdf' | 'docx' | 'pptx' | 'document' | 'txt' | 'html';
+
+export interface KnowledgeFormat {
+  /** How people call the format: "PDF", "Word", "Web page". */
+  label: string;
+  icon: KnowledgeFileIcon;
+}
+
+const WEB_PAGE_FORMAT: KnowledgeFormat = { icon: 'html', label: 'Web page' };
+const TEXT_FORMAT: KnowledgeFormat = { icon: 'txt', label: 'Text' };
+
+/** The formats the platform indexes, by media type; anything else it accepts reads as text. */
+export const KNOWLEDGE_FORMATS: { readonly [mimeType: string]: KnowledgeFormat } = {
+  'application/pdf': { icon: 'pdf', label: 'PDF' },
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: 'docx', label: 'Word' },
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': { icon: 'pptx', label: 'PowerPoint' },
+  'text/markdown': { icon: 'document', label: 'Markdown' },
+  'text/html': { icon: 'html', label: 'HTML' },
+  'text/plain': TEXT_FORMAT,
+};
+
+/** The format of a document: a web page by its kind, else by its media type. */
+export function getKnowledgeFormat(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): KnowledgeFormat {
   if (source.kind === 'url') {
-    return 'Web page';
+    return WEB_PAGE_FORMAT;
   }
 
-  switch (source.mimeType) {
-    case 'application/pdf':
-      return 'PDF';
-    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-      return 'Word';
-    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
-      return 'PowerPoint';
-    case 'text/markdown':
-      return 'Markdown';
-    case 'text/html':
-      return 'HTML';
-    default:
-      return 'Text';
-  }
+  return KNOWLEDGE_FORMATS[source.mimeType] ?? TEXT_FORMAT;
+}
+
+export function getKnowledgeKindLabel(source: Pick<KnowledgeSource, 'kind' | 'mimeType'>): string {
+  return getKnowledgeFormat(source).label;
 }
 
 export type KnowledgeStatusTone = 'muted' | 'ready' | 'busy' | 'error';
@@ -473,4 +493,25 @@ export function getLinkableEntities<T extends { menu?: { label?: string }; name:
   return schema
     .filter((entity) => isKnowledgeLinkableEntity(entity.name) && !taken.has(entity.name))
     .sort((a, b) => getEntityLinkLabel(a).localeCompare(getEntityLinkLabel(b)));
+}
+
+export type KnowledgeViewMode = 'list' | 'grid';
+
+const VIEW_MODE_STORAGE_KEY = 'flexkit-knowledge:viewMode';
+
+/** The list is the default; the choice is remembered per browser, like the asset manager's. */
+export function getStoredKnowledgeViewMode(): KnowledgeViewMode {
+  try {
+    return getLocalStorage()?.getItem(VIEW_MODE_STORAGE_KEY) === 'grid' ? 'grid' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+
+export function setStoredKnowledgeViewMode(mode: KnowledgeViewMode): void {
+  try {
+    getLocalStorage()?.setItem(VIEW_MODE_STORAGE_KEY, mode);
+  } catch {
+    // Private mode or blocked storage: the choice lasts for the session only.
+  }
 }

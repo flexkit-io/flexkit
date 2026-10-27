@@ -56,6 +56,7 @@ describe('link paths', () => {
       '/api/flexkit/p1/knowledge/records/product/a%2Fb/sources'
     );
     assert.equal(paths.entitySources('a/b'), '/api/flexkit/p1/knowledge/entities/a%2Fb/sources');
+    assert.equal(paths.file('s 1'), '/api/flexkit/p1/knowledge/sources/s%201/file');
   });
 
   it('recognises both link listings as keys to drop after a change', () => {
