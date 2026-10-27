@@ -1,5 +1,21 @@
 # @flexkit/studio
 
+## 0.2.19
+
+### Patch Changes
+
+- 8d99f93: Chat file chips know from the first render whether the file is already in Knowledge, in every session, and link to the document. The Studio hashes each upload so the platform can match it against the documents the reader may see.
+- 9c85631: Knowledge documents can apply to a whole entity type: an "Applies to" picker on the document page, a Knowledge button on each Desk list, and the record panel shows the documents a record inherits from its type.
+- 3aee51a: New Graph app in the Studio: explore records as nodes and relationships on a WebGL canvas. Search a record or start from an entity, expand a node's relationships page by page, hide nodes, pin positions, switch entities on and off in the legend, and open a record from the inspector. Desk lists get an "Open in Graph" button for the selected records and the record drawer a "View in Graph" button.
+- 698c47d: Graph app: dragging a node pulls its neighbours along so a cluster can be pulled apart, graphs above 300 nodes label only the pointer's surroundings and the selection until zoomed in, and the entity palette grows to 12 hues validated for colour-blindness on both themes.
+- cd55d49: Chat and run replays render the agent's knowledge searches as a card with the cited documents and passages, linking into the Knowledge app, and show which document it is reading. Files attached to a chat get an "Add to Knowledge" button.
+- e23eff0: The Knowledge document list uses the full width and offers a list layout (the default, with Untitled UI file icons and status, type, size and date columns) and a grid layout with a preview of each document's opening text; rows, cards and the document page share a three-dots menu with download and remove.
+- 1a66cb9: Documents can be attached to records. A record in the Desk shows its attached documents in a Knowledge section with an "Attach document" picker, and a document page lists the records it is linked to, with the record labels resolved from the data. When a question is about a record, the agent searches its attached documents before the rest of Knowledge.
+- 1a66cb9: Record drawers now nest: opening a drawer from inside another keeps the one behind mounted and slides it aside, so a good part of it stays readable, and the gap adapts so no drawer leaves the viewport however many are stacked. The drawer primitive moved from Vaul to Base UI.
+- 1a66cb9: The multiple-relationship field keys its preview badges by record id instead of label, so two related records with the same name no longer trigger React's duplicate-key warning when a record drawer opens.
+- Updated dependencies [8d99f93]
+  - @flexkit/agent-protocol@0.3.11
+
 ## 0.2.18
 
 ### Patch Changes
