@@ -180,7 +180,7 @@ export function Root(): JSX.Element {
       />
       <SidebarInset className="fk:min-w-0">
         <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0" data-testid="graph-app">
-          <div className="fk:relative fk:min-w-0 fk:flex-1 fk:bg-background">
+          <div className="fk:relative fk:min-w-0 fk:flex-1 fk:overflow-hidden fk:bg-background">
             <div className="fk:absolute fk:left-3 fk:top-3 fk:z-10 fk:flex fk:items-center fk:gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>

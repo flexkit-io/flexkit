@@ -600,6 +600,16 @@ export function GraphCanvas({
     const preventContextMenu = (event: MouseEvent): void => event.preventDefault();
     container.addEventListener('contextmenu', preventContextMenu);
 
+    // Sigma only watches the window: the canvases must follow the container
+    // when a pane opens beside it, or they keep their size and overflow it.
+    const sizeObserver = new ResizeObserver(() => {
+      if (container.clientWidth > 0 && container.clientHeight > 0) {
+        renderer.resize();
+        renderer.scheduleRefresh();
+      }
+    });
+    sizeObserver.observe(container);
+
     apiRef.current = {
       fit: () => {
         void camera.reset({ duration: 300 });
@@ -607,6 +617,7 @@ export function GraphCanvas({
     };
 
     return () => {
+      sizeObserver.disconnect();
       camera.off('updated', handleCameraUpdate);
       container.removeEventListener('contextmenu', preventContextMenu);
       apiRef.current = null;
