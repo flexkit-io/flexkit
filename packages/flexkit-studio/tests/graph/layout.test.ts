@@ -9,10 +9,11 @@ describe('layout', () => {
     assert.equal(layoutBudget(5000), 20000);
   });
 
-  it('calls the layout settled once the mean move is a sliver of the extent', () => {
-    assert.equal(isSettled(0.2, 1000), true);
-    assert.equal(isSettled(2, 1000), false);
-    assert.equal(isSettled(0.04, 0), true);
-    assert.equal(isSettled(0.06, 0), false);
+  it('calls the layout settled once the mean move is a sliver of the extent and nothing still travels', () => {
+    assert.equal(isSettled({ mean: 0.2, max: 1, diagonal: 1000 }), true);
+    assert.equal(isSettled({ mean: 2, max: 2, diagonal: 1000 }), false);
+    assert.equal(isSettled({ mean: 0.2, max: 100, diagonal: 1000 }), false);
+    assert.equal(isSettled({ mean: 0.04, max: 0.04, diagonal: 0 }), true);
+    assert.equal(isSettled({ mean: 0.06, max: 0.06, diagonal: 0 }), false);
   });
 });

@@ -24,8 +24,9 @@ const HIDDEN_ENTITIES = new Set(['_asset']);
 /**
  * Categorical palette, one hue per entity in schema order (light and dark
  * surfaces step the same hues). The first eight are the validated dataviz
- * palette, the next eight were validated with its script so every adjacent
- * pair stays apart under colour-blindness simulation on both surfaces.
+ * palette; the next four were checked with its script so adjacent pairs
+ * stay apart under colour-blindness simulation and no pair on either
+ * surface comes closer than the reference palette's own closest pair.
  * Projects with more entities than hues reuse them.
  */
 export const GRAPH_PALETTE = {
@@ -40,12 +41,8 @@ export const GRAPH_PALETTE = {
     '#e34948',
     '#0e9aa7',
     '#6b8e23',
-    '#3b4cca',
-    '#b8860b',
     '#9c27b0',
     '#a05a2c',
-    '#3d7fb8',
-    '#d6336c',
   ],
   dark: [
     '#3987e5',
@@ -58,12 +55,8 @@ export const GRAPH_PALETTE = {
     '#e66767',
     '#1a9fb0',
     '#6f8a28',
-    '#6b7ae0',
-    '#b0840f',
     '#c058d6',
-    '#bd5d45',
-    '#4f93cf',
-    '#e0457b',
+    '#a35226',
   ],
 } as const;
 

@@ -283,11 +283,11 @@ describe('getEntityColors', () => {
     assert.equal(getEntityColors(schema, 'dark').product, GRAPH_PALETTE.dark[0]);
   });
 
-  it('holds sixteen distinct hues per surface', () => {
-    assert.equal(GRAPH_PALETTE.light.length, 16);
-    assert.equal(GRAPH_PALETTE.dark.length, 16);
-    assert.equal(new Set(GRAPH_PALETTE.light).size, 16);
-    assert.equal(new Set(GRAPH_PALETTE.dark).size, 16);
+  it('holds twelve distinct hues per surface', () => {
+    assert.equal(GRAPH_PALETTE.light.length, 12);
+    assert.equal(GRAPH_PALETTE.dark.length, 12);
+    assert.equal(new Set(GRAPH_PALETTE.light).size, 12);
+    assert.equal(new Set(GRAPH_PALETTE.dark).size, 12);
   });
 });
 

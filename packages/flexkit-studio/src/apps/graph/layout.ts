@@ -14,11 +14,23 @@ export function layoutBudget(order: number): number {
   return Math.min(20000, 2000 + order * 9);
 }
 
+/** How much the free nodes moved since the last sample, and the graph's extent. */
+export interface LayoutMovement {
+  /** Mean move of the nodes the layout may move. */
+  mean: number;
+  /** Largest move of any of them: a few new nodes still flying in keep the layout going. */
+  max: number;
+  /** Bounding-box diagonal of the whole graph. */
+  diagonal: number;
+}
+
 /**
- * Whether the layout has settled: the mean move per node since the last
- * sample is a small fraction of the graph's extent (its bounding box
- * diagonal), with a floor so a tiny graph settles too.
+ * Whether the layout has settled: the mean move per free node is a sliver
+ * of the graph's extent and no node is still travelling, with a floor so a
+ * tiny graph settles too.
  */
-export function isSettled(meanDisplacement: number, diagonal: number): boolean {
-  return meanDisplacement < Math.max(0.05, diagonal * 0.0015);
+export function isSettled({ mean, max, diagonal }: LayoutMovement): boolean {
+  const threshold = Math.max(0.05, diagonal * 0.0015);
+
+  return mean < threshold && max < threshold * 20;
 }

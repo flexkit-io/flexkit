@@ -7,7 +7,7 @@ import type { Attributes } from 'graphology-types';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
 import FA2LayoutSupervisor from 'graphology-layout-forceatlas2/worker';
 import Sigma, { DEFAULT_STYLES } from 'sigma';
-import { DENSE_NODES, isSettled, layoutBudget, ZOOMED_IN_RATIO } from './layout';
+import { DENSE_NODES, isSettled, layoutBudget, ZOOMED_IN_RATIO, type LayoutMovement } from './layout';
 import type { SceneState } from './scene';
 
 type NodeAttributes = {
@@ -22,8 +22,8 @@ type NodeAttributes = {
 type EdgeAttributes = { size: number };
 /** A neighbour of the hovered node. */
 type NodeState = { isNeighbour: boolean };
-/** An edge of the hovered node. */
-type EdgeState = { isNear: boolean };
+/** An edge of the hovered node; an edge of the selected node. */
+type EdgeState = { isNear: boolean; isSelected: boolean };
 /** Too many nodes for labels everywhere; zoomed in far enough to show them anyway. */
 type GraphState = { isDense: boolean; isZoomedIn: boolean };
 type Renderer = Sigma<NodeAttributes, EdgeAttributes, Attributes, NodeState, EdgeState, GraphState>;
@@ -51,7 +51,7 @@ const PLACEMENT_RADIUS = 40;
 const SETTLE_INTERVAL_MS = 400;
 /** The layout runs at least this long before it may be called settled. */
 const SETTLE_MIN_MS = 1200;
-/** Two quiet samples in a row end the layout. */
+/** Two quiet samples in a row, after the worker first moved something, end the layout. */
 const SETTLE_QUIET_SAMPLES = 2;
 
 function nodeSize(degree: number): number {
@@ -65,43 +65,60 @@ function randomAround(x: number, y: number, radius: number): { x: number; y: num
   return { x: x + Math.cos(angle) * distance, y: y + Math.sin(angle) * distance };
 }
 
-/** Node positions, the layout's movement is measured against. */
-function snapshotPositions(graph: Graph<NodeAttributes, EdgeAttributes>): Map<string, { x: number; y: number }> {
-  const positions = new Map<string, { x: number; y: number }>();
-  graph.forEachNode((key, attributes) => {
-    positions.set(key, { x: attributes.x, y: attributes.y });
-  });
+/**
+ * Positions of every node, kept in one typed array the layout's movement is
+ * measured against: one pass per sample, no allocation.
+ */
+class PositionTracker {
+  private positions: Float64Array;
 
-  return positions;
-}
+  constructor(private readonly graph: Graph<NodeAttributes, EdgeAttributes>) {
+    this.positions = new Float64Array(graph.order * 2);
+    this.graph.forEachNode((_key, attributes) => {
+      this.positions[this.cursor] = attributes.x;
+      this.positions[this.cursor + 1] = attributes.y;
+      this.cursor += 2;
+    });
+  }
 
-/** Mean move per node since the snapshot, and the bounding-box diagonal now. */
-function measureMovement(
-  graph: Graph<NodeAttributes, EdgeAttributes>,
-  previous: Map<string, { x: number; y: number }>
-): { mean: number; diagonal: number } {
-  let total = 0;
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  graph.forEachNode((key, attributes) => {
-    const before = previous.get(key);
+  private cursor = 0;
 
-    if (before) {
-      total += Math.hypot(attributes.x - before.x, attributes.y - before.y);
-    }
+  /** Movement since the last call, then remembers the current positions. */
+  measure(): LayoutMovement {
+    const { graph, positions } = this;
+    let total = 0;
+    let max = 0;
+    let free = 0;
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    let index = 0;
+    graph.forEachNode((_key, attributes) => {
+      const { x, y } = attributes;
 
-    minX = Math.min(minX, attributes.x);
-    minY = Math.min(minY, attributes.y);
-    maxX = Math.max(maxX, attributes.x);
-    maxY = Math.max(maxY, attributes.y);
-  });
+      if (index + 1 < positions.length && !attributes.fixed) {
+        const moved = Math.hypot(x - positions[index]!, y - positions[index + 1]!);
+        total += moved;
+        max = Math.max(max, moved);
+        free += 1;
+      }
 
-  return {
-    mean: graph.order > 0 ? total / graph.order : 0,
-    diagonal: graph.order > 0 ? Math.hypot(maxX - minX, maxY - minY) : 0,
-  };
+      positions[index] = x;
+      positions[index + 1] = y;
+      index += 2;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    });
+
+    return {
+      mean: free > 0 ? total / free : 0,
+      max,
+      diagonal: graph.order > 0 ? Math.hypot(maxX - minX, maxY - minY) : 0,
+    };
+  }
 }
 
 /**
@@ -172,8 +189,8 @@ function syncGraph(
 /**
  * The WebGL canvas: a graphology graph that lives as long as the component,
  * rendered by sigma and laid out by ForceAtlas2 in a web worker until it
- * settles after every change. Selection, entity visibility and pins are
- * sigma states and node attributes; the scene stays the source of truth.
+ * settles after every change. Selection, hover, entity visibility and pins
+ * are sigma states and node attributes; the scene stays the source of truth.
  */
 export function GraphCanvas({
   scene,
@@ -193,6 +210,12 @@ export function GraphCanvas({
   const layoutTimerRef = useRef<number | null>(null);
   const settleTimerRef = useRef<number | null>(null);
   const layoutDeadlineRef = useRef<number | null>(null);
+  /** The hovered node and the nodes and edges marked around it. */
+  const hoverRef = useRef<{ key: string | null; nodes: string[]; edges: string[] }>({
+    key: null,
+    nodes: [],
+    edges: [],
+  });
   const callbacksRef = useRef({ onSelect, onContextMenu, onExpand, onPin, onLayoutChange });
   const [mountAttempt, setMountAttempt] = useState(0);
   callbacksRef.current = { onSelect, onContextMenu, onExpand, onPin, onLayoutChange };
@@ -222,7 +245,7 @@ export function GraphCanvas({
 
   // The worker reads `fixed` only when it (re)builds its matrices, so a new
   // supervisor is needed whenever pins change while a layout runs. The
-  // layout stops when the nodes stop moving, or at the budget.
+  // layout stops once the nodes stop moving, or at the budget.
   const startLayout = useCallback(
     (budgetMs: number): void => {
       const graph = graphRef.current;
@@ -236,7 +259,8 @@ export function GraphCanvas({
         settings: { ...forceAtlas2.inferSettings(graph), adjustSizes: true, gravity: 1 },
       });
       const startedAt = performance.now();
-      let previous = snapshotPositions(graph);
+      const tracker = new PositionTracker(graph);
+      let hasMoved = false;
       let quietSamples = 0;
       layoutRef.current = layout;
       layoutDeadlineRef.current = startedAt + budgetMs;
@@ -244,9 +268,11 @@ export function GraphCanvas({
       callbacksRef.current.onLayoutChange(true);
       layoutTimerRef.current = window.setTimeout(stopLayout, budgetMs);
       settleTimerRef.current = window.setInterval(() => {
-        const { mean, diagonal } = measureMovement(graph, previous);
-        previous = snapshotPositions(graph);
-        quietSamples = isSettled(mean, diagonal) ? quietSamples + 1 : 0;
+        const movement = tracker.measure();
+        // The worker needs a moment to spawn; quiet samples before its first
+        // positions arrive say nothing about the layout.
+        hasMoved = hasMoved || movement.max > 0;
+        quietSamples = hasMoved && isSettled(movement) ? quietSamples + 1 : 0;
 
         if (quietSamples >= SETTLE_QUIET_SAMPLES && performance.now() - startedAt >= SETTLE_MIN_MS) {
           stopLayout();
@@ -255,6 +281,42 @@ export function GraphCanvas({
     },
     [stopLayout]
   );
+
+  /**
+   * Marks the hovered node's neighbours and edges, clearing the previous
+   * marks first. Re-run after the graph changes so nodes added under the
+   * pointer are marked too, and marks of dropped nodes go away.
+   */
+  const applyHover = useCallback((key: string | null): void => {
+    const graph = graphRef.current;
+    const renderer = rendererRef.current;
+
+    if (!graph || !renderer) {
+      return;
+    }
+
+    const previous = hoverRef.current;
+    renderer.setNodesState(
+      previous.nodes.filter((node) => graph.hasNode(node)),
+      { isNeighbour: false }
+    );
+    renderer.setEdgesState(
+      previous.edges.filter((edge) => graph.hasEdge(edge)),
+      { isNear: false }
+    );
+
+    if (key && graph.hasNode(key)) {
+      const nodes = graph.neighbors(key);
+      const edges = graph.edges(key);
+      renderer.setNodesState(nodes, { isNeighbour: true });
+      renderer.setEdgesState(edges, { isNear: true });
+      hoverRef.current = { key, nodes, edges };
+    } else {
+      hoverRef.current = { key: null, nodes: [], edges: [] };
+    }
+
+    renderer.refresh({ skipIndexation: true });
+  }, []);
 
   // The renderer: created per theme (styles are fixed at construction) over
   // the persistent graph.
@@ -286,7 +348,7 @@ export function GraphCanvas({
       container,
       {
         customNodeState: { isNeighbour: false },
-        customEdgeState: { isNear: false },
+        customEdgeState: { isNear: false, isSelected: false },
         customGraphState: { isDense: graph.order > DENSE_NODES, isZoomedIn: false },
         settings: {
           itemSizesReference: 'screen',
@@ -316,13 +378,21 @@ export function GraphCanvas({
               labelColor: isDark ? '#e4e4e7' : '#18181b',
               labelSize: 12,
               labelFont: 'ui-sans-serif, system-ui, sans-serif',
-              // Dense graphs label only the pointer's surroundings and the selection until zoomed in.
+              // Dense graphs label only the pointer's surroundings and the
+              // selection until zoomed in; a hub's many neighbours still go
+              // through the label grid so they cannot pile up.
               labelVisibility: (_attributes, state, graphState) => {
-                if (state.isHovered || state.isHighlighted || state.isNeighbour) {
+                if (state.isHovered || state.isHighlighted) {
                   return 'visible';
                 }
 
-                return graphState.isDense && !graphState.isZoomedIn ? 'hidden' : 'auto';
+                const dense = graphState.isDense && !graphState.isZoomedIn;
+
+                if (state.isNeighbour) {
+                  return dense ? 'auto' : 'visible';
+                }
+
+                return dense ? 'hidden' : 'auto';
               },
               backdropColor: isDark ? '#27272a' : '#ffffff',
               backdropShadowColor: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.25)',
@@ -333,7 +403,8 @@ export function GraphCanvas({
               ...DEFAULT_STYLES.edges,
               color: isDark ? '#3f3f46' : '#d4d4d8',
               size: 1,
-              opacity: (_attributes, state, graphState) => (graphState.hasHovered && !state.isNear ? 0.15 : 1),
+              opacity: (_attributes, state, graphState) =>
+                graphState.hasHovered && !state.isNear && !state.isSelected ? 0.15 : 1,
             },
           ],
         },
@@ -358,24 +429,8 @@ export function GraphCanvas({
       callbacksRef.current.onSelect(node);
       callbacksRef.current.onContextMenu(node, { x: original.clientX, y: original.clientY });
     });
-    renderer.on('enterNode', ({ node }) => {
-      if (!graph.hasNode(node)) {
-        return;
-      }
-
-      renderer.setNodesState(graph.neighbors(node), { isNeighbour: true });
-      renderer.setEdgesState(graph.edges(node), { isNear: true });
-      renderer.refresh({ skipIndexation: true });
-    });
-    renderer.on('leaveNode', ({ node }) => {
-      if (!graph.hasNode(node)) {
-        return;
-      }
-
-      renderer.setNodesState(graph.neighbors(node), { isNeighbour: false });
-      renderer.setEdgesState(graph.edges(node), { isNear: false });
-      renderer.refresh({ skipIndexation: true });
-    });
+    renderer.on('enterNode', ({ node }) => applyHover(node));
+    renderer.on('leaveNode', () => applyHover(null));
     renderer.on('nodeDragStart', ({ node }) => {
       // A running layout would pull the node away from the pointer.
       stopLayout();
@@ -410,9 +465,10 @@ export function GraphCanvas({
       container.removeEventListener('contextmenu', preventContextMenu);
       apiRef.current = null;
       rendererRef.current = null;
+      hoverRef.current = { key: null, nodes: [], edges: [] };
       renderer.kill();
     };
-  }, [theme, mountAttempt, apiRef, stopLayout]);
+  }, [theme, mountAttempt, apiRef, stopLayout, applyHover]);
 
   // Scene changes: sync the graph, then let the layout settle the new nodes.
   useEffect(() => {
@@ -429,6 +485,8 @@ export function GraphCanvas({
     }
 
     rendererRef.current?.setGraphState({ isDense: graph.order > DENSE_NODES });
+    // Nodes added under the pointer get their hover marks; marks of dropped nodes go.
+    applyHover(graph.hasNode(hoverRef.current.key ?? '') ? hoverRef.current.key : null);
     startLayout(layoutBudget(graph.order));
     // Nodes and edges only change with the scene version; colours are applied by their own effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
@@ -475,6 +533,7 @@ export function GraphCanvas({
       renderer.setEdgeState(key, {
         isHidden:
           hidden.has(graph.getNodeAttribute(source, 'entity')) || hidden.has(graph.getNodeAttribute(target, 'entity')),
+        isSelected: source === scene.selected || target === scene.selected,
       });
     });
     renderer.refresh({ skipIndexation: true });
