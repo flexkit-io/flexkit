@@ -4,10 +4,12 @@ import type { Entity } from '../../src/core/types';
 import {
   captionFromRecord,
   collectRecords,
+  entityOfRecord,
   entityOfRootField,
   exampleQueries,
   graphFromQueryResult,
   queryStorageKey,
+  stripTypename,
   tableFromResult,
 } from '../../src/apps/graph/query';
 
@@ -88,6 +90,15 @@ describe('captionFromRecord', () => {
     assert.equal(captionFromRecord({ _id: 'p1', name: [{ en: 'Parka' }], sku: 'A1' }, product, 'en'), 'Parka');
     assert.equal(captionFromRecord({ _id: 'p1', sku: 'A1' }, product, 'en'), 'A1');
     assert.equal(captionFromRecord({ _id: 'p1', __typename: 'product', count: 3 }, product, 'en'), 'p1');
+    assert.equal(captionFromRecord({ _id: 'p1', _createdAt: '2026-10-27T10:00:00Z', sku: 'A1' }, product, 'en'), 'A1');
+  });
+});
+
+describe('entityOfRecord', () => {
+  it('trusts the typename over the field the record came under', () => {
+    assert.equal(entityOfRecord({ _id: 'b1', __typename: 'brand' }, product, schema).name, 'brand');
+    assert.equal(entityOfRecord({ _id: 'b1', __typename: 'unknown' }, product, schema).name, 'product');
+    assert.equal(entityOfRecord({ _id: 'b1' }, product, schema).name, 'product');
   });
 });
 
@@ -120,6 +131,16 @@ describe('graphFromQueryResult', () => {
     ]);
   });
 
+  it('labels aliased records by their typename', () => {
+    const data = { products: [{ _id: 'b1', __typename: 'brand', title: 'Fjell' }] };
+    const { nodes } = graphFromQueryResult({ data, schema, scope: 'en' });
+
+    assert.deepEqual(
+      nodes.map((node) => [node.key, node.label]),
+      [['brand:b1', 'Fjell']]
+    );
+  });
+
   it('ignores fields the schema does not know and empty results', () => {
     assert.deepEqual(
       graphFromQueryResult({ data: { knowledgeSources: [{ _id: 'k' }] }, schema, scope: 'en' }).nodes,
@@ -134,8 +155,11 @@ describe('exampleQueries', () => {
     const examples = exampleQueries(schema, 'en');
 
     assert.deepEqual(
-      examples.map((example) => example.title),
-      ['Catalogue', 'brands']
+      examples.map((example) => [example.entity, example.title]),
+      [
+        ['product', 'Catalogue'],
+        ['brand', 'brands'],
+      ]
     );
     assert.match(examples[0]!.query, /products\(limit: 25\)/);
     assert.match(examples[0]!.query, /name \{ default en \}/);
@@ -159,6 +183,18 @@ describe('tableFromResult', () => {
     assert.deepEqual(table.columns, ['_id', 'name', 'brand', 'price', 'flag', 'sku']);
     assert.deepEqual(table.rows[0], { _id: 'p1', name: 'Parka', brand: '1 record', price: '12.5', flag: '', sku: '' });
     assert.equal(table.total, 2);
+  });
+});
+
+describe('stripTypename', () => {
+  it('drops every __typename key, deep', () => {
+    assert.deepEqual(
+      stripTypename({
+        __typename: 'Query',
+        products: [{ _id: 'p', __typename: 'product', brand: { __typename: 'brand', _id: 'b' } }],
+      }),
+      { products: [{ _id: 'p', brand: { _id: 'b' } }] }
+    );
   });
 });
 

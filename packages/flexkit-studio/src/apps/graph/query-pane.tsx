@@ -25,21 +25,20 @@ import {
   TabsTrigger,
 } from '../../ui';
 import { QueryEditor } from './query-editor';
-import { exampleQueries, queryStorageKey, tableFromResult, TABLE_ROW_LIMIT, type QueryResult } from './query';
+import {
+  exampleQueries,
+  queryStorageKey,
+  stripTypename,
+  tableFromResult,
+  TABLE_ROW_LIMIT,
+  type QueryRun,
+} from './query';
 import { useGraphQLSchema } from './use-graphql-schema';
-
-/** What a run of a query produced, for the pane's footer. */
-export interface QueryRun {
-  data: QueryResult | null;
-  error: string | null;
-  elapsedMs: number;
-  /** Nodes and edges the result added to the canvas. */
-  nodes: number;
-  edges: number;
-}
 
 export interface QueryPaneProps {
   projectId: string;
+  /** The deployed schema's hash; a change re-introspects the schema for the editor. */
+  schemaHash: string | null;
   schema: Entity[];
   scope: string;
   theme: 'light' | 'dark';
@@ -70,14 +69,23 @@ function storeQuery(projectId: string, query: string): void {
  * Every object with an id becomes a node, every nested selection a
  * relationship; the same result is also shown as a table and as JSON.
  */
-export function QueryPane({ projectId, schema, scope, theme, isRunning, onRun }: QueryPaneProps): JSX.Element {
-  const graphqlSchema = useGraphQLSchema(projectId);
+export function QueryPane({
+  projectId,
+  schemaHash,
+  schema,
+  scope,
+  theme,
+  isRunning,
+  onRun,
+}: QueryPaneProps): JSX.Element {
+  const graphqlSchema = useGraphQLSchema(projectId, schemaHash);
   const examples = useMemo(() => exampleQueries(schema, scope), [schema, scope]);
   const [query, setQuery] = useState(() => readStoredQuery(projectId) || examples[0]?.query || '');
   const [append, setAppend] = useState(false);
   const [tab, setTab] = useState<ResultTab>('graph');
   const [run, setRun] = useState<QueryRun | null>(null);
   const table = useMemo(() => (run?.data ? tableFromResult(run.data, scope) : null), [run, scope]);
+  const json = useMemo(() => (run?.data ? JSON.stringify(stripTypename(run.data), null, 2) : null), [run]);
 
   useEffect(() => {
     storeQuery(projectId, query);
@@ -110,7 +118,7 @@ export function QueryPane({ projectId, schema, scope, theme, isRunning, onRun }:
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="fk:max-h-80 fk:overflow-y-auto">
                 {examples.map((example) => (
-                  <DropdownMenuItem key={example.title} onSelect={() => setQuery(example.query)}>
+                  <DropdownMenuItem key={example.entity} onSelect={() => setQuery(example.query)}>
                     {example.title}
                   </DropdownMenuItem>
                 ))}
@@ -198,7 +206,7 @@ export function QueryPane({ projectId, schema, scope, theme, isRunning, onRun }:
                     </TableHeader>
                     <TableBody>
                       {table.rows.map((row, index) => (
-                        <TableRow key={row._id ?? index}>
+                        <TableRow key={`${row._id ?? ''}-${index}`}>
                           {table.columns.map((column) => (
                             <TableCell
                               className="fk:max-w-56 fk:truncate fk:py-1.5 fk:text-xs"
@@ -224,9 +232,9 @@ export function QueryPane({ projectId, schema, scope, theme, isRunning, onRun }:
             )}
           </TabsContent>
           <TabsContent className="fk:px-3 fk:pb-3" value="json">
-            {run?.data ? (
+            {json ? (
               <pre className="fk:overflow-auto fk:rounded-md fk:border fk:bg-muted/40 fk:p-2 fk:font-mono fk:text-xs">
-                {JSON.stringify(run.data, null, 2)}
+                {json}
               </pre>
             ) : (
               <span className="fk:text-xs fk:text-muted-foreground">Run a query to see its response.</span>

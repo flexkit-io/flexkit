@@ -189,9 +189,11 @@ export function Root(): JSX.Element {
           {mode === 'query' ? (
             <QueryPane
               isRunning={isLoading}
+              key={currentProjectId}
               onRun={runQuery}
               projectId={currentProjectId}
               schema={schema}
+              schemaHash={currentProject?.schemaHash ?? null}
               scope={scopeField}
               theme={theme}
             />

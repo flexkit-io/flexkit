@@ -16,8 +16,7 @@ import {
   nodeKey,
   type GraphRecord,
 } from './graph';
-import { graphFromQueryResult, type QueryResult } from './query';
-import type { QueryRun } from './query-pane';
+import { graphFromQueryResult, type QueryResult, type QueryRun } from './query';
 import { EMPTY_SCENE, sceneReducer, type SceneAction, type SceneState } from './scene';
 
 /** Which records to load: given ids (with their first hop when `expand`), or a sample. */
@@ -153,23 +152,22 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
       setPending((count) => count + 1);
 
       try {
+        // Not cached: a partial result would overwrite the records Desk reads cache-first.
         const result = await client.query<QueryResult>({
           query: document,
-          fetchPolicy: 'network-only',
+          fetchPolicy: 'no-cache',
           errorPolicy: 'all',
         });
         const data = result.data ?? null;
         const graph = graphFromQueryResult({ data, schema, scope });
 
-        // A failed query leaves the canvas as it was.
-        if (data) {
+        // A failed query, or one that draws nothing, leaves the canvas as it was.
+        if (graph.nodes.length > 0) {
           if (!append) {
             dispatch({ type: 'clear' });
           }
 
-          if (graph.nodes.length > 0) {
-            dispatch({ type: 'merge', data: graph });
-          }
+          dispatch({ type: 'merge', data: graph });
         }
 
         return {

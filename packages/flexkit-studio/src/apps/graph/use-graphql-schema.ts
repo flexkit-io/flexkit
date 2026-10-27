@@ -6,11 +6,11 @@ import { useApolloClient } from '@apollo/client/react';
 import { buildClientSchema, getIntrospectionQuery } from 'graphql';
 import type { GraphQLSchema, IntrospectionQuery } from 'graphql';
 
-/** One introspection per project per session; the schema only changes with a deployment. */
+/** One introspection per deployed schema (project id + schema hash), so a deployment while the Studio is open refreshes it. */
 const schemaCache = new Map<string, Promise<GraphQLSchema>>();
 
-function introspect(client: ReturnType<typeof useApolloClient>, projectId: string): Promise<GraphQLSchema> {
-  const cached = schemaCache.get(projectId);
+function introspect(client: ReturnType<typeof useApolloClient>, cacheKey: string): Promise<GraphQLSchema> {
+  const cached = schemaCache.get(cacheKey);
 
   if (cached) {
     return cached;
@@ -25,14 +25,20 @@ function introspect(client: ReturnType<typeof useApolloClient>, projectId: strin
 
       return buildClientSchema(result.data);
     });
-  pending.catch(() => schemaCache.delete(projectId));
-  schemaCache.set(projectId, pending);
+  pending.catch(() => schemaCache.delete(cacheKey));
+  schemaCache.set(cacheKey, pending);
 
   return pending;
 }
 
-/** The project's GraphQL schema, for completion and validation in the editor; null until loaded. */
-export function useGraphQLSchema(projectId: string | undefined): GraphQLSchema | null {
+/**
+ * The project's GraphQL schema, for completion and validation in the editor;
+ * null until loaded. Re-introspected when the deployed schema hash changes.
+ */
+export function useGraphQLSchema(
+  projectId: string | undefined,
+  schemaHash: string | null | undefined
+): GraphQLSchema | null {
   const client = useApolloClient();
   const [schema, setSchema] = useState<GraphQLSchema | null>(null);
 
@@ -42,7 +48,7 @@ export function useGraphQLSchema(projectId: string | undefined): GraphQLSchema |
     }
 
     let cancelled = false;
-    introspect(client, projectId)
+    introspect(client, `${projectId}:${schemaHash ?? ''}`)
       .then((loaded) => {
         if (!cancelled) {
           setSchema(loaded);
@@ -55,7 +61,7 @@ export function useGraphQLSchema(projectId: string | undefined): GraphQLSchema |
     return () => {
       cancelled = true;
     };
-  }, [client, projectId]);
+  }, [client, projectId, schemaHash]);
 
   return schema;
 }

@@ -24,11 +24,21 @@ export const TABLE_ROW_LIMIT = 200;
 const EXAMPLE_RELATED_LIMIT = 5;
 /** Relationships an example query includes. */
 const EXAMPLE_RELATIONSHIPS = 3;
-const SKIPPED_KEYS = new Set(['_id', '_type', '__typename']);
-
 export type QueryResult = { [field: string]: unknown };
 
+/** What a run of a query produced, for the pane's footer. */
+export interface QueryRun {
+  data: QueryResult | null;
+  error: string | null;
+  elapsedMs: number;
+  /** Nodes and edges the result maps to; the canvas may hold fewer once at its cap. */
+  nodes: number;
+  edges: number;
+}
+
 export interface ExampleQuery {
+  /** Entity name, unique across the schema. */
+  entity: string;
   title: string;
   query: string;
 }
@@ -84,9 +94,17 @@ function relationshipOfKey(key: string, entity: Entity): Attribute | undefined {
   return getRelationshipAttributes(entity).find((attribute) => attribute.name === name);
 }
 
+/** The entity of a record: its `__typename` when the API sent one, else the field it came under. */
+export function entityOfRecord(record: GraphRecord, fallback: Entity, schema: Entity[]): Entity {
+  const typename = record.__typename;
+
+  return (typeof typename === 'string' && getEntity(schema, typename)) || fallback;
+}
+
 /**
  * A caption for a record from whatever the query selected: the display
- * attribute when present, else the first string the record carries.
+ * attribute when present, else the first string the record carries that is
+ * not a system field (`_id`, `_createdAt`, `__typename` and the like).
  */
 export function captionFromRecord(record: GraphRecord, entity: Entity | undefined, scope: string): string {
   const caption = captionOf(record, entity, scope);
@@ -96,7 +114,7 @@ export function captionFromRecord(record: GraphRecord, entity: Entity | undefine
   }
 
   const text = Object.entries(record).find(
-    ([key, value]) => !SKIPPED_KEYS.has(key) && typeof value === 'string' && value.trim().length > 0
+    ([key, value]) => !key.startsWith('_') && typeof value === 'string' && value.trim().length > 0
   );
 
   return text ? (text[1] as string) : record._id;
@@ -105,8 +123,9 @@ export function captionFromRecord(record: GraphRecord, entity: Entity | undefine
 /**
  * Nodes and edges from a query result: every object with an `_id` under a
  * root field named after an entity becomes a node, every relationship field
- * selected on it an edge to the related nodes. Fields the schema does not
- * know are ignored.
+ * selected on it an edge to the related nodes. A record's `__typename`
+ * decides its entity when present, so an alias cannot mislabel it. Fields
+ * the schema does not know are ignored.
  */
 export function graphFromQueryResult({
   data,
@@ -120,7 +139,8 @@ export function graphFromQueryResult({
   const nodes = new Map<string, GraphNode>();
   const edges = new Map<string, GraphEdge>();
 
-  const addRecord = (record: GraphRecord, entity: Entity): GraphNode => {
+  const addRecord = (record: GraphRecord, fallback: Entity): GraphNode => {
+    const entity = entityOfRecord(record, fallback, schema);
     const key = nodeKey(entity.name, record._id);
     const existing = nodes.get(key);
     const node: GraphNode = existing ?? {
@@ -182,6 +202,7 @@ export function exampleQueries(schema: Entity[], scope: string): ExampleQuery[] 
     const display = getDisplaySelection(entity, scope);
 
     return {
+      entity: entity.name,
       title: entity.menu?.label ?? entity.plural,
       query: `query {\n  ${entity.plural}(limit: 25) {\n    _id\n${display ? `    ${display}\n` : ''}${relationships.join('\n')}\n  }\n}`,
     };
@@ -239,6 +260,23 @@ export function tableFromResult(data: QueryResult | null | undefined, scope: str
       .map((record) => Object.fromEntries(columns.map((column) => [column, formatCell(record[column], scope)]))),
     total: records.length,
   };
+}
+
+/** The response without the `__typename` keys the client adds, for the JSON view. */
+export function stripTypename(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stripTypename);
+  }
+
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value as { [key: string]: unknown })
+        .filter(([key]) => key !== '__typename')
+        .map(([key, item]) => [key, stripTypename(item)])
+    );
+  }
+
+  return value;
 }
 
 /** Where the last query of a project is remembered. */
