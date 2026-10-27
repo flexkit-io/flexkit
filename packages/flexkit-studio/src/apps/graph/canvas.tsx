@@ -64,10 +64,15 @@ function ringRadius(count: number): number {
   return PLACEMENT_RADIUS * (0.8 + Math.sqrt(count) * 0.6);
 }
 
-/** Evenly spaced positions on a ring, with a little jitter so no two coincide. */
+/**
+ * Evenly spaced positions on a ring, with a little jitter so no two coincide
+ * and a random phase so a lone newcomer can land on any side of its anchor.
+ */
 function ringPositions(center: Point, count: number, radius: number): Point[] {
+  const phase = Math.random() * Math.PI * 2;
+
   return Array.from({ length: count }, (_, index) => {
-    const angle = (index / count) * Math.PI * 2 + Math.random() * 0.3;
+    const angle = phase + (index / count) * Math.PI * 2 + Math.random() * 0.3;
     const distance = radius * (0.9 + Math.random() * 0.2);
 
     return { x: center.x + Math.cos(angle) * distance, y: center.y + Math.sin(angle) * distance };
@@ -109,23 +114,25 @@ function placedExtent(
  * Places new nodes: those sharing an anchor already on the canvas go on a
  * ring around it, the rest on a ring beyond everything placed so far.
  */
-function placeNewNodes(graph: Graph<NodeAttributes, EdgeAttributes>, added: string[]): void {
-  const placed = graph.nodes().filter((key) => !added.includes(key) && isPositioned(graph, key));
+function placeNewNodes(graph: Graph<NodeAttributes, EdgeAttributes>, added: Set<string>): void {
   const groups = new Map<string | null, string[]>();
   added.forEach((key) => {
     const anchor =
-      graph.neighbors(key).find((neighbour) => !added.includes(neighbour) && isPositioned(graph, neighbour)) ?? null;
+      graph.neighbors(key).find((neighbour) => !added.has(neighbour) && isPositioned(graph, neighbour)) ?? null;
     groups.set(anchor, [...(groups.get(anchor) ?? []), key]);
   });
   groups.forEach((keys, anchor) => {
-    const center = anchor ? { x: graph.getNodeAttribute(anchor, 'x'), y: graph.getNodeAttribute(anchor, 'y') } : null;
-    const positions = center
-      ? ringPositions(center, keys.length, ringRadius(keys.length))
-      : (() => {
-          const extent = placedExtent(graph, placed);
+    let positions: Point[];
 
-          return ringPositions(extent.center, keys.length, extent.reach + ringRadius(keys.length));
-        })();
+    if (anchor) {
+      const center = { x: graph.getNodeAttribute(anchor, 'x'), y: graph.getNodeAttribute(anchor, 'y') };
+      positions = ringPositions(center, keys.length, ringRadius(keys.length));
+    } else {
+      const placed = graph.nodes().filter((key) => !added.has(key) && isPositioned(graph, key));
+      const extent = placedExtent(graph, placed);
+      positions = ringPositions(extent.center, keys.length, extent.reach + ringRadius(keys.length));
+    }
+
     positions.forEach((position, index) => graph.mergeNodeAttributes(keys[index]!, position));
   });
 }
@@ -139,14 +146,13 @@ class PositionTracker {
 
   constructor(private readonly graph: Graph<NodeAttributes, EdgeAttributes>) {
     this.positions = new Float64Array(graph.order * 2);
+    let cursor = 0;
     this.graph.forEachNode((_key, attributes) => {
-      this.positions[this.cursor] = attributes.x;
-      this.positions[this.cursor + 1] = attributes.y;
-      this.cursor += 2;
+      this.positions[cursor] = attributes.x;
+      this.positions[cursor + 1] = attributes.y;
+      cursor += 2;
     });
   }
-
-  private cursor = 0;
 
   /** Movement since the last call, then remembers the current positions. */
   measure(): LayoutMovement {
@@ -195,9 +201,9 @@ function syncGraph(
   graph: Graph<NodeAttributes, EdgeAttributes>,
   scene: SceneState,
   colors: { [entity: string]: string }
-): { changed: boolean; added: string[]; hadNodes: boolean } {
+): { changed: boolean; added: Set<string>; hadNodes: boolean } {
   let changed = false;
-  const added: string[] = [];
+  const added = new Set<string>();
   const hadNodes = graph.order > 0;
 
   graph.forEachNode((key) => {
@@ -219,7 +225,7 @@ function syncGraph(
       x: Number.NaN,
       y: Number.NaN,
     });
-    added.push(node.key);
+    added.add(node.key);
     changed = true;
   });
   graph.forEachEdge((key) => {
@@ -271,6 +277,8 @@ export function GraphCanvas({
   const layoutTimerRef = useRef<number | null>(null);
   /** The node under the pointer while one is dragged, with the pointer's graph position. */
   const dragRef = useRef<{ node: string; x: number; y: number } | null>(null);
+  /** The layout a drag started, so a drop restarts only that one. */
+  const dragLayoutRef = useRef<FA2LayoutSupervisor | null>(null);
   const settleTimerRef = useRef<number | null>(null);
   const layoutDeadlineRef = useRef<number | null>(null);
   /** Nodes held still for the running layout so only newcomers move. */
@@ -422,8 +430,6 @@ export function GraphCanvas({
     } else {
       hoverRef.current = { key: null, nodes: [] };
     }
-
-    renderer.refresh({ skipIndexation: true });
   }, []);
 
   // The renderer: created per theme (styles are fixed at construction) over
@@ -488,20 +494,14 @@ export function GraphCanvas({
               labelSize: 12,
               labelFont: 'ui-sans-serif, system-ui, sans-serif',
               // Dense graphs label only the pointer's surroundings and the
-              // selection until zoomed in; a hub's many neighbours still go
-              // through the label grid so they cannot pile up.
+              // selection until zoomed in. Neighbours always go through the
+              // label grid: a hub's many neighbours would otherwise pile up.
               labelVisibility: (_attributes, state, graphState) => {
                 if (state.isHovered || state.isHighlighted) {
                   return 'visible';
                 }
 
-                const dense = graphState.isDense && !graphState.isZoomedIn;
-
-                if (state.isNeighbour) {
-                  return dense ? 'auto' : 'visible';
-                }
-
-                return dense ? 'hidden' : 'auto';
+                return graphState.isDense && !graphState.isZoomedIn && !state.isNeighbour ? 'hidden' : 'auto';
               },
               backdropColor: isDark ? '#27272a' : '#ffffff',
               backdropShadowColor: isDark ? 'rgba(0, 0, 0, 0.6)' : 'rgba(0, 0, 0, 0.25)',
@@ -552,6 +552,7 @@ export function GraphCanvas({
 
       if (graph.size > 0) {
         startLayout(layoutBudget(graph.order), holdAllBut(node));
+        dragLayoutRef.current = layoutRef.current;
       } else {
         stopLayout();
         graph.setNodeAttribute(node, 'fixed', true);
@@ -564,8 +565,12 @@ export function GraphCanvas({
       }
     });
     renderer.on('nodeDragEnd', ({ node }) => {
-      const wasRunning = dragRef.current !== null && layoutRef.current !== null;
+      // A scene change during the drag replaced its layout with one settling
+      // newcomers; that one keeps running, with the drop pinned by the scene.
+      const wasRunning =
+        dragRef.current !== null && layoutRef.current !== null && layoutRef.current === dragLayoutRef.current;
       dragRef.current = null;
+      dragLayoutRef.current = null;
       callbacksRef.current.onPin(node);
 
       // The node stays where it was dropped while its neighbours settle around it.
@@ -580,7 +585,6 @@ export function GraphCanvas({
 
       if (renderer.getGraphState().isZoomedIn !== isZoomedIn) {
         renderer.setGraphState({ isZoomedIn });
-        renderer.refresh({ skipIndexation: true });
       }
     };
     camera.on('updated', handleCameraUpdate);
@@ -623,6 +627,9 @@ export function GraphCanvas({
       return;
     }
 
+    // The layout's supervisor respawns its worker on every graph change, on
+    // a timer that outlives `kill()`: stop it before the graph is touched.
+    stopLayout();
     const { changed, added, hadNodes } = syncGraph(graph, scene, colors);
 
     if (!changed) {
@@ -641,8 +648,8 @@ export function GraphCanvas({
     }
 
     // Adding to a placed canvas: hold what is there, settle the newcomers.
-    const hold = hadNodes && added.length > 0 ? graph.nodes().filter((key) => !added.includes(key)) : [];
-    startLayout(layoutBudget(hold.length > 0 ? added.length : graph.order), hold);
+    const hold = hadNodes && added.size > 0 ? graph.nodes().filter((key) => !added.has(key)) : [];
+    startLayout(layoutBudget(hold.length > 0 ? added.size : graph.order), hold);
     // Nodes and edges only change with the scene version; colours are applied by their own effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [scene.version]);
@@ -681,8 +688,10 @@ export function GraphCanvas({
       }
     });
 
+    // A pin change during a run restarts it with the same hold, so the
+    // nodes kept still for it stay still.
     if (pinsChanged && layoutDeadlineRef.current !== null) {
-      startLayout(Math.max(500, layoutDeadlineRef.current - performance.now()));
+      startLayout(Math.max(500, layoutDeadlineRef.current - performance.now()), [...heldRef.current]);
     }
     graph.forEachEdge((key, _attributes, source, target) => {
       renderer.setEdgeState(key, {
@@ -690,7 +699,6 @@ export function GraphCanvas({
           hidden.has(graph.getNodeAttribute(source, 'entity')) || hidden.has(graph.getNodeAttribute(target, 'entity')),
       });
     });
-    renderer.refresh({ skipIndexation: true });
   }, [scene.hiddenEntities, scene.selected, scene.pinned, scene.version, mountAttempt, theme, startLayout]);
 
   // Unmount: stop the worker.
