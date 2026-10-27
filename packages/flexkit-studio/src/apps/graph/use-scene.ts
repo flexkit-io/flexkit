@@ -16,6 +16,8 @@ import {
   nodeKey,
   type GraphRecord,
 } from './graph';
+import { graphFromQueryResult, type QueryResult } from './query';
+import type { QueryRun } from './query-pane';
 import { EMPTY_SCENE, sceneReducer, type SceneAction, type SceneState } from './scene';
 
 /** Which records to load: given ids (with their first hop when `expand`), or a sample. */
@@ -31,12 +33,14 @@ export interface SceneApi {
   expandAll: (key: string) => Promise<void>;
   /** Loads the next page of one relationship of a node. */
   expandAttribute: (key: string, attribute: Attribute) => Promise<void>;
+  /** Runs any GraphQL query and draws its result, replacing the canvas unless `append`. */
+  runQuery: (query: string, options: { append: boolean }) => Promise<QueryRun>;
 }
 
 type RecordsResult = { [plural: string]: GraphRecord[] };
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'The records could not be loaded.';
+  return error instanceof Error ? error.message : 'The request failed.';
 }
 
 /**
@@ -135,5 +139,60 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
     [client, schema, scope, state.fetched, state.nodes]
   );
 
-  return { state, dispatch, isLoading: pending > 0, loadRecords, expandAll, expandAttribute };
+  const runQuery = useCallback(
+    async (query: string, { append }: { append: boolean }): Promise<QueryRun> => {
+      const startedAt = performance.now();
+      let document;
+
+      try {
+        document = gql(query);
+      } catch (error) {
+        return { data: null, error: errorMessage(error), elapsedMs: 0, nodes: 0, edges: 0 };
+      }
+
+      setPending((count) => count + 1);
+
+      try {
+        const result = await client.query<QueryResult>({
+          query: document,
+          fetchPolicy: 'network-only',
+          errorPolicy: 'all',
+        });
+        const data = result.data ?? null;
+        const graph = graphFromQueryResult({ data, schema, scope });
+
+        // A failed query leaves the canvas as it was.
+        if (data) {
+          if (!append) {
+            dispatch({ type: 'clear' });
+          }
+
+          if (graph.nodes.length > 0) {
+            dispatch({ type: 'merge', data: graph });
+          }
+        }
+
+        return {
+          data,
+          error: result.error ? result.error.message : null,
+          elapsedMs: Math.round(performance.now() - startedAt),
+          nodes: graph.nodes.length,
+          edges: graph.edges.length,
+        };
+      } catch (error) {
+        return {
+          data: null,
+          error: errorMessage(error),
+          elapsedMs: Math.round(performance.now() - startedAt),
+          nodes: 0,
+          edges: 0,
+        };
+      } finally {
+        setPending((count) => count - 1);
+      }
+    },
+    [client, schema, scope]
+  );
+
+  return { state, dispatch, isLoading: pending > 0, loadRecords, expandAll, expandAttribute, runQuery };
 }
