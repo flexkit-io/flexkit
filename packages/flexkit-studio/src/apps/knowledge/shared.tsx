@@ -1,14 +1,6 @@
 import type { JSX, MouseEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DownloadIcon,
-  EllipsisVerticalIcon,
-  ExternalLinkIcon,
-  FileTextIcon,
-  GlobeIcon,
-  LoaderCircle,
-  Trash2Icon,
-} from 'lucide-react';
+import { DownloadIcon, EllipsisVerticalIcon, ExternalLinkIcon, LoaderCircle, Trash2Icon } from 'lucide-react';
 import { mutate as mutateGlobal } from 'swr';
 // File type icons: Untitled UI's free file icons, Solid variant. The set is
 // published as the MIT package `@untitledui/file-icons`; the page below shows
@@ -153,14 +145,9 @@ export function KnowledgeTypeIcon({
   );
 }
 
-export function SourceIcon({ source }: { source: Pick<KnowledgeSource, 'kind'> }): JSX.Element {
-  const Icon = source.kind === 'url' ? GlobeIcon : FileTextIcon;
-
-  return (
-    <span className="fk:flex fk:size-10 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-lg fk:bg-muted fk:text-muted-foreground fk:corner-squircle">
-      <Icon className="fk:size-5" />
-    </span>
-  );
+/** The larger file icon of the document page and the record panel: the same icon as the list, at 40px. */
+export function SourceIcon({ source }: { source: Pick<KnowledgeSource, 'kind' | 'mimeType'> }): JSX.Element {
+  return <KnowledgeTypeIcon size={40} source={source} />;
 }
 
 export function InfiniteScrollSentinel({ onVisible }: { onVisible: () => void }): JSX.Element {
