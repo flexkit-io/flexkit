@@ -69,7 +69,8 @@
     "test:core": "tsup --config tests/core.config.ts && node --test build/tests/json-schema-to-zod.test.js build/tests/icon-name.test.js build/tests/project-schemas.test.js build/tests/rating-preview.test.js build/tests/last-project.test.js build/tests/proxy-target.test.js build/tests/project-label.test.js build/tests/hosted-session.test.js build/tests/bff-session.test.js build/tests/project-schema-key.test.js build/tests/schema-deploy-watch.test.js build/tests/app-sessions.test.js build/tests/electron-api.test.js",
     "test:ai": "tsup --config tests/ai.config.ts && node --test build/tests/ai/*.test.js",
     "test:knowledge": "tsup --config tests/knowledge.config.ts && node --test build/tests/knowledge/*.test.js",
-    "test": "pnpm run test:core && pnpm run test:ai && pnpm run test:knowledge && pnpm run test:performance"
+    "test:graph": "tsup --config tests/graph.config.ts && node --test build/tests/graph/*.test.js",
+    "test": "pnpm run test:core && pnpm run test:ai && pnpm run test:knowledge && pnpm run test:graph && pnpm run test:performance"
   },
   "devDependencies": {
     "@tailwindcss/cli": "4.2.4",
@@ -82,6 +83,7 @@
     "@types/react-file-icon": "1.0.4",
     "@types/uuid": "^9.0.6",
     "eslint-config-custom": "workspace:*",
+    "graphology-types": "0.24.8",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "tailwind-config": "workspace:*",
@@ -147,6 +149,9 @@
     "cron-parser": "5.5.0",
     "date-fns": "4.1.0",
     "debug": "^4.3.4",
+    "graphology": "0.26.0",
+    "graphology-layout": "0.6.1",
+    "graphology-layout-forceatlas2": "0.10.1",
     "graphql": "^16.8.1",
     "graphql-ws": "5.14.2",
     "lexical": "^0.12.2",
@@ -167,6 +172,7 @@
     "recharts": "2.15.3",
     "shadcn": "4.16.1",
     "shiki": "4.4.3",
+    "sigma": "4.0.3",
     "sonner": "^2.0.0",
     "streamdown": "2.5.0",
     "swr": "^2.4.1",

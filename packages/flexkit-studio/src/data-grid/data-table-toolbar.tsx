@@ -27,6 +27,7 @@ import { isKnowledgeLinkableEntity } from '../apps/knowledge/knowledge';
 const EntityKnowledgeButton = lazy(() =>
   import('../apps/knowledge/record-links').then((m) => ({ default: m.EntityKnowledgeButton }))
 );
+const EntityGraphButton = lazy(() => import('../apps/graph/entry').then((m) => ({ default: m.EntityGraphButton })));
 
 interface DataTableToolbarProps<TData> {
   entityName: string;
@@ -201,6 +202,11 @@ export function DataTableToolbar<TData>({
       {entityName && isKnowledgeLinkableEntity(entityName) ? (
         <Suspense fallback={null}>
           <EntityKnowledgeButton entityName={entityName} />
+        </Suspense>
+      ) : null}
+      {entityName ? (
+        <Suspense fallback={null}>
+          <EntityGraphButton entityName={entityName} selectedIds={selectedIds} />
         </Suspense>
       ) : null}
       <PermissionTooltip disabled={!canMutate}>

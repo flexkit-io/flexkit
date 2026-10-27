@@ -88,6 +88,7 @@ export {
 } from './ui/primitives/sheet';
 export { Sidebar } from './ui/components/sidebar';
 export {
+  readSidebarCookieState,
   Sidebar as SidebarPanel,
   SidebarContent,
   SidebarGroup,

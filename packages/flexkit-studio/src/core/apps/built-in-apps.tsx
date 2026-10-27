@@ -6,6 +6,7 @@ import {
   FileStack as FileStackIcon,
   Layout as LayoutIcon,
   SquarePlay as SquarePlayIcon,
+  Waypoints as WaypointsIcon,
 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { Loading } from '../../ui/components/loading';
@@ -44,6 +45,9 @@ const assetManagerRoot = lazyElement(() => import('../../apps/asset-manager/root
 const knowledgeRoot = lazyElement(() => import('../../apps/knowledge/root').then((m) => ({ default: m.Root })));
 const knowledgeList = lazyElement(() => import('../../apps/knowledge/list').then((m) => ({ default: m.List })));
 const knowledgeSource = lazyElement(() => import('../../apps/knowledge/source').then((m) => ({ default: m.Source })));
+
+// Graph
+const graphRoot = lazyElement(() => import('../../apps/graph/root').then((m) => ({ default: m.Root })));
 
 // Explorer
 const explorerRoot = lazyElement(() => import('../../apps/explorer/root').then((m) => ({ default: m.Root })));
@@ -197,6 +201,13 @@ export const builtInApps: AppOptions[] = [
         path: ':sourceId',
       },
     ],
+  },
+  {
+    name: 'graph',
+    icon: <WaypointsIcon strokeWidth={1.5} />,
+    title: 'Graph',
+    component: graphRoot,
+    routes: [],
   },
   {
     name: 'explorer',
