@@ -57,13 +57,29 @@ export function GraphToolbar({
       <Separator className="fk:mx-0.5 fk:h-4" orientation="vertical" />
       <ToolbarButton
         disabled={!hasSelection || isLoading}
-        icon={isLoading ? <LoaderCircleIcon className="fk:size-3.5 fk:animate-spin" /> : <ExpandIcon className="fk:size-3.5" />}
+        icon={
+          isLoading ? (
+            <LoaderCircleIcon className="fk:size-3.5 fk:animate-spin" />
+          ) : (
+            <ExpandIcon className="fk:size-3.5" />
+          )
+        }
         label="Expand"
         onClick={onExpand}
       />
-      <ToolbarButton disabled={!hasSelection} icon={<EyeOffIcon className="fk:size-3.5" />} label="Hide" onClick={onHide} />
+      <ToolbarButton
+        disabled={!hasSelection}
+        icon={<EyeOffIcon className="fk:size-3.5" />}
+        label="Hide"
+        onClick={onHide}
+      />
       <Separator className="fk:mx-0.5 fk:h-4" orientation="vertical" />
-      <ToolbarButton disabled={!hasNodes} icon={<EraserIcon className="fk:size-3.5" />} label="Clear" onClick={onClear} />
+      <ToolbarButton
+        disabled={!hasNodes}
+        icon={<EraserIcon className="fk:size-3.5" />}
+        label="Clear"
+        onClick={onClear}
+      />
     </div>
   );
 }
