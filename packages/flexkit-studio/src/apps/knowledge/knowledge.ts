@@ -59,6 +59,8 @@ export interface KnowledgeSource {
   currentVersion: KnowledgeVersion | null;
   /** The opening of the document's text, carried by listings for the grid's cards. */
   preview?: string | null;
+  /** When the list was searched: whether the title or the content matched. */
+  matchedIn?: 'title' | 'content' | null;
 }
 
 export interface KnowledgeJobProgress {

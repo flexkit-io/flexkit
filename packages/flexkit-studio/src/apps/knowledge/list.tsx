@@ -284,6 +284,15 @@ function HiddenBadge(): JSX.Element {
   );
 }
 
+/** A search hit whose title does not carry the words: the text inside does. */
+function ContentMatchBadge(): JSX.Element {
+  return (
+    <Badge className="fk:shrink-0 fk:corner-squircle" data-knowledge-content-match variant="secondary">
+      In content
+    </Badge>
+  );
+}
+
 interface SourceActions {
   onOpen: (_source: KnowledgeSource) => void;
   onRemoved: (_source: KnowledgeSource) => void;
@@ -326,6 +335,7 @@ function SourceListRow({ api, projectId, source, ...actions }: SourceItemProps):
           >
             {source.title}
           </Link>
+          {source.matchedIn === 'content' ? <ContentMatchBadge /> : null}
           {!source.agentVisible ? <HiddenBadge /> : null}
         </span>
       </TableCell>
@@ -470,6 +480,7 @@ function SourceCard({ api, projectId, source, ...actions }: SourceItemProps): JS
       <span className="fk:pointer-events-none fk:relative fk:flex fk:min-w-0 fk:items-center fk:gap-2">
         <StatusBadge label={status.label} tone={status.tone} />
         <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-xs fk:text-muted-foreground">{meta.join(' · ')}</span>
+        {source.matchedIn === 'content' ? <ContentMatchBadge /> : null}
         {!source.agentVisible ? <HiddenBadge /> : null}
       </span>
     </div>
@@ -574,7 +585,7 @@ export function List(): JSX.Element {
   let emptyMessage = `No documents yet. Upload ${KNOWLEDGE_FORMATS_LABEL} files, or add a public web page, and the agent will search and cite them.`;
 
   if (search.trim()) {
-    emptyMessage = 'No documents match your search.';
+    emptyMessage = 'No document title or content matches your search.';
   } else if (status) {
     emptyMessage = EMPTY_BY_FILTER[status];
   }
@@ -627,7 +638,7 @@ export function List(): JSX.Element {
               <Input
                 aria-label="Search documents"
                 className="fk:w-full fk:max-w-sm"
-                placeholder="Search documents…"
+                placeholder="Search by title or content…"
                 value={search}
                 onChange={(event) => {
                   void setSize(1);
