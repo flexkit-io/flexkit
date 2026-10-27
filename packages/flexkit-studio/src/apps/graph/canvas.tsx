@@ -20,10 +20,9 @@ type NodeAttributes = {
   fixed?: boolean;
 };
 type EdgeAttributes = { size: number };
-/** A neighbour of the hovered node. */
+/** A neighbour of the hovered node, for its label. */
 type NodeState = { isNeighbour: boolean };
-/** An edge of the hovered node; an edge of the selected node. */
-type EdgeState = { isNear: boolean; isSelected: boolean };
+type EdgeState = Record<string, never>;
 /** Too many nodes for labels everywhere; zoomed in far enough to show them anyway. */
 type GraphState = { isDense: boolean; isZoomedIn: boolean };
 type Renderer = Sigma<NodeAttributes, EdgeAttributes, Attributes, NodeState, EdgeState, GraphState>;
@@ -278,12 +277,8 @@ export function GraphCanvas({
   const heldRef = useRef<Set<string>>(new Set());
   const pinnedRef = useRef<SceneState['pinned']>(scene.pinned);
   pinnedRef.current = scene.pinned;
-  /** The hovered node and the nodes and edges marked around it. */
-  const hoverRef = useRef<{ key: string | null; nodes: string[]; edges: string[] }>({
-    key: null,
-    nodes: [],
-    edges: [],
-  });
+  /** The hovered node and the neighbours marked around it. */
+  const hoverRef = useRef<{ key: string | null; nodes: string[] }>({ key: null, nodes: [] });
   const callbacksRef = useRef({ onSelect, onContextMenu, onExpand, onPin, onLayoutChange });
   const [mountAttempt, setMountAttempt] = useState(0);
   callbacksRef.current = { onSelect, onContextMenu, onExpand, onPin, onLayoutChange };
@@ -402,9 +397,9 @@ export function GraphCanvas({
   );
 
   /**
-   * Marks the hovered node's neighbours and edges, clearing the previous
-   * marks first. Re-run after the graph changes so nodes added under the
-   * pointer are marked too, and marks of dropped nodes go away.
+   * Marks the hovered node's neighbours so their labels show, clearing the
+   * previous marks first. Re-run after the graph changes so nodes added
+   * under the pointer are marked too, and marks of dropped nodes go away.
    */
   const applyHover = useCallback((key: string | null): void => {
     const graph = graphRef.current;
@@ -419,19 +414,13 @@ export function GraphCanvas({
       previous.nodes.filter((node) => graph.hasNode(node)),
       { isNeighbour: false }
     );
-    renderer.setEdgesState(
-      previous.edges.filter((edge) => graph.hasEdge(edge)),
-      { isNear: false }
-    );
 
     if (key && graph.hasNode(key)) {
       const nodes = graph.neighbors(key);
-      const edges = graph.edges(key);
       renderer.setNodesState(nodes, { isNeighbour: true });
-      renderer.setEdgesState(edges, { isNear: true });
-      hoverRef.current = { key, nodes, edges };
+      hoverRef.current = { key, nodes };
     } else {
-      hoverRef.current = { key: null, nodes: [], edges: [] };
+      hoverRef.current = { key: null, nodes: [] };
     }
 
     renderer.refresh({ skipIndexation: true });
@@ -467,7 +456,7 @@ export function GraphCanvas({
       container,
       {
         customNodeState: { isNeighbour: false },
-        customEdgeState: { isNear: false, isSelected: false },
+        customEdgeState: {},
         customGraphState: { isDense: graph.order > DENSE_NODES, isZoomedIn: false },
         settings: {
           // Every render starts with a resize, which would throw while the
@@ -495,9 +484,6 @@ export function GraphCanvas({
                 },
               },
               cursor: 'pointer',
-              // Hovering a node fades everything but it, its neighbours and the selection.
-              opacity: (_attributes, state, graphState) =>
-                graphState.hasHovered && !state.isHovered && !state.isNeighbour && !state.isHighlighted ? 0.25 : 1,
               labelColor: isDark ? '#e4e4e7' : '#18181b',
               labelSize: 12,
               labelFont: 'ui-sans-serif, system-ui, sans-serif',
@@ -526,8 +512,6 @@ export function GraphCanvas({
               ...DEFAULT_STYLES.edges,
               color: isDark ? '#3f3f46' : '#d4d4d8',
               size: 1,
-              opacity: (_attributes, state, graphState) =>
-                graphState.hasHovered && !state.isNear && !state.isSelected ? 0.15 : 1,
             },
           ],
         },
@@ -626,7 +610,7 @@ export function GraphCanvas({
       container.removeEventListener('contextmenu', preventContextMenu);
       apiRef.current = null;
       rendererRef.current = null;
-      hoverRef.current = { key: null, nodes: [], edges: [] };
+      hoverRef.current = { key: null, nodes: [] };
       renderer.kill();
     };
   }, [theme, mountAttempt, apiRef, startLayout, stopLayout, applyHover]);
@@ -704,7 +688,6 @@ export function GraphCanvas({
       renderer.setEdgeState(key, {
         isHidden:
           hidden.has(graph.getNodeAttribute(source, 'entity')) || hidden.has(graph.getNodeAttribute(target, 'entity')),
-        isSelected: source === scene.selected || target === scene.selected,
       });
     });
     renderer.refresh({ skipIndexation: true });
