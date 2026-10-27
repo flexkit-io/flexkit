@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['tests/graph/graph.test.ts', 'tests/graph/scene.test.ts'],
+  entry: ['tests/graph/graph.test.ts', 'tests/graph/scene.test.ts', 'tests/graph/layout.test.ts'],
   format: ['esm'],
   outDir: 'build/tests/graph',
   removeNodeProtocol: false,

@@ -50,7 +50,7 @@ export function GraphToolbar({
 }: GraphToolbarProps): JSX.Element {
   return (
     <div
-      className="fk:absolute fk:left-3 fk:top-3 fk:flex fk:items-center fk:gap-0.5 fk:rounded-lg fk:border fk:bg-background fk:p-1 fk:shadow-xs"
+      className="fk:flex fk:items-center fk:gap-0.5 fk:rounded-lg fk:border fk:bg-background fk:p-1 fk:shadow-xs"
       data-testid="graph-toolbar"
     >
       <ToolbarButton disabled={!hasNodes} icon={<ScanIcon className="fk:size-3.5" />} label="Fit" onClick={onFit} />

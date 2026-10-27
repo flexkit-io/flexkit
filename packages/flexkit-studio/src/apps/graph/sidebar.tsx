@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import type { JSX } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
-import { PlusIcon, SearchIcon } from 'lucide-react';
+import { SearchIcon } from 'lucide-react';
 import { useDebounce } from 'use-debounce';
 import { getDisplayAttribute } from '../../core/get-display-attribute';
 import { useSearch } from '../../core/use-search';
@@ -98,7 +98,6 @@ export function GraphSidebar({
     <SidebarPanel collapsible="icon" variant="inset">
       <SidebarContent>
         <SidebarGroup className="fk:group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>Add a record</SidebarGroupLabel>
           <div className="fk:relative">
             <SearchIcon className="fk:pointer-events-none fk:absolute fk:left-2 fk:top-1/2 fk:size-4 fk:-translate-y-1/2 fk:text-muted-foreground" />
             <Input
@@ -129,7 +128,6 @@ export function GraphSidebar({
                         style={{ backgroundColor: colors[hit._entityName] ?? '#71717a' }}
                       />
                       <span className="fk:min-w-0 fk:flex-1 fk:truncate">{String(label ?? hit._id)}</span>
-                      <PlusIcon className="fk:size-3.5 fk:shrink-0 fk:text-muted-foreground" />
                     </button>
                   </li>
                 );

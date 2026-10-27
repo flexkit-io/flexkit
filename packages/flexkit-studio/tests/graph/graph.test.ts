@@ -282,6 +282,13 @@ describe('getEntityColors', () => {
   it('steps the same hues for the dark surface', () => {
     assert.equal(getEntityColors(schema, 'dark').product, GRAPH_PALETTE.dark[0]);
   });
+
+  it('holds twelve distinct hues per surface', () => {
+    assert.equal(GRAPH_PALETTE.light.length, 12);
+    assert.equal(GRAPH_PALETTE.dark.length, 12);
+    assert.equal(new Set(GRAPH_PALETTE.light).size, 12);
+    assert.equal(new Set(GRAPH_PALETTE.dark).size, 12);
+  });
 });
 
 describe('routes', () => {
