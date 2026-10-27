@@ -1,7 +1,17 @@
-import type { ChangeEvent, FormEvent, JSX } from 'react';
+import type { ChangeEvent, FormEvent, JSX, MouseEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { format, formatDistance } from 'date-fns';
-import { LayoutGridIcon, LinkIcon, ListIcon, LoaderCircle, UploadIcon } from 'lucide-react';
+import {
+  DownloadIcon,
+  EllipsisVerticalIcon,
+  ExternalLinkIcon,
+  LayoutGridIcon,
+  LinkIcon,
+  ListIcon,
+  LoaderCircle,
+  Trash2Icon,
+  UploadIcon,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useSWRInfinite from 'swr/infinite';
 import { useIsViewing } from '../../core/apps/app-active';
@@ -11,6 +21,11 @@ import {
   AlertDescription,
   Badge,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Table,
   TableBody,
   TableCell,
@@ -36,6 +51,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '../../ui';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../ui/primitives/alert-dialog';
 import { AssetDropZone } from '../asset-manager/data-grid/asset-drop-zone';
 import { fetcher, knowledgePaths, type KnowledgeApi } from './api';
 import {
@@ -57,6 +82,7 @@ import {
 import {
   announceRegistered,
   describeApiError,
+  invalidateKnowledgeLists,
   InfiniteScrollSentinel,
   KnowledgeTypeIcon,
   PageMessage,
@@ -283,20 +309,132 @@ function HiddenBadge(): JSX.Element {
   );
 }
 
+interface SourceActions {
+  onOpen: (_source: KnowledgeSource) => void;
+  onRemoved: (_source: KnowledgeSource) => void;
+}
+
+/**
+ * The row and card menu: open, download the original file (web pages open
+ * their address instead), remove. Clicks inside never reach the row behind.
+ */
+function SourceMenu({
+  api,
+  projectId,
+  source,
+  ...actions
+}: SourceActions & { api: KnowledgeApi; projectId: string; source: KnowledgeSource }): JSX.Element {
+  const canMutate = useCanMutate();
+  const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
+
+  async function remove(): Promise<void> {
+    setIsRemoving(true);
+
+    try {
+      await api.deleteSource(source.id);
+      toast.success(`Removed "${source.title}".`);
+      actions.onRemoved(source);
+      void invalidateKnowledgeLists();
+    } catch (removeError) {
+      toast.error(describeApiError(removeError, 'The document could not be removed.'));
+    } finally {
+      setIsRemoving(false);
+      setIsConfirmingRemoval(false);
+    }
+  }
+
+  return (
+    <span
+      className="fk:contents"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            aria-label={`Actions for ${source.title}`}
+            className="fk:size-8 fk:shrink-0 fk:text-muted-foreground"
+            data-knowledge-menu
+            size="icon"
+            variant="ghost"
+          >
+            <EllipsisVerticalIcon className="fk:size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => actions.onOpen(source)}>Open</DropdownMenuItem>
+          {source.path ? (
+            <DropdownMenuItem asChild>
+              <a download={source.title} href={knowledgePaths(projectId).file(source.id)}>
+                <DownloadIcon />
+                Download
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          {source.originUrl ? (
+            <DropdownMenuItem asChild>
+              <a href={source.originUrl} rel="noreferrer" target="_blank">
+                <ExternalLinkIcon />
+                Open page
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem disabled={!canMutate} variant="destructive" onSelect={() => setIsConfirmingRemoval(true)}>
+            <Trash2Icon />
+            Remove
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog open={isConfirmingRemoval} onOpenChange={setIsConfirmingRemoval}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{source.title}" and its indexed passages are deleted for everyone. Answers the agent gave earlier keep
+              their citations, but the document can no longer be opened.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isRemoving}
+              onClick={(event: MouseEvent) => {
+                event.preventDefault();
+                void remove();
+              }}
+            >
+              {isRemoving ? <LoaderCircle className="fk:animate-spin" /> : null}
+              Remove document
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </span>
+  );
+}
+
 /** One line of the list: the type mark, the title, then the status and facts in columns, like a file manager. */
-function SourceListRow({ onOpen, source }: { onOpen: () => void; source: KnowledgeSource }): JSX.Element {
+function SourceListRow({
+  api,
+  projectId,
+  source,
+  ...actions
+}: SourceActions & { api: KnowledgeApi; projectId: string; source: KnowledgeSource }): JSX.Element {
   const status = summarizeKnowledgeStatus(source);
+  const open = (): void => actions.onOpen(source);
 
   return (
     <TableRow
       className="fk:h-12 fk:cursor-pointer"
       data-knowledge-row
       tabIndex={0}
-      onClick={onOpen}
+      onClick={open}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          onOpen();
+          open();
         }
       }}
     >
@@ -329,17 +467,19 @@ function SourceListRow({ onOpen, source }: { onOpen: () => void; source: Knowled
           </TooltipContent>
         </Tooltip>
       </TableCell>
+      <TableCell className="fk:w-12 fk:pr-2 fk:text-right">
+        <SourceMenu api={api} projectId={projectId} source={source} {...actions} />
+      </TableCell>
     </TableRow>
   );
 }
 
 function SourceTable({
-  onOpen,
+  api,
+  projectId,
   sources,
-}: {
-  onOpen: (_source: KnowledgeSource) => void;
-  sources: KnowledgeSource[];
-}): JSX.Element {
+  ...actions
+}: SourceActions & { api: KnowledgeApi; projectId: string; sources: KnowledgeSource[] }): JSX.Element {
   return (
     <Table data-knowledge-list>
       <TableHeader>
@@ -349,11 +489,14 @@ function SourceTable({
           <TableHead className="fk:hidden fk:md:table-cell">Type</TableHead>
           <TableHead className="fk:hidden fk:text-right fk:md:table-cell">Size</TableHead>
           <TableHead className="fk:hidden fk:sm:table-cell">Added</TableHead>
+          <TableHead className="fk:w-12">
+            <span className="fk:sr-only">Actions</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {sources.map((source) => (
-          <SourceListRow key={source.id} source={source} onOpen={() => onOpen(source)} />
+          <SourceListRow api={api} key={source.id} projectId={projectId} source={source} {...actions} />
         ))}
       </TableBody>
     </Table>
@@ -389,7 +532,12 @@ function SourcePreview({ source }: { source: KnowledgeSource }): JSX.Element {
   );
 }
 
-function SourceCard({ onOpen, source }: { onOpen: () => void; source: KnowledgeSource }): JSX.Element {
+function SourceCard({
+  api,
+  projectId,
+  source,
+  ...actions
+}: SourceActions & { api: KnowledgeApi; projectId: string; source: KnowledgeSource }): JSX.Element {
   const status = summarizeKnowledgeStatus(source);
   const meta = [getKnowledgeKindLabel(source)];
 
@@ -397,40 +545,49 @@ function SourceCard({ onOpen, source }: { onOpen: () => void; source: KnowledgeS
     meta.push(formatFileSize(source.size));
   }
 
+  // The card is a div with an open button laid over it, so the menu button can live inside.
   return (
-    <button
-      className="fk:flex fk:min-w-0 fk:flex-col fk:gap-3 fk:rounded-xl fk:border fk:bg-card fk:p-3 fk:text-left fk:transition-colors fk:hover:bg-accent/60 fk:focus-visible:outline-none fk:focus-visible:ring-2 fk:focus-visible:ring-ring fk:corner-squircle"
+    <div
+      className="fk:relative fk:flex fk:min-w-0 fk:flex-col fk:gap-3 fk:rounded-xl fk:border fk:bg-card fk:p-3 fk:transition-colors fk:hover:bg-accent/60 fk:has-[>button:focus-visible]:ring-2 fk:has-[>button:focus-visible]:ring-ring fk:corner-squircle"
       data-knowledge-card
-      type="button"
-      onClick={onOpen}
     >
-      <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-2">
+      <button
+        aria-label={`Open ${source.title}`}
+        className="fk:absolute fk:inset-0 fk:rounded-xl fk:focus-visible:outline-none fk:corner-squircle"
+        type="button"
+        onClick={() => actions.onOpen(source)}
+      />
+      <span className="fk:pointer-events-none fk:relative fk:flex fk:min-w-0 fk:items-center fk:gap-2">
         <KnowledgeTypeIcon source={source} />
         <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-sm fk:font-medium" title={source.title}>
           {source.title}
         </span>
+        <span className="fk:pointer-events-auto fk:-my-1 fk:-mr-1.5">
+          <SourceMenu api={api} projectId={projectId} source={source} {...actions} />
+        </span>
       </span>
-      <SourcePreview source={source} />
-      <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-2">
+      <span className="fk:pointer-events-none fk:relative">
+        <SourcePreview source={source} />
+      </span>
+      <span className="fk:pointer-events-none fk:relative fk:flex fk:min-w-0 fk:items-center fk:gap-2">
         <StatusBadge label={status.label} tone={status.tone} />
         <span className="fk:min-w-0 fk:flex-1 fk:truncate fk:text-xs fk:text-muted-foreground">{meta.join(' · ')}</span>
         {!source.agentVisible ? <HiddenBadge /> : null}
       </span>
-    </button>
+    </div>
   );
 }
 
 function SourceGrid({
-  onOpen,
+  api,
+  projectId,
   sources,
-}: {
-  onOpen: (_source: KnowledgeSource) => void;
-  sources: KnowledgeSource[];
-}): JSX.Element {
+  ...actions
+}: SourceActions & { api: KnowledgeApi; projectId: string; sources: KnowledgeSource[] }): JSX.Element {
   return (
     <div className={GRID_CLASSES} data-knowledge-grid>
       {sources.map((source) => (
-        <SourceCard key={source.id} source={source} onOpen={() => onOpen(source)} />
+        <SourceCard api={api} key={source.id} projectId={projectId} source={source} {...actions} />
       ))}
     </div>
   );
@@ -524,12 +681,25 @@ export function List(): JSX.Element {
     emptyMessage = EMPTY_BY_FILTER[status];
   }
 
-  const open = (source: KnowledgeSource): void => void navigate(source.id);
+  const actions: SourceActions = {
+    onOpen: (source) => void navigate(source.id),
+    // Drop the row at once; the global invalidation refetches the pages and counts behind it.
+    onRemoved: (removed) =>
+      void mutate(
+        (current) =>
+          current?.map((page) => ({
+            ...page,
+            count: Math.max(0, page.count - 1),
+            sources: page.sources.filter((entry) => entry.id !== removed.id),
+          })),
+        { revalidate: false }
+      ),
+  };
   let content: JSX.Element =
     viewMode === 'grid' ? (
-      <SourceGrid sources={sources} onOpen={open} />
+      <SourceGrid api={api} projectId={projectId} sources={sources} {...actions} />
     ) : (
-      <SourceTable sources={sources} onOpen={open} />
+      <SourceTable api={api} projectId={projectId} sources={sources} {...actions} />
     );
 
   if (isInitialLoading) {

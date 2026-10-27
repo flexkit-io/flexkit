@@ -1,7 +1,15 @@
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 import { formatDistance } from 'date-fns';
-import { ArrowLeft, BookOpenIcon, ExternalLinkIcon, LoaderCircle, RefreshCwIcon, Trash2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpenIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+  LoaderCircle,
+  RefreshCwIcon,
+  Trash2,
+} from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
@@ -418,6 +426,14 @@ export function Source(): JSX.Element {
       <SourcePageHeader
         actions={
           <div className="fk:flex fk:items-center fk:gap-2">
+            {source.path ? (
+              <Button asChild size="sm" variant="outline">
+                <a download={source.title} href={knowledgePaths(projectId).file(source.id)}>
+                  <DownloadIcon />
+                  Download
+                </a>
+              </Button>
+            ) : null}
             <PermissionTooltip disabled={!canMutate}>
               <Button
                 disabled={!canMutate || isWorking || status.tone === 'busy'}
