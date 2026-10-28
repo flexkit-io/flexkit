@@ -96,8 +96,19 @@ function relationshipOfKey(key: string, entity: Entity): Attribute | undefined {
   return getRelationshipAttributes(entity).find((attribute) => attribute.name === name);
 }
 
+/** The one relationship of an entity that leads to another, if exactly one does. */
+function relationshipTo(entity: Entity, target: string): Attribute | undefined {
+  const attributes = getRelationshipAttributes(entity).filter((attribute) => attribute.relationship?.entity === target);
+
+  return attributes.length === 1 ? attributes[0] : undefined;
+}
+
 /** The entity of a record: its `__typename` when the API sent one, else the field it came under, if that names one. */
-export function entityOfRecord(record: GraphRecord, fallback: Entity | undefined, schema: Entity[]): Entity | undefined {
+export function entityOfRecord(
+  record: GraphRecord,
+  fallback: Entity | undefined,
+  schema: Entity[]
+): Entity | undefined {
   const typename = record.__typename;
 
   return (typeof typename === 'string' && getEntity(schema, typename)) || fallback;
@@ -126,7 +137,8 @@ export function captionFromRecord(record: GraphRecord, entity: Entity | undefine
  * Nodes and edges from a query result: every object with an `_id` whose
  * `__typename` names an entity becomes a node, as does one under a root
  * field named after an entity's plural when the typename is missing; every
- * relationship field selected on it is an edge to the related nodes. A
+ * relationship field selected on it, aliased or not, is an edge to the
+ * related nodes. A
  * record seen again with a better caption is re-captioned. Fields the schema
  * does not know are ignored.
  */
@@ -161,17 +173,17 @@ export function graphFromQueryResult({
     }
 
     Object.entries(record).forEach(([field, value]) => {
-      const attribute = relationshipOfKey(field, entity);
-      const relatedEntity = attribute ? getEntity(schema, attribute.relationship?.entity ?? '') : undefined;
-
-      if (!attribute || !relatedEntity) {
-        return;
-      }
+      const keyAttribute = relationshipOfKey(field, entity);
+      const keyEntity = keyAttribute ? getEntity(schema, keyAttribute.relationship?.entity ?? '') : undefined;
 
       collectRecords(value).forEach((relatedRecord) => {
-        const target = addRecord(relatedRecord, relatedEntity);
+        // An aliased relationship (`maker: brand { … }`) is not named by its
+        // key: the record's typename finds the entity, and the attribute when
+        // only one relationship leads there.
+        const target = addRecord(relatedRecord, keyEntity);
+        const attribute = keyAttribute ?? (target ? relationshipTo(entity, target.entity) : undefined);
 
-        if (target && target.key !== node.key) {
+        if (target && attribute && target.key !== node.key) {
           const edge = edgeOf(node, target, attribute);
 
           if (!edges.has(edge.key)) {
@@ -227,9 +239,31 @@ function formatCell(value: unknown, scope: string): string {
   return formatDetailValue(value, scope);
 }
 
-/** The root records of a result as a table: one column per field the shown rows select. */
+/**
+ * The objects under a root field, with or without an `_id`: a list, a single
+ * object, or the nodes of a connection's edges.
+ */
+function collectRows(value: unknown): GraphRecord[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(collectRows);
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return [];
+  }
+
+  const { edges } = value as { edges?: unknown };
+
+  if (!isRecord(value) && Array.isArray(edges)) {
+    return edges.flatMap((edge) => collectRows((edge as { node?: unknown })?.node));
+  }
+
+  return [value as GraphRecord];
+}
+
+/** The root objects of a result as a table: one column per field the shown rows select. */
 export function tableFromResult(data: QueryResult | null | undefined, scope: string): QueryTable {
-  const records = Object.values(data ?? {}).flatMap(collectRecords);
+  const records = Object.values(data ?? {}).flatMap(collectRows);
   const shown = records.slice(0, TABLE_ROW_LIMIT);
   const columns: string[] = [];
   shown.forEach((record) => {

@@ -15,7 +15,13 @@ function node(entity: string, id: string): GraphNode {
 }
 
 function edge(source: GraphNode, target: GraphNode, sourceAttribute: string, targetAttribute: string): GraphEdge {
-  return { key: `${source.key}|${target.key}|${sourceAttribute}`, source: source.key, target: target.key, sourceAttribute, targetAttribute };
+  return {
+    key: `${source.key}|${target.key}|${sourceAttribute}`,
+    source: source.key,
+    target: target.key,
+    sourceAttribute,
+    targetAttribute,
+  };
 }
 
 const p1 = node('product', 'p1');
@@ -44,18 +50,40 @@ describe('merge', () => {
   });
 
   it('keeps existing nodes and merges new counts per attribute', () => {
-    const state = sceneReducer(merged(), {
+    const captioned = sceneReducer(EMPTY_SCENE, {
+      type: 'merge',
+      data: { nodes: [{ ...p1, label: 'Parka' }], edges: [], counts: { 'product:p1': { brand: 1 } } },
+    });
+    const state = sceneReducer(captioned, {
       type: 'merge',
       data: { nodes: [{ ...p1, label: 'renamed' }], edges: [], counts: { 'product:p1': { tags: 4 } } },
     });
 
-    assert.equal(state.nodes['product:p1']?.label, 'p1');
+    assert.equal(state.nodes['product:p1']?.label, 'Parka');
     assert.deepEqual(state.counts['product:p1'], { brand: 1, tags: 4 });
   });
 
+  it('re-captions a node drawn with only its id', () => {
+    const state = sceneReducer(merged(), {
+      type: 'merge',
+      data: { nodes: [{ ...b1, label: 'Fjell' }, p2], edges: [], counts: {} },
+    });
+
+    assert.equal(state.nodes['brand:b1']?.label, 'Fjell');
+    assert.equal(state.nodes['product:p2']?.label, 'p2');
+  });
+
   it('never rewinds a fetched offset', () => {
-    const paged = sceneReducer(merged(), { type: 'merge', data: { nodes: [], edges: [], counts: {} }, fetched: { 'product:p1': { brand: 75 } } });
-    const state = sceneReducer(paged, { type: 'merge', data: { nodes: [], edges: [], counts: {} }, fetched: { 'product:p1': { brand: 25, tags: 3 } } });
+    const paged = sceneReducer(merged(), {
+      type: 'merge',
+      data: { nodes: [], edges: [], counts: {} },
+      fetched: { 'product:p1': { brand: 75 } },
+    });
+    const state = sceneReducer(paged, {
+      type: 'merge',
+      data: { nodes: [], edges: [], counts: {} },
+      fetched: { 'product:p1': { brand: 25, tags: 3 } },
+    });
 
     assert.deepEqual(state.fetched['product:p1'], { brand: 75, tags: 3 });
   });

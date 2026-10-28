@@ -152,6 +152,57 @@ describe('graphFromQueryResult', () => {
     );
   });
 
+  it('draws an aliased relationship by the related typename', () => {
+    const data = {
+      products: [
+        { _id: 'p1', __typename: 'product', sku: 'A1', maker: [{ _id: 'b1', __typename: 'brand', title: 'Fjell' }] },
+      ],
+    };
+    const { nodes, edges } = graphFromQueryResult({ data, schema, scope: 'en' });
+
+    assert.deepEqual(
+      nodes.map((node) => node.key),
+      ['product:p1', 'brand:b1']
+    );
+    assert.deepEqual(
+      edges.map((edge) => [edge.key, edge.sourceAttribute]),
+      [['brand:b1|product:p1|products', 'brand']]
+    );
+  });
+
+  it('draws the records of an ambiguous alias without guessing its edge', () => {
+    const person: Entity = {
+      name: 'person',
+      plural: 'people',
+      attributes: [
+        {
+          name: 'manager',
+          label: 'Manager',
+          dataType: 'string',
+          inputType: 'relationship',
+          scope: 'relationship',
+          relationship: { entity: 'person', mode: 'single', field: 'reports' },
+        },
+        {
+          name: 'mentor',
+          label: 'Mentor',
+          dataType: 'string',
+          inputType: 'relationship',
+          scope: 'relationship',
+          relationship: { entity: 'person', mode: 'single', field: 'mentees' },
+        },
+      ],
+    };
+    const data = { people: [{ _id: 'a', __typename: 'person', boss: [{ _id: 'b', __typename: 'person' }] }] };
+    const { nodes, edges } = graphFromQueryResult({ data, schema: [person], scope: 'en' });
+
+    assert.deepEqual(
+      nodes.map((node) => node.key),
+      ['person:a', 'person:b']
+    );
+    assert.deepEqual(edges, []);
+  });
+
   it('re-captions a record first seen with only its id', () => {
     const data = {
       products: [{ _id: 'p1', brand: [{ _id: 'b1' }] }],
@@ -204,6 +255,21 @@ describe('tableFromResult', () => {
     assert.deepEqual(table.columns, ['_id', 'name', 'brand', 'price', 'flag', 'sku']);
     assert.deepEqual(table.rows[0], { _id: 'p1', name: 'Parka', brand: '1 record', price: '12.5', flag: '', sku: '' });
     assert.equal(table.total, 2);
+  });
+
+  it('shows root objects without an _id, such as a selection of plain fields', () => {
+    const table = tableFromResult(
+      { products: [{ sku: 'A1' }, { sku: 'B2' }], productsConnection: { totalCount: 2 } },
+      'en'
+    );
+
+    assert.deepEqual(table.columns, ['sku', 'totalCount']);
+    assert.deepEqual(table.rows, [
+      { sku: 'A1', totalCount: '' },
+      { sku: 'B2', totalCount: '' },
+      { sku: '', totalCount: '2' },
+    ]);
+    assert.equal(table.total, 3);
   });
 
   it('falls back to the default scope and lists plain arrays', () => {

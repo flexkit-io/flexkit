@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useReducer, useState } from 'react';
+import { useCallback, useReducer, useRef, useState } from 'react';
 import type { Dispatch } from 'react';
 import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
@@ -39,8 +39,8 @@ export interface SceneApi {
 
 type RecordsResult = { [plural: string]: GraphRecord[] };
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'The request failed.';
+function errorMessage(error: unknown, fallback = 'The records could not be loaded.'): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 /**
@@ -51,6 +51,9 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
   const client = useApolloClient();
   const [state, dispatch] = useReducer(sceneReducer, EMPTY_SCENE);
   const [pending, setPending] = useState(0);
+  // Counts the loads that reached the canvas, so a query only replaces a
+  // canvas nothing else has added to while it ran.
+  const loadsRef = useRef(0);
 
   const loadRecords = useCallback(
     async (entity: Entity, selection: RecordSelection): Promise<string[]> => {
@@ -69,6 +72,7 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
           fetchPolicy: 'network-only',
         });
         const records = result.data?.[entity.plural] ?? [];
+        loadsRef.current += 1;
         dispatch({
           type: 'merge',
           data: graphFromRecords({ records, entity, schema, scope }),
@@ -120,6 +124,7 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
           fetchPolicy: 'network-only',
         });
         const records = result.data?.[entity.plural] ?? [];
+        loadsRef.current += 1;
         const received = records.reduce((sum, record) => {
           const related = record[attribute.name];
 
@@ -147,9 +152,16 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
       try {
         document = gql(query);
       } catch (error) {
-        return { data: null, error: errorMessage(error), elapsedMs: 0, nodes: 0, edges: 0 };
+        return {
+          data: null,
+          error: errorMessage(error, 'The query could not be parsed.'),
+          elapsedMs: 0,
+          nodes: 0,
+          edges: 0,
+        };
       }
 
+      const loadsAtStart = loadsRef.current;
       setPending((count) => count + 1);
 
       try {
@@ -164,12 +176,14 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
         const graph = graphFromQueryResult({ data, schema, scope });
 
         // A failed query, or one that draws nothing, leaves the canvas as it
-        // was; partial data beside errors is added to it rather than replacing it.
+        // was; partial data beside errors, or a result arriving after other
+        // loads reached the canvas, is added to it rather than replacing it.
         if (graph.nodes.length > 0) {
-          if (!append && !result.error) {
+          if (!append && !result.error && loadsRef.current === loadsAtStart) {
             dispatch({ type: 'clear' });
           }
 
+          loadsRef.current += 1;
           dispatch({ type: 'merge', data: graph });
         }
 
@@ -183,7 +197,7 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
       } catch (error) {
         return {
           data: null,
-          error: errorMessage(error),
+          error: errorMessage(error, 'The query failed.'),
           elapsedMs: Math.round(performance.now() - startedAt),
           nodes: 0,
           edges: 0,

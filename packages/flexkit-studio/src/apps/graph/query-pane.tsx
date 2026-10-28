@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { ChevronDownIcon, LoaderCircleIcon, PlayIcon } from 'lucide-react';
 import type { Entity } from '../../core/types';
@@ -70,11 +70,17 @@ export function QueryPane({
   const graphqlSchema = useGraphQLSchema(opened ? projectId : undefined, schemaHash);
   const examples = useMemo(() => exampleQueries(schema, scope), [schema, scope]);
   const [query, setQuery] = useState(() => readComposerDraft(queryStorageKey(projectId)) || examples[0]?.query || '');
+  // The schema may arrive after the pane mounts: the first example fills an
+  // editor that started empty, once, so clearing it later is left alone.
+  const seededRef = useRef(query !== '');
   const [append, setAppend] = useState(false);
   const [tab, setTab] = useState<ResultTab>('graph');
   const [run, setRun] = useState<QueryRun | null>(null);
   // Built for the open tab only: a large result is not tabulated or pretty-printed unseen.
-  const table = useMemo(() => (tab === 'table' && run?.data ? tableFromResult(run.data, scope) : null), [tab, run, scope]);
+  const table = useMemo(
+    () => (tab === 'table' && run?.data ? tableFromResult(run.data, scope) : null),
+    [tab, run, scope]
+  );
   const json = useMemo(
     () => (tab === 'json' && run?.data ? JSON.stringify(stripTypename(run.data), null, 2) : null),
     [tab, run]
@@ -85,6 +91,15 @@ export function QueryPane({
       setOpened(true);
     }
   }, [hidden]);
+
+  useEffect(() => {
+    const [first] = examples;
+
+    if (!seededRef.current && first) {
+      seededRef.current = true;
+      setQuery((current) => current || first.query);
+    }
+  }, [examples]);
 
   useEffect(() => {
     writeComposerDraft(queryStorageKey(projectId), query);
@@ -228,7 +243,9 @@ export function QueryPane({
                 ) : null}
               </div>
             ) : (
-              <span className="fk:text-xs fk:text-muted-foreground">Run a query to see its records.</span>
+              <span className="fk:text-xs fk:text-muted-foreground">
+                {run?.data ? 'The response has no rows to show.' : 'Run a query to see its records.'}
+              </span>
             )}
           </TabsContent>
           <TabsContent className="fk:px-3 fk:pb-3" value="json">
