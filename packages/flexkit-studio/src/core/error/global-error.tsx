@@ -5,7 +5,7 @@ import type { JSX } from 'react';
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
 import { DarkModeSwitch } from '../../ui/components/dark-mode-switch';
 import { isFlexkitError, getFlexkitErrorCode } from '../../core/error/errors';
-import { reportError } from './error-reporter';
+import { reportStudioError } from './error-reporter';
 
 export function GlobalError(): JSX.Element {
   const error = useRouteError();
@@ -17,7 +17,7 @@ export function GlobalError(): JSX.Element {
       return;
     }
 
-    reportError(error, { source: 'react' });
+    reportStudioError(error, { source: 'react' });
   }, [error]);
 
   function errorMessage(): JSX.Element | null {

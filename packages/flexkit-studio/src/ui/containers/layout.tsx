@@ -85,12 +85,11 @@ export function Layout(): JSX.Element {
     }
   }, [appDispatch, location, projectId, scopes]);
 
-  // Error reports name the project the user is in.
-  useEffect(() => {
-    setErrorReportingProjectId(isKnownProject ? projectId : null);
-
-    return () => setErrorReportingProjectId(null);
-  }, [isKnownProject, projectId]);
+  // Error reports name the project the user is in. Set while rendering (it is
+  // idempotent), so it is current before any child of this commit can fail;
+  // effects and componentDidCatch of children run before this component's effects.
+  setErrorReportingProjectId(isKnownProject ? projectId : null);
+  useEffect(() => () => setErrorReportingProjectId(null), []);
 
   // Hosted mode: come back to the project the user worked in last.
   useEffect(() => {

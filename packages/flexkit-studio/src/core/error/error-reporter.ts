@@ -14,7 +14,7 @@ import { STUDIO_VERSION } from '../use-studio-version';
  * current project id; never request bodies, form values or record data.
  */
 
-export type ClientErrorSource = 'window' | 'unhandledrejection' | 'react' | 'console' | 'manual';
+export type ClientErrorSource = 'window' | 'unhandledrejection' | 'react' | 'manual';
 
 export interface ClientError {
   source: ClientErrorSource;
@@ -130,6 +130,13 @@ const NOISE_MESSAGES = [
 
 const EXTENSION_URL = /\b(chrome|moz|safari(-web)?|ms-browser)-extension:\/\//i;
 
+const EMAIL_ADDRESS = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+
+/** Masks email addresses an error message may quote from a record or form. */
+export function maskMessage(message: string): string {
+  return message.replace(EMAIL_ADDRESS, '<email>');
+}
+
 /** Errors that are not Studio bugs: browser quirks, aborted requests, browser extensions. */
 export function isNoiseError(details: ErrorDetails, sourceUrl?: string): boolean {
   if (details.name === 'AbortError') {
@@ -168,7 +175,7 @@ export function buildClientError(error: unknown, options: BuildClientErrorOption
   const entry: ClientError = {
     source: options.source,
     name: truncate(details.name, LIMITS.name),
-    message: truncate(details.message, LIMITS.message),
+    message: truncate(maskMessage(details.message), LIMITS.message),
     occurredAt: (options.now ?? new Date()).toISOString(),
   };
 
@@ -196,8 +203,10 @@ export function errorKey(error: Pick<ClientError, 'message' | 'name' | 'stack'>)
   return `${error.name}\n${error.message}\n${error.stack ?? ''}`;
 }
 
+const encoder = new TextEncoder();
+
 function byteLength(value: string): number {
-  return new TextEncoder().encode(value).length;
+  return encoder.encode(value).length;
 }
 
 /**
@@ -209,25 +218,26 @@ export function buildReportBody(
   queue: readonly ClientError[],
   maxBytes = MAX_REPORT_BYTES
 ): { body: string; count: number } | null {
+  // The envelope plus each error once, joined by commas.
+  let size = byteLength(JSON.stringify({ app, errors: [] } satisfies ClientErrorReport));
   const errors: ClientError[] = [];
-  let body = '';
 
   for (const error of queue.slice(0, MAX_ERRORS_PER_REPORT)) {
-    const candidate = JSON.stringify({ app, errors: [...errors, error] } satisfies ClientErrorReport);
+    const errorSize = byteLength(JSON.stringify(error)) + (errors.length ? 1 : 0);
 
-    if (byteLength(candidate) > maxBytes) {
+    if (size + errorSize > maxBytes) {
       break;
     }
 
+    size += errorSize;
     errors.push(error);
-    body = candidate;
   }
 
   if (errors.length === 0) {
     return null;
   }
 
-  return { body, count: errors.length };
+  return { body: JSON.stringify({ app, errors } satisfies ClientErrorReport), count: errors.length };
 }
 
 export interface ErrorReportingEnvironment {
@@ -280,7 +290,7 @@ export interface ErrorReporterOptions {
 export interface ErrorReporter {
   report: (error: unknown, options: Omit<BuildClientErrorOptions, 'path' | 'projectId' | 'now'>) => void;
   setProjectId: (projectId: string | null) => void;
-  /** Sends the next report now; with `unloading`, sends everything queued. */
+  /** Sends the next report now; `unloading` uses a beacon or keepalive request that outlives the page. */
   flush: (options?: { unloading?: boolean }) => void;
   /** Errors waiting to be sent (tests). */
   pending: () => readonly ClientError[];
@@ -325,8 +335,8 @@ export function createErrorReporter({
     queue.splice(0, next.count);
     send(next.body, { unloading })
       .then((status) => {
-        // Rate limited: stop for this page session rather than retry.
-        if (status === 429) {
+        // Rate limited or not allowed: stop for this page session rather than retry.
+        if (status === 401 || status === 403 || status === 429) {
           stopped = true;
           queue.length = 0;
         }
@@ -349,10 +359,10 @@ export function createErrorReporter({
         timer = null;
       }
 
-      let more = queue.length > 0 && sendNext(unloading);
-
-      while (more && unloading) {
-        more = sendNext(true);
+      // One report per flush, also when the page goes away: beacons and
+      // keepalive requests share a 64 KB budget, so a second would be refused.
+      if (queue.length > 0) {
+        sendNext(unloading);
       }
 
       schedule();
@@ -418,8 +428,13 @@ export const sendReportToBff: SendReport = async (body, { unloading }) => {
   // and the browser sends the session cookie with it (same origin). The
   // desktop app's BFF only answers script requests, so it uses `keepalive`.
   if (unloading && !getDesktop() && typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-    if (navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }))) {
-      return null;
+    try {
+      // text/plain is CORS-safelisted, so no browser refuses the beacon; the body is still JSON.
+      if (navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))) {
+        return null;
+      }
+    } catch {
+      // Fall back to a keepalive fetch.
     }
   }
 
@@ -427,7 +442,7 @@ export const sendReportToBff: SendReport = async (body, { unloading }) => {
     body,
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    keepalive: true,
+    keepalive: unloading,
     method: 'POST',
   });
 
@@ -437,7 +452,7 @@ export const sendReportToBff: SendReport = async (body, { unloading }) => {
 let installed: ErrorReporter | null = null;
 
 /** Reports an error caught by the Studio (an error boundary, for example). Does nothing when reporting is off. */
-export function reportError(
+export function reportStudioError(
   error: unknown,
   { source = 'manual', componentStack }: { source?: ClientErrorSource; componentStack?: string } = {}
 ): void {

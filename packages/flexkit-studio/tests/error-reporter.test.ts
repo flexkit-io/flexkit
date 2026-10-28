@@ -253,7 +253,7 @@ describe('createErrorReporter', () => {
     assert.equal(reporter.pending().length, 0);
   });
 
-  it('sends everything queued when the page goes away', () => {
+  it('sends one report when the page goes away (beacons and keepalive share a 64 KB budget)', () => {
     const { reporter, sent } = testReporter();
 
     for (let index = 0; index < 25; index += 1) {
@@ -264,12 +264,29 @@ describe('createErrorReporter', () => {
 
     assert.deepEqual(
       sent.map(({ report, unloading }) => [report.errors.length, unloading]),
-      [
-        [10, true],
-        [10, true],
-        [5, true],
-      ]
+      [[10, true]]
     );
+  });
+
+  it('masks email addresses in messages', () => {
+    const { reporter } = testReporter();
+
+    reporter.report(new Error("Duplicate value 'jane.doe@acme.com' for field email"), { source: 'manual' });
+
+    assert.equal(reporter.pending()[0]?.message, "Duplicate value '<email>' for field email");
+  });
+
+  it('stops for the session when the session is rejected', async () => {
+    const { reporter, sent, tick } = testReporter(401);
+
+    reporter.report(new Error('a'), { source: 'manual' });
+    tick();
+    await Promise.resolve();
+    await Promise.resolve();
+    reporter.report(new Error('b'), { source: 'manual' });
+    reporter.flush({ unloading: true });
+
+    assert.equal(sent.length, 1);
   });
 
   it('stops for the session when rate limited', async () => {
