@@ -1,13 +1,24 @@
 'use client';
 
+import { useEffect } from 'react';
 import type { JSX } from 'react';
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
 import { DarkModeSwitch } from '../../ui/components/dark-mode-switch';
 import { isFlexkitError, getFlexkitErrorCode } from '../../core/error/errors';
+import { reportError } from './error-reporter';
 
 export function GlobalError(): JSX.Element {
   const error = useRouteError();
   const copyrightYear = new Date().getFullYear();
+
+  useEffect(() => {
+    // A 404 or an unknown project id is a wrong URL, not a Studio bug.
+    if (isRouteErrorResponse(error) || (isFlexkitError(error) && getFlexkitErrorCode(error) === 'PROJECT_NOT_FOUND')) {
+      return;
+    }
+
+    reportError(error, { source: 'react' });
+  }, [error]);
 
   function errorMessage(): JSX.Element | null {
     if (isRouteErrorResponse(error)) {

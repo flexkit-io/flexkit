@@ -193,6 +193,37 @@ describe('createFlexkitElectronHandler', () => {
     assert.equal(forwarded?.headers.get('cookie'), 'sessionToken=sid-1');
   });
 
+  it('forwards Studio error reports to the backend with the stored session', async () => {
+    let forwarded: Request | undefined;
+    let forwardedBody = '';
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      forwarded = new Request(input, init);
+      forwardedBody = await forwarded.text();
+
+      return new Response(null, { status: 202 });
+    }) as typeof fetch;
+
+    const report = JSON.stringify({
+      app: { platform: 'desktop', version: '0.2.21' },
+      errors: [{ source: 'window', name: 'Error', message: 'boom', occurredAt: '2026-10-28T10:00:00.000Z' }],
+    });
+    const handler = createFlexkitElectronHandler({ sessionStore: memoryStore('sid-1') });
+    const response = await handler(
+      new Request('flexkit://app/api/flexkit/-/client-errors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: report,
+      })
+    );
+
+    assert.equal(response.status, 202);
+    assert.equal(forwarded?.url, 'https://flexkit.io/api/client-errors');
+    assert.equal(forwarded?.method, 'POST');
+    assert.equal(forwarded?.headers.get('authorization'), 'Bearer sid-1');
+    assert.equal(forwardedBody, report);
+  });
+
   it('stores the session from set-token and drops it on logout, without redirecting', async () => {
     const store = memoryStore('old');
     const handler = createFlexkitElectronHandler({ sessionStore: store });

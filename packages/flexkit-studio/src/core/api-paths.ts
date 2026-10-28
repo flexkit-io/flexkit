@@ -32,6 +32,8 @@ export const USER_API_SEGMENT = '-';
 
 export const userApiPaths = {
   authProviders: `/api/flexkit/${USER_API_SEGMENT}/auth/providers`,
+  /** POST: Studio error reports (see core/error/error-reporter.ts). */
+  clientErrors: `/api/flexkit/${USER_API_SEGMENT}/client-errors`,
   logout: `/api/flexkit/${USER_API_SEGMENT}/auth/logout`,
   /** Signed-in user plus every project they can open. */
   me: `/api/flexkit/${USER_API_SEGMENT}/me`,
