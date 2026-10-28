@@ -32,8 +32,20 @@ function useGraphQLError(): GraphQLErrorContextValue {
   return ctx;
 }
 
+/**
+ * Context flag for operations the user writes themselves (the Graph app's
+ * Query view): any error there, a mismatch or a 400, is a typo, not a
+ * deployment that drifted from the local schema, so it must not raise the
+ * schema banner. The caller shows the error itself.
+ */
+export const USER_QUERY_CONTEXT = { userQuery: true } as const;
+
 function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): ApolloLink {
-  return new ErrorLink(({ error }) => {
+  return new ErrorLink(({ error, operation }) => {
+    if (operation.getContext().userQuery === true) {
+      return;
+    }
+
     const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(error);
 
     if (schemaMismatchMessage) {
@@ -87,7 +99,9 @@ function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): A
         message = serverError.bodyText;
       }
 
-      setSchemaErrorMessage(message ?? 'There is an error in the deployed Flexkit schema. Fix flexkit.config.ts and run flexkit deploy.');
+      setSchemaErrorMessage(
+        message ?? 'There is an error in the deployed Flexkit schema. Fix flexkit.config.ts and run flexkit deploy.'
+      );
     }
 
     if (serverError) {
@@ -127,10 +141,7 @@ export function GraphQLProvider({ children }: { children: React.ReactNode }): JS
   const { currentProjectId } = useConfig();
   const [schemaErrorMessage, setSchemaErrorMessage] = useState<string | null>(null);
   const ctx = useMemo(() => ({ schemaErrorMessage, setSchemaErrorMessage }), [schemaErrorMessage]);
-  const apolloClient = useMemo(
-    () => client(currentProjectId, setSchemaErrorMessage),
-    [currentProjectId]
-  );
+  const apolloClient = useMemo(() => client(currentProjectId, setSchemaErrorMessage), [currentProjectId]);
 
   return (
     <GraphQLErrorContext.Provider value={ctx}>

@@ -10,6 +10,7 @@ import { filterEntitiesForSpaces } from '../../core/spaces';
 import type { Attribute } from '../../core/types';
 import { useDispatch } from '../../entities/actions-context';
 import {
+  Button,
   readSidebarCookieState,
   SidebarInset,
   SidebarProvider,
@@ -31,6 +32,7 @@ import {
   SAMPLE_LIMIT,
 } from './graph';
 import { GraphInspector } from './inspector';
+import { QueryPane } from './query-pane';
 import { countNodesByEntity, neighbourKeys } from './scene';
 import { GraphSidebar } from './sidebar';
 import { GraphToolbar } from './toolbar';
@@ -40,7 +42,7 @@ import { useScene } from './use-scene';
  * The Graph app: explore records as nodes and relationships. The sidebar
  * adds records, the canvas draws them, the inspector details the selection.
  * Other apps open it with `?entity=<name>&ids=<id,id>` to show those records
- * expanded one hop.
+ * expanded one hop. The Query view draws the result of any GraphQL query.
  */
 export function Root(): JSX.Element {
   const { currentProjectId, currentProject, currentProjectSchema } = useConfig();
@@ -55,14 +57,18 @@ export function Root(): JSX.Element {
   // Space-bound entities are hidden from non-members, as in Desk; the API
   // rejects their data either way.
   const userSpaces = auth.user?.spaces;
-  const schema = useMemo(() => filterEntitiesForSpaces(currentProjectSchema, userSpaces), [currentProjectSchema, userSpaces]);
+  const schema = useMemo(
+    () => filterEntitiesForSpaces(currentProjectSchema, userSpaces),
+    [currentProjectSchema, userSpaces]
+  );
   const entities = useMemo(() => getGraphEntities(schema), [schema]);
   const colors = useMemo(() => getEntityColors(schema, theme), [schema, theme]);
   const scene = useScene({ schema, scope: scopeField });
-  const { state, dispatch, isLoading, loadRecords, expandAll, expandAttribute } = scene;
+  const { state, dispatch, isLoading, loadRecords, expandAll, expandAttribute, runQuery } = scene;
   const canvasApi = useRef<GraphCanvasApi | null>(null);
   const [menu, setMenu] = useState<GraphContextMenuState | null>(null);
   const [isLayoutRunning, setIsLayoutRunning] = useState(false);
+  const [mode, setMode] = useState<'explore' | 'query'>('explore');
   const loadedSearchRef = useRef<string | null>(null);
   const onCanvas = useMemo(() => countNodesByEntity(state), [state]);
   const selectedNode = state.selected ? state.nodes[state.selected] : undefined;
@@ -180,35 +186,77 @@ export function Root(): JSX.Element {
       />
       <SidebarInset className="fk:min-w-0">
         <div className="fk:flex fk:h-full fk:min-h-0 fk:min-w-0" data-testid="graph-app">
+          <QueryPane
+            hidden={mode !== 'query'}
+            isRunning={isLoading}
+            key={currentProjectId}
+            onRun={runQuery}
+            projectId={currentProjectId}
+            schema={schema}
+            schemaHash={currentProject?.schemaHash ?? null}
+            scope={scopeField}
+            theme={theme}
+          />
           <div className="fk:relative fk:min-w-0 fk:flex-1 fk:overflow-hidden fk:bg-background">
-            <div className="fk:absolute fk:left-3 fk:top-3 fk:z-10 fk:flex fk:items-center fk:gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <SidebarTrigger className="fk:h-8 fk:w-8 fk:rounded-lg fk:hover:bg-transparent fk:dark:hover:bg-transparent" />
-                </TooltipTrigger>
-                <TooltipContent>Toggle Sidebar</TooltipContent>
-              </Tooltip>
-              <GraphToolbar
-                hasNodes={nodeCount > 0}
-                hasSelection={selectedNode !== undefined}
-                isLoading={isLoading}
-                onClear={() => dispatch({ type: 'clear' })}
-                onExpand={() => {
-                  if (state.selected) {
-                    void expandAll(state.selected);
-                  }
-                }}
-                onFit={() => canvasApi.current?.fit()}
-                onHide={() => {
-                  if (state.selected) {
-                    hide(state.selected);
-                  }
-                }}
-              />
+            <div className="fk:pointer-events-none fk:absolute fk:left-3 fk:right-3 fk:top-3 fk:z-10 fk:flex fk:flex-wrap fk:items-start fk:justify-between fk:gap-2">
+              <div className="fk:pointer-events-auto fk:flex fk:items-center fk:gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <SidebarTrigger className="fk:h-8 fk:w-8 fk:rounded-lg fk:hover:bg-transparent fk:dark:hover:bg-transparent" />
+                  </TooltipTrigger>
+                  <TooltipContent>Toggle Sidebar</TooltipContent>
+                </Tooltip>
+                <GraphToolbar
+                  hasNodes={nodeCount > 0}
+                  hasSelection={selectedNode !== undefined}
+                  isLoading={isLoading}
+                  onClear={() => dispatch({ type: 'clear' })}
+                  onExpand={() => {
+                    if (state.selected) {
+                      void expandAll(state.selected);
+                    }
+                  }}
+                  onFit={() => canvasApi.current?.fit()}
+                  onHide={() => {
+                    if (state.selected) {
+                      hide(state.selected);
+                    }
+                  }}
+                />
+              </div>
+              <div
+                aria-label="View"
+                className="fk:pointer-events-auto fk:flex fk:items-center fk:gap-0.5 fk:rounded-lg fk:border fk:bg-background fk:p-0.5 fk:shadow-xs"
+                data-testid="graph-mode"
+                role="group"
+              >
+                <Button
+                  aria-pressed={mode === 'explore'}
+                  className="fk:h-7 fk:px-3 fk:text-xs"
+                  onClick={() => setMode('explore')}
+                  size="sm"
+                  variant={mode === 'explore' ? 'default' : 'ghost'}
+                >
+                  Explore
+                </Button>
+                <Button
+                  aria-pressed={mode === 'query'}
+                  className="fk:h-7 fk:px-3 fk:text-xs"
+                  onClick={() => setMode('query')}
+                  size="sm"
+                  variant={mode === 'query' ? 'default' : 'ghost'}
+                >
+                  Query
+                </Button>
+              </div>
             </div>
             {nodeCount > 0 ? null : (
               <div className="fk:pointer-events-none fk:absolute fk:inset-0 fk:flex fk:items-center fk:justify-center fk:p-8 fk:text-center fk:text-sm fk:text-muted-foreground">
-                {isLoading ? 'Loading records…' : 'Search a record or start from an entity to draw its graph.'}
+                {isLoading
+                  ? 'Loading records…'
+                  : mode === 'query'
+                    ? 'Run a query to draw its result.'
+                    : 'Search a record or start from an entity to draw its graph.'}
               </div>
             )}
             <GraphCanvas

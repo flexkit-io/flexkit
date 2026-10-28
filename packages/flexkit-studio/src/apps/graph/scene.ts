@@ -100,7 +100,14 @@ export function sceneReducer(state: SceneState, action: SceneAction): SceneState
       let dropped = 0;
 
       action.data.nodes.forEach((node) => {
-        if (nodes[node.key]) {
+        const existing = nodes[node.key];
+
+        if (existing) {
+          // A node first drawn with only its id takes the caption a later load brings.
+          if (existing.label === existing.id && node.label !== node.id) {
+            nodes[node.key] = { ...existing, label: node.label };
+          }
+
           return;
         }
 

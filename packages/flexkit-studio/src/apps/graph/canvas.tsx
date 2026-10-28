@@ -214,6 +214,11 @@ function syncGraph(
   });
   Object.values(scene.nodes).forEach((node) => {
     if (graph.hasNode(node.key)) {
+      // A re-captioned node: sigma redraws on the attribute change, no layout needed.
+      if (graph.getNodeAttribute(node.key, 'label') !== node.label) {
+        graph.setNodeAttribute(node.key, 'label', node.label);
+      }
+
       return;
     }
 
