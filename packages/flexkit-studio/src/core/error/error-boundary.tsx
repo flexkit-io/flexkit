@@ -3,6 +3,7 @@ import type { ErrorInfo, JSX, ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '../../ui/primitives/alert';
+import { reportStudioError } from './error-reporter';
 
 function ErrorAlert({ error }: { error: unknown }): JSX.Element {
   const errorText =
@@ -34,6 +35,7 @@ class ErrorBoundaryImpl extends Component<BoundaryProps, BoundaryState> {
 
   componentDidCatch(error: unknown, info: ErrorInfo): void {
     console.error('Flexkit Studio app error', error, info.componentStack);
+    reportStudioError(error, { source: 'react', componentStack: info.componentStack ?? undefined });
   }
 
   componentDidUpdate(prevProps: BoundaryProps): void {

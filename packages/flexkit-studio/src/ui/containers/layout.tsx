@@ -8,6 +8,7 @@ import { SCOPE_STORAGE_KEY, useAppDispatch } from '../../core/app-context';
 import { rememberLastProjectId } from '../../core/config/last-project';
 import type { ProjectSchemaError } from '../../core/config/types';
 import { FlexkitError } from '../../core/error/errors';
+import { setErrorReportingProjectId } from '../../core/error/error-reporter';
 import { ActivityNotifier } from '../../apps/ai/activity-notifier';
 import { Loading } from '../components/loading';
 import { Alert, AlertDescription, AlertTitle } from '../primitives/alert';
@@ -83,6 +84,12 @@ export function Layout(): JSX.Element {
       appDispatch({ type: 'setScope', payload: { projectId, scope: savedScope || defaultScope.name } });
     }
   }, [appDispatch, location, projectId, scopes]);
+
+  // Error reports name the project the user is in. Set while rendering (it is
+  // idempotent), so it is current before any child of this commit can fail;
+  // effects and componentDidCatch of children run before this component's effects.
+  setErrorReportingProjectId(isKnownProject ? projectId : null);
+  useEffect(() => () => setErrorReportingProjectId(null), []);
 
   // Hosted mode: come back to the project the user worked in last.
   useEffect(() => {

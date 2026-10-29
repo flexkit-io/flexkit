@@ -11,6 +11,7 @@ import { Root } from '../ui/containers/root';
 import { ActionsProvider } from '../entities/actions-context';
 import { AppProvider } from './app-context';
 import { normalizeBasePath } from './base-path';
+import { installErrorReporter } from './error/error-reporter';
 import { GlobalError } from './error/global-error';
 import type { FlexkitStudioProps } from './config/types';
 
@@ -46,6 +47,11 @@ export function FlexkitStudio({ projectIds, basename }: FlexkitStudioProps): JSX
     // ensure the DOM is available to prevent "document is not defined" error with react-router
     setMounted(true);
   }, []);
+
+  // Hosted mode (`projectIds` omitted) is the hosted Studio and the desktop app.
+  const hosted = projectIds === undefined;
+
+  useEffect(() => installErrorReporter({ hosted }), [hosted]);
 
   if (!mounted) {
     return null;

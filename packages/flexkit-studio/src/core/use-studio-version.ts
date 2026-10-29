@@ -13,7 +13,7 @@ export interface StudioVersion {
 
 // `@flexkit/studio`'s own version, inlined at build time; a build without the
 // define (tests, tooling) shows a placeholder.
-const STUDIO_VERSION = typeof __STUDIO_VERSION__ === 'string' ? __STUDIO_VERSION__ : '0.0.0';
+export const STUDIO_VERSION = typeof __STUDIO_VERSION__ === 'string' ? __STUDIO_VERSION__ : '0.0.0';
 const WEB_VERSION: StudioVersion = { current: STUDIO_VERSION, latest: STUDIO_VERSION, isCurrent: true };
 
 /**
