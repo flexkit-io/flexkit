@@ -35,6 +35,8 @@ export const userApiPaths = {
   /** POST: Studio error reports (see core/error/error-reporter.ts). */
   clientErrors: `/api/flexkit/${USER_API_SEGMENT}/client-errors`,
   logout: `/api/flexkit/${USER_API_SEGMENT}/auth/logout`,
+  /** POST: product events only Studio sees (see core/analytics/product-events.ts). */
+  productEvents: `/api/flexkit/${USER_API_SEGMENT}/product-events`,
   /** Signed-in user plus every project they can open. */
   me: `/api/flexkit/${USER_API_SEGMENT}/me`,
   /** The signed-in user's notification preferences (desktop kinds, approval email). */

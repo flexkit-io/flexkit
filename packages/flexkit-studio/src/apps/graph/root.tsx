@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from '../../ui';
 import { useTheme } from '../../ui/theme-context';
+import { trackStudioEvent } from '../../core/analytics/product-events';
 import { GraphCanvas, type GraphCanvasApi } from './canvas';
 import { GraphContextMenu, type GraphContextMenuState } from './context-menu';
 import {
@@ -46,6 +47,12 @@ import { useScene } from './use-scene';
  */
 export function Root(): JSX.Element {
   const { currentProjectId, currentProject, currentProjectSchema } = useConfig();
+
+  useEffect(() => {
+    if (currentProjectId) {
+      trackStudioEvent({ event: 'graph_opened', projectId: currentProjectId });
+    }
+  }, [currentProjectId]);
   const [, auth] = useAuth();
   const { scope } = useAppContext();
   const { resolvedTheme } = useTheme();

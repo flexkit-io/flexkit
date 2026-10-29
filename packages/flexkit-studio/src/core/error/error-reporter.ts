@@ -473,6 +473,26 @@ function readOverride(): string | null {
 }
 
 /**
+ * Whether this Studio sends errors and product events to Flexkit: the hosted
+ * Studio and the desktop app against the production backend, never local
+ * development (see `isErrorReportingEnabled`).
+ */
+export function isStudioTelemetryEnabled({ hosted }: { hosted: boolean }): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return isErrorReportingEnabled({
+    hosted,
+    isDesktop: Boolean(getDesktop()),
+    domain: flexkitDomain,
+    hostname: window.location.hostname,
+    version: STUDIO_VERSION,
+    override: readOverride(),
+  });
+}
+
+/**
  * Starts reporting uncaught errors and unhandled rejections when reporting is
  * enabled for this environment. Returns the function that stops it.
  */
@@ -483,16 +503,7 @@ export function installErrorReporter({ hosted }: { hosted: boolean }): () => voi
 
   const desktop = getDesktop();
 
-  if (
-    !isErrorReportingEnabled({
-      hosted,
-      isDesktop: Boolean(desktop),
-      domain: flexkitDomain,
-      hostname: window.location.hostname,
-      version: STUDIO_VERSION,
-      override: readOverride(),
-    })
-  ) {
+  if (!isStudioTelemetryEnabled({ hosted })) {
     return () => undefined;
   }
 
