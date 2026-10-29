@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.23
+
+### Patch Changes
+
+- e220947: The hosted Studio and the desktop app tell Flexkit when the Graph app is opened in a project and when the desktop app is launched (with its version and OS), once per session, so Flexkit can see which features are used. These events follow the error reporting setting: off in local development and for Studios that list their own projects, and `flexkit:telemetry` in local storage (or the older `flexkit:error-reporting`) turns both on or off.
+
 ## 0.2.22
 
 ### Patch Changes
