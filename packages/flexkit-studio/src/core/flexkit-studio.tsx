@@ -12,6 +12,7 @@ import { ActionsProvider } from '../entities/actions-context';
 import { AppProvider } from './app-context';
 import { normalizeBasePath } from './base-path';
 import { installErrorReporter } from './error/error-reporter';
+import { installProductEvents } from './analytics/product-events';
 import { GlobalError } from './error/global-error';
 import type { FlexkitStudioProps } from './config/types';
 
@@ -52,6 +53,7 @@ export function FlexkitStudio({ projectIds, basename }: FlexkitStudioProps): JSX
   const hosted = projectIds === undefined;
 
   useEffect(() => installErrorReporter({ hosted }), [hosted]);
+  useEffect(() => installProductEvents({ hosted }), [hosted]);
 
   if (!mounted) {
     return null;

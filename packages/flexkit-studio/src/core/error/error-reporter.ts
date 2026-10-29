@@ -1,8 +1,7 @@
 import { userApiPaths } from '../api-paths';
 import { getDesktop } from '../desktop';
-import { flexkitDomain } from '../domains';
-import { getLocalStorage } from '../local-storage';
 import { STUDIO_VERSION } from '../use-studio-version';
+import { isStudioTelemetryEnabled, postToUserApi } from '../telemetry';
 
 /**
  * Reports unexpected Studio errors (uncaught errors, unhandled rejections and
@@ -56,10 +55,15 @@ export const MAX_REPORT_BYTES = 60_000;
 export const MAX_ERRORS_PER_SESSION = 50;
 /** At most one report is sent per interval; errors in between are batched. */
 export const FLUSH_INTERVAL_MS = 5_000;
-/** Turns reporting on (`on`) or off (`off`) in this browser, whatever the environment. */
-export const ERROR_REPORTING_STORAGE_KEY = 'flexkit:error-reporting';
 
-const PROJECT_ID_PATTERN = /^[a-z0-9]{1,64}$/;
+/** Kept for callers and tests that name the gate after error reporting. */
+export {
+  isTelemetryEnabled as isErrorReportingEnabled,
+  LEGACY_TELEMETRY_STORAGE_KEY as ERROR_REPORTING_STORAGE_KEY,
+  type TelemetryEnvironment as ErrorReportingEnvironment,
+} from '../telemetry';
+
+export const PROJECT_ID_PATTERN = /^[a-z0-9]{1,64}$/;
 
 function truncate(value: string, max: number): string {
   return value.length > max ? value.slice(0, max) : value;
@@ -240,41 +244,6 @@ export function buildReportBody(
   return { body: JSON.stringify({ app, errors } satisfies ClientErrorReport), count: errors.length };
 }
 
-export interface ErrorReportingEnvironment {
-  /** The Studio lists the signed-in user's projects (hosted Studio, desktop app). */
-  hosted: boolean;
-  isDesktop: boolean;
-  domain: string;
-  hostname: string;
-  version: string;
-  /** The `flexkit:error-reporting` setting in this browser, if any. */
-  override: string | null;
-}
-
-const LOCAL_HOSTNAME = /^(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)$|\.(localhost|test|local)$/i;
-
-/**
- * Reporting is on for the hosted Studio and the desktop app against the
- * production backend, and off in development: a local backend
- * (`flexkit.test`), a local host, or a build without a version. The
- * `flexkit:error-reporting` local storage setting forces it `on` or `off`.
- */
-export function isErrorReportingEnabled(env: ErrorReportingEnvironment): boolean {
-  if (env.override === 'on') {
-    return true;
-  }
-
-  if (env.override === 'off') {
-    return false;
-  }
-
-  if (!env.hosted || env.domain !== 'flexkit.io' || env.version === '0.0.0') {
-    return false;
-  }
-
-  return env.isDesktop || !LOCAL_HOSTNAME.test(env.hostname);
-}
-
 export type SendReport = (body: string, options: { unloading: boolean }) => Promise<number | null>;
 
 export interface ErrorReporterOptions {
@@ -438,15 +407,7 @@ export const sendReportToBff: SendReport = async (body, { unloading }) => {
     }
   }
 
-  const response = await fetch(url, {
-    body,
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    keepalive: unloading,
-    method: 'POST',
-  });
-
-  return response.status;
+  return postToUserApi(url, body, { keepalive: unloading });
 };
 
 let installed: ErrorReporter | null = null;
@@ -464,14 +425,6 @@ export function setErrorReportingProjectId(projectId: string | null): void {
   installed?.setProjectId(projectId);
 }
 
-function readOverride(): string | null {
-  try {
-    return getLocalStorage()?.getItem(ERROR_REPORTING_STORAGE_KEY) ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Starts reporting uncaught errors and unhandled rejections when reporting is
  * enabled for this environment. Returns the function that stops it.
@@ -481,20 +434,11 @@ export function installErrorReporter({ hosted }: { hosted: boolean }): () => voi
     return () => undefined;
   }
 
-  const desktop = getDesktop();
-
-  if (
-    !isErrorReportingEnabled({
-      hosted,
-      isDesktop: Boolean(desktop),
-      domain: flexkitDomain,
-      hostname: window.location.hostname,
-      version: STUDIO_VERSION,
-      override: readOverride(),
-    })
-  ) {
+  if (!isStudioTelemetryEnabled({ hosted })) {
     return () => undefined;
   }
+
+  const desktop = getDesktop();
 
   const reporter = createErrorReporter({
     app: {

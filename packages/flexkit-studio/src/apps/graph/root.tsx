@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from '../../ui';
 import { useTheme } from '../../ui/theme-context';
+import { trackStudioEvent } from '../../core/analytics/product-events';
 import { GraphCanvas, type GraphCanvasApi } from './canvas';
 import { GraphContextMenu, type GraphContextMenuState } from './context-menu';
 import {
@@ -46,6 +47,13 @@ import { useScene } from './use-scene';
  */
 export function Root(): JSX.Element {
   const { currentProjectId, currentProject, currentProjectSchema } = useConfig();
+
+  // Once the project has loaded, so a mistyped or inaccessible URL is not counted.
+  useEffect(() => {
+    if (currentProjectId && currentProject) {
+      trackStudioEvent({ event: 'graph_opened', projectId: currentProjectId });
+    }
+  }, [currentProjectId, currentProject]);
   const [, auth] = useAuth();
   const { scope } = useAppContext();
   const { resolvedTheme } = useTheme();
