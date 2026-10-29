@@ -48,11 +48,12 @@ import { useScene } from './use-scene';
 export function Root(): JSX.Element {
   const { currentProjectId, currentProject, currentProjectSchema } = useConfig();
 
+  // Once the project has loaded, so a mistyped or inaccessible URL is not counted.
   useEffect(() => {
-    if (currentProjectId) {
+    if (currentProjectId && currentProject) {
       trackStudioEvent({ event: 'graph_opened', projectId: currentProjectId });
     }
-  }, [currentProjectId]);
+  }, [currentProjectId, currentProject]);
   const [, auth] = useAuth();
   const { scope } = useAppContext();
   const { resolvedTheme } = useTheme();

@@ -7,12 +7,17 @@ import { createProductEventTracker, productEventKey } from '../src/core/analytic
 describe('product events', () => {
   it('sends each event once per page session', async () => {
     const sent: unknown[] = [];
-    const track = createProductEventTracker(async (body) => sent.push(JSON.parse(body)));
+    const { track } = createProductEventTracker(async (body) => {
+      sent.push(JSON.parse(body));
+
+      return 202;
+    });
 
     track({ event: 'graph_opened', projectId: 'abcdefghij' });
     track({ event: 'graph_opened', projectId: 'abcdefghij' });
+    await new Promise((resolve) => setImmediate(resolve));
+    track({ event: 'graph_opened', projectId: 'abcdefghij' });
     track({ event: 'graph_opened', projectId: 'klmnopqrst' });
-    track({ appVersion: '1.2.0', event: 'desktop_app_opened', os: 'darwin' });
     track({ appVersion: '1.2.0', event: 'desktop_app_opened', os: 'darwin' });
 
     assert.deepEqual(sent, [
@@ -22,14 +27,30 @@ describe('product events', () => {
     ]);
   });
 
+  it('sends an event again when the backend did not accept it (offline, signed out)', async () => {
+    const statuses = [401, 202];
+    let calls = 0;
+    let delivered = 0;
+    const { track } = createProductEventTracker(async () => statuses[calls++] ?? 202);
+
+    track({ event: 'graph_opened', projectId: 'abcdefghij' }, { onDelivered: () => (delivered += 1) });
+    await new Promise((resolve) => setImmediate(resolve));
+    track({ event: 'graph_opened', projectId: 'abcdefghij' }, { onDelivered: () => (delivered += 1) });
+    await new Promise((resolve) => setImmediate(resolve));
+    track({ event: 'graph_opened', projectId: 'abcdefghij' });
+
+    assert.equal(calls, 2);
+    assert.equal(delivered, 1);
+  });
+
   it('never throws, even when the transport does', async () => {
-    const track = createProductEventTracker(() => {
+    const throwing = createProductEventTracker(() => {
       throw new Error('offline');
     });
     const rejecting = createProductEventTracker(() => Promise.reject(new Error('offline')));
 
-    assert.doesNotThrow(() => track({ event: 'graph_opened', projectId: 'abcdefghij' }));
-    assert.doesNotThrow(() => rejecting({ event: 'graph_opened', projectId: 'abcdefghij' }));
+    assert.doesNotThrow(() => throwing.track({ event: 'graph_opened', projectId: 'abcdefghij' }));
+    assert.doesNotThrow(() => rejecting.track({ event: 'graph_opened', projectId: 'abcdefghij' }));
     await new Promise((resolve) => setImmediate(resolve));
   });
 
