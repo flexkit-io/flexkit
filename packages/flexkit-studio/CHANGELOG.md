@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.25
+
+### Patch Changes
+
+- a9aceec: Plugin logos look the same everywhere: the chat connect card shows them edge to edge like the Marketplace instead of inset on a gray tile, logos are never stretched, and a missing or broken logo shows a plain tile instead of a broken image.
+
 ## 0.2.24
 
 ### Patch Changes
