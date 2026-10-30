@@ -19,6 +19,17 @@ export interface PluginConnection {
   updatedAt: string;
 }
 
+/** A plugin that connects with a token the user pastes into a form, instead of a sign-in. */
+export interface PluginApiTokenConnect {
+  type: 'api-token';
+  /** What the provider calls it, e.g. "Tinybird token". */
+  tokenLabel: string;
+  helpUrl: string | null;
+  placeholder: string | null;
+  /** Regular expression a valid token matches. */
+  pattern: string | null;
+}
+
 export interface MarketplacePlugin {
   usedBy: Array<{ id: string; name: string }>;
   id: string;
@@ -31,6 +42,8 @@ export interface MarketplacePlugin {
   updatedAt: string;
   preview: boolean;
   capabilities: { agentTools: boolean; automationDelivery: boolean };
+  /** Absent from older platforms, which only have sign-in plugins. */
+  connect?: { type: 'oauth' } | PluginApiTokenConnect;
   sourceUrl: string;
   logoUrl: string;
   enabled: boolean;

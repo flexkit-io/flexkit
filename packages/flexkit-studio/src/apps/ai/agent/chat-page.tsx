@@ -34,6 +34,8 @@ import {
   usePromptInputController,
 } from '../../../ui';
 import { fetcher, paths, type ApiClient } from '../api';
+import { findPastedPluginToken } from '../plugin-token-format';
+import type { Marketplace } from '../plugin-types';
 import {
   ChatApprovalContext,
   MessagePart,
@@ -694,6 +696,12 @@ function ChatComposer({
 }): JSX.Element {
   const { attachments, textInput } = usePromptInputController();
   const uploads = useAttachmentUploads(api, onError);
+  const { currentProjectId } = useConfig();
+  // Token formats of plugins that connect with a pasted token, to stop one being sent as a message.
+  const { data: marketplace } = useSWR<Marketplace>(
+    currentProjectId ? `/api/flexkit/${currentProjectId}/plugins` : null,
+    fetcher
+  );
   // `sending` only flips on the next render, so track the in-flight send
   // synchronously to reject a duplicate submit before it clears the text.
   const submittingRef = useRef(false);
@@ -729,6 +737,17 @@ function ChatComposer({
           modelPending
         ) {
           return Promise.reject(new Error('The message cannot be sent right now.'));
+        }
+
+        const pastedToken = findPastedPluginToken(trimmed, marketplace?.plugins ?? []);
+
+        // A message is stored in the chat and sent to the model; a token belongs in the connect form.
+        if (pastedToken?.connect?.type === 'api-token') {
+          onError(
+            `That looks like a ${pastedToken.connect.tokenLabel}. Remove it from your message and connect ${pastedToken.name} from its connect card or AI → Marketplace instead, where it is stored encrypted and never shown to the agent.`
+          );
+
+          return Promise.reject(new Error('The message contains a plugin token.'));
         }
 
         // Clear the text immediately; restore it if sending fails. Returning

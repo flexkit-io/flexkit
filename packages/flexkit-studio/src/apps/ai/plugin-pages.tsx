@@ -46,7 +46,8 @@ import {
   XIcon,
 } from 'lucide-react';
 import { createApiClient, fetcher } from './api';
-import { connectPluginPopup, PluginAccountMismatchError } from './plugin-oauth';
+import { PluginAccountMismatchError } from './plugin-oauth';
+import { connectPlugin } from './plugin-token';
 import type {
   Marketplace,
   MarketplacePlugin,
@@ -862,7 +863,7 @@ export function PluginDetailPage(): JSX.Element {
     onDisconnect: (connection) => void perform(() => api.disconnectPlugin(connection.id)),
     onMakePrimary: (connection) => void perform(() => api.updatePluginConnection(connection.id, { primary: true })),
     onReconnect: (connection) =>
-      void perform(() => connectPluginPopup(api, plugin.id, connection.scope, { connectionId: connection.id })),
+      void perform(() => connectPlugin(api, plugin, connection.scope, { connectionId: connection.id })),
     onRename: (connection, label) => perform(() => api.updatePluginConnection(connection.id, { label })),
   };
 
@@ -905,7 +906,7 @@ export function PluginDetailPage(): JSX.Element {
                   busy={busy}
                   canManage={data.canManage}
                   plugin={plugin}
-                  onConnect={(scope) => void perform(() => connectPluginPopup(api, plugin.id, scope))}
+                  onConnect={(scope) => void perform(() => connectPlugin(api, plugin, scope))}
                 />
               )}
             </div>
@@ -949,7 +950,7 @@ export function PluginDetailPage(): JSX.Element {
             busy={busy}
             canManage={data.canManage}
             plugin={plugin}
-            onConnect={(scope) => void perform(() => connectPluginPopup(api, plugin.id, scope))}
+            onConnect={(scope) => void perform(() => connectPlugin(api, plugin, scope))}
           />
         ) : null}
         <section className="fk:flex fk:flex-col fk:gap-3">

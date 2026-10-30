@@ -10,6 +10,7 @@ import type { ProjectSchemaError } from '../../core/config/types';
 import { FlexkitError } from '../../core/error/errors';
 import { setErrorReportingProjectId } from '../../core/error/error-reporter';
 import { ActivityNotifier } from '../../apps/ai/activity-notifier';
+import { PluginTokenDialogHost } from '../../apps/ai/plugin-token';
 import { Loading } from '../components/loading';
 import { Alert, AlertDescription, AlertTitle } from '../primitives/alert';
 import { Toaster } from '../primitives/sonner';
@@ -142,6 +143,7 @@ export function Layout(): JSX.Element {
       </div>
       <ActivityNotifier projectId={projectId} />
       <Toaster />
+      <PluginTokenDialogHost />
     </>
   );
 }
