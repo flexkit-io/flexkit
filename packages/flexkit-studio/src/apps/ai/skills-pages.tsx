@@ -38,6 +38,7 @@ import { createApiClient, fetcher, paths, type ApiClient } from './api';
 import { MarkdownEditor } from './markdown-editor';
 import { CatalogHeader } from './plugin-pages';
 import type { AutomationVisibility, ProjectSpace, Skill, SkillInput, SkillsList } from './types';
+import { PluginLogo } from './plugin-logo';
 
 const SKILLS_PAGE_SIZE = 25;
 
@@ -148,7 +149,7 @@ function getSkillVisibilityLabel(skill: Skill, spaceLabelById: Map<string, strin
 
 function SkillLogo({ skill }: { skill: Skill }): JSX.Element {
   if (skill.logoUrl) {
-    return <img alt="" className="fk:size-10 fk:shrink-0 fk:rounded-lg fk:corner-squircle" src={skill.logoUrl} />;
+    return <PluginLogo className="fk:size-10 fk:rounded-lg" src={skill.logoUrl} />;
   }
 
   return (

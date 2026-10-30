@@ -56,6 +56,7 @@ import type {
   PluginScope,
   PluginTools,
 } from './plugin-types';
+import { PluginLogo } from './plugin-logo';
 
 function httpsCatalogUrl(value: string): string | null {
   let url: URL;
@@ -367,7 +368,7 @@ function PluginRow({ onOpen, plugin }: { onOpen: () => void; plugin: Marketplace
       onClick={onOpen}
       className="fk:-mx-3 fk:flex fk:min-w-0 fk:items-center fk:gap-3 fk:rounded-lg fk:px-3 fk:py-2 fk:text-left fk:transition-colors fk:hover:bg-accent fk:focus-visible:bg-accent fk:focus-visible:outline-none fk:corner-squircle"
     >
-      <img src={plugin.logoUrl} alt="" className="fk:size-10 fk:shrink-0 fk:rounded-lg fk:corner-squircle" />
+      <PluginLogo className="fk:size-10 fk:rounded-lg" src={plugin.logoUrl} />
       <span className="fk:min-w-0 fk:flex-1">
         <span className="fk:block fk:truncate fk:text-sm fk:font-medium">{plugin.name}</span>
         <span className="fk:block fk:truncate fk:text-sm fk:text-muted-foreground">{plugin.description}</span>
@@ -885,7 +886,7 @@ export function PluginDetailPage(): JSX.Element {
       <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-4xl fk:flex-col fk:gap-8 fk:py-6 fk:pl-4 fk:pr-6">
         <section className="fk:flex fk:flex-col fk:gap-3">
           <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-4">
-            <img src={plugin.logoUrl} alt="" className="fk:size-14 fk:shrink-0 fk:rounded-lg fk:corner-squircle" />
+            <PluginLogo className="fk:size-14 fk:rounded-lg" src={plugin.logoUrl} />
             <div className="fk:flex fk:min-w-0 fk:flex-col fk:gap-0.5">
               <h1 className="fk:text-xl fk:font-semibold">{plugin.name}</h1>
               {sourceUrl ? (
