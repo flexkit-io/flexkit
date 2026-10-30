@@ -8,6 +8,7 @@ import { createApiClient, fetcher } from '../api';
 import { connectPlugin } from '../plugin-token';
 import type { PluginDetail, PluginScope } from '../plugin-types';
 import { describeConnectFailure, getPluginConnectState } from './plugin-connect-state';
+import { PluginLogo } from '../plugin-logo';
 
 /** Lets a connect card hand a finished connection back to the chat, which continues in a new turn. */
 export const PluginConnectContext = createContext<{ onConnected: (_pluginId: string) => Promise<void> } | null>(null);
@@ -59,18 +60,6 @@ const SCOPE_OPTIONS: { [scope in PluginScope]: { description: string; title: str
   project: { description: 'Shared with project members who can use this plugin.', title: 'Project' },
 };
 
-function PluginLogo({ name, src, size }: { name: string; size: 'md' | 'lg'; src: string }): JSX.Element {
-  return (
-    <span
-      className={`fk:flex fk:shrink-0 fk:items-center fk:justify-center fk:rounded-xl fk:bg-muted fk:corner-squircle ${
-        size === 'lg' ? 'fk:size-16 fk:p-3' : 'fk:size-11 fk:p-2'
-      }`}
-    >
-      <img alt={name} className="fk:size-full fk:object-contain" src={src} />
-    </span>
-  );
-}
-
 function ConsentDialog({
   busy,
   logoUrl,
@@ -113,7 +102,7 @@ function ConsentDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="fk:sm:max-w-md">
         <div className="fk:flex fk:flex-col fk:items-center fk:gap-3 fk:pt-2 fk:text-center">
-          <PluginLogo name={name} size="lg" src={logoUrl} />
+          <PluginLogo className="fk:size-16 fk:rounded-xl" src={logoUrl} />
           <DialogTitle className="fk:text-xl">Connect to {name}</DialogTitle>
           <DialogDescription>Let the Flexkit agent access and use {name} on your behalf.</DialogDescription>
         </div>
@@ -290,7 +279,7 @@ export function PluginConnectCard({
     <div className="fk:space-y-2">
       <div className="fk:space-y-3 fk:rounded-2xl fk:border fk:border-border fk:bg-background fk:p-4 fk:corner-squircle">
         <div className="fk:flex fk:items-center fk:gap-3">
-          <PluginLogo name={plugin.name} size="md" src={plugin.logoUrl} />
+          <PluginLogo className="fk:size-11 fk:rounded-lg" src={plugin.logoUrl} />
           <div className="fk:min-w-0 fk:flex-1">
             <div className="fk:truncate fk:font-medium">{plugin.name}</div>
             <div className="fk:truncate fk:text-sm fk:text-muted-foreground">

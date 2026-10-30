@@ -31,6 +31,7 @@ import { connectPlugin } from './plugin-token';
 import { PluginConnectControl } from './plugin-pages';
 import type { Marketplace, MarketplacePlugin, PluginConnection, PluginScope, PluginTools } from './plugin-types';
 import type { AutomationToolConfigInput } from './types';
+import { PluginLogo } from './plugin-logo';
 
 export interface PluginAccountChoice {
   connectionMode: PluginScope;
@@ -283,7 +284,7 @@ function PluginToolRow({
     <>
       <div className="fk:m-1.5 fk:flex fk:flex-wrap fk:items-center fk:justify-between fk:gap-x-3 fk:gap-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted fk:corner-squircle">
         <div className="fk:flex fk:min-w-0 fk:flex-1 fk:items-center fk:gap-2.5">
-          <img src={plugin.logoUrl} alt="" className="fk:size-5 fk:shrink-0 fk:rounded fk:corner-squircle fk:self-start" />
+          <PluginLogo className="fk:size-5 fk:self-start fk:rounded" src={plugin.logoUrl} />
           <div className="fk:min-w-0">
             <div className="fk:text-sm fk:font-medium">{plugin.name}</div>
             <p
@@ -449,7 +450,7 @@ function AddPluginTools({
                     setOpen(false);
                   }}
                 >
-                  <img src={plugin.logoUrl} alt="" className="fk:size-5 fk:shrink-0 fk:rounded fk:corner-squircle" />
+                  <PluginLogo className="fk:size-5 fk:rounded" src={plugin.logoUrl} />
                   <span className="fk:truncate">{plugin.name}</span>
                   {plugin.connections.some((connection) => connection.status === 'connected') ? null : (
                     <span className="fk:ml-auto fk:text-xs fk:text-muted-foreground">Not connected</span>
