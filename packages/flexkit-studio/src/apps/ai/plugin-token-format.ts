@@ -16,21 +16,28 @@ export function matchesTokenPattern(token: string, pattern: string | null): bool
 }
 
 /**
- * The plugin whose token format `text` contains, if any: a token pasted into
- * the chat would be stored in the conversation and sent to the model.
+ * The plugin whose token format `text` contains, if any, with the matching
+ * token: a token pasted into the chat would be stored in the conversation and
+ * sent to the model.
  */
-export function findPastedPluginToken(text: string, plugins: readonly ConnectablePlugin[]): ConnectablePlugin | null {
+export function findPastedPluginToken(
+  text: string,
+  plugins: readonly ConnectablePlugin[]
+): { plugin: ConnectablePlugin; token: string } | null {
   // Quotes and trailing punctuation around a pasted token are not part of it.
   const words = text
     .split(/\s+/)
     .map((word) => word.replace(/^["'`]+|["'`.,;]+$/g, ''))
     .filter(Boolean);
 
-  return (
-    plugins.find((plugin) => {
-      const pattern = plugin.connect?.type === 'api-token' ? plugin.connect.pattern : null;
+  for (const plugin of plugins) {
+    const pattern = plugin.connect?.type === 'api-token' ? plugin.connect.pattern : null;
+    const token = pattern === null ? undefined : words.find((word) => matchesTokenPattern(word, pattern));
 
-      return pattern !== null && words.some((word) => matchesTokenPattern(word, pattern));
-    }) ?? null
-  );
+    if (token) {
+      return { plugin, token };
+    }
+  }
+
+  return null;
 }

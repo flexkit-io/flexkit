@@ -739,12 +739,14 @@ function ChatComposer({
           return Promise.reject(new Error('The message cannot be sent right now.'));
         }
 
-        const pastedToken = findPastedPluginToken(trimmed, marketplace?.plugins ?? []);
+        const pasted = findPastedPluginToken(trimmed, marketplace?.plugins ?? []);
 
         // A message is stored in the chat and sent to the model; a token belongs in the connect form.
-        if (pastedToken?.connect?.type === 'api-token') {
+        if (pasted?.plugin.connect?.type === 'api-token') {
+          // The rest of the message stays; the token leaves the composer so its stored draft never holds it.
+          textInput.setInput(text.split(pasted.token).join(''));
           onError(
-            `That looks like a ${pastedToken.connect.tokenLabel}. Remove it from your message and connect ${pastedToken.name} from its connect card or AI → Marketplace instead, where it is stored encrypted and never shown to the agent.`
+            `That looks like a ${pasted.plugin.connect.tokenLabel}. It was removed from your message: connect ${pasted.plugin.name} from its connect card or AI → Marketplace instead, where it is stored encrypted and never shown to the agent.`
           );
 
           return Promise.reject(new Error('The message contains a plugin token.'));

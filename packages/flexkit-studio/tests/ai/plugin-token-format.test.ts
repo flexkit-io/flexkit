@@ -18,8 +18,8 @@ const token = 'p.eyJ1IjoiYWJjZGVmZ2hpamtsbW5vcCJ9';
 
 describe('pasted plugin tokens', () => {
   it('finds a token anywhere in a message, quoted or followed by punctuation', () => {
-    assert.equal(findPastedPluginToken(token, [notion, tinybird])?.id, 'tinybird');
-    assert.equal(findPastedPluginToken(`here is my token: "${token}".`, [tinybird])?.id, 'tinybird');
+    assert.equal(findPastedPluginToken(token, [notion, tinybird])?.plugin.id, 'tinybird');
+    assert.equal(findPastedPluginToken(`here is my token: "${token}".`, [tinybird])?.token, token);
   });
 
   it('leaves ordinary messages alone', () => {
