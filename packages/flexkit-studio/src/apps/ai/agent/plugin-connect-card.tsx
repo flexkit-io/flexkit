@@ -59,15 +59,14 @@ const SCOPE_OPTIONS: { [scope in PluginScope]: { description: string; title: str
   project: { description: 'Shared with project members who can use this plugin.', title: 'Project' },
 };
 
+// Plugin logos are full-bleed squares with their own background, shown as in the Marketplace.
 function PluginLogo({ name, src, size }: { name: string; size: 'md' | 'lg'; src: string }): JSX.Element {
   return (
-    <span
-      className={`fk:flex fk:shrink-0 fk:items-center fk:justify-center fk:rounded-xl fk:bg-muted fk:corner-squircle ${
-        size === 'lg' ? 'fk:size-16 fk:p-3' : 'fk:size-11 fk:p-2'
-      }`}
-    >
-      <img alt={name} className="fk:size-full fk:object-contain" src={src} />
-    </span>
+    <img
+      alt={name}
+      className={`fk:shrink-0 fk:rounded-xl fk:corner-squircle ${size === 'lg' ? 'fk:size-16' : 'fk:size-11'}`}
+      src={src}
+    />
   );
 }
 
