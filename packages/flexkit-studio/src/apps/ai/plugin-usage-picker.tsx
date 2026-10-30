@@ -27,7 +27,7 @@ import {
 } from '../../ui';
 import { createApiClient, fetcher } from './api';
 import { matchLabel } from './attach-combobox';
-import { connectPluginPopup } from './plugin-oauth';
+import { connectPlugin } from './plugin-token';
 import { PluginConnectControl } from './plugin-pages';
 import type { Marketplace, MarketplacePlugin, PluginConnection, PluginScope, PluginTools } from './plugin-types';
 import type { AutomationToolConfigInput } from './types';
@@ -242,7 +242,10 @@ function PluginToolRow({
     setConnecting(true);
 
     try {
-      await connectPluginPopup(createApiClient(projectId), plugin.id, scope);
+      if (!(await connectPlugin(createApiClient(projectId), plugin, scope))) {
+        return;
+      }
+
       await mutate(`/api/flexkit/${projectId}/plugins`);
       onChange(withAccount({ connectionMode: scope, connectionId: null }));
     } catch (failure) {

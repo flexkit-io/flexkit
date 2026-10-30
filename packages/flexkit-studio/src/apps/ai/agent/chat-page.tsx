@@ -34,6 +34,8 @@ import {
   usePromptInputController,
 } from '../../../ui';
 import { fetcher, paths, type ApiClient } from '../api';
+import { findPastedPluginToken } from '../plugin-token-format';
+import type { Marketplace } from '../plugin-types';
 import {
   ChatApprovalContext,
   MessagePart,
@@ -694,6 +696,12 @@ function ChatComposer({
 }): JSX.Element {
   const { attachments, textInput } = usePromptInputController();
   const uploads = useAttachmentUploads(api, onError);
+  const { currentProjectId } = useConfig();
+  // Token formats of plugins that connect with a pasted token, to stop one being sent as a message.
+  const { data: marketplace, error: marketplaceError } = useSWR<Marketplace>(
+    currentProjectId ? `/api/flexkit/${currentProjectId}/plugins` : null,
+    fetcher
+  );
   // `sending` only flips on the next render, so track the in-flight send
   // synchronously to reject a duplicate submit before it clears the text.
   const submittingRef = useRef(false);
@@ -726,9 +734,24 @@ function ChatComposer({
           uploads.isUploading ||
           sending ||
           submittingRef.current ||
-          modelPending
+          modelPending ||
+          // Token formats are still loading; a failed load does not block chat.
+          (!marketplace && !marketplaceError && Boolean(currentProjectId))
         ) {
           return Promise.reject(new Error('The message cannot be sent right now.'));
+        }
+
+        const pasted = findPastedPluginToken(trimmed, marketplace?.plugins ?? []);
+
+        // A message is stored in the chat and sent to the model; a token belongs in the connect form.
+        if (pasted?.plugin.connect?.type === 'api-token') {
+          // The rest of the message stays; the token leaves the composer so its stored draft never holds it.
+          textInput.setInput(pasted.tokens.reduce((rest, token) => rest.split(token).join(''), text));
+          onError(
+            `That looks like a ${pasted.plugin.connect.tokenLabel}. It was removed from your message: connect ${pasted.plugin.name} from its connect card or AI → Marketplace instead, where it is stored encrypted and never shown to the agent.`
+          );
+
+          return Promise.reject(new Error('The message contains a plugin token.'));
         }
 
         // Clear the text immediately; restore it if sending fails. Returning
@@ -932,9 +955,11 @@ function ChatConversation({
       const signature = JSON.stringify(status);
       const previous = priorStatus.current;
       priorStatus.current = signature;
-      const {current} = detailRef;
+      const { current } = detailRef;
       // The status reports the latest reply; a follow-up sent during the turn is newer than it.
-      const latest = current ? [...current.messages].reverse().find((message) => message.role === 'assistant') : undefined;
+      const latest = current
+        ? [...current.messages].reverse().find((message) => message.role === 'assistant')
+        : undefined;
       if (
         (previous && previous !== signature) ||
         (latest &&
@@ -971,7 +996,10 @@ function ChatConversation({
   // dropped from the history.
   const { after: followUpMessages, before: earlierMessages, live: liveMessage } = splitLiveTurn(messages);
   // Ids the live stream already renders inline; the rows catch up on the next refresh.
-  const [liveDeliveredIds, setLiveDeliveredIds] = useState<{ messageId: string; ids: string[] }>({ ids: [], messageId: '' });
+  const [liveDeliveredIds, setLiveDeliveredIds] = useState<{ messageId: string; ids: string[] }>({
+    ids: [],
+    messageId: '',
+  });
   const deliveredIds = getDeliveredMidTurnMessageIds(messages);
 
   for (const id of liveMessage && liveDeliveredIds.messageId === liveMessage.id ? liveDeliveredIds.ids : []) {
@@ -1555,8 +1583,9 @@ export function AgentChatPage(): JSX.Element {
                       return;
                     }
 
-                    void handleSend(`Turn the monitor “${monitor.description}” into an automation.`, []).catch((error: unknown) =>
-                      setSendError(error instanceof Error ? error.message : 'Failed to send the message.')
+                    void handleSend(`Turn the monitor “${monitor.description}” into an automation.`, []).catch(
+                      (error: unknown) =>
+                        setSendError(error instanceof Error ? error.message : 'Failed to send the message.')
                     );
                   }}
                 />

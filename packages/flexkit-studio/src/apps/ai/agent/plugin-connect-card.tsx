@@ -5,7 +5,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import { useConfig } from '../../../core/config/config-context';
 import { Button, Dialog, DialogContent, DialogDescription, DialogTitle } from '../../../ui';
 import { createApiClient, fetcher } from '../api';
-import { connectPluginPopup } from '../plugin-oauth';
+import { connectPlugin } from '../plugin-token';
 import type { PluginDetail, PluginScope } from '../plugin-types';
 import { describeConnectFailure, getPluginConnectState } from './plugin-connect-state';
 
@@ -79,6 +79,7 @@ function ConsentDialog({
   onOpenChange,
   open,
   scopes,
+  tokenLabel,
 }: {
   busy: boolean;
   logoUrl: string;
@@ -87,13 +88,22 @@ function ConsentDialog({
   onOpenChange: (_open: boolean) => void;
   open: boolean;
   scopes: PluginScope[];
+  /** Set for a plugin that connects with a pasted token instead of a sign-in. */
+  tokenLabel?: string;
 }): JSX.Element {
   // Like the Marketplace, no scope is preselected when both are offered.
   const [scope, setScope] = useState<PluginScope | null>(scopes.length === 1 ? (scopes[0] ?? null) : null);
   const promises = [
-    { description: 'Flexkit never sees your password.', title: `Sign in securely to your ${name} account` },
+    tokenLabel
+      ? {
+          description: `Flexkit stores it encrypted and sends it only to ${name}. The agent never sees it.`,
+          title: `Paste a ${tokenLabel}`,
+        }
+      : { description: 'Flexkit never sees your password.', title: `Sign in securely to your ${name} account` },
     {
-      description: `The agent only gets the access you approve on ${name}'s sign-in page.`,
+      description: tokenLabel
+        ? 'The agent only gets the access the token has.'
+        : `The agent only gets the access you approve on ${name}'s sign-in page.`,
       title: 'You decide what the agent can do',
     },
     { description: `Remove the connection to ${name} at any time.`, title: 'You stay in control' },
@@ -196,10 +206,16 @@ export function PluginConnectCard({
     setConsentOpen(false);
     setAttempt(attemptKey, { status: 'connecting' });
 
-    connectPluginPopup(api, pluginId, scope, reconnect ? { connectionId: reconnect.id } : undefined)
+    connectPlugin(api, plugin, scope, reconnect ? { connectionId: reconnect.id } : undefined)
       .then(
-        () => {
+        (connected) => {
           setAttempt(attemptKey, null);
+
+          // The token dialog was closed without connecting.
+          if (!connected) {
+            return;
+          }
+
           // Refreshing the card is best-effort: the connection succeeded either
           // way, and the chat continues with it (reporting its own errors).
           mutate().catch(() => undefined);
@@ -279,7 +295,9 @@ export function PluginConnectCard({
             <div className="fk:truncate fk:font-medium">{plugin.name}</div>
             <div className="fk:truncate fk:text-sm fk:text-muted-foreground">
               {reconnect
-                ? `Sign in again so the agent can keep using ${plugin.name}`
+                ? plugin.connect?.type === 'api-token'
+                  ? `Add a new ${plugin.connect.tokenLabel} so the agent can keep using ${plugin.name}`
+                  : `Sign in again so the agent can keep using ${plugin.name}`
                 : `Let the Flexkit agent use ${plugin.name}`}
             </div>
           </div>
@@ -306,6 +324,7 @@ export function PluginConnectCard({
           onOpenChange={setConsentOpen}
           open={consentOpen}
           scopes={state.scopes}
+          tokenLabel={plugin.connect?.type === 'api-token' ? plugin.connect.tokenLabel : undefined}
         />
       ) : null}
     </div>
