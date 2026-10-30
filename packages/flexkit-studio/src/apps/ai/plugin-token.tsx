@@ -17,6 +17,7 @@ import { matchesTokenPattern, type ConnectablePlugin } from './plugin-token-form
 import type { PluginApiTokenConnect, PluginScope } from './plugin-types';
 
 interface TokenRequest {
+  id: number;
   plugin: ConnectablePlugin & { connect: PluginApiTokenConnect };
   /** Saves the token; rejects with a message the dialog shows next to the field. */
   submit: (_token: string) => Promise<void>;
@@ -25,6 +26,9 @@ interface TokenRequest {
 
 /** The one open token dialog, outside React so any connect button can open it. */
 let request: TokenRequest | null = null;
+let lastRequestId = 0;
+/** Cancels the latest request, whether its dialog has opened yet or not. */
+let cancelLatest: (() => void) | null = null;
 const listeners = new Set<() => void>();
 
 function setRequest(next: TokenRequest | null): void {
@@ -58,10 +62,13 @@ export function connectPlugin(
   }
 
   // Opening a second dialog closes the first, as if cancelled.
-  request?.settle(false);
+  cancelLatest?.();
+
+  const id = ++lastRequestId;
 
   return new Promise<boolean>((resolve) => {
-    setRequest({
+    const next: TokenRequest = {
+      id,
       plugin: { ...plugin, connect },
       submit: async (token) => {
         await api.connectPluginToken({
@@ -72,9 +79,27 @@ export function connectPlugin(
         });
       },
       settle: (connected) => {
-        setRequest(null);
+        // A save still running for a replaced dialog must not close its successor.
+        if (request?.id === id) {
+          setRequest(null);
+        }
+
+        if (lastRequestId === id) {
+          cancelLatest = null;
+        }
+
         resolve(connected);
       },
+    };
+
+    cancelLatest = () => next.settle(false);
+
+    // Open after the current event: a menu item that started this closes first
+    // and returns focus to its trigger, which would take it from the token field.
+    setTimeout(() => {
+      if (lastRequestId === id) {
+        setRequest(next);
+      }
     });
   });
 }
@@ -102,7 +127,7 @@ export function PluginTokenDialogHost(): JSX.Element | null {
   );
 
   // A new key per request resets the field, so a token never outlives its dialog.
-  return current ? <PluginTokenDialog key={current.plugin.id} request={current} /> : null;
+  return current ? <PluginTokenDialog key={current.id} request={current} /> : null;
 }
 
 function PluginTokenDialog({ request: current }: { request: TokenRequest }): JSX.Element {

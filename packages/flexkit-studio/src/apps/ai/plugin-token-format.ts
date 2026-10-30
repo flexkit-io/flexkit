@@ -15,29 +15,47 @@ export function matchesTokenPattern(token: string, pattern: string | null): bool
   }
 }
 
+/** A pattern that compiles; an empty or broken one detects nothing rather than every word. */
+function compileTokenPattern(pattern: string | null): RegExp | null {
+  if (!pattern) {
+    return null;
+  }
+
+  try {
+    return new RegExp(pattern, 'u');
+  } catch {
+    return null;
+  }
+}
+
 /**
- * The plugin whose token format `text` contains, if any, with the matching
- * token: a token pasted into the chat would be stored in the conversation and
- * sent to the model.
+ * The first plugin whose token format `text` contains, if any, with every
+ * token-shaped word in the message: a token pasted into the chat would be
+ * stored in the conversation and sent to the model.
  */
 export function findPastedPluginToken(
   text: string,
   plugins: readonly ConnectablePlugin[]
-): { plugin: ConnectablePlugin; token: string } | null {
-  // Quotes and trailing punctuation around a pasted token are not part of it.
+): { plugin: ConnectablePlugin; tokens: string[] } | null {
+  // A token is often glued to a label (`token=…`, `key: …`) or wrapped in
+  // brackets, quotes or a sentence's punctuation; none of those are part of it.
   const words = text
-    .split(/\s+/)
-    .map((word) => word.replace(/^["'`]+|["'`.,;]+$/g, ''))
+    .split(/[\s"'`()<>[\]{},;:=!?&]+/)
+    .map((word) => word.replace(/\.+$/, ''))
     .filter(Boolean);
+  let found: ConnectablePlugin | null = null;
+  const tokens = new Set<string>();
 
   for (const plugin of plugins) {
-    const pattern = plugin.connect?.type === 'api-token' ? plugin.connect.pattern : null;
-    const token = pattern === null ? undefined : words.find((word) => matchesTokenPattern(word, pattern));
+    const pattern = compileTokenPattern(plugin.connect?.type === 'api-token' ? plugin.connect.pattern : null);
 
-    if (token) {
-      return { plugin, token };
+    for (const word of pattern ? words : []) {
+      if (pattern!.test(word)) {
+        found ??= plugin;
+        tokens.add(word);
+      }
     }
   }
 
-  return null;
+  return found ? { plugin: found, tokens: [...tokens] } : null;
 }
