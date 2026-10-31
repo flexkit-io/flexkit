@@ -36,6 +36,8 @@ export interface DecideApprovalInput {
   automationEdits?: { instructions?: string; runOnce?: boolean };
   force?: boolean;
   reason?: string;
+  /** For a proposed skill: the fields the approver edited. */
+  skillEdits?: { content?: string; description?: string; name?: string };
 }
 
 export interface SendAgentChatMessageInput {

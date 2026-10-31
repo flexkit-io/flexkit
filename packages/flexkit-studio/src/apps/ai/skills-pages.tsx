@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Eye, GraduationCapIcon, Info, LoaderCircle, PenLine, Plus, Trash2 } from 'lucide-react';
 import Markdown, { type Components } from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -376,7 +376,7 @@ function SkillDetailSkeleton(): JSX.Element {
   );
 }
 
-function SkillContentPane({
+export function SkillContentPane({
   content,
   onBlur,
   onChange,
@@ -394,6 +394,7 @@ function SkillContentPane({
   validationMessage?: string;
 }): JSX.Element {
   const [viewMode, setViewMode] = useState<'preview' | 'write'>('write');
+  const fieldId = useId();
   const isOverLimit = content.length > MAX_SKILL_CONTENT_LENGTH;
   let preview: JSX.Element;
 
@@ -406,7 +407,7 @@ function SkillContentPane({
   return (
     <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-1.5">
       <div className="fk:pl-3.25 fk:flex fk:shrink-0 fk:items-center fk:gap-1">
-        <Label htmlFor="skill-content" id="skill-content-label">
+        <Label htmlFor={fieldId} id={`${fieldId}-label`}>
           Content
         </Label>
         <Tooltip>
@@ -464,9 +465,9 @@ function SkillContentPane({
         </div>
         <div className="fk:min-h-0 fk:min-w-0 fk:flex-1 fk:overflow-hidden" hidden={viewMode !== 'write'}>
           <MarkdownEditor
-            ariaDescribedBy={showContentError ? 'skill-content-error' : undefined}
+            ariaDescribedBy={showContentError ? `${fieldId}-error` : undefined}
             ariaInvalid={showContentError}
-            ariaLabelledBy="skill-content-label"
+            ariaLabelledBy={`${fieldId}-label`}
             className="fk:h-full fk:min-h-0 fk:min-w-0 fk:w-full fk:overflow-hidden"
             readOnly={readOnly}
             value={content}
@@ -481,7 +482,7 @@ function SkillContentPane({
           </ScrollArea>
         ) : null}
         {showContentError && validationMessage ? (
-          <FieldError className="fk:border-t fk:px-3 fk:py-2" id="skill-content-error" message={validationMessage} />
+          <FieldError className="fk:border-t fk:px-3 fk:py-2" id={`${fieldId}-error`} message={validationMessage} />
         ) : null}
       </div>
     </div>

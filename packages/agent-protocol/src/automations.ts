@@ -2,7 +2,7 @@
 export type AutomationRunStatus = 'running' | 'awaiting_approval' | 'success' | 'skipped' | 'failed' | 'cancelled';
 export type AutomationTriggerType = 'entity' | 'job' | 'manual' | 'poll' | 'schedule' | 'webhook';
 export type AutomationApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'cancelled';
-export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin' | 'exec' | 'schema' | 'automation';
+export type AutomationApprovalKind = 'graphql' | 'bulk' | 'plugin' | 'exec' | 'schema' | 'automation' | 'skill';
 export type AutomationApprovalPreviewKind = 'create' | 'update' | 'delete' | 'unknown';
 export type AutomationMutationPolicy = 'require_approval' | 'auto_approve';
 /**
@@ -100,11 +100,33 @@ export interface AutomationChangePreview {
   name: string;
 }
 
+/** The name, description and content of a skill. */
+export interface SkillProposalFields {
+  content: string;
+  description: string;
+  name: string;
+}
+
+/**
+ * Extra context carried by `kind: 'skill'` approvals: a new skill the chat
+ * agent proposed, or its change to an existing one. Nothing is saved until a
+ * person approves; the approver may edit the fields first.
+ */
+export interface SkillProposalPreview extends SkillProposalFields {
+  /** The skill as it is now; null for a new skill. */
+  before: SkillProposalFields | null;
+  /** The existing skill's id; null for a new skill. */
+  skillId: string | null;
+  spaceLabel: string | null;
+  visibility: AutomationVisibility;
+}
+
 export interface AutomationApprovalPreview {
   automation?: AutomationProposalPreview;
   automationChange?: AutomationChangePreview;
   operations: AutomationApprovalPreviewOperation[];
   schema?: SchemaChangePreviewSummary;
+  skill?: SkillProposalPreview;
 }
 
 /** What an approved `kind: 'automation'` proposal created. */
@@ -121,6 +143,8 @@ export interface AutomationApproval {
   automationName: string;
   /** Set once an approved `kind: 'automation'` proposal created its automation. */
   createdAutomation?: CreatedAutomationResult | null;
+  /** Set once an approved `kind: 'skill'` proposal saved its skill. */
+  savedSkillId?: string | null;
   /** Set for approvals raised by a chat turn. */
   chatId: string | null;
   chatMessageId: string | null;
