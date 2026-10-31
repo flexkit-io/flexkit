@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.29
+
+### Patch Changes
+
+- bd1ec8d: Messages about connecting plugins point to AI → Plugins, the section's actual name, instead of AI → Marketplace.
+
 ## 0.2.28
 
 ### Patch Changes
