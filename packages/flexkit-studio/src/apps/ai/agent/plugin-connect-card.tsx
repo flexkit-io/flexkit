@@ -123,7 +123,7 @@ function ConsentDialog({
           </div>
         ) : null}
         <p className="fk:text-center fk:text-xs fk:text-muted-foreground">
-          You can manage connections anytime in AI → Marketplace.
+          You can manage connections anytime in AI → Plugins.
         </p>
         <Button className="fk:w-full" disabled={busy || !scope} onClick={() => scope && onContinue(scope)} type="button">
           Continue
@@ -335,7 +335,7 @@ export function PluginConnectCard({
       </div>
       {state.kind === 'connect' || state.kind === 'reconnect' ? (
         <p className="fk:px-1 fk:text-xs fk:text-muted-foreground">
-          Plugin actions follow your project's approval rules. Disconnect any time in AI → Marketplace.
+          Plugin actions follow your project's approval rules. Disconnect any time in AI → Plugins.
         </p>
       ) : null}
       {state.kind === 'connect' ? (
