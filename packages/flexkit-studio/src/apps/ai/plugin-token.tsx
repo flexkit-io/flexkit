@@ -13,8 +13,14 @@ import {
 } from '../../ui';
 import type { ApiClient } from './api';
 import { connectPluginPopup } from './plugin-oauth';
-import { matchesTokenPattern, type ConnectablePlugin } from './plugin-token-format';
-import type { PluginApiTokenConnect, PluginScope } from './plugin-types';
+import {
+  credentialFormComplete,
+  credentialFormError,
+  credentialFormFields,
+  matchesTokenPattern,
+  type ConnectablePlugin,
+} from './plugin-token-format';
+import type { PluginApiTokenConnect, PluginCredentialsConnect, PluginScope } from './plugin-types';
 
 interface TokenRequest {
   id: number;
@@ -24,14 +30,24 @@ interface TokenRequest {
   settle: (_connected: boolean) => void;
 }
 
-/** The one open token dialog, outside React so any connect button can open it. */
-let request: TokenRequest | null = null;
+interface CredentialsRequest {
+  id: number;
+  plugin: ConnectablePlugin & { connect: PluginCredentialsConnect };
+  /** Saves the form; rejects with a message the dialog shows under the fields. */
+  submit: (_method: string | undefined, _values: { [key: string]: string }) => Promise<void>;
+  settle: (_connected: boolean) => void;
+}
+
+type FormRequest = ({ kind: 'token' } & TokenRequest) | ({ kind: 'credentials' } & CredentialsRequest);
+
+/** The one open connect form, outside React so any connect button can open it. */
+let request: FormRequest | null = null;
 let lastRequestId = 0;
 /** Cancels the latest request, whether its dialog has opened yet or not. */
 let cancelLatest: (() => void) | null = null;
 const listeners = new Set<() => void>();
 
-function setRequest(next: TokenRequest | null): void {
+function setRequest(next: FormRequest | null): void {
   request = next;
   listeners.forEach((listener) => listener());
 }
@@ -44,8 +60,9 @@ function subscribe(listener: () => void): () => void {
 
 /**
  * Connects a plugin: a sign-in popup for OAuth plugins, the token dialog for
- * plugins that take a pasted token. Resolves `false` when the user closes the
- * token dialog without connecting.
+ * plugins that take a pasted token, the credentials dialog for plugins that
+ * take the credentials of an app the user created at the provider. Resolves
+ * `false` when the user closes a dialog without connecting.
  *
  * Call it straight from a click handler: browsers only allow the popup there.
  */
@@ -57,7 +74,7 @@ export function connectPlugin(
 ): Promise<boolean> {
   const { connect } = plugin;
 
-  if (connect?.type !== 'api-token') {
+  if (connect?.type !== 'api-token' && connect?.type !== 'credentials') {
     return connectPluginPopup(api, plugin.id, scope, options).then(() => true);
   }
 
@@ -65,37 +82,46 @@ export function connectPlugin(
   cancelLatest?.();
 
   const id = ++lastRequestId;
+  const connectionId = options?.connectionId ? { connectionId: options.connectionId } : {};
 
   return new Promise<boolean>((resolve) => {
-    const next: TokenRequest = {
-      id,
-      plugin: { ...plugin, connect },
-      submit: async (token) => {
-        await api.connectPluginToken({
-          pluginId: plugin.id,
-          scope,
-          token,
-          ...(options?.connectionId ? { connectionId: options.connectionId } : {}),
-        });
-      },
-      settle: (connected) => {
-        // A save still running for a replaced dialog must not close its successor.
-        if (request?.id === id) {
-          setRequest(null);
-        }
+    const settle = (connected: boolean): void => {
+      // A save still running for a replaced dialog must not close its successor.
+      if (request?.id === id) {
+        setRequest(null);
+      }
 
-        if (lastRequestId === id) {
-          cancelLatest = null;
-        }
+      if (lastRequestId === id) {
+        cancelLatest = null;
+      }
 
-        resolve(connected);
-      },
+      resolve(connected);
     };
+    const next: FormRequest =
+      connect.type === 'api-token'
+        ? {
+            kind: 'token',
+            id,
+            plugin: { ...plugin, connect },
+            submit: async (token) => {
+              await api.connectPluginToken({ pluginId: plugin.id, scope, token, ...connectionId });
+            },
+            settle,
+          }
+        : {
+            kind: 'credentials',
+            id,
+            plugin: { ...plugin, connect },
+            submit: async (method, values) => {
+              await api.connectPluginCredentials({ pluginId: plugin.id, scope, method, values, ...connectionId });
+            },
+            settle,
+          };
 
-    cancelLatest = () => next.settle(false);
+    cancelLatest = () => settle(false);
 
     // Open after the current event: a menu item that started this closes first
-    // and returns focus to its trigger, which would take it from the token field.
+    // and returns focus to its trigger, which would take it from the first field.
     setTimeout(() => {
       if (lastRequestId === id) {
         setRequest(next);
@@ -118,7 +144,7 @@ function httpsHref(value: string | null): string | null {
   }
 }
 
-/** Mounted once by the Studio layout; renders the dialog `connectPlugin` opens for token plugins. */
+/** Mounted once by the Studio layout; renders the dialog `connectPlugin` opens for token and credentials plugins. */
 export function PluginTokenDialogHost(): JSX.Element | null {
   const current = useSyncExternalStore(
     subscribe,
@@ -126,8 +152,179 @@ export function PluginTokenDialogHost(): JSX.Element | null {
     () => null
   );
 
-  // A new key per request resets the field, so a token never outlives its dialog.
-  return current ? <PluginTokenDialog key={current.id} request={current} /> : null;
+  if (!current) {
+    return null;
+  }
+
+  // A new key per request resets the fields, so a secret never outlives its dialog.
+  return current.kind === 'token' ? (
+    <PluginTokenDialog key={current.id} request={current} />
+  ) : (
+    <PluginCredentialsDialog key={current.id} request={current} />
+  );
+}
+
+function FieldError({ id, message }: { id: string; message: string | null }): JSX.Element | null {
+  return message ? (
+    <p className="fk:text-sm fk:text-destructive" id={id}>
+      {message}
+    </p>
+  ) : null;
+}
+
+function HelpLink({ href, label }: { href: string | null; label: string }): JSX.Element | null {
+  const safeHref = httpsHref(href);
+
+  return safeHref ? (
+    <a
+      className="fk:inline-flex fk:items-center fk:gap-1 fk:text-sm fk:text-muted-foreground fk:underline-offset-4 fk:hover:underline"
+      href={safeHref}
+      rel="noreferrer"
+      target="_blank"
+    >
+      {label}
+      <ExternalLinkIcon className="fk:size-3.5" />
+    </a>
+  ) : null;
+}
+
+function PluginCredentialsDialog({ request: current }: { request: CredentialsRequest }): JSX.Element {
+  const { connect, name } = current.plugin;
+  const formId = useId();
+  const [method, setMethod] = useState<string | null>(connect.methods[0]?.key ?? null);
+  const [values, setValues] = useState<{ [key: string]: string }>({});
+  const [error, setError] = useState<{ field: string | null; message: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const fields = credentialFormFields(connect, method);
+  const selectedMethod = connect.methods.find((item) => item.key === method) ?? null;
+  // Submitting surfaces which field is malformed; the button only waits for the required values.
+  const ready = credentialFormComplete(fields, values);
+
+  async function save(event: FormEvent): Promise<void> {
+    event.preventDefault();
+
+    if (saving) {
+      return;
+    }
+
+    const problem = credentialFormError(fields, values);
+
+    if (problem) {
+      setError(problem);
+
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      await current.submit(
+        method ?? undefined,
+        Object.fromEntries(fields.map((field) => [field.key, values[field.key]?.trim() ?? '']).filter(([, value]) => value))
+      );
+      setValues({});
+      current.settle(true);
+    } catch (failure) {
+      setError({ field: null, message: failure instanceof Error ? failure.message : `${name} could not be connected.` });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !saving) {
+          current.settle(false);
+        }
+      }}
+    >
+      <DialogContent>
+        <form className="fk:flex fk:flex-col fk:gap-4" onSubmit={(event) => void save(event)}>
+          <DialogHeader>
+            <DialogTitle>Connect {name}</DialogTitle>
+            <DialogDescription>
+              {connect.description} Flexkit checks the credentials with {name}, stores them encrypted and sends them
+              only to Flexkit&apos;s own {name} server; the agent can use the tools but never sees them.
+            </DialogDescription>
+          </DialogHeader>
+          {connect.methods.length > 1 ? (
+            <div className="fk:space-y-1.5" role="group" aria-label="How to connect">
+              {connect.methods.map((item) => (
+                <button
+                  aria-pressed={method === item.key}
+                  className={`fk:flex fk:w-full fk:flex-col fk:rounded-lg fk:border fk:px-3 fk:py-2 fk:text-left fk:corner-squircle ${
+                    method === item.key ? 'fk:border-primary fk:bg-primary/5' : 'fk:border-border fk:hover:bg-muted/60'
+                  }`}
+                  disabled={saving}
+                  key={item.key}
+                  onClick={() => {
+                    setMethod(item.key);
+                    setError(null);
+                  }}
+                  type="button"
+                >
+                  <span className="fk:text-sm fk:font-medium">{item.label}</span>
+                  {item.description ? (
+                    <span className="fk:text-xs fk:text-muted-foreground">{item.description}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ) : selectedMethod?.description ? (
+            <p className="fk:text-sm fk:text-muted-foreground">{selectedMethod.description}</p>
+          ) : null}
+          {fields.map((field, index) => {
+            const inputId = `${formId}-${field.key}`;
+            const fieldError = error?.field === field.key ? error.message : null;
+
+            return (
+              <div className="fk:flex fk:flex-col fk:gap-2" key={field.key}>
+                <label className="fk:text-sm fk:font-medium" htmlFor={inputId}>
+                  {field.label}
+                </label>
+                <Input
+                  aria-describedby={fieldError ? `${inputId}-error` : field.help ? `${inputId}-help` : undefined}
+                  aria-invalid={fieldError ? true : undefined}
+                  autoComplete="off"
+                  autoFocus={index === 0}
+                  disabled={saving}
+                  id={inputId}
+                  placeholder={field.placeholder ?? undefined}
+                  spellCheck={false}
+                  type={field.kind === 'secret' ? 'password' : 'text'}
+                  value={values[field.key] ?? ''}
+                  onChange={(event) => {
+                    setValues((previous) => ({ ...previous, [field.key]: event.target.value }));
+                    setError(null);
+                  }}
+                />
+                {field.help && !fieldError ? (
+                  <p className="fk:text-sm fk:text-muted-foreground" id={`${inputId}-help`}>
+                    {field.help}
+                  </p>
+                ) : null}
+                <FieldError id={`${inputId}-error`} message={fieldError} />
+              </div>
+            );
+          })}
+          <FieldError id={`${formId}-error`} message={error?.field === null ? error.message : null} />
+          <HelpLink href={connect.helpUrl} label={`How to set up ${name}`} />
+          <DialogFooter>
+            <Button disabled={saving} size="sm" type="button" variant="outline" onClick={() => current.settle(false)}>
+              Cancel
+            </Button>
+            <Button disabled={saving || !ready} size="sm" type="submit">
+              {saving ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : null}
+              Connect
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function PluginTokenDialog({ request: current }: { request: TokenRequest }): JSX.Element {
@@ -136,7 +333,6 @@ function PluginTokenDialog({ request: current }: { request: TokenRequest }): JSX
   const [token, setToken] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const helpHref = httpsHref(connect.helpUrl);
 
   async function save(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -205,22 +401,8 @@ function PluginTokenDialog({ request: current }: { request: TokenRequest }): JSX
                 setError(null);
               }}
             />
-            {error ? (
-              <p className="fk:text-sm fk:text-destructive" id={`${inputId}-error`}>
-                {error}
-              </p>
-            ) : null}
-            {helpHref ? (
-              <a
-                className="fk:inline-flex fk:items-center fk:gap-1 fk:text-sm fk:text-muted-foreground fk:underline-offset-4 fk:hover:underline"
-                href={helpHref}
-                rel="noreferrer"
-                target="_blank"
-              >
-                How to create a {connect.tokenLabel}
-                <ExternalLinkIcon className="fk:size-3.5" />
-              </a>
-            ) : null}
+            <FieldError id={`${inputId}-error`} message={error} />
+            <HelpLink href={connect.helpUrl} label={`How to create a ${connect.tokenLabel}`} />
           </div>
           <DialogFooter>
             <Button disabled={saving} size="sm" type="button" variant="outline" onClick={() => current.settle(false)}>

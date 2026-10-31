@@ -6,7 +6,7 @@ import { useConfig } from '../../../core/config/config-context';
 import { Button, Dialog, DialogContent, DialogDescription, DialogTitle } from '../../../ui';
 import { createApiClient, fetcher } from '../api';
 import { connectPlugin } from '../plugin-token';
-import type { PluginDetail, PluginScope } from '../plugin-types';
+import type { MarketplacePlugin, PluginDetail, PluginScope } from '../plugin-types';
 import { describeConnectFailure, getPluginConnectState } from './plugin-connect-state';
 import { PluginLogo } from '../plugin-logo';
 
@@ -68,7 +68,7 @@ function ConsentDialog({
   onOpenChange,
   open,
   scopes,
-  tokenLabel,
+  connect,
 }: {
   busy: boolean;
   logoUrl: string;
@@ -77,26 +77,12 @@ function ConsentDialog({
   onOpenChange: (_open: boolean) => void;
   open: boolean;
   scopes: PluginScope[];
-  /** Set for a plugin that connects with a pasted token instead of a sign-in. */
-  tokenLabel?: string;
+  /** How the plugin connects; older platforms leave it out, which means a sign-in. */
+  connect: MarketplacePlugin['connect'];
 }): JSX.Element {
   // Like the Marketplace, no scope is preselected when both are offered.
   const [scope, setScope] = useState<PluginScope | null>(scopes.length === 1 ? (scopes[0] ?? null) : null);
-  const promises = [
-    tokenLabel
-      ? {
-          description: `Flexkit stores it encrypted and sends it only to ${name}. The agent never sees it.`,
-          title: `Paste a ${tokenLabel}`,
-        }
-      : { description: 'Flexkit never sees your password.', title: `Sign in securely to your ${name} account` },
-    {
-      description: tokenLabel
-        ? 'The agent only gets the access the token has.'
-        : `The agent only gets the access you approve on ${name}'s sign-in page.`,
-      title: 'You decide what the agent can do',
-    },
-    { description: `Remove the connection to ${name} at any time.`, title: 'You stay in control' },
-  ];
+  const promises = [...consentPromises(name, connect), { description: `Remove the connection to ${name} at any time.`, title: 'You stay in control' }];
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -145,6 +131,58 @@ function ConsentDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** What the consent dialog promises about the credential, per way of connecting. */
+function consentPromises(
+  name: string,
+  connect: MarketplacePlugin['connect']
+): Array<{ title: string; description: string }> {
+  switch (connect?.type) {
+    case 'api-token':
+      return [
+        {
+          title: `Paste a ${connect.tokenLabel}`,
+          description: `Flexkit stores it encrypted and sends it only to ${name}. The agent never sees it.`,
+        },
+        { title: 'You decide what the agent can do', description: 'The agent only gets the access the token has.' },
+      ];
+    case 'credentials':
+      return [
+        {
+          title: `Enter the credentials of your ${name} app`,
+          description: `Flexkit checks them with ${name}, stores them encrypted and never shows them to the agent.`,
+        },
+        {
+          title: 'You decide what the agent can do',
+          description: `The agent only gets the access scopes you give the app in ${name}.`,
+        },
+      ];
+    default:
+      return [
+        { title: `Sign in securely to your ${name} account`, description: 'Flexkit never sees your password.' },
+        {
+          title: 'You decide what the agent can do',
+          description: `The agent only gets the access you approve on ${name}'s sign-in page.`,
+        },
+      ];
+  }
+}
+
+/** The one line under the plugin name that says what the card asks for. */
+function cardPrompt(name: string, connect: MarketplacePlugin['connect'], reconnect: boolean): string {
+  if (!reconnect) {
+    return `Let the Flexkit agent use ${name}`;
+  }
+
+  switch (connect?.type) {
+    case 'api-token':
+      return `Add a new ${connect.tokenLabel} so the agent can keep using ${name}`;
+    case 'credentials':
+      return `Enter the credentials again so the agent can keep using ${name}`;
+    default:
+      return `Sign in again so the agent can keep using ${name}`;
+  }
 }
 
 /**
@@ -283,11 +321,7 @@ export function PluginConnectCard({
           <div className="fk:min-w-0 fk:flex-1">
             <div className="fk:truncate fk:font-medium">{plugin.name}</div>
             <div className="fk:truncate fk:text-sm fk:text-muted-foreground">
-              {reconnect
-                ? plugin.connect?.type === 'api-token'
-                  ? `Add a new ${plugin.connect.tokenLabel} so the agent can keep using ${plugin.name}`
-                  : `Sign in again so the agent can keep using ${plugin.name}`
-                : `Let the Flexkit agent use ${plugin.name}`}
+              {cardPrompt(plugin.name, plugin.connect, Boolean(reconnect))}
             </div>
           </div>
           {action && !failure ? action : null}
@@ -313,7 +347,7 @@ export function PluginConnectCard({
           onOpenChange={setConsentOpen}
           open={consentOpen}
           scopes={state.scopes}
-          tokenLabel={plugin.connect?.type === 'api-token' ? plugin.connect.tokenLabel : undefined}
+          connect={plugin.connect}
         />
       ) : null}
     </div>

@@ -86,6 +86,14 @@ export interface ApiClient {
     studioOrigin: string;
     connectionId?: string;
   }) => Promise<{ transactionId: string; authorizeUrl: string; completionOrigin: string; launchTicket: string }>;
+  /** Connects a credentials plugin from its form, or replaces the credentials of `connectionId`. */
+  connectPluginCredentials: (_input: {
+    pluginId: string;
+    scope: PluginScope;
+    method?: string;
+    values: { [key: string]: string };
+    connectionId?: string;
+  }) => Promise<{ connection: PluginConnection }>;
   /** Connects a token plugin with a pasted token, or replaces the token of `connectionId`. */
   connectPluginToken: (_input: {
     pluginId: string;
@@ -236,6 +244,8 @@ export function createApiClient(projectId: string): ApiClient {
       request(`${projectBasePath}/plugins/connect`, { method: 'POST', body: JSON.stringify(input) }),
     connectPluginToken: (input) =>
       request(`${projectBasePath}/plugins/connect-token`, { method: 'POST', body: JSON.stringify(input) }),
+    connectPluginCredentials: (input) =>
+      request(`${projectBasePath}/plugins/connect-credentials`, { method: 'POST', body: JSON.stringify(input) }),
     pluginOAuthStatus: (id) => request(`${projectBasePath}/plugins/oauth-transactions/${encodeURIComponent(id)}`),
     updatePluginConnection: (id, input) =>
       request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, {

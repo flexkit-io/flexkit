@@ -744,11 +744,11 @@ function ChatComposer({
         const pasted = findPastedPluginToken(trimmed, marketplace?.plugins ?? []);
 
         // A message is stored in the chat and sent to the model; a token belongs in the connect form.
-        if (pasted?.plugin.connect?.type === 'api-token') {
+        if (pasted) {
           // The rest of the message stays; the token leaves the composer so its stored draft never holds it.
           textInput.setInput(pasted.tokens.reduce((rest, token) => rest.split(token).join(''), text));
           onError(
-            `That looks like a ${pasted.plugin.connect.tokenLabel}. It was removed from your message: connect ${pasted.plugin.name} from its connect card or AI → Marketplace instead, where it is stored encrypted and never shown to the agent.`
+            `That looks like a ${pasted.label}. It was removed from your message: connect ${pasted.plugin.name} from its connect card or AI → Marketplace instead, where it is stored encrypted and never shown to the agent.`
           );
 
           return Promise.reject(new Error('The message contains a plugin token.'));

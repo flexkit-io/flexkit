@@ -13,6 +13,7 @@ export default defineConfig({
     'tests/ai/question-parts.test.ts',
     'tests/ai/plugin-connect-state.test.ts',
     'tests/ai/plugin-token-format.test.ts',
+    'tests/ai/plugin-credentials-form.test.ts',
     'tests/ai/knowledge-parts.test.ts',
     'tests/ai/attachment-state.test.ts',
   ],
