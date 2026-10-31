@@ -748,7 +748,7 @@ function ChatComposer({
           // The rest of the message stays; the token leaves the composer so its stored draft never holds it.
           textInput.setInput(pasted.tokens.reduce((rest, token) => rest.split(token).join(''), text));
           onError(
-            `That looks like a ${pasted.label}. It was removed from your message: connect ${pasted.plugin.name} from its connect card or AI → Marketplace instead, where it is stored encrypted and never shown to the agent.`
+            `That looks like a ${pasted.label}. It was removed from your message: connect ${pasted.plugin.name} from its connect card or AI → Plugins instead, where it is stored encrypted and never shown to the agent.`
           );
 
           return Promise.reject(new Error('The message contains a plugin token.'));
