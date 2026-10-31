@@ -14,20 +14,7 @@ import { getDesktop } from '../core/desktop';
 import { getProjectLabel } from '../ui/components/project-label';
 import { useAuth } from './auth-context';
 import EmailLogin from './email';
-
-type Provider = {
-  name: string;
-  title: string;
-  url: string;
-  button: {
-    variant: 'link' | 'default' | 'outline' | 'destructive' | 'ghost' | 'secondary';
-    color: string;
-    colorHover: string;
-    backgroundColor: string;
-    backgroundColorHover: string;
-    iconUrl?: string;
-  };
-};
+import { fetchProviders, type Provider } from './login-providers';
 
 /**
  * Login screen. With a `projectId` (project mode) providers and the OTP flow
@@ -45,11 +32,7 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
   const [isEmailLogin, setIsEmailLogin] = useState(false);
   // Providers and the OTP flow belong to the project picked in the selector, not the one in the URL.
   const providersUrl = isHosted ? userApiPaths.authProviders : apiPaths(selectedProjectId).authProviders;
-  const { data, error, isLoading } = useSWR(providersUrl, (url: string) =>
-    fetch(url, { mode: 'cors', credentials: 'same-origin' }).then(
-      (res) => res.json() as Promise<{ providers: Provider[] }>
-    )
-  );
+  const { data: providers, error, isLoading, mutate } = useSWR(providersUrl, fetchProviders);
   const [isAuthLoading, auth] = useAuth();
   const copyrightYear = new Date().getFullYear();
   const currentRouterLocation = useLocation();
@@ -64,12 +47,8 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
   // The desktop app receives the code on its URL scheme and opens the path itself.
   const fromPath = desktop ? fromHref : `${location.origin}${fromHref}`;
 
-  if (error) {
-    throw new Error('Error fetching auth providers');
-  }
-
   // Hosted mode renders this screen outside the auth provider: the session check already happened.
-  if (isLoading || (!isHosted && isAuthLoading) || !data) {
+  if (isLoading || (!isHosted && isAuthLoading) || (!providers && !error)) {
     return <Loading />;
   }
 
@@ -124,7 +103,23 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
                   Choose login provider
                 </p>
                 <div className="fk:flex fk:flex-col fk:space-y-6">
-                  {data.providers.map((provider: Provider) => (
+                  {error ? (
+                    <div className="fk:flex fk:flex-col fk:items-center fk:space-y-2">
+                      <p className="fk:text-sm fk:text-center fk:text-muted-foreground">
+                        Couldn't load the sign-in options. Check your connection and try again.
+                      </p>
+                      <Button
+                        onClick={() => {
+                          void mutate();
+                        }}
+                        type="button"
+                        variant="outline"
+                      >
+                        Try again
+                      </Button>
+                    </div>
+                  ) : null}
+                  {(providers ?? []).map((provider: Provider) => (
                     <Button
                       asChild
                       className={`fk:${provider.button.color} fk:${provider.button.backgroundColor} fk:hover:${provider.button.colorHover} fk:hover:${provider.button.backgroundColorHover}`}
