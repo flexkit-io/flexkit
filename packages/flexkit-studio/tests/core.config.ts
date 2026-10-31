@@ -17,6 +17,7 @@ export default defineConfig({
     'tests/electron-api.test.ts',
     'tests/error-reporter.test.ts',
     'tests/product-events.test.ts',
+    'tests/login-providers.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',
