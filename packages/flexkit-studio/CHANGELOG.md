@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.27
+
+### Patch Changes
+
+- d1c29bc: Plugins can connect with credentials of an app you create at the provider, starting with Shopify: the connect dialog takes the store domain and the app's Client ID and secret (or a legacy Admin API token), and a secret pasted into the chat is removed like a plugin token.
+
 ## 0.2.26
 
 ### Patch Changes
