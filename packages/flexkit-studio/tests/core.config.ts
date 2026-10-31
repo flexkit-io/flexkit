@@ -18,6 +18,7 @@ export default defineConfig({
     'tests/error-reporter.test.ts',
     'tests/product-events.test.ts',
     'tests/login-providers.test.ts',
+    'tests/line-diff.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',

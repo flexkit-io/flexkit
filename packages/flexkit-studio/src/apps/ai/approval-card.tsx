@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { useId, useState, useTransition } from 'react';
+import { lazy, Suspense, useId, useMemo, useState, useTransition } from 'react';
 import { format, formatDistance } from 'date-fns';
 import { ArrowRightIcon, CheckIcon, LoaderCircle, MoveRightIcon, PlayIcon, TriangleAlertIcon, XIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
   DrawerModal,
+  Input,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -24,6 +26,7 @@ import {
 } from '../../ui';
 import { paths, type ApiClient } from './api';
 import { useRevalidateApprovalsCount } from './approvals-count';
+import { diffLines, type DiffLine } from './line-diff';
 import { watchSchemaDeployment } from './schema-deploy-watch';
 import type {
   AutomationApproval,
@@ -33,7 +36,12 @@ import type {
   AutomationChangePreview,
   AutomationNotifyRule,
   AutomationProposalPreview,
+  SkillProposalFields,
+  SkillProposalPreview,
 } from './types';
+
+// The Markdown editor is heavy; load it only when a skill proposal is shown.
+const SkillContentPane = lazy(() => import('./skills-pages').then((module) => ({ default: module.SkillContentPane })));
 
 const APPROVAL_STATUS_STYLES: { [status in AutomationApprovalStatus]: string } = {
   approved: 'fk:bg-success/20 fk:text-success',
@@ -274,6 +282,12 @@ function getChatActionTitle(approval: AutomationApproval): string {
     return `Change the automation “${approval.preview.automationChange.name}”`;
   }
 
+  if (approval.kind === 'skill' && approval.preview?.skill) {
+    const { before, name } = approval.preview.skill;
+
+    return before ? `Change the skill “${before.name}”` : `Create the skill “${name}”`;
+  }
+
   return approval.kind === 'plugin' ? 'Use a connected app' : approval.operationsSummary;
 }
 
@@ -429,6 +443,8 @@ interface DecideOptions {
   force?: boolean;
   reason?: string;
   remember?: boolean;
+  /** For a proposed skill: the fields the approver edited. */
+  skillEdits?: Partial<SkillProposalFields>;
 }
 
 function useApprovalDecision({
@@ -497,7 +513,14 @@ function useApprovalDecision({
     onDecided?.(nextApproval);
   }
 
-  function decide({ approved, automationEdits, force = false, reason, remember = false }: DecideOptions): void {
+  function decide({
+    approved,
+    automationEdits,
+    force = false,
+    reason,
+    remember = false,
+    skillEdits,
+  }: DecideOptions): void {
     startDecideTransition(async () => {
       setErrorMessage('');
 
@@ -508,6 +531,7 @@ function useApprovalDecision({
           force,
           reason,
           remember,
+          ...(skillEdits ? { skillEdits } : {}),
         });
 
         if (result.errorCode === 'stale_preview') {
@@ -684,7 +708,7 @@ const NOTIFY_RULE_LABELS: { [rule in AutomationNotifyRule]: string } = {
   when_flagged: 'Results that need attention',
 };
 
-function describeVisibility(proposal: AutomationProposalPreview): string {
+function describeVisibility(proposal: Pick<AutomationProposalPreview, 'spaceLabel' | 'visibility'>): string {
   if (proposal.visibility === 'personal') {
     return 'Only you';
   }
@@ -894,6 +918,271 @@ function AutomationDecisionActions({
   );
 }
 
+/** Unchanged runs longer than this are folded down to their first and last lines. */
+const DIFF_CONTEXT_LINES = 3;
+
+type FoldedDiffLine = DiffLine | { kind: 'folded'; count: number };
+
+function foldUnchanged(lines: DiffLine[]): FoldedDiffLine[] {
+  const folded: FoldedDiffLine[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    if (lines[index]!.kind !== 'same') {
+      folded.push(lines[index]!);
+      index++;
+      continue;
+    }
+
+    let end = index;
+
+    while (end < lines.length && lines[end]!.kind === 'same') end++;
+
+    const run = lines.slice(index, end);
+    const head = index === 0 ? 0 : DIFF_CONTEXT_LINES;
+    const tail = end === lines.length ? 0 : DIFF_CONTEXT_LINES;
+
+    if (run.length > head + tail + 1) {
+      folded.push(...run.slice(0, head), { count: run.length - head - tail, kind: 'folded' }, ...run.slice(run.length - tail));
+    } else {
+      folded.push(...run);
+    }
+
+    index = end;
+  }
+
+  return folded;
+}
+
+const DIFF_LINE_STYLES: { [kind in DiffLine['kind']]: { className: string; marker: string } } = {
+  added: { className: 'fk:bg-success/10', marker: '+' },
+  removed: { className: 'fk:bg-destructive/10 fk:text-muted-foreground', marker: '−' },
+  same: { className: '', marker: ' ' },
+};
+
+/** What a change does to a skill's Markdown, line by line. */
+function ContentDiff({ after, before }: { after: string; before: string }): JSX.Element {
+  const lines = useMemo(() => diffLines(before, after), [after, before]);
+
+  if (!lines) {
+    return (
+      <p className="fk:rounded-md fk:border fk:border-dashed fk:p-3 fk:text-xs fk:text-muted-foreground fk:corner-squircle">
+        The skill is too long to compare line by line. Review the new content below.
+      </p>
+    );
+  }
+
+  const added = lines.filter((line) => line.kind === 'added').length;
+  const removed = lines.filter((line) => line.kind === 'removed').length;
+
+  return (
+    <div className="fk:space-y-1.5">
+      <div className="fk:text-xs fk:text-muted-foreground">
+        <span className="fk:text-success">+{added.toString()}</span>{' '}
+        <span className="fk:text-destructive">−{removed.toString()}</span> lines
+      </div>
+      <div className="fk:max-h-96 fk:overflow-auto fk:rounded-md fk:border fk:py-1 fk:font-mono fk:text-xs fk:corner-squircle">
+        {foldUnchanged(lines).map((line, index) =>
+          line.kind === 'folded' ? (
+            <div className="fk:px-3 fk:py-0.5 fk:text-muted-foreground" key={index.toString()}>
+              ⋯ {line.count.toString()} unchanged {line.count === 1 ? 'line' : 'lines'}
+            </div>
+          ) : (
+            <div className={`fk:flex fk:gap-2 fk:px-3 ${DIFF_LINE_STYLES[line.kind].className}`} key={index.toString()}>
+              <span aria-hidden className="fk:w-2 fk:shrink-0 fk:select-none fk:text-muted-foreground">
+                {DIFF_LINE_STYLES[line.kind].marker}
+              </span>
+              <span className="fk:min-w-0 fk:whitespace-pre-wrap fk:break-words">{line.text || ' '}</span>
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Before and after of a short field that changed; nothing when it did not. */
+function ChangedField({ after, before, label }: { after: string; before: string; label: string }): JSX.Element | null {
+  if (after === before) {
+    return null;
+  }
+
+  return (
+    <div className="fk:contents">
+      <dt className="fk:text-muted-foreground">{label}</dt>
+      <dd className="fk:space-y-0.5">
+        <div className="fk:whitespace-pre-line fk:text-muted-foreground fk:line-through">{before}</div>
+        <div className="fk:whitespace-pre-line">{after}</div>
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * A skill the chat agent proposed, or its change to an existing skill. While
+ * it waits for a decision the approver can edit every field; a change also
+ * shows what it does to the current skill, updated as they edit.
+ */
+function SkillProposalView({
+  approval,
+  fields,
+  isPending,
+  proposal,
+  onFieldsChange,
+}: {
+  approval: AutomationApproval;
+  fields: SkillProposalFields;
+  isPending: boolean;
+  proposal: SkillProposalPreview;
+  onFieldsChange?: (_fields: SkillProposalFields) => void;
+}): JSX.Element {
+  const nameId = useId();
+  const descriptionId = useId();
+  const { before } = proposal;
+  const skillId = approval.savedSkillId ?? proposal.skillId;
+  const editable = isPending && onFieldsChange;
+
+  return (
+    <div className="fk:space-y-4">
+      <dl className="fk:grid fk:grid-cols-[max-content_1fr] fk:gap-x-4 fk:gap-y-2 fk:text-sm">
+        <dt className="fk:text-muted-foreground">Visible to</dt>
+        <dd>{describeVisibility(proposal)}</dd>
+        {before ? (
+          <>
+            <ChangedField after={fields.name} before={before.name} label="Name" />
+            <ChangedField after={fields.description} before={before.description} label="Description" />
+          </>
+        ) : null}
+      </dl>
+      {before ? (
+        before.content === fields.content ? (
+          <p className="fk:text-sm fk:text-muted-foreground">The content stays the same.</p>
+        ) : (
+          <div className="fk:space-y-1.5">
+            <div className="fk:text-sm fk:font-medium">Changes to the content</div>
+            <ContentDiff after={fields.content} before={before.content} />
+          </div>
+        )
+      ) : null}
+      {editable ? (
+        <div className="fk:space-y-3">
+          <p className="fk:text-xs fk:text-muted-foreground">
+            Every chat and automation that can see this skill picks it by its description and follows its content. Edit
+            them before saving.
+          </p>
+          <div className="fk:space-y-1.5">
+            <label className="fk:text-sm fk:font-medium" htmlFor={nameId}>
+              Name
+            </label>
+            <Input
+              id={nameId}
+              maxLength={120}
+              value={fields.name}
+              onChange={(event) => onFieldsChange({ ...fields, name: event.target.value })}
+            />
+          </div>
+          <div className="fk:space-y-1.5">
+            <label className="fk:text-sm fk:font-medium" htmlFor={descriptionId}>
+              Description
+            </label>
+            <Textarea
+              className="fk:min-h-16 fk:text-sm"
+              id={descriptionId}
+              maxLength={1024}
+              value={fields.description}
+              onChange={(event) => onFieldsChange({ ...fields, description: event.target.value })}
+            />
+          </div>
+          <div className="fk:flex fk:h-96 fk:min-w-0 fk:flex-col">
+            <Suspense fallback={<Skeleton className="fk:min-h-0 fk:flex-1 fk:rounded-md" />}>
+              <SkillContentPane
+                content={fields.content}
+                onChange={(content) => onFieldsChange({ ...fields, content })}
+              />
+            </Suspense>
+          </div>
+        </div>
+      ) : (
+        <div className="fk:space-y-3 fk:text-sm">
+          {before ? null : (
+            <div className="fk:space-y-0.5">
+              <div className="fk:font-medium">Description</div>
+              <p className="fk:whitespace-pre-line fk:text-muted-foreground">{fields.description}</p>
+            </div>
+          )}
+          <details className="fk:rounded-md fk:border fk:corner-squircle">
+            <summary className="fk:cursor-pointer fk:px-3 fk:py-2 fk:font-medium">Content</summary>
+            <pre className="fk:max-h-96 fk:overflow-auto fk:whitespace-pre-wrap fk:border-t fk:p-3 fk:font-mono fk:text-xs">
+              {fields.content}
+            </pre>
+          </details>
+        </div>
+      )}
+      {skillId && (!isPending || before) ? (
+        <Button asChild size="sm" variant="outline">
+          <Link to={`/${approval.projectId}/ai/skills/${skillId}`}>Open the skill</Link>
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Save and Reject: the decisions on a proposed skill. Only the fields the approver changed are sent. */
+function SkillDecisionActions({
+  decide,
+  fields,
+  isDeciding,
+  proposal,
+}: {
+  decide: (_options: DecideOptions) => void;
+  fields: SkillProposalFields;
+  isDeciding: boolean;
+  proposal: SkillProposalPreview;
+}): JSX.Element {
+  const trimmed: SkillProposalFields = {
+    content: fields.content.trim(),
+    description: fields.description.trim(),
+    name: fields.name.trim(),
+  };
+  const isIncomplete = !trimmed.name || !trimmed.description || !trimmed.content;
+  const skillEdits = Object.fromEntries(
+    (Object.keys(trimmed) as (keyof SkillProposalFields)[])
+      .filter((field) => trimmed[field] !== proposal[field].trim())
+      .map((field) => [field, trimmed[field]])
+  ) as Partial<SkillProposalFields>;
+
+  return (
+    <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-2">
+      <Button
+        disabled={isDeciding || isIncomplete}
+        size="sm"
+        onClick={() => decide({ approved: true, ...(Object.keys(skillEdits).length > 0 ? { skillEdits } : {}) })}
+      >
+        {isDeciding ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : <CheckIcon className="fk:size-4" />}
+        {proposal.before ? 'Save changes' : 'Save skill'}
+      </Button>
+      <Button disabled={isDeciding} size="sm" variant="outline" onClick={() => decide({ approved: false })}>
+        <XIcon className="fk:size-4" />
+        Reject
+      </Button>
+    </div>
+  );
+}
+
+/** The editable fields of a skill proposal, starting from what the agent proposed. */
+function useSkillFields(approval: AutomationApproval): {
+  fields: SkillProposalFields | null;
+  proposal: SkillProposalPreview | null;
+  setFields: (_fields: SkillProposalFields) => void;
+} {
+  const proposal = approval.kind === 'skill' ? (approval.preview?.skill ?? null) : null;
+  const [fields, setFields] = useState<SkillProposalFields | null>(
+    proposal ? { content: proposal.content, description: proposal.description, name: proposal.name } : null
+  );
+
+  return { fields, proposal, setFields };
+}
+
 function ApprovalCardBody({
   approval,
   automationInstructions,
@@ -902,6 +1191,8 @@ function ApprovalCardBody({
   isPending,
   isStale,
   onAutomationInstructionsChange,
+  onSkillFieldsChange,
+  skillFields,
 }: {
   approval: AutomationApproval;
   /** The proposed automation's instructions as the approver edits them. */
@@ -911,6 +1202,9 @@ function ApprovalCardBody({
   isPending: boolean;
   isStale: boolean;
   onAutomationInstructionsChange?: (_instructions: string) => void;
+  onSkillFieldsChange?: (_fields: SkillProposalFields) => void;
+  /** The proposed skill as the approver edits it. */
+  skillFields?: SkillProposalFields;
 }): JSX.Element {
   const { preview } = approval;
   const pluginAction = chat ? getChatPluginAction(approval) : null;
@@ -925,6 +1219,9 @@ function ApprovalCardBody({
         {approval.kind === 'schema' ? <Badge variant="outline">Schema change</Badge> : null}
         {approval.kind === 'automation' ? (
           <Badge variant="outline">{preview?.automationChange ? 'Automation change' : 'New automation'}</Badge>
+        ) : null}
+        {approval.kind === 'skill' ? (
+          <Badge variant="outline">{preview?.skill?.before ? 'Skill change' : 'New skill'}</Badge>
         ) : null}
         <span className="fk:text-sm fk:font-medium">
           {chat ? getChatActionTitle(approval) : approval.operationsSummary}
@@ -957,6 +1254,14 @@ function ApprovalCardBody({
         />
       ) : approval.kind === 'automation' && preview?.automationChange ? (
         <AutomationChangeView approval={approval} change={preview.automationChange} />
+      ) : approval.kind === 'skill' && preview?.skill ? (
+        <SkillProposalView
+          approval={approval}
+          fields={skillFields ?? preview.skill}
+          isPending={isPending}
+          proposal={preview.skill}
+          onFieldsChange={onSkillFieldsChange}
+        />
       ) : approval.kind === 'schema' && preview ? (
         <SchemaChangePreview preview={preview} />
       ) : preview && preview.operations.length > 0 ? (
@@ -993,7 +1298,7 @@ function ApprovalCardBody({
         </div>
       )}
 
-      {approval.kind === 'automation' ? null : (
+      {approval.kind === 'automation' || approval.kind === 'skill' ? null : (
         <OperationDocuments
           chat={chat}
           operations={approval.operations}
@@ -1048,6 +1353,7 @@ export function ApprovalCard({
   } = useApprovalDecision({ api, approval: initialApproval, onDecided });
   const proposal = approval.kind === 'automation' ? (approval.preview?.automation ?? null) : null;
   const [automationInstructions, setAutomationInstructions] = useState(proposal?.instructions ?? '');
+  const skill = useSkillFields(approval);
 
   return (
     <>
@@ -1059,8 +1365,19 @@ export function ApprovalCard({
         isPending={isPending}
         isStale={isStale}
         onAutomationInstructionsChange={proposal ? setAutomationInstructions : undefined}
+        onSkillFieldsChange={skill.proposal ? skill.setFields : undefined}
+        skillFields={skill.fields ?? undefined}
       />
-      {isPending && proposal ? (
+      {isPending && skill.proposal && skill.fields ? (
+        <div className="fk:mt-4">
+          <SkillDecisionActions
+            decide={decide}
+            fields={skill.fields}
+            isDeciding={isDeciding}
+            proposal={skill.proposal}
+          />
+        </div>
+      ) : isPending && proposal ? (
         <div className="fk:mt-4">
           <AutomationDecisionActions
             decide={decide}
@@ -1114,11 +1431,19 @@ export function ApprovalDrawer({
   } = useApprovalDecision({ api, approval: initialApproval, onDecided });
   const proposal = approval.kind === 'automation' ? (approval.preview?.automation ?? null) : null;
   const [automationInstructions, setAutomationInstructions] = useState(proposal?.instructions ?? '');
+  const skill = useSkillFields(approval);
 
   return (
     <DrawerModal
       actions={
-        isPending && proposal ? (
+        isPending && skill.proposal && skill.fields ? (
+          <SkillDecisionActions
+            decide={decide}
+            fields={skill.fields}
+            isDeciding={isDeciding}
+            proposal={skill.proposal}
+          />
+        ) : isPending && proposal ? (
           <AutomationDecisionActions
             decide={decide}
             instructions={automationInstructions}
@@ -1143,7 +1468,17 @@ export function ApprovalDrawer({
       depth={0}
       isFocused
       onClose={onClose}
-      title={proposal ? 'Automation proposal' : approval.preview?.automationChange ? 'Automation change' : 'Mutation proposal'}
+      title={
+        proposal
+          ? 'Automation proposal'
+          : approval.preview?.automationChange
+            ? 'Automation change'
+            : skill.proposal
+              ? skill.proposal.before
+                ? 'Skill change'
+                : 'Skill proposal'
+              : 'Mutation proposal'
+      }
     >
       <ApprovalCardBody
         approval={approval}
@@ -1153,6 +1488,8 @@ export function ApprovalDrawer({
         isPending={isPending}
         isStale={isStale}
         onAutomationInstructionsChange={proposal ? setAutomationInstructions : undefined}
+        onSkillFieldsChange={skill.proposal ? skill.setFields : undefined}
+        skillFields={skill.fields ?? undefined}
       />
     </DrawerModal>
   );

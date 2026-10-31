@@ -43,6 +43,8 @@ export type {
   AutomationTriggerType,
   AutomationVisibility,
   CreatedAutomationResult,
+  SkillProposalFields,
+  SkillProposalPreview,
 } from './automations';
 export type {
   AgentChat,

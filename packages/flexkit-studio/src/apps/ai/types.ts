@@ -40,6 +40,8 @@ import type {
   AutomationToolAllowRule,
   AutomationTriggerType,
   CreatedAutomationResult,
+  SkillProposalFields,
+  SkillProposalPreview,
 } from '@flexkit/agent-protocol';
 
 // Shared with the platform through @flexkit/agent-protocol; re-exported so
@@ -86,6 +88,8 @@ export type {
   AutomationToolAllowRule,
   AutomationTriggerType,
   CreatedAutomationResult,
+  SkillProposalFields,
+  SkillProposalPreview,
 };
 
 export type AutomationTriggerEvent = 'create' | 'update' | 'delete';
