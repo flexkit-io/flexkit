@@ -1169,18 +1169,26 @@ function SkillDecisionActions({
   );
 }
 
-/** The editable fields of a skill proposal, starting from what the agent proposed. */
+/**
+ * The editable fields of a skill proposal: the approver's edits for this
+ * approval, otherwise what the agent proposed. Keyed by approval id, so a
+ * preview that arrives late or a different approval never shows stale edits.
+ */
 function useSkillFields(approval: AutomationApproval): {
   fields: SkillProposalFields | null;
   proposal: SkillProposalPreview | null;
   setFields: (_fields: SkillProposalFields) => void;
 } {
   const proposal = approval.kind === 'skill' ? (approval.preview?.skill ?? null) : null;
-  const [fields, setFields] = useState<SkillProposalFields | null>(
-    proposal ? { content: proposal.content, description: proposal.description, name: proposal.name } : null
-  );
+  const [edits, setEdits] = useState<{ approvalId: string; fields: SkillProposalFields } | null>(null);
+  const fields =
+    edits?.approvalId === approval.id
+      ? edits.fields
+      : proposal
+        ? { content: proposal.content, description: proposal.description, name: proposal.name }
+        : null;
 
-  return { fields, proposal, setFields };
+  return { fields, proposal, setFields: (next) => setEdits({ approvalId: approval.id, fields: next }) };
 }
 
 function ApprovalCardBody({
