@@ -30,6 +30,45 @@ export interface PluginApiTokenConnect {
   pattern: string | null;
 }
 
+/** One input of a credentials connect form. */
+export interface PluginCredentialField {
+  key: string;
+  label: string;
+  /** Secrets render as password inputs. */
+  kind: 'text' | 'secret';
+  placeholder: string | null;
+  /** One sentence under the input: where the value comes from. */
+  help: string | null;
+  /** Regular expression a valid value matches. */
+  pattern: string | null;
+  /** Regular expression that recognizes this secret on its own, to stop one pasted into the chat. */
+  detect: string | null;
+  required: boolean;
+}
+
+/** One way to connect, when the provider offers several, each with its own fields. */
+export interface PluginCredentialMethod {
+  key: string;
+  label: string;
+  description: string | null;
+  fields: PluginCredentialField[];
+}
+
+/**
+ * A plugin that connects with credentials the user creates in the provider's
+ * own admin and enters into a form: fields common to every method, then the
+ * methods to choose from (none when there is only one way).
+ */
+export interface PluginCredentialsConnect {
+  type: 'credentials';
+  provider: string;
+  /** What to create on the provider's side before connecting. */
+  description: string;
+  helpUrl: string | null;
+  fields: PluginCredentialField[];
+  methods: PluginCredentialMethod[];
+}
+
 export interface MarketplacePlugin {
   usedBy: Array<{ id: string; name: string }>;
   id: string;
@@ -43,7 +82,7 @@ export interface MarketplacePlugin {
   preview: boolean;
   capabilities: { agentTools: boolean; automationDelivery: boolean };
   /** Absent from older platforms, which only have sign-in plugins. */
-  connect?: { type: 'oauth' } | PluginApiTokenConnect;
+  connect?: { type: 'oauth' } | PluginApiTokenConnect | PluginCredentialsConnect;
   sourceUrl: string;
   logoUrl: string;
   enabled: boolean;
