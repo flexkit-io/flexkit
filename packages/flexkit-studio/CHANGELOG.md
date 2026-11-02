@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.30
+
+### Patch Changes
+
+- b7ee6ca: The edit drawer now always loads the record from the server, so it shows changes made outside Studio (through MCP, the API or another user) instead of a stale cached copy.
+
 ## 0.2.29
 
 ### Patch Changes
