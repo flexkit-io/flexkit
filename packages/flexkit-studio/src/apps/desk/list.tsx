@@ -105,14 +105,11 @@ export function List(): JSX.Element {
 
   const handleReload = useCallback(() => {
     setScrollToTopKey((key) => key + 1);
-    // The schema is cached for the session, so a field deployed outside this
-    // tab (the agent, the CLI) would never show up. When the refetched schema
-    // differs, the entity query is rebuilt and refetched with the new fields.
-    if (currentProjectId) {
-      void revalidateProjectSchema(currentProjectId);
-    }
+    // Refetch the schema first, so a field deployed outside this tab (the
+    // agent, the CLI) is part of the reloaded query instead of arriving after it.
+    const schemaRefresh = currentProjectId ? revalidateProjectSchema(currentProjectId) : Promise.resolve();
 
-    reload();
+    void schemaRefresh.catch(() => undefined).then(() => reload());
   }, [currentProjectId, reload]);
 
   const loadingData = Array(pageSize).fill({});

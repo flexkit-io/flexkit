@@ -30,18 +30,17 @@ describe('project schemas', () => {
     assert.deepEqual(toProjectSchemasState(undefined, true), { projects: [], errors: {}, isLoading: true });
   });
 
-  it('keeps a loaded schema when a refetch fails transiently, but surfaces access errors', () => {
+  it('keeps a loaded schema when a refetch fails', () => {
     const loaded = { ok: true as const, project };
     const offline = { ok: false as const, projectId: 'abc', error: { status: 0, message: 'Network error' } };
-    const serverError = { ok: false as const, projectId: 'abc', error: { status: 502, message: 'Bad Gateway' } };
-    const forbidden = { ok: false as const, projectId: 'abc', error: { status: 403, message: 'Forbidden' } };
+    const expired = { ok: false as const, projectId: 'abc', error: { status: 401, message: 'Unauthorized' } };
     const updated = { ok: true as const, project: { ...project, schemaHash: 'v8-y' } };
 
     assert.equal(keepLoadedSchema(loaded, offline), loaded);
-    assert.equal(keepLoadedSchema(loaded, serverError), loaded);
-    assert.equal(keepLoadedSchema(loaded, forbidden), forbidden);
+    assert.equal(keepLoadedSchema(loaded, expired), loaded);
     assert.equal(keepLoadedSchema(loaded, updated), updated);
-    assert.equal(keepLoadedSchema(undefined, offline), offline);
+    // The first load still reports its error.
+    assert.equal(keepLoadedSchema(undefined, expired), expired);
   });
 
   it('appends the reserved asset and tag entities exactly once', () => {

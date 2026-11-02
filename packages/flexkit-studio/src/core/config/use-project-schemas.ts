@@ -19,8 +19,9 @@ async function fetchProjectSchema(projectId: string): Promise<FetchOutcome> {
     const response = await fetch(apiPaths(projectId).schema, {
       credentials: 'include',
       mode: 'cors',
-      // A revalidation after a deploy must reach the server, not the HTTP cache.
-      cache: 'no-store',
+      // Revalidate with the server on every fetch (304 when unchanged), so a
+      // refetch after a deploy never reads a stale HTTP-cached schema.
+      cache: 'no-cache',
     });
 
     if (!response.ok) {
@@ -65,28 +66,23 @@ export function toProjectSchemasState(outcomes: FetchOutcome[] | undefined, isLo
 
 /**
  * Schemas change on deploy, which can happen outside this tab (the agent, the
- * CLI). Refetch when the user comes back to the tab, at most once a minute;
+ * CLI). Refetch when the user comes back to the tab, at most every 15s;
  * SWR compares the result, so an unchanged schema does not re-render.
  */
 const SCHEMA_SWR_OPTIONS = {
   revalidateOnFocus: true,
-  focusThrottleInterval: 60_000,
+  focusThrottleInterval: 15_000,
   revalidateOnReconnect: false,
 } as const;
 
-function getOutcomeProjectId(outcome: FetchOutcome): string {
-  return outcome.ok ? outcome.project.projectId : outcome.projectId;
-}
-
 /**
- * A transient refetch failure (offline, 5xx on tab focus) must not replace a
- * schema that already loaded with an error screen; the next refetch tries
- * again. Access errors (403, 404) still surface.
+ * A refetch (tab focus, reload button, watched deploy) must never replace a
+ * schema that already loaded with an error: that would swap the whole app for
+ * an error screen and drop an open edit drawer. Offline, an expired session or
+ * revoked access still surface through the GraphQL requests themselves.
  */
 export function keepLoadedSchema(previous: FetchOutcome | undefined, next: FetchOutcome): FetchOutcome {
-  const isTransientError = !next.ok && (next.error.status === 0 || next.error.status >= 500);
-
-  return isTransientError && previous?.ok ? previous : next;
+  return !next.ok && previous?.ok ? previous : next;
 }
 
 /**
@@ -102,12 +98,8 @@ export function useProjectSchemas(projectIds: string[], userId: string | undefin
     async (): Promise<FetchOutcome[]> => {
       const outcomes = await Promise.all(projectIds.map((projectId) => fetchProjectSchema(projectId)));
 
-      return outcomes.map((outcome) =>
-        keepLoadedSchema(
-          data?.find((item) => getOutcomeProjectId(item) === getOutcomeProjectId(outcome)),
-          outcome
-        )
-      );
+      // The key fixes the order of projectIds, so outcomes line up with the previous data.
+      return outcomes.map((outcome, index) => keepLoadedSchema(data?.[index], outcome));
     },
     SCHEMA_SWR_OPTIONS
   );
