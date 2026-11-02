@@ -154,6 +154,12 @@ export default function EditEntity({ action, depth, isFocused, nested }: Props):
     variables: { where: { _id: { eq: entityId } } },
     isForm: true,
     includeCount: false,
+    // Always start from the server's current record. The list selects
+    // relationships with different args (e.g. `brand(limit: 1)`) than the form
+    // (`brand(limit: 25)`), so a list refetch does not refresh the form's cached
+    // fields, and cache-first would open the drawer with stale data after
+    // changes made outside Studio (MCP, API, another user).
+    fetchPolicy: 'network-only',
   });
 
   const saveEntity = useCallback(

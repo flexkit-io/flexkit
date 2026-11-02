@@ -1,4 +1,4 @@
-import type { OperationVariables } from '@apollo/client';
+import type { OperationVariables, WatchQueryFetchPolicy } from '@apollo/client';
 import type { SingleRelationshipConnection, MultipleRelationshipConnection, Schema } from '../core/types';
 
 export type AttributeValue = {
@@ -98,6 +98,8 @@ export type UseEntityQueryParams = {
   selection?: EntityQuerySelection;
   /** Omit the collection count when only rows are needed; count returns 0. Default: true. */
   includeCount?: boolean;
+  /** Apollo fetch policy for the query. Default: the client's default (cache-first). */
+  fetchPolicy?: WatchQueryFetchPolicy;
 };
 
 export type FormFieldValue = {

@@ -49,6 +49,7 @@ export function useEntityQuery({
   isForm,
   selection = 'full',
   includeCount = true,
+  fetchPolicy,
 }: UseEntityQueryParams): {
   count: number;
   data: MappedEntityItem[] | FormEntityItem[] | ImageValue[] | undefined;
@@ -110,6 +111,7 @@ export function useEntityQuery({
   } = useQuery<EntityQueryResults & EntityQueryAggregate>(queryDocument, {
     variables,
     notifyOnNetworkStatusChange: true,
+    fetchPolicy,
   });
   const fetchNextPageRef = useRef(fetchNextPage);
   const refetchRef = useRef(refetch);
