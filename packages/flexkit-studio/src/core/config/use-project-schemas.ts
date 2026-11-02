@@ -10,11 +10,18 @@ export type ProjectSchemasState = {
   isLoading: boolean;
 };
 
-type FetchOutcome = { ok: true; project: ProjectUiConfig } | { ok: false; projectId: string; error: ProjectSchemaError };
+export type FetchOutcome =
+  | { ok: true; project: ProjectUiConfig }
+  | { ok: false; projectId: string; error: ProjectSchemaError };
 
 async function fetchProjectSchema(projectId: string): Promise<FetchOutcome> {
   try {
-    const response = await fetch(apiPaths(projectId).schema, { credentials: 'include', mode: 'cors' });
+    const response = await fetch(apiPaths(projectId).schema, {
+      credentials: 'include',
+      mode: 'cors',
+      // A revalidation after a deploy must reach the server, not the HTTP cache.
+      cache: 'no-store',
+    });
 
     if (!response.ok) {
       let message = response.statusText || `Request failed with status ${String(response.status)}`;
@@ -57,16 +64,53 @@ export function toProjectSchemasState(outcomes: FetchOutcome[] | undefined, isLo
 }
 
 /**
+ * Schemas change on deploy, which can happen outside this tab (the agent, the
+ * CLI). Refetch when the user comes back to the tab, at most once a minute;
+ * SWR compares the result, so an unchanged schema does not re-render.
+ */
+const SCHEMA_SWR_OPTIONS = {
+  revalidateOnFocus: true,
+  focusThrottleInterval: 60_000,
+  revalidateOnReconnect: false,
+} as const;
+
+function getOutcomeProjectId(outcome: FetchOutcome): string {
+  return outcome.ok ? outcome.project.projectId : outcome.projectId;
+}
+
+/**
+ * A transient refetch failure (offline, 5xx on tab focus) must not replace a
+ * schema that already loaded with an error screen; the next refetch tries
+ * again. Access errors (403, 404) still surface.
+ */
+export function keepLoadedSchema(previous: FetchOutcome | undefined, next: FetchOutcome): FetchOutcome {
+  const isTransientError = !next.ok && (next.error.status === 0 || next.error.status >= 500);
+
+  return isTransientError && previous?.ok ? previous : next;
+}
+
+/**
  * Loads the deployed schema of every project the Studio can open. Fetching
- * starts once the user is known (the endpoint needs a session) and the result
- * is kept for the lifetime of the page: schemas only change on deploy.
+ * starts once the user is known (the endpoint needs a session). The result is
+ * refetched on tab focus, on the list's reload button and after a deploy the
+ * Studio watched.
  */
 export function useProjectSchemas(projectIds: string[], userId: string | undefined): ProjectSchemasState {
   const key = userId && projectIds.length > 0 ? ['project-schemas', userId, ...projectIds] : null;
-  const { data, isLoading } = useSWR(key, () => Promise.all(projectIds.map((projectId) => fetchProjectSchema(projectId))), {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, isLoading } = useSWR(
+    key,
+    async (): Promise<FetchOutcome[]> => {
+      const outcomes = await Promise.all(projectIds.map((projectId) => fetchProjectSchema(projectId)));
+
+      return outcomes.map((outcome) =>
+        keepLoadedSchema(
+          data?.find((item) => getOutcomeProjectId(item) === getOutcomeProjectId(outcome)),
+          outcome
+        )
+      );
+    },
+    SCHEMA_SWR_OPTIONS
+  );
 
   return toProjectSchemasState(data, Boolean(key) && (isLoading || data === undefined));
 }
@@ -82,10 +126,11 @@ export function toProjectSchemaState(outcome: FetchOutcome | undefined, isLoadin
  */
 export function useProjectSchema(projectId: string | undefined, userId: string | undefined): ProjectSchemasState {
   const key = userId && projectId ? ['project-schema', userId, projectId] : null;
-  const { data, isLoading } = useSWR(key, () => fetchProjectSchema(projectId ?? ''), {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
-  });
+  const { data, isLoading } = useSWR(
+    key,
+    async (): Promise<FetchOutcome> => keepLoadedSchema(data, await fetchProjectSchema(projectId ?? '')),
+    SCHEMA_SWR_OPTIONS
+  );
 
   return toProjectSchemaState(data, Boolean(key) && (isLoading || data === undefined));
 }
