@@ -110,6 +110,12 @@ export function useEntityQuery({
   } = useQuery<EntityQueryResults & EntityQueryAggregate>(queryDocument, {
     variables,
     notifyOnNetworkStatusChange: true,
+    // Edit forms must always start from the server's current record. The list
+    // query selects relationships with different args (e.g. `brand(limit: 1)`)
+    // than the form (`brand(limit: 25)`), so a list refetch does not refresh the
+    // form's cached fields, and cache-first would open the drawer with stale data
+    // after changes made outside Studio (MCP, API, another user).
+    fetchPolicy: isForm ? 'network-only' : 'cache-first',
   });
   const fetchNextPageRef = useRef(fetchNextPage);
   const refetchRef = useRef(refetch);
