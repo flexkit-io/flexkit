@@ -4,6 +4,7 @@ import type { ColumnDef, Row, SortingState, Updater } from '@tanstack/react-tabl
 import { getEntitySchema, getSortNotNullWhere } from '../../graphql-client/queries';
 import { useAppContext } from '../../core/app-context';
 import { useConfig } from '../../core/config/config-context';
+import { revalidateProjectSchema } from '../../core/config/use-project-schemas';
 import { useEntityQuery } from '../../graphql-client/use-entity-query';
 import { useGraphQLError } from '../../graphql-client/graphql-context';
 import { ProjectDisabled } from '../../core/error/project-disabled';
@@ -25,7 +26,7 @@ export function List(): JSX.Element {
   const entityId = query.get('id');
   const { scope } = useAppContext();
   const { schemaErrorMessage } = useGraphQLError();
-  const { currentProject } = useConfig();
+  const { currentProject, currentProjectId } = useConfig();
   const schema = currentProject?.schema ?? [];
   const entitySchema = getEntitySchema(schema, entityName ?? '');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -104,8 +105,12 @@ export function List(): JSX.Element {
 
   const handleReload = useCallback(() => {
     setScrollToTopKey((key) => key + 1);
-    reload();
-  }, [reload]);
+    // Refetch the schema first, so a field deployed outside this tab (the
+    // agent, the CLI) is part of the reloaded query instead of arriving after it.
+    const schemaRefresh = currentProjectId ? revalidateProjectSchema(currentProjectId) : Promise.resolve();
+
+    void schemaRefresh.catch(() => undefined).then(() => reload());
+  }, [currentProjectId, reload]);
 
   const loadingData = Array(pageSize).fill({});
   const loadingColumns = getLoadingColumns(columnsDefinition);
