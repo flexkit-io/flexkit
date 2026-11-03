@@ -244,7 +244,7 @@ function logsSubcommand(type: LogType, command: Subcommand['command'], aliases: 
       const oldestFirst = [...page.data].reverse();
 
       if (ctx.json && !following) {
-        printJson(client, page.data);
+        printJson(client, page);
       } else if (ctx.json) {
         printEntries(ctx, oldestFirst, utc);
       } else {
@@ -257,7 +257,7 @@ function logsSubcommand(type: LogType, command: Subcommand['command'], aliases: 
 
         if (page.nextBefore && !following) {
           client.output.log(
-            `Showing the newest ${page.data.length} entries. For older ones run ${getCommandName(
+            `Showing the newest ${page.data.length} ${page.data.length === 1 ? 'entry' : 'entries'}. For older ones run ${getCommandName(
               `logs ${type} --before ${page.nextBefore}`
             )} (with the same --since and filters).`
           );
