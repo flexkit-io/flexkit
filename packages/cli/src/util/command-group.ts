@@ -140,11 +140,17 @@ export async function runCommandGroup(client: Client, group: CommandGroup): Prom
   const { columns } = client.stderr;
   const rawArgs = client.argv.slice(2);
 
-  // First pass: find the subcommand name without knowing its flags yet.
+  // First pass: find the subcommand name. It knows every subcommand's flags, so
+  // a flag value before the subcommand (`logs --since 1h`) isn't read as its name.
+  const allFlags = Object.assign(
+    {},
+    ...group.subcommands.map((sub) => sub.flags ?? {}),
+    SHARED_FLAGS
+  ) as typeof SHARED_FLAGS;
   let firstPass;
 
   try {
-    firstPass = parseArguments(rawArgs, SHARED_FLAGS, { permissive: true });
+    firstPass = parseArguments(rawArgs, allFlags, { permissive: true });
   } catch (err: unknown) {
     output.error(err instanceof Error ? err.message : String(err));
 

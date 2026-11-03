@@ -15,7 +15,6 @@ import {
   type SubcommandContext,
 } from '../../util/command-group';
 import { runWithConcurrency } from '../../util/concurrency';
-import { isAPIError } from '../../util/error-utils';
 import {
   displayPath,
   formatRelativeTime,
@@ -129,24 +128,6 @@ interface SearchResponse {
 const POLL_INTERVAL_MS = 2000;
 const DEFAULT_TIMEOUT_SECONDS = 600;
 
-/**
- * Knowledge reads (list, inspect, search, download, job polling) accept a
- * signed-in user only; the platform answers API tokens with this 403.
- */
-async function withSessionHint<T>(work: () => Promise<T>): Promise<T> {
-  try {
-    return await work();
-  } catch (err: unknown) {
-    if (isAPIError(err) && err.status === 403 && /user session is required/i.test(getApiErrorMessage(err))) {
-      throw new Error(
-        'Reading knowledge needs a signed-in user: run `flexkit login`. API tokens (FLEXKIT_TOKEN) can add, change and delete documents but not read them.'
-      );
-    }
-
-    throw err;
-  }
-}
-
 function sourcePath(sourceId: string, suffix = ''): string {
   return `/knowledge/sources/${encodeURIComponent(sourceId)}${suffix}`;
 }
@@ -177,9 +158,9 @@ async function waitForJobs(
     );
 
     for (const id of [...pending]) {
-      const job = await withSessionHint(() =>
-        ctx.client.fetch<KnowledgeJob>(`/knowledge/jobs/${encodeURIComponent(id)}`, { projectId: ctx.projectId })
-      );
+      const job = await ctx.client.fetch<KnowledgeJob>(`/knowledge/jobs/${encodeURIComponent(id)}`, {
+        projectId: ctx.projectId,
+      });
 
       latest.set(id, job);
 
@@ -261,11 +242,9 @@ const ls: Subcommand = {
     }
 
     const query = params.toString();
-    const result = await withSessionHint(() =>
-      ctx.client.fetch<SourceListResponse>(`/knowledge/sources${query ? `?${query}` : ''}`, {
-        projectId: ctx.projectId,
-      })
-    );
+    const result = await ctx.client.fetch<SourceListResponse>(`/knowledge/sources${query ? `?${query}` : ''}`, {
+      projectId: ctx.projectId,
+    });
 
     if (ctx.json) {
       printJson(ctx.client, result);
@@ -308,14 +287,12 @@ const inspect: Subcommand = {
   needsProject: true,
   async run(ctx) {
     const sourceId = ctx.args[0] as string;
-    const [detail, links] = await withSessionHint(() =>
-      Promise.all([
-        ctx.client.fetch<{ source: KnowledgeSource; job: KnowledgeJob | null }>(sourcePath(sourceId), {
-          projectId: ctx.projectId,
-        }),
-        ctx.client.fetch<LinksResponse>(sourcePath(sourceId, '/links'), { projectId: ctx.projectId }),
-      ])
-    );
+    const [detail, links] = await Promise.all([
+      ctx.client.fetch<{ source: KnowledgeSource; job: KnowledgeJob | null }>(sourcePath(sourceId), {
+        projectId: ctx.projectId,
+      }),
+      ctx.client.fetch<LinksResponse>(sourcePath(sourceId, '/links'), { projectId: ctx.projectId }),
+    ]);
 
     if (ctx.json) {
       printJson(ctx.client, { ...detail, ...links });
@@ -795,9 +772,7 @@ const download: Subcommand = {
   flags: { '--force': Boolean, '-f': '--force' },
   async run(ctx) {
     const [sourceId, dest] = ctx.args as [string, string | undefined];
-    const response = await withSessionHint(() =>
-      ctx.client.fetch(sourcePath(sourceId, '/file'), { projectId: ctx.projectId, json: false })
-    );
+    const response = await ctx.client.fetch(sourcePath(sourceId, '/file'), { projectId: ctx.projectId, json: false });
 
     if (!response.body) {
       throw new Error('The file is empty.');
@@ -866,13 +841,11 @@ const search: Subcommand = {
       body.about = { ...about };
     }
 
-    const result = await withSessionHint(() =>
-      ctx.client.fetch<SearchResponse>('/knowledge/search', {
-        method: 'POST',
-        body,
-        projectId: ctx.projectId,
-      })
-    );
+    const result = await ctx.client.fetch<SearchResponse>('/knowledge/search', {
+      method: 'POST',
+      body,
+      projectId: ctx.projectId,
+    });
 
     if (ctx.json) {
       printJson(ctx.client, result);

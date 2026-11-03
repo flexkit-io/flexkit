@@ -170,7 +170,7 @@ export const approvalsDenyCommand: Command = {
 export const approvalsCommand: Command = {
   name: 'approvals',
   description:
-    'Review and decide approval requests from automations and chats. Requires signing in with `flexkit login` (API tokens cannot decide approvals).',
+    'Review and decide approval requests from automations and chats. API tokens can list and inspect automation approvals; approving and denying needs a signed-in member (`flexkit login`).',
   arguments: [],
   subcommands: [approvalsListCommand, approvalsInspectCommand, approvalsApproveCommand, approvalsDenyCommand],
   options: [projectOption],
