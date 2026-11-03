@@ -59,6 +59,6 @@ describe('project creation helpers', () => {
       ]),
       [{ id: 'b', name: 'B', role: 'owner' }]
     );
-    assert.equal(newProjectPath('pnew000001'), '/pnew000001/ai');
+    assert.equal(newProjectPath('pnew000001'), '/pnew000001/ai/agent');
   });
 });

@@ -369,7 +369,9 @@ function StartOption({
     <div
       className={cn(
         'fk:rounded-lg fk:border fk:p-3 fk:transition-colors',
-        checked ? 'fk:border-primary fk:bg-muted/40' : 'fk:border-border fk:hover:bg-muted/30'
+        checked
+          ? 'fk:border-foreground/70 fk:bg-muted/50 fk:ring-1 fk:ring-foreground/20'
+          : 'fk:border-border fk:hover:bg-muted/30'
       )}
     >
       <button

@@ -43,7 +43,11 @@ export function ownedTeams(teams: HostedTeam[]): HostedTeam[] {
   return teams.filter((team) => team.role === 'owner');
 }
 
-/** Where a new project opens: the AI chat, which can design its schema. */
+/**
+ * Where a new project opens: the AI chat, which can design its schema. The
+ * chat route itself, not `/ai`: that redirect would drop the navigation state
+ * carrying the onboarding prompt.
+ */
 export function newProjectPath(projectId: string): string {
-  return `/${projectId}/ai`;
+  return `/${projectId}/ai/agent`;
 }
