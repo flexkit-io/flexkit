@@ -82,6 +82,17 @@ export default async function responseError(res: Response, fallbackMessage = nul
       message = nestedMessage;
       details = { ...body, ...maybeError };
     }
+
+    // Some routes answer `{ message }` (deploy) or `{ errorMessage }` (automations) instead.
+    const { message: bodyMessage, errorMessage } = body;
+
+    if (message === fallbackMessage) {
+      if (typeof bodyMessage === 'string') {
+        message = bodyMessage;
+      } else if (typeof errorMessage === 'string') {
+        message = errorMessage;
+      }
+    }
   }
 
   return new APIError(message ?? 'Response Error', res, details);
