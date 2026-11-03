@@ -21,6 +21,7 @@ import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import type { ColumnDef, ColumnFiltersState } from '@tanstack/react-table';
 import { useIsViewing } from '../../core/apps/app-active';
 import { useConfig } from '../../core/config/config-context';
+import { getDesktop } from '../../core/desktop';
 import { useCanMutate } from '../../core/permissions';
 import {
   Badge,
@@ -1723,9 +1724,16 @@ export function RunDetailPage(): JSX.Element {
         <div className="fk:flex fk:items-center fk:gap-2">
           {run && isTerminalRunStatus(run.status) ? (
             <Button asChild size="sm" variant="outline">
-              <a href={runApi.getTranscriptUrl(selectedRunId)} rel="noreferrer" target="_blank">
-                Transcript
-              </a>
+              {/* The desktop app opens no window for a Studio API URL, so there the transcript downloads. */}
+              {getDesktop() ? (
+                <a download={`transcript-${selectedRunId}.json`} href={runApi.getTranscriptUrl(selectedRunId)}>
+                  Transcript
+                </a>
+              ) : (
+                <a href={runApi.getTranscriptUrl(selectedRunId)} rel="noreferrer" target="_blank">
+                  Transcript
+                </a>
+              )}
             </Button>
           ) : null}
           {showCancel ? (
