@@ -269,3 +269,23 @@ export function matchWebhooks(webhooks: WebhookDto[], idOrName: string): Webhook
 
   return webhooks.filter((webhook) => webhook.name.toLowerCase() === wanted);
 }
+
+/** What `--json` prints in place of a secret or header value without `--show-secrets`. */
+export const REDACTED = '[redacted]';
+
+/**
+ * A webhook for `--json` output: the signing secret and header values (often
+ * the receiver's credentials) are replaced unless `show` is set, so scripts
+ * that log the JSON don't leak them. Values hidden for the caller's role stay null.
+ */
+export function redactWebhook(webhook: WebhookDto, show: boolean): WebhookDto {
+  if (show) {
+    return webhook;
+  }
+
+  return {
+    ...webhook,
+    headers: webhook.headers.map((header) => ({ ...header, value: header.value === null ? null : REDACTED })),
+    secret: webhook.secret === null ? null : REDACTED,
+  };
+}

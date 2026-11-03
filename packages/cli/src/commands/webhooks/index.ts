@@ -27,6 +27,7 @@ import {
   formatEvents,
   isWebhookId,
   matchWebhooks,
+  redactWebhook,
   type WebhookBody,
   type WebhookDto,
   type WebhookFlags,
@@ -46,6 +47,7 @@ interface WebhookMutationResponse {
 }
 
 const EDIT_FLAGS = {
+  '--show-secrets': Boolean,
   '--url': String,
   '--name': String,
   '--description': String,
@@ -76,9 +78,18 @@ function listWebhooks(ctx: SubcommandContext): Promise<WebhooksListResponse> {
   return ctx.client.fetch<WebhooksListResponse>('/webhooks', { projectId: ctx.projectId });
 }
 
-/** Finds a webhook by id, else by exact (case-insensitive) name. */
-async function resolveWebhook(ctx: SubcommandContext, idOrName: string): Promise<WebhookDto> {
+/**
+ * Finds a webhook by id, else by exact (case-insensitive) name. Pass `list` to
+ * match names against an already fetched list instead of fetching it again.
+ */
+async function resolveWebhook(ctx: SubcommandContext, idOrName: string, list?: WebhookDto[]): Promise<WebhookDto> {
   if (isWebhookId(idOrName)) {
+    const known = list?.find((webhook) => webhook.id === idOrName);
+
+    if (known) {
+      return known;
+    }
+
     const { webhook } = await ctx.client.fetch<{ webhook: WebhookDto }>(`/webhooks/${encodeURIComponent(idOrName)}`, {
       projectId: ctx.projectId,
     });
@@ -86,7 +97,7 @@ async function resolveWebhook(ctx: SubcommandContext, idOrName: string): Promise
     return webhook;
   }
 
-  const matches = matchWebhooks((await listWebhooks(ctx)).webhooks, idOrName);
+  const matches = matchWebhooks(list ?? (await listWebhooks(ctx)).webhooks, idOrName);
 
   if (matches.length === 0) {
     throw new Error(`No webhook named "${idOrName}". Run \`flexkit webhooks ls\` to see the webhooks.`);
@@ -101,12 +112,13 @@ async function resolveWebhook(ctx: SubcommandContext, idOrName: string): Promise
   return matches[0] as WebhookDto;
 }
 
-/** Resolves every argument first, so a typo changes nothing. */
+/** Resolves every argument first, so a typo changes nothing. Fetches the list once. */
 async function resolveWebhooks(ctx: SubcommandContext): Promise<WebhookDto[]> {
+  const list = (await listWebhooks(ctx)).webhooks;
   const webhooks: WebhookDto[] = [];
 
   for (const idOrName of ctx.args) {
-    const webhook = await resolveWebhook(ctx, idOrName);
+    const webhook = await resolveWebhook(ctx, idOrName, list);
 
     if (!webhooks.some((entry) => entry.id === webhook.id)) {
       webhooks.push(webhook);
@@ -138,6 +150,10 @@ function printWebhookLine(ctx: SubcommandContext, verb: string, webhook: Webhook
   ctx.client.output.success(`${verb} webhook ${chalk.bold(webhook.name)} ${chalk.dim(`(${webhook.id})`)}`);
 }
 
+function showSecrets(ctx: SubcommandContext): boolean {
+  return Boolean(ctx.flags['--show-secrets']);
+}
+
 function statusLabel(webhook: WebhookDto): string {
   return formatStatus(webhook.enabled ? 'enabled' : 'disabled');
 }
@@ -146,11 +162,15 @@ const ls: Subcommand = {
   command: webhooksListCommand,
   aliases: ['list'],
   needsProject: true,
+  flags: { '--show-secrets': Boolean },
   async run(ctx) {
     const result = await listWebhooks(ctx);
 
     if (ctx.json) {
-      printJson(ctx.client, result);
+      printJson(ctx.client, {
+        ...result,
+        webhooks: result.webhooks.map((webhook) => redactWebhook(webhook, showSecrets(ctx))),
+      });
 
       return 0;
     }
@@ -190,7 +210,7 @@ const inspect: Subcommand = {
     const webhook = await resolveWebhook(ctx, ctx.args[0] as string);
 
     if (ctx.json) {
-      printJson(ctx.client, { webhook });
+      printJson(ctx.client, { webhook: redactWebhook(webhook, showSecrets(ctx)) });
 
       return 0;
     }
@@ -257,7 +277,7 @@ const create: Subcommand = {
     );
 
     if (ctx.json) {
-      printJson(ctx.client, { webhook });
+      printJson(ctx.client, { webhook: redactWebhook(webhook, showSecrets(ctx)) });
 
       return 0;
     }
@@ -291,7 +311,7 @@ const update: Subcommand = {
     const webhook = requireWebhook(await patchWebhook(ctx, current.id, body));
 
     if (ctx.json) {
-      printJson(ctx.client, { webhook });
+      printJson(ctx.client, { webhook: redactWebhook(webhook, showSecrets(ctx)) });
 
       return 0;
     }
@@ -328,15 +348,25 @@ function toggle(enabled: boolean): Subcommand['run'] {
     }
 
     if (ctx.json) {
-      printJson(ctx.client, { webhooks: updated });
+      printJson(ctx.client, { webhooks: updated.map((webhook) => redactWebhook(webhook, showSecrets(ctx))) });
     }
 
     return 0;
   };
 }
 
-const enable: Subcommand = { command: webhooksEnableCommand, needsProject: true, run: toggle(true) };
-const disable: Subcommand = { command: webhooksDisableCommand, needsProject: true, run: toggle(false) };
+const enable: Subcommand = {
+  command: webhooksEnableCommand,
+  needsProject: true,
+  flags: { '--show-secrets': Boolean },
+  run: toggle(true),
+};
+const disable: Subcommand = {
+  command: webhooksDisableCommand,
+  needsProject: true,
+  flags: { '--show-secrets': Boolean },
+  run: toggle(false),
+};
 
 const rm: Subcommand = {
   command: webhooksRemoveCommand,

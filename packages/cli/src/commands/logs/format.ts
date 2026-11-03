@@ -2,8 +2,6 @@
 
 export type LogType = 'api' | 'webhooks' | 'llm';
 
-export const LOG_TYPES: readonly LogType[] = ['api', 'webhooks', 'llm'];
-
 export const MAX_LIMIT = 500;
 
 export interface ApiLogEntry {
@@ -80,7 +78,12 @@ const RELATIVE_PATTERN = /^(\d+(?:\.\d+)?)\s*(s|m|h|d|w)$/i;
  * `15m`, `1h`, `2d`, `1w`, `90m`), `now`, or an ISO 8601 date or date-time.
  * A date without a time zone is read as UTC.
  */
-export function parseTimeArg(value: string, flag: string, now: number = Date.now()): Date {
+/**
+ * A date or date-time without a zone is read in local time, as the table prints
+ * times, so a time copied from the output selects that entry; with `utc` (the
+ * `--utc` flag, which prints UTC) it is read as UTC.
+ */
+export function parseTimeArg(value: string, flag: string, now: number = Date.now(), utc = false): Date {
   const trimmed = value.trim();
 
   if (trimmed.toLowerCase() === 'now') {
@@ -98,9 +101,10 @@ export function parseTimeArg(value: string, flag: string, now: number = Date.now
 
   if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
     const hasTime = trimmed.includes('T') || trimmed.includes(' ');
-    const normalized = trimmed.replace(' ', 'T');
+    const normalized = hasTime ? trimmed.replace(' ', 'T') : `${trimmed}T00:00:00`;
     const hasZone = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(normalized);
-    const date = new Date(hasTime && !hasZone ? `${normalized}Z` : normalized);
+    // Without a zone, Date reads a date-time as local time.
+    const date = new Date(!hasZone && utc ? `${normalized}Z` : normalized);
 
     if (!Number.isNaN(date.getTime())) {
       return date;
@@ -351,5 +355,3 @@ export function isErrorEntry(entry: LogEntry): boolean {
 
   return false;
 }
-
-const TYPE_NAMES = ['api', 'requests', 'webhooks', 'webhook', 'llm'];

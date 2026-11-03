@@ -82,12 +82,20 @@ describe('parseTimeArg', () => {
     assert.equal(parseTimeArg(' now ', '--until', NOW).toISOString(), '2026-11-03T12:00:00.000Z');
   });
 
-  it('reads ISO dates and date-times, as UTC without a zone', () => {
-    assert.equal(parseTimeArg('2026-11-02', '--since', NOW).toISOString(), '2026-11-02T00:00:00.000Z');
-    assert.equal(parseTimeArg('2026-11-02T08:30', '--since', NOW).toISOString(), '2026-11-02T08:30:00.000Z');
-    assert.equal(parseTimeArg('2026-11-02 08:30:00', '--since', NOW).toISOString(), '2026-11-02T08:30:00.000Z');
+  it('reads ISO dates and date-times without a zone as UTC with --utc', () => {
+    assert.equal(parseTimeArg('2026-11-02', '--since', NOW, true).toISOString(), '2026-11-02T00:00:00.000Z');
+    assert.equal(parseTimeArg('2026-11-02T08:30', '--since', NOW, true).toISOString(), '2026-11-02T08:30:00.000Z');
+    assert.equal(parseTimeArg('2026-11-02 08:30:00', '--since', NOW, true).toISOString(), '2026-11-02T08:30:00.000Z');
     assert.equal(parseTimeArg('2026-11-02T08:30:00+02:00', '--since', NOW).toISOString(), '2026-11-02T06:30:00.000Z');
     assert.equal(parseTimeArg('2026-11-02T08:30:00.500Z', '--since', NOW).toISOString(), '2026-11-02T08:30:00.500Z');
+  });
+
+  it('reads a date-time without a zone in local time, as the table prints it', () => {
+    assert.equal(
+      parseTimeArg('2026-11-02 08:30:00', '--since', NOW).getTime(),
+      new Date(2026, 10, 2, 8, 30, 0).getTime()
+    );
+    assert.equal(parseTimeArg('2026-11-02', '--since', NOW).getTime(), new Date(2026, 10, 2).getTime());
   });
 
   it('names the flag in the error for anything else', () => {

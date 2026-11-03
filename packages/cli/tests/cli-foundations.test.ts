@@ -10,6 +10,7 @@ import { displayPath, formatRelativeTime, truncate } from '../src/util/output/fo
 import { buildApiPath, isAccountApiPath } from '../src/commands/api';
 import { getAccountApiUrl } from '../src/util/client';
 import { getErrorBodyMessage } from '../src/util/error-utils';
+import { firstPassFlags } from '../src/util/command-group';
 
 describe('project link', () => {
   let dir: string;
@@ -171,5 +172,20 @@ describe('getErrorBodyMessage', () => {
     assert.equal(getErrorBodyMessage({ errorMessage: 'First', message: 'Second' }), 'First');
     assert.equal(getErrorBodyMessage({}), null);
     assert.equal(getErrorBodyMessage(undefined), null);
+  });
+});
+
+describe('firstPassFlags', () => {
+  it('merges subcommand flags but leaves out the ones they define differently', () => {
+    const flags = firstPassFlags([
+      { flags: { '--file': String, '-f': '--file', '--space': [String] as [StringConstructor] } },
+      { flags: { '--follow': Boolean, '-f': '--follow', '--space': [String] as [StringConstructor] } },
+    ]) as { [flag: string]: unknown };
+
+    assert.equal(flags['--file'], String);
+    assert.equal(flags['--follow'], Boolean);
+    assert.equal('-f' in flags, false);
+    assert.deepEqual(flags['--space'], [String]);
+    assert.equal(flags['--json'], Boolean);
   });
 });

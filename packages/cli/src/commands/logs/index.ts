@@ -3,7 +3,7 @@ import type Client from '../../util/client';
 import { runCommandGroup, type Subcommand, type SubcommandContext } from '../../util/command-group';
 import { printJson, printTable } from '../../util/output/format';
 import { getCommandName } from '../../util/pkg';
-import sleep from '../../util/sleep';
+import { isAPIError } from '../../util/error-utils';
 import { logsApiCommand, logsCommand, logsLlmCommand, logsWebhooksCommand } from './command';
 import {
   HEADERS,
@@ -68,11 +68,21 @@ function readOptions(ctx: SubcommandContext, type: LogType): { options: LogsQuer
     throw new Error('--follow cannot be combined with --until or --before.');
   }
 
+  const utc = Boolean(flags['--utc']);
+  const untilDate = until ? parseTimeArg(until, '--until', now, utc) : undefined;
+  const beforeDate = before ? parseTimeArg(before, '--before', now, utc) : undefined;
+  const sinceFlag = flags['--since'] as string | undefined;
+  // Without --since, look back DEFAULT_SINCE from the end of the window, not from now.
+  const windowEnd = Math.min(untilDate?.getTime() ?? now, beforeDate?.getTime() ?? now);
+  const since = sinceFlag
+    ? parseTimeArg(sinceFlag, '--since', now, utc)
+    : parseTimeArg(DEFAULT_SINCE, '--since', windowEnd);
+
   const options: LogsQueryOptions = {
     type,
-    since: parseTimeArg((flags['--since'] as string | undefined) ?? DEFAULT_SINCE, '--since', now),
-    until: until ? parseTimeArg(until, '--until', now) : undefined,
-    before: before ? parseTimeArg(before, '--before', now) : undefined,
+    since,
+    until: untilDate,
+    before: beforeDate,
     limit: (flags['--limit'] as number | undefined) ?? DEFAULT_LIMIT,
     operation: flags['--operation'] as string | undefined,
     status: flags['--status'] as string | undefined,
@@ -85,8 +95,26 @@ function readOptions(ctx: SubcommandContext, type: LogType): { options: LogsQuer
   return { options, following };
 }
 
-async function fetchLogs(ctx: SubcommandContext, options: LogsQueryOptions): Promise<LogsResponse> {
-  return ctx.client.fetch<LogsResponse>(`/logs?${buildLogsQuery(options)}`, { projectId: ctx.projectId });
+async function fetchLogs(
+  ctx: SubcommandContext,
+  options: LogsQueryOptions,
+  signal?: AbortSignal
+): Promise<LogsResponse> {
+  return ctx.client.fetch<LogsResponse>(`/logs?${buildLogsQuery(options)}`, { projectId: ctx.projectId, signal });
+}
+
+/** Resolves after `ms`, or right away when `signal` aborts (Ctrl+C). */
+function abortableSleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const done = (): void => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+
+    signal.addEventListener('abort', done);
+  });
 }
 
 function printEntries(ctx: SubcommandContext, entries: LogEntry[], utc: boolean): void {
@@ -107,14 +135,25 @@ async function follow(
   ctx: SubcommandContext,
   options: LogsQueryOptions,
   seen: Map<string, number>,
-  utc: boolean
+  utc: boolean,
+  firstUntil: string
 ): Promise<number> {
   const { client } = ctx;
-  const intervalSeconds = Math.max(2, (ctx.flags['--interval'] as number | undefined) ?? 5);
-  let windowEnd = Date.now();
-  let stopped = false;
+  const intervalFlag = (ctx.flags['--interval'] as number | undefined) ?? 5;
+
+  if (!Number.isFinite(intervalFlag)) {
+    client.output.error('--interval must be a number of seconds.');
+
+    return 1;
+  }
+
+  const intervalSeconds = Math.max(2, intervalFlag);
+  // The server's clock: each poll asks from the end of the previous answer, so a
+  // skewed local clock can't make it skip entries.
+  let windowEnd = Date.parse(firstUntil);
+  const controller = new AbortController();
   const onSigint = (): void => {
-    stopped = true;
+    controller.abort();
   };
 
   process.on('SIGINT', onSigint);
@@ -124,33 +163,44 @@ async function follow(
   }
 
   try {
-    while (!stopped) {
-      await sleep(intervalSeconds * 1000);
+    while (!controller.signal.aborted) {
+      await abortableSleep(intervalSeconds * 1000, controller.signal);
 
-      if (stopped) {
+      if (controller.signal.aborted) {
         break;
       }
 
-      const since = windowEnd - FOLLOW_OVERLAP_MS;
-      const until = Date.now();
       let page: LogsResponse;
 
       try {
-        page = await fetchLogs(ctx, {
-          ...options,
-          since: new Date(since),
-          until: new Date(until),
-          before: undefined,
-          limit: 500,
-        });
+        page = await fetchLogs(
+          ctx,
+          {
+            ...options,
+            since: new Date(windowEnd - FOLLOW_OVERLAP_MS),
+            until: undefined,
+            before: undefined,
+            limit: 500,
+          },
+          controller.signal
+        );
       } catch (err: unknown) {
+        if (controller.signal.aborted) {
+          break;
+        }
+
+        // Expired token, removed access, bad filter: retrying won't help.
+        if (isAPIError(err) && err.status >= 400 && err.status < 500) {
+          throw err;
+        }
+
         client.output.debug(err);
         continue;
       }
 
-      windowEnd = until;
+      windowEnd = Math.max(windowEnd, Date.parse(page.until));
       printEntries(ctx, takeNewEntries(page.data, seen), utc);
-      pruneSeen(seen, until - FOLLOW_OVERLAP_MS - 1000);
+      pruneSeen(seen, windowEnd - FOLLOW_OVERLAP_MS - 1000);
     }
   } finally {
     process.off('SIGINT', onSigint);
@@ -218,7 +268,7 @@ function logsSubcommand(type: LogType, command: Subcommand['command'], aliases: 
         const seen = new Map<string, number>();
         takeNewEntries(page.data, seen);
 
-        return follow(ctx, options, seen, utc);
+        return follow(ctx, options, seen, utc, page.until);
       }
 
       return 0;

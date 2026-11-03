@@ -12,6 +12,11 @@ function option(
 
 const jsonOption = option('json', Boolean, 'Print the API response as JSON on stdout');
 const projectOption = option('project', String, 'Project to use (default: linked project)', 'ID', 'p');
+const showSecretsOption = option(
+  'show-secrets',
+  Boolean,
+  'Show header values and the secret, also in --json output (owners and developers only)'
+);
 const yesOption = option('yes', Boolean, 'Skip the confirmation prompt', undefined, 'y');
 
 const editOptions = (create: boolean): CommandOption[] => [
@@ -55,7 +60,7 @@ export const webhooksListCommand: Command = {
   name: 'ls',
   description: 'List the outgoing webhooks of the project, with their status, events, entities and deliveries.',
   arguments: [],
-  options: [jsonOption, projectOption],
+  options: [showSecretsOption, jsonOption, projectOption],
   examples: [
     { name: 'List webhooks', value: 'flexkit webhooks ls' },
     {
@@ -68,9 +73,9 @@ export const webhooksListCommand: Command = {
 export const webhooksInspectCommand: Command = {
   name: 'inspect',
   description:
-    'Show a webhook: receiver, events, entities, headers and delivery counts. Accepts the webhook id or its exact name. Header values and the secret are hidden unless you pass --show-secrets (owners and developers only).',
+    'Show a webhook: receiver, events, entities, headers and delivery counts. Accepts the webhook id or its exact name. Header values and the secret are hidden, also in --json output, unless you pass --show-secrets (owners and developers only).',
   arguments: [{ name: 'idOrName', required: true }],
-  options: [option('show-secrets', Boolean, 'Print header values and the secret'), jsonOption, projectOption],
+  options: [showSecretsOption, jsonOption, projectOption],
   examples: [
     { name: 'Show a webhook by name', value: 'flexkit webhooks inspect "Orders to ERP"' },
     {
@@ -89,6 +94,7 @@ export const webhooksCreateCommand: Command = {
   options: [
     ...editOptions(true),
     option('disabled', Boolean, 'Create it disabled; turn it on later with `flexkit webhooks enable`'),
+    showSecretsOption,
     jsonOption,
     projectOption,
   ],
@@ -119,6 +125,7 @@ export const webhooksUpdateCommand: Command = {
     ...editOptions(false),
     option('remove-header', [String], 'Stop sending this header (repeatable)', 'KEY'),
     option('all-entities', Boolean, 'Fire for every entity again (clears the --entity filter)'),
+    showSecretsOption,
     jsonOption,
     projectOption,
   ],
@@ -142,7 +149,7 @@ export const webhooksEnableCommand: Command = {
   name: 'enable',
   description: 'Turn one or more webhooks on.',
   arguments: [{ name: 'idOrName...', required: true }],
-  options: [jsonOption, projectOption],
+  options: [showSecretsOption, jsonOption, projectOption],
   examples: [{ name: 'Enable a webhook', value: 'flexkit webhooks enable "Orders to ERP"' }],
 };
 
@@ -150,7 +157,7 @@ export const webhooksDisableCommand: Command = {
   name: 'disable',
   description: 'Turn one or more webhooks off without deleting them. Changes made while off are not delivered later.',
   arguments: [{ name: 'idOrName...', required: true }],
-  options: [jsonOption, projectOption],
+  options: [showSecretsOption, jsonOption, projectOption],
   examples: [
     { name: 'Pause a webhook during receiver maintenance', value: 'flexkit webhooks disable "Orders to ERP"' },
   ],

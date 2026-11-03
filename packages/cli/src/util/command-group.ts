@@ -135,18 +135,49 @@ export function reportError(client: Client, err: unknown): number {
  * Runs `flexkit <group> <subcommand> [args] [flags]`: parses the shared and the
  * subcommand's flags, prints help, resolves the project and reports errors.
  */
+/** Compares flag specs by meaning: `[String]` literals in two subcommands are equal. */
+function specKey(spec: unknown): string {
+  if (Array.isArray(spec)) {
+    return `[${spec.map(specKey).join(',')}]`;
+  }
+
+  return typeof spec === 'function' ? `fn:${spec.name}` : String(spec);
+}
+
+/**
+ * The flags of every subcommand, for finding the subcommand name. A flag that
+ * subcommands define differently (`-f` as `--file` in one and `--follow` in
+ * another) is left out, so it can't take the wrong number of values.
+ */
+export function firstPassFlags(subcommands: Pick<Subcommand, 'flags'>[]): typeof SHARED_FLAGS {
+  const merged: { [flag: string]: unknown } = {};
+  const conflicting = new Set<string>();
+
+  for (const sub of subcommands) {
+    for (const [flag, spec] of Object.entries(sub.flags ?? {})) {
+      if (flag in merged && specKey(merged[flag]) !== specKey(spec)) {
+        conflicting.add(flag);
+      }
+
+      merged[flag] = spec;
+    }
+  }
+
+  for (const flag of conflicting) {
+    delete merged[flag];
+  }
+
+  return { ...merged, ...SHARED_FLAGS } as typeof SHARED_FLAGS;
+}
+
 export async function runCommandGroup(client: Client, group: CommandGroup): Promise<number> {
   const { output } = client;
   const { columns } = client.stderr;
   const rawArgs = client.argv.slice(2);
 
-  // First pass: find the subcommand name. It knows every subcommand's flags, so
-  // a flag value before the subcommand (`logs --since 1h`) isn't read as its name.
-  const allFlags = Object.assign(
-    {},
-    ...group.subcommands.map((sub) => sub.flags ?? {}),
-    SHARED_FLAGS
-  ) as typeof SHARED_FLAGS;
+  // First pass: find the subcommand name. It knows the subcommands' flags, so a
+  // flag value before the subcommand (`logs --since 1h`) isn't read as its name.
+  const allFlags = firstPassFlags(group.subcommands);
   let firstPass;
 
   try {

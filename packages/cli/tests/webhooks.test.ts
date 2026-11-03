@@ -12,6 +12,8 @@ import {
   parseEvents,
   parseHeaderFlag,
   parseMethod,
+  redactWebhook,
+  REDACTED,
   type WebhookDto,
 } from '../src/commands/webhooks/webhooks';
 
@@ -140,5 +142,27 @@ describe('display and lookup', () => {
     assert.equal(matchWebhooks(hooks, 'orders to erp').length, 1);
     assert.equal(matchWebhooks(hooks, '3F9C2A1E-8D4B-4C7A-9E2F-5B6A7C8D9E0F').length, 1);
     assert.equal(matchWebhooks(hooks, 'missing').length, 0);
+  });
+});
+
+describe('redactWebhook', () => {
+  const webhook = {
+    headers: [
+      { name: 'Authorization', value: 'Bearer abc' },
+      { name: 'X-Hidden', value: null },
+    ],
+    hasSecret: true,
+    secret: 's3cret',
+  } as unknown as WebhookDto;
+
+  it('replaces secrets and header values unless asked to show them', () => {
+    const redacted = redactWebhook(webhook, false);
+
+    assert.equal(redacted.secret, REDACTED);
+    assert.deepEqual(
+      redacted.headers.map((header) => header.value),
+      [REDACTED, null]
+    );
+    assert.equal(redactWebhook(webhook, true), webhook);
   });
 });
