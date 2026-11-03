@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import { findProjectLink, removeProjectLink, writeProjectLink } from '../src/util/project-link';
 import { parseKeyValues } from '../src/util/read-input';
 import { readEventStream, parseEventJson } from '../src/util/sse';
-import { formatRelativeTime, truncate } from '../src/util/output/format';
+import { displayPath, formatRelativeTime, truncate } from '../src/util/output/format';
 import { buildApiPath, isAccountApiPath } from '../src/commands/api';
 import { getAccountApiUrl } from '../src/util/client';
 
@@ -121,6 +121,13 @@ describe('format helpers', () => {
     assert.equal(formatRelativeTime('2026-11-01T12:00:00Z', now), '2d ago');
     assert.equal(formatRelativeTime('2026-08-01T12:00:00Z', now), '2026-08-01');
     assert.equal(formatRelativeTime(null, now), '');
+  });
+
+  it('shows paths inside the cwd as relative, others as absolute', () => {
+    assert.equal(displayPath('/work/app', '/work/app/docs/a.md'), 'docs/a.md');
+    assert.equal(displayPath('/work/app', 'docs/a.md'), 'docs/a.md');
+    assert.equal(displayPath('/work/app', '/tmp/a.md'), '/tmp/a.md');
+    assert.equal(displayPath('/work/app', '../other/a.md'), '/work/other/a.md');
   });
 
   it('truncates to one line', () => {

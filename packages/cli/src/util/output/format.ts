@@ -1,3 +1,4 @@
+import path from 'node:path';
 import chalk from 'chalk';
 import type Client from '../client';
 import Table from 'cli-table3';
@@ -86,6 +87,14 @@ export function formatRelativeTime(value: string | number | null | undefined, no
 }
 
 /** Shortens text to `max` characters with an ellipsis. */
+/** A path for messages: relative to `cwd` when it is inside it, else absolute. */
+export function displayPath(cwd: string, file: string): string {
+  const absolute = path.resolve(cwd, file);
+  const relative = path.relative(cwd, absolute);
+
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative) ? relative : absolute;
+}
+
 export function truncate(value: string | null | undefined, max = 60): string {
   if (!value) {
     return '';
