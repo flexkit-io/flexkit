@@ -45,6 +45,13 @@ describe('project link', () => {
     assert.equal(gitignoreUpdated, false);
   });
 
+  it('ignores a link whose project ID is not a host label', () => {
+    fs.mkdirSync(path.join(dir, '.flexkit'));
+    fs.writeFileSync(path.join(dir, '.flexkit', 'project.json'), '{"projectId":"evil.example#"}');
+
+    assert.equal(findProjectLink(dir), null);
+  });
+
   it('ignores a malformed link file', () => {
     fs.mkdirSync(path.join(dir, '.flexkit'));
     fs.writeFileSync(path.join(dir, '.flexkit', 'project.json'), '{"name":"x"}');

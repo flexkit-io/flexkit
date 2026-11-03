@@ -17,6 +17,16 @@ export interface FoundProjectLink {
   file: string;
 }
 
+/**
+ * Project IDs become the first label of the API host
+ * (`https://<projectId>.api.flexkit.io`), so anything that isn't a plain DNS
+ * label is refused: a value like `evil.example#` would otherwise send the
+ * session token to another host.
+ */
+export function isValidProjectId(projectId: string): boolean {
+  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(projectId);
+}
+
 export function getLinkFilePath(dir: string): string {
   return path.join(dir, LINK_DIR, LINK_FILE);
 }
@@ -31,7 +41,7 @@ function parseLink(raw: string): ProjectLink | null {
 
     const { projectId, projectName, teamId, teamName } = parsed as Record<string, unknown>;
 
-    if (typeof projectId !== 'string' || projectId.length === 0) {
+    if (typeof projectId !== 'string' || !isValidProjectId(projectId)) {
       return null;
     }
 

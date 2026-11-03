@@ -22,6 +22,7 @@ import userAgent from './user-agent';
 import type { Output } from './output/create-output';
 import responseError from './error-utils';
 import sleep from './sleep';
+import { isValidProjectId } from './project-link';
 
 export interface FetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | JSONObject;
@@ -128,6 +129,10 @@ export default class Client extends EventEmitter implements Stdio {
   }
 
   private _fetch(_url: string, opts: FetchOptions = {}): Promise<Response> {
+    if (opts.projectId !== undefined && !isValidProjectId(opts.projectId)) {
+      return Promise.reject(new Error(`Invalid project ID "${opts.projectId}".`));
+    }
+
     // Project routes live on the project's API host; account routes on the account host.
     const baseUrl = opts.projectId
       ? this.apiUrl.replace('https://', `https://${opts.projectId}.`)
