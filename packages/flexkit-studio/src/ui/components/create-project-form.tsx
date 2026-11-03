@@ -3,15 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { createHostedProject, newProjectPath, ownedTeams } from '../../core/config/create-project';
 import type { HostedTeam } from '../../core/config/types';
-import { refreshHostedSession } from '../../core/config/use-hosted-session';
+import { rememberCreatedProject } from '../../core/config/use-hosted-session';
 import { Alert, AlertDescription } from '../primitives/alert';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input';
 import { Label } from '../primitives/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../primitives/select';
 
-const NAME_PATTERN = /^[\p{L}\p{N}\s_'-]+$/u;
-
+/** Only what the field can tell; the backend owns the character rules and says what it refuses. */
 function validateName(name: string): string | null {
   const trimmed = name.trim();
 
@@ -21,10 +20,6 @@ function validateName(name: string): string | null {
 
   if (trimmed.length > 48) {
     return 'Project names can be up to 48 characters.';
-  }
-
-  if (!NAME_PATTERN.test(trimmed)) {
-    return 'Use letters, numbers, spaces, apostrophes, underscores or dashes.';
   }
 
   return null;
@@ -45,13 +40,13 @@ export function CreateProjectForm({
 }: {
   autoFocus?: boolean;
   /**
-   * The user has no project yet, so the Studio shows this form at `/`. Navigate
-   * before refreshing the session: once `/api/me` lists the project, `/` would
-   * redirect to the project root instead of its AI chat.
+   * The user has no project yet, so the Studio shows this form at `/`. Leave
+   * `/` before the session lists the project: there, `/` redirects to the
+   * project root instead of its AI chat.
    */
   isFirstProject?: boolean;
   onCancel?: () => void;
-  /** Called with the new project's id right before the Studio opens it. */
+  /** Called with the new project's id once the Studio opened it. */
   onCreated?: (projectId: string) => void;
   submitLabel?: string;
   teams: HostedTeam[];
@@ -61,7 +56,9 @@ export function CreateProjectForm({
   const teamId = useId();
   const owned = ownedTeams(teams);
   const [name, setName] = useState('');
-  const [selectedTeamId, setSelectedTeamId] = useState(owned[0]?.id ?? '');
+  const [pickedTeamId, setPickedTeamId] = useState<string | null>(null);
+  // Follow the teams prop: a pick that is no longer owned falls back to the first owned team.
+  const selectedTeamId = owned.some((team) => team.id === pickedTeamId) ? (pickedTeamId ?? '') : (owned[0]?.id ?? '');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -90,16 +87,18 @@ export function CreateProjectForm({
       return;
     }
 
-    onCreated?.(outcome.projectId);
+    const path = newProjectPath(outcome.project.id);
 
-    // Inside a project the Studio only opens ids `/api/me` listed, so refresh first there.
+    // Inside a project the Studio only opens ids the session lists, so add it first there.
     if (isFirstProject) {
-      navigate(newProjectPath(outcome.projectId));
-      await refreshHostedSession();
+      navigate(path);
+      await rememberCreatedProject(outcome);
     } else {
-      await refreshHostedSession();
-      navigate(newProjectPath(outcome.projectId));
+      await rememberCreatedProject(outcome);
+      navigate(path);
     }
+
+    onCreated?.(outcome.project.id);
   }
 
   return (
@@ -132,7 +131,7 @@ export function CreateProjectForm({
       {owned.length > 1 ? (
         <div className="fk:flex fk:flex-col fk:gap-2">
           <Label htmlFor={teamId}>Team</Label>
-          <Select disabled={isSubmitting} onValueChange={setSelectedTeamId} value={selectedTeamId}>
+          <Select disabled={isSubmitting} onValueChange={setPickedTeamId} value={selectedTeamId}>
             <SelectTrigger id={teamId}>
               <SelectValue />
             </SelectTrigger>

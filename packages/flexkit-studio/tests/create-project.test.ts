@@ -18,10 +18,14 @@ afterEach(() => {
 });
 
 describe('createHostedProject', () => {
-  it('returns the new project id', async () => {
+  it('returns the new project and its team', async () => {
     answer(201, { project: { id: 'pnew000001', name: 'Aven' }, team: { id: 't', name: 'T' } });
 
-    assert.deepEqual(await createHostedProject({ name: 'Aven' }), { ok: true, projectId: 'pnew000001' });
+    assert.deepEqual(await createHostedProject({ name: 'Aven' }), {
+      ok: true,
+      project: { id: 'pnew000001', name: 'Aven' },
+      team: { id: 't', name: 'T' },
+    });
   });
 
   it('passes on the backend message and code', async () => {

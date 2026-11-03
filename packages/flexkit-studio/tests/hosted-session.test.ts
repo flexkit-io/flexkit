@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { toHostedSession } from '../src/core/config/use-hosted-session';
+import { toHostedSession, withCreatedProject } from '../src/core/config/use-hosted-session';
 import { toProjectSchemaState } from '../src/core/config/use-project-schemas';
 
 describe('hosted session state', () => {
@@ -25,6 +25,34 @@ describe('hosted session state', () => {
       projects: [],
       teams,
     });
+  });
+
+  it('adds a just-created project and its new team to the session', () => {
+    const user = { id: 'u', email: 'a@b.io', displayName: null, avatarUrl: null };
+    const created = { project: { id: 'pnew000001', name: 'Aven' }, team: { id: 't', name: "Ann's projects" } };
+    const next = withCreatedProject({ kind: 'ready', data: { user, projects: [], teams: [] } }, created);
+
+    assert.deepEqual(next, {
+      kind: 'ready',
+      data: {
+        user,
+        projects: [
+          {
+            avatarUrl: null,
+            id: 'pnew000001',
+            name: 'Aven',
+            readOnly: false,
+            role: 'owner',
+            suspended: false,
+            team: { id: 't', name: "Ann's projects" },
+          },
+        ],
+        teams: [{ id: 't', name: "Ann's projects", role: 'owner' }],
+      },
+    });
+    // Idempotent, and a session that is not ready stays as it is.
+    assert.deepEqual(withCreatedProject(next, created), next);
+    assert.deepEqual(withCreatedProject({ kind: 'anonymous' }, created), { kind: 'anonymous' });
   });
 
   it('wraps a single schema outcome in the shared state shape', () => {

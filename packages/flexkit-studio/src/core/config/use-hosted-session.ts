@@ -2,6 +2,7 @@
 
 import useSWR, { mutate } from 'swr';
 import { userApiPaths } from '../api-paths';
+import type { CreatedProject } from './create-project';
 import type { HostedTeam, HostedUser, ProjectSummary } from './types';
 
 export type HostedSession =
@@ -14,7 +15,10 @@ export type HostedSession =
 type MeResponse = { projects: ProjectSummary[]; teams?: HostedTeam[]; user: HostedUser };
 
 const SESSION_KEY = 'hosted-session';
-type MeOutcome = { kind: 'anonymous' } | { kind: 'error'; message: string } | { kind: 'ready'; data: MeResponse };
+export type MeOutcome =
+  | { kind: 'anonymous' }
+  | { kind: 'error'; message: string }
+  | { kind: 'ready'; data: MeResponse };
 
 async function fetchMe(): Promise<MeOutcome> {
   try {
@@ -55,7 +59,10 @@ export function toHostedSession(outcome: MeOutcome | undefined): HostedSession {
   };
 }
 
-/** Hosted mode: who is signed in and which projects they can open. Fetched once per page load. */
+/**
+ * Hosted mode: who is signed in and which projects they can open. Fetched once
+ * per page load; `rememberCreatedProject` adds a project the user just created.
+ */
 export function useHostedSession(): HostedSession {
   const { data } = useSWR(SESSION_KEY, fetchMe, {
     revalidateOnFocus: false,
@@ -66,7 +73,38 @@ export function useHostedSession(): HostedSession {
   return toHostedSession(data);
 }
 
-/** Re-reads `/api/me`, e.g. after creating a project, so its id is known before navigating to it. */
-export async function refreshHostedSession(): Promise<void> {
-  await mutate(SESSION_KEY);
+/** The session with a just-created project (and its team, if new) added; the user owns both. */
+export function withCreatedProject(outcome: MeOutcome | undefined, created: CreatedProject): MeOutcome | undefined {
+  if (outcome?.kind !== 'ready' || outcome.data.projects.some((project) => project.id === created.project.id)) {
+    return outcome;
+  }
+
+  const teams = outcome.data.teams ?? [];
+  const project: ProjectSummary = {
+    avatarUrl: null,
+    id: created.project.id,
+    name: created.project.name,
+    readOnly: false,
+    role: 'owner',
+    suspended: false,
+    team: created.team,
+  };
+
+  return {
+    kind: 'ready',
+    data: {
+      ...outcome.data,
+      projects: [...outcome.data.projects, project],
+      teams: teams.some((team) => team.id === created.team.id) ? teams : [...teams, { ...created.team, role: 'owner' }],
+    },
+  };
+}
+
+/**
+ * Adds a project the user just created to the session, so the Studio can open
+ * it at once. No `/api/me` round trip: the create response says everything the
+ * session needs, and a failed re-read must not hide a project that exists.
+ */
+export async function rememberCreatedProject(created: CreatedProject): Promise<void> {
+  await mutate<MeOutcome>(SESSION_KEY, (current) => withCreatedProject(current, created), { revalidate: false });
 }
