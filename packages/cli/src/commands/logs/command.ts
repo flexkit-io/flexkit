@@ -32,7 +32,7 @@ const commonOptions: CommandOption[] = [
   option(
     'json',
     Boolean,
-    'Print the entries as a JSON array, newest first (with --follow: one entry per line, oldest first)'
+    'Print JSON: the page with its entries (newest first) and nextBefore, the --before value for the next page; with --follow, one entry per line, oldest first'
   ),
   option('project', String, 'Project to use (default: linked project)', 'ID', 'p'),
 ];
@@ -54,7 +54,11 @@ export const logsApiCommand: Command = {
     {
       name: 'Slowest requests of a day, with jq',
       value:
-        "flexkit logs api --since 2026-11-02 --until 2026-11-03 --limit 500 --json | jq 'sort_by(-.duration_ms) | .[:10]'",
+        "flexkit logs api --since 2026-11-02 --until 2026-11-03 --limit 500 --json | jq '.data | sort_by(-.duration_ms) | .[:10]'",
+    },
+    {
+      name: 'The --before value for the next page, in a script',
+      value: "flexkit logs api --since 1d --limit 500 --json | jq -r '.nextBefore // empty'",
     },
   ],
 };
@@ -75,7 +79,7 @@ export const logsWebhooksCommand: Command = {
     {
       name: 'Count failures by URL',
       value:
-        "flexkit logs webhooks --since 1w --status failed --limit 500 --json | jq 'group_by(.url) | map({url: .[0].url, failures: length})'",
+        "flexkit logs webhooks --since 1w --status failed --limit 500 --json | jq '.data | group_by(.url) | map({url: .[0].url, failures: length})'",
     },
   ],
 };
@@ -90,7 +94,7 @@ export const logsLlmCommand: Command = {
     { name: 'Model calls from the last hour', value: 'flexkit logs llm' },
     {
       name: 'Total cost of the last 7 days (up to 500 calls)',
-      value: "flexkit logs llm --since 7d --limit 500 --json | jq '[.[].actual_cost_micros] | add / 1000000'",
+      value: "flexkit logs llm --since 7d --limit 500 --json | jq '[.data[].actual_cost_micros] | add / 1000000'",
     },
     { name: 'Watch an automation run spend tokens', value: 'flexkit logs llm --follow --interval 2' },
   ],
