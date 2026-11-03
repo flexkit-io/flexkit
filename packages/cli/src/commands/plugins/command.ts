@@ -242,7 +242,7 @@ export const pluginsToolsCommand: Command = {
 export const pluginsCommand: Command = {
   name: 'plugins',
   description:
-    "Manage the project's plugins: browse the catalog, install, connect accounts and list the tools the agent can use. API tokens can browse the catalog and list the tools of project accounts; installing, connecting, disconnecting and changing plugins need a user session from `flexkit login`.",
+    "Manage the project's plugins: browse the catalog, install, connect accounts and list the tools the agent can use. API tokens can browse the catalog; listing an account's tools, installing, connecting, disconnecting and changing plugins need a user session from `flexkit login`.",
   arguments: [],
   subcommands: [
     pluginsListCommand,

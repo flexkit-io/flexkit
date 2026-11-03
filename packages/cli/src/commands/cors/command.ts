@@ -34,7 +34,7 @@ export const corsAddCommand: Command = {
     option(
       'credentials',
       Boolean,
-      'Mark the origins as sending credentials (cookies). Any such origin makes the API allow credentials for every listed origin'
+      'Mark the origins as sending credentials (cookies). Any such origin makes the API allow credentials for every listed origin. Needs a signed-in user: API tokens can add origins only without it'
     ),
     jsonOption,
     projectOption,
