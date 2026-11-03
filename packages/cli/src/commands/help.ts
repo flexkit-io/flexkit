@@ -26,6 +26,8 @@ export interface CommandExample {
 }
 export interface Command {
   name: string;
+  /** Parent command name, printed in the synopsis of a subcommand (`flexkit <parent> <name>`). */
+  parent?: string;
   description: string;
   arguments: CommandArgument[];
   subcommands?: Command[];
@@ -104,7 +106,8 @@ const globalCommandOptions: CommandOption[] = [
     name: 'scope',
     shorthand: 'S',
     type: String,
-    description: 'Set a custom scope',
+    argument: 'TEAM',
+    description: 'Team to act in (project, link); on data commands, --scope picks the data scope instead',
     deprecated: false,
   },
   {
@@ -167,7 +170,17 @@ export function outputArrayToString(outputArray: (string | null)[]): string {
  * Example: `flexkit login [path] [options]`
  */
 export function buildCommandSynopsisLine(command: Command): string {
-  const line: string[] = [INDENT, ISOTYPE, chalk.bold('flexkit'), chalk.bold(command.name)];
+  const line: string[] = [INDENT, ISOTYPE, chalk.bold('flexkit')];
+
+  if (command.parent) {
+    line.push(chalk.bold(command.parent));
+  }
+
+  line.push(chalk.bold(command.name));
+
+  if (command.subcommands && command.subcommands.length > 0) {
+    line.push('<subcommand>');
+  }
 
   if (command.arguments.length > 0) {
     for (const argument of command.arguments) {

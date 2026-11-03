@@ -38,11 +38,12 @@ import importCommand from './commands/import';
 import exportCommand from './commands/export';
 import toolsCommand from './commands/tools';
 import doLoginPrompt from './util/login/prompt';
+import { commandRegistry } from './commands/registry';
 
 const FLEXKIT_DIR = getGlobalPathConfig();
 const FLEXKIT_CONFIG_PATH = configFiles.getConfigFilePath();
 const FLEXKIT_AUTH_CONFIG_PATH = configFiles.getAuthConfigFilePath();
-const API_URL = 'https://api.flexkit.io';
+const DEFAULT_API_URL = 'https://api.flexkit.io';
 const AUTH_URL = 'https://flexkit.io';
 let { isTTY } = process.stdout;
 let client: Client;
@@ -182,10 +183,20 @@ const main = async (): Promise<number | undefined> => {
     }
   }
 
+  // `--api` and FLEXKIT_API_URL point the CLI at another API host (for example a local backend).
+  const apiUrl = (argv.flags['--api'] ?? process.env.FLEXKIT_API_URL ?? config.api ?? DEFAULT_API_URL).replace(/\/+$/, '');
+
+  // FLEXKIT_TOKEN authenticates CI and scripts without `flexkit login`; --token still wins.
+  const envToken = process.env.FLEXKIT_TOKEN?.trim();
+
+  if (envToken && !argv.flags['--token']) {
+    authConfig = { ...authConfig, token: envToken, skipWrite: true };
+  }
+
   // Shared API `Client` instance for all sub-commands to utilize
   client = new Client({
     agent: new ProxyAgent({ keepAlive: true }),
-    apiUrl: API_URL,
+    apiUrl,
     authUrl: AUTH_URL,
     stdin: process.stdin,
     stdout: process.stdout,
@@ -235,7 +246,7 @@ const main = async (): Promise<number | undefined> => {
     client.argv.push('-h');
   }
 
-  const subcommandsWithoutToken = ['login', 'logout', 'help', 'init', 'whoami'];
+  const subcommandsWithoutToken = ['login', 'logout', 'help', 'init', 'whoami', 'unlink'];
 
   // Prompt for login if there is no current token
   if (
@@ -265,8 +276,10 @@ const main = async (): Promise<number | undefined> => {
       output.debug(`Saved credentials in "${hp(FLEXKIT_DIR)}"`);
     } else {
       output.prettyError({
-        message: `No existing credentials found. Please run ${getCommandName('login')} or pass ${paramOutput('--token')}`,
-        link: 'https://flexkit.io/notifications/no-credentials-found', // TODO: Update link
+        message: `No existing credentials found. Please run ${getCommandName('login')}, pass ${paramOutput(
+          '--token'
+        )} or set the FLEXKIT_TOKEN environment variable`,
+        link: 'https://flexkit.io/docs/cli/global-options',
       });
 
       return 1;
@@ -279,7 +292,7 @@ const main = async (): Promise<number | undefined> => {
     if (token.length === 0) {
       output.prettyError({
         message: `You defined ${paramOutput('--token')}, but it's missing a value`,
-        link: 'https://err.sh/vercel/missing-token-value',
+        link: 'https://flexkit.io/docs/cli/global-options',
       });
 
       return 1;
@@ -292,7 +305,7 @@ const main = async (): Promise<number | undefined> => {
         message: `You defined ${paramOutput(
           '--token'
         )}, but its value is invalid. Expected format: flk-<32 hex characters (0-9, a-f)>`,
-        link: 'https://err.sh/vercel/invalid-token-value',
+        link: 'https://flexkit.io/docs/cli/global-options',
       });
 
       return 1;
@@ -308,7 +321,12 @@ const main = async (): Promise<number | undefined> => {
     if (subcommand) {
       let func: ((client: Client) => Promise<number>) | null;
 
-      switch (subcommand) {
+      const registered = commandRegistry[subcommand];
+
+      switch (registered ? '__registered' : subcommand) {
+        case '__registered':
+          func = registered ?? null;
+          break;
         case 'assets':
           func = assetsCommand;
           break;

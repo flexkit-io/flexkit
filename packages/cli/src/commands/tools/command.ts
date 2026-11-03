@@ -1,6 +1,7 @@
 import type { Command } from '../help';
 
 export const toolsSyncCommand: Command = {
+  parent: 'tools',
   name: 'sync',
   description: 'Re-read the production tool catalog from the project tools URL and sync its code skills.',
   arguments: [],

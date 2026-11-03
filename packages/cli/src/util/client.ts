@@ -42,6 +42,21 @@ export interface ClientOptions extends Stdio {
   agent?: Agent;
 }
 
+/**
+ * The host of the account API (`/api/projects`, `/api/me`, `/api/usage/…`):
+ * the API host without its `api.` label, `https://api.flexkit.io` →
+ * `https://flexkit.io`. Project APIs live on `https://<projectId>.api.flexkit.io`.
+ */
+export function getAccountApiUrl(apiUrl: string): string {
+  const url = new URL(apiUrl);
+
+  if (url.hostname.startsWith('api.')) {
+    url.hostname = url.hostname.slice(4);
+  }
+
+  return url.origin;
+}
+
 export const isJSONObject = (v: BodyInit | JSONObject | undefined): v is JSONObject => {
   return typeof v === 'object' && v.constructor === Object;
 };
@@ -113,12 +128,10 @@ export default class Client extends EventEmitter implements Stdio {
   }
 
   private _fetch(_url: string, opts: FetchOptions = {}): Promise<Response> {
-    let baseUrl = this.apiUrl;
-
-    if (opts.projectId) {
-      // Change the base URL to include the project ID as a subdomain
-      baseUrl = this.apiUrl.replace('https://', `https://${opts.projectId}.`);
-    }
+    // Project routes live on the project's API host; account routes on the account host.
+    const baseUrl = opts.projectId
+      ? this.apiUrl.replace('https://', `https://${opts.projectId}.`)
+      : getAccountApiUrl(this.apiUrl);
 
     const url = new URL(_url, baseUrl);
 
@@ -169,6 +182,11 @@ export default class Client extends EventEmitter implements Stdio {
     );
   }
 
+  /** Sends one authenticated request without retries and returns the response whatever its status. */
+  rawFetch(url: string, opts: FetchOptions = {}): Promise<Response> {
+    return this._fetch(url, opts);
+  }
+
   fetch(url: string, opts: FetchOptions & { json: false }): Promise<Response>;
   fetch<T extends object>(url: string, opts?: FetchOptions): Promise<JsonResponse<T>>;
   fetch(url: string, opts: FetchOptions = {}): Promise<Response | null> {
@@ -206,7 +224,7 @@ export default class Client extends EventEmitter implements Stdio {
     url: string | URL,
     opts?: FetchOptions
   ): AsyncGenerator<T & { pagination: PaginationOptions }> {
-    const endpoint = typeof url === 'string' ? new URL(url, this.apiUrl) : new URL(url.href);
+    const endpoint = typeof url === 'string' ? new URL(url, getAccountApiUrl(this.apiUrl)) : new URL(url.href);
 
     if (!endpoint.searchParams.has('limit')) {
       endpoint.searchParams.set('limit', '100');

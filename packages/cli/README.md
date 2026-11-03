@@ -15,7 +15,7 @@
 
 **Flexkit CLI is the command-line interface for managing Flexkit projects from your terminal.**
 
-Use it to authenticate, deploy schemas, and run day-to-day project operations without leaving your development workflow.
+Use it to authenticate, deploy schemas, work with records, manage automations, skills, knowledge and plugins, talk to the Chat Agent, and script anything else the Flexkit API offers without leaving your terminal.
 
 ## Usage
 
@@ -29,10 +29,26 @@ Example commands:
 
 ```shell
 flexkit login
-flexkit deploy        # deploy the schema from flexkit.config.ts
-flexkit dev           # run the tools and skills from flexkit.tools.ts as your local runtime
-flexkit tools sync    # re-read the production tool catalog after a deploy (CI friendly)
+flexkit link                      # link this folder to a project; later commands use it
+flexkit deploy                    # deploy the schema from flexkit.config.ts
+flexkit schema diff               # compare the local schema with the deployed one
+flexkit dev                       # run the tools and skills from flexkit.tools.ts as your local runtime
+
+flexkit records ls product --limit 10
+flexkit query '{ products(limit: 5) { _id sku name { default } } }'
+
+flexkit chat "Which orders shipped late this week?"
+flexkit automations ls
+flexkit runs logs <runId> --follow
+flexkit skills pull ./skills      # keep skills in git; push them back with `flexkit skills push`
+flexkit knowledge add ./docs --wait
+
+flexkit api /automations          # call any API endpoint with your credentials
 ```
+
+Every command prints help with examples: `flexkit <command> --help`. Commands that read data accept `--json` and print it on stdout, so the output can be piped to `jq`.
+
+In CI, set `FLEXKIT_TOKEN` and `FLEXKIT_PROJECT_ID` instead of logging in.
 
 ## Documentation
 
