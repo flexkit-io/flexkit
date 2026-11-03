@@ -37,7 +37,7 @@ const reasonOption: CommandOption = {
 export const approvalsListCommand: Command = {
   name: 'ls',
   description:
-    'List approval requests: data changes, plugin calls, sandbox commands, schema changes and proposed automations or skills that wait for a decision. Shows pending requests unless --all or --status is given.',
+    'List approval requests: data changes, plugin calls, sandbox commands, schema changes and proposed automations or skills that automation runs wait on. Shows pending requests unless --all or --status is given. Requests from a chat are not listed: the chat prints their id, and inspect, approve and reject take it.',
   arguments: [],
   options: [
     {
