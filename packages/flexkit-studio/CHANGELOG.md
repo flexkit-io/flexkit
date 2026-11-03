@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.2.32
+
+### Patch Changes
+
+- 41fc764: Preview on a chat or automation artifact opens it in the browser from the desktop app; it did nothing there.
+- 2d4fcce: Transcript on an automation run downloads the transcript in the desktop app; the button did nothing there.
+
 ## 0.2.31
 
 ### Patch Changes
