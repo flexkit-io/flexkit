@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CheckIcon, CopyIcon, CornerDownRightIcon, LoaderCircle, PencilIcon } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import useSWR, { useSWRConfig } from 'swr';
 import {
   Button,
@@ -34,6 +34,8 @@ import {
   usePromptInputController,
 } from '../../../ui';
 import { fetcher, paths, type ApiClient } from '../api';
+import { EMPTY_STARTER_PROMPTS, starterPath, type OnboardingNavigationState } from '../../../core/config/onboarding';
+import { StarterPanel, StarterPrompts } from './starter-panel';
 import { findPastedPluginToken } from '../plugin-token-format';
 import type { Marketplace } from '../plugin-types';
 import {
@@ -1209,7 +1211,18 @@ function writeLastAgentModel(selection: ModelSelection): void {
   }
 }
 
-function EmptyConversation({ projectId }: { projectId: string }): JSX.Element {
+function EmptyConversation({
+  canSend,
+  hasSchema,
+  onPrompt,
+  projectId,
+}: {
+  canSend: boolean;
+  /** False for a project without entities yet: the chat suggests how to design them. */
+  hasSchema: boolean;
+  onPrompt: (prompt: string) => void;
+  projectId: string;
+}): JSX.Element {
   const { data, isLoading } = useSWR<{ preferredName: string | null }>(paths(projectId).agentProfile(), fetcher);
   // Pick once the profile resolves so the greeting never flashes from a
   // generic salute to a personalized one.
@@ -1222,8 +1235,35 @@ function EmptyConversation({ projectId }: { projectId: string }): JSX.Element {
   }, [data, isLoading]);
 
   return (
-    <div className="fk:flex fk:flex-col fk:items-center fk:pb-2 fk:text-center">
+    <div className="fk:flex fk:flex-col fk:items-center fk:gap-6 fk:pb-2 fk:text-center">
       <h2 className="fk:text-2xl fk:font-semibold">{greeting ?? '\u00A0'}</h2>
+      <StarterPanel canSend={canSend} onPrompt={onPrompt} projectId={projectId} />
+      {hasSchema ? null : <EmptySchemaPrompts canSend={canSend} onPrompt={onPrompt} projectId={projectId} />}
+    </div>
+  );
+}
+
+/** A project with no entities and no starter: ways to get a schema from the agent. */
+function EmptySchemaPrompts({
+  canSend,
+  onPrompt,
+  projectId,
+}: {
+  canSend: boolean;
+  onPrompt: (prompt: string) => void;
+  projectId: string;
+}): JSX.Element | null {
+  // Shares the StarterPanel request; a project with a starter shows its progress there instead.
+  const { data, error } = useSWR<{ starter: unknown }>(starterPath(projectId), fetcher, { revalidateOnFocus: false });
+
+  if ((data === undefined && error === undefined) || data?.starter) {
+    return null;
+  }
+
+  return (
+    <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-2xl fk:flex-col fk:items-center fk:gap-3">
+      <p className="fk:text-sm fk:text-muted-foreground">This project has no schema yet. Start with:</p>
+      <StarterPrompts canSend={canSend} onPrompt={onPrompt} prompts={EMPTY_STARTER_PROMPTS} />
     </div>
   );
 }
@@ -1233,6 +1273,7 @@ export function AgentChatPage(): JSX.Element {
   const { currentProject, projectSummaries } = useConfig();
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const agentBase = useAgentBasePath();
   const { mutate: globalMutate } = useSWRConfig();
   const { data: toolsData } = useSWR<ToolsResponse>(projectId ? paths(projectId).tools() : null, fetcher);
@@ -1335,6 +1376,34 @@ export function AgentChatPage(): JSX.Element {
       rememberModel({ effort: nextEffort, modelKey });
     }
   }
+
+  // A new project whose owner described the business opens with that
+  // description as the first message. Clear the navigation state first, so
+  // going back to this page or reloading it never sends it again.
+  const onboardingPrompt = (location.state as OnboardingNavigationState | null)?.onboardingPrompt;
+  const handledPromptKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (
+      !onboardingPrompt ||
+      handledPromptKeyRef.current === location.key ||
+      chatId ||
+      !projectId ||
+      !api ||
+      modelPending ||
+      sendingRef.current
+    ) {
+      return;
+    }
+
+    handledPromptKeyRef.current = location.key;
+    navigate(location.pathname, { replace: true, state: null });
+    void handleSend(onboardingPrompt, []).catch((error: unknown) => {
+      setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
+    });
+    // handleSend is redeclared every render; the guards above make this run once per navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, chatId, location.key, modelPending, onboardingPrompt, projectId]);
 
   if (!projectId || !api) {
     return (
@@ -1568,7 +1637,16 @@ export function AgentChatPage(): JSX.Element {
                 </PluginConnectContext.Provider>
               </ChatApprovalContext.Provider>
             ) : (
-              <EmptyConversation projectId={chatProjectId} />
+              <EmptyConversation
+                canSend={!sending && !modelPending}
+                hasSchema={currentProject ? currentProject.schema.some((entity) => !entity.name.startsWith('_')) : true}
+                onPrompt={(prompt) => {
+                  void handleSend(prompt, []).catch((error: unknown) => {
+                    setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
+                  });
+                }}
+                projectId={chatProjectId}
+              />
             )}
             <div className="fk:shrink-0 fk:pb-3">
               {chatId ? (

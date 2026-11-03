@@ -108,3 +108,17 @@ export function withCreatedProject(outcome: MeOutcome | undefined, created: Crea
 export async function rememberCreatedProject(created: CreatedProject): Promise<void> {
   await mutate<MeOutcome>(SESSION_KEY, (current) => withCreatedProject(current, created), { revalidate: false });
 }
+
+/** The session with the signed-in user's new display name. */
+export function withDisplayName(outcome: MeOutcome | undefined, displayName: string): MeOutcome | undefined {
+  if (outcome?.kind !== 'ready') {
+    return outcome;
+  }
+
+  return { kind: 'ready', data: { ...outcome.data, user: { ...outcome.data.user, displayName } } };
+}
+
+/** Shows a display name the user just saved, without re-reading `/api/me`. */
+export async function rememberDisplayName(displayName: string): Promise<void> {
+  await mutate<MeOutcome>(SESSION_KEY, (current) => withDisplayName(current, displayName), { revalidate: false });
+}

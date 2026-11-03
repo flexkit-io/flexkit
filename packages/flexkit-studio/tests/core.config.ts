@@ -20,6 +20,7 @@ export default defineConfig({
     'tests/login-providers.test.ts',
     'tests/line-diff.test.ts',
     'tests/create-project.test.ts',
+    'tests/onboarding.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',
