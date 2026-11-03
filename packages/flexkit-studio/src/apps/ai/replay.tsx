@@ -27,6 +27,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import { useConfig } from '../../core/config/config-context';
+import { getDesktop } from '../../core/desktop';
 import { Link } from 'react-router-dom';
 import { Button, MessageResponse, Sources, SourcesContent, SourcesTrigger } from '../../ui';
 import useSWR from 'swr';
@@ -1076,7 +1077,9 @@ export function RunArtifactPart({
   message: ReplayDataParts['run-artifact'];
 }): JSX.Element {
   const isDone = message.status === 'done' && message.artifactId;
-  const previewUrl = isDone ? api.getArtifactUrl(message.artifactId ?? '') : '';
+  // The desktop app opens new windows only for web URLs (in the system browser), and its
+  // Studio API answers the Studio window alone, so it previews through the permanent link.
+  const previewUrl = isDone ? (getDesktop() && message.url) || api.getArtifactUrl(message.artifactId ?? '') : '';
   const downloadUrl = isDone ? api.getArtifactUrl(message.artifactId ?? '', { download: true }) : '';
   const bytes = formatBytes(message.sizeBytes);
 
