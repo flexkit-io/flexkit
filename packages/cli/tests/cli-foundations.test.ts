@@ -9,6 +9,7 @@ import { readEventStream, parseEventJson } from '../src/util/sse';
 import { displayPath, formatRelativeTime, truncate } from '../src/util/output/format';
 import { buildApiPath, isAccountApiPath } from '../src/commands/api';
 import { getAccountApiUrl } from '../src/util/client';
+import { getErrorBodyMessage } from '../src/util/error-utils';
 
 describe('project link', () => {
   let dir: string;
@@ -128,6 +129,7 @@ describe('format helpers', () => {
     assert.equal(displayPath('/work/app', 'docs/a.md'), 'docs/a.md');
     assert.equal(displayPath('/work/app', '/tmp/a.md'), '/tmp/a.md');
     assert.equal(displayPath('/work/app', '../other/a.md'), '/work/other/a.md');
+    assert.equal(displayPath('/work/app', '/work/app/..drafts/a.md'), '..drafts/a.md');
   });
 
   it('truncates to one line', () => {
@@ -156,5 +158,18 @@ describe('getAccountApiUrl', () => {
     assert.equal(getAccountApiUrl('https://api.flexkit.io'), 'https://flexkit.io');
     assert.equal(getAccountApiUrl('https://api.flexkit.test/'), 'https://flexkit.test');
     assert.equal(getAccountApiUrl('http://localhost:3005'), 'http://localhost:3005');
+  });
+});
+
+describe('getErrorBodyMessage', () => {
+  it('reads every error body shape the API uses', () => {
+    assert.equal(getErrorBodyMessage({ errorMessage: 'Name is required' }), 'Name is required');
+    assert.equal(getErrorBodyMessage({ errorMessage: ['A', { message: 'B' }] }), 'A\nB');
+    assert.equal(getErrorBodyMessage({ error: 'Not found' }), 'Not found');
+    assert.equal(getErrorBodyMessage({ error: { message: 'Nested' } }), 'Nested');
+    assert.equal(getErrorBodyMessage({ message: 'Schema is managed in the app' }), 'Schema is managed in the app');
+    assert.equal(getErrorBodyMessage({ errorMessage: 'First', message: 'Second' }), 'First');
+    assert.equal(getErrorBodyMessage({}), null);
+    assert.equal(getErrorBodyMessage(undefined), null);
   });
 });

@@ -529,11 +529,12 @@ const add: Subcommand = {
     }
 
     const concurrency = Math.max(1, Math.min((ctx.flags['--concurrency'] as number | undefined) ?? 3, 10));
+    const adding = `Adding ${String(plan.inputs.length)} document${plan.inputs.length === 1 ? '' : 's'}`;
     let done = 0;
 
-    output.spinner(`Adding ${String(plan.inputs.length)} document${plan.inputs.length === 1 ? '' : 's'}`);
+    output.spinner(adding);
 
-    const settled = await runWithConcurrency(plan.inputs, concurrency, async (input) => {
+    const addInput = async (input: (typeof plan.inputs)[number]): Promise<AddResult> => {
       const registered =
         input.kind === 'file' ? await uploadFile(ctx, input, common) : await registerUrl(ctx, input.url, common);
       const result: AddResult = {
@@ -561,12 +562,17 @@ const add: Subcommand = {
         }
       }
 
-      done += 1;
-      output.spinner(
-        `Adding ${String(plan.inputs.length)} document${plan.inputs.length === 1 ? '' : 's'} (${String(done)} done)`
-      );
-
       return result;
+    };
+
+    const settled = await runWithConcurrency(plan.inputs, concurrency, async (input) => {
+      // Count every finished input, failed ones too, so the counter reaches the total.
+      try {
+        return await addInput(input);
+      } finally {
+        done += 1;
+        output.spinner(`${adding} (${String(done)} done)`);
+      }
     });
 
     output.stopSpinner();
@@ -818,9 +824,7 @@ const download: Subcommand = {
 
     if (fs.existsSync(target) && !ctx.flags['--force']) {
       body.destroy();
-      throw new Error(
-        `${displayPath(ctx.client.cwd, target)} already exists. Pass --force to overwrite it.`
-      );
+      throw new Error(`${displayPath(ctx.client.cwd, target)} already exists. Pass --force to overwrite it.`);
     }
 
     await pipeline(body, fs.createWriteStream(target));

@@ -86,15 +86,16 @@ export function formatRelativeTime(value: string | number | null | undefined, no
   return new Date(time).toISOString().slice(0, 10);
 }
 
-/** Shortens text to `max` characters with an ellipsis. */
 /** A path for messages: relative to `cwd` when it is inside it, else absolute. */
 export function displayPath(cwd: string, file: string): string {
   const absolute = path.resolve(cwd, file);
   const relative = path.relative(cwd, absolute);
+  const outside = relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
 
-  return relative && !relative.startsWith('..') && !path.isAbsolute(relative) ? relative : absolute;
+  return relative && !outside ? relative : absolute;
 }
 
+/** Shortens text to `max` characters with an ellipsis. */
 export function truncate(value: string | null | undefined, max = 60): string {
   if (!value) {
     return '';

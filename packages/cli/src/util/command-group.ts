@@ -3,7 +3,7 @@ import parseArguments from './parse-args';
 import type Client from './client';
 import { help, type Command } from '../commands/help';
 import { getCommandName } from './pkg';
-import { isAPIError, isObject } from './error-utils';
+import { isAPIError } from './error-utils';
 import { resolveProjectId } from './project-context';
 
 type ArgSpec = arg.Spec;
@@ -70,23 +70,7 @@ export function getApiErrorMessage(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
   }
 
-  const record = err as unknown as Record<string, unknown>;
-  const { errorMessage } = record;
-
-  if (typeof errorMessage === 'string' && errorMessage) {
-    return errorMessage;
-  }
-
-  if (Array.isArray(errorMessage) && errorMessage.length > 0) {
-    return errorMessage
-      .map((entry) => (isObject(entry) && typeof entry.message === 'string' ? entry.message : String(entry)))
-      .join('\n');
-  }
-
-  if (typeof record.error === 'string' && record.error) {
-    return record.error;
-  }
-
+  // responseError already read the body's message (getErrorBodyMessage).
   if (typeof err.serverMessage === 'string' && err.serverMessage !== 'Response Error') {
     return err.serverMessage;
   }
