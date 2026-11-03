@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { put } from '@vercel/blob/client';
+import { put } from '@vercel/blob';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
@@ -17,6 +17,7 @@ import {
 import { runWithConcurrency } from '../../util/concurrency';
 import { isAPIError } from '../../util/error-utils';
 import {
+  displayPath,
   formatRelativeTime,
   formatStatus,
   printDetails,
@@ -402,7 +403,7 @@ function collectCandidates(client: Client, values: string[]): { files: FileCandi
     const stats = fs.statSync(absolute);
     const toCandidate = (file: string, explicit: boolean): FileCandidate => ({
       path: file,
-      label: path.relative(client.cwd, file) || file,
+      label: displayPath(client.cwd, file),
       size: fs.statSync(file).size,
       explicit,
     });
@@ -436,7 +437,8 @@ async function uploadFile(
   });
   const bytes = await fs.promises.readFile(input.path);
 
-  // The same client upload Studio does (@vercel/blob/client), with the scoped token.
+  // The upload Studio does, signed with the scoped client token. The server `put` is used because
+  // `@vercel/blob/client` refuses to run outside a browser (it checks for `window`).
   await put(token.pathname, bytes, {
     access: 'public',
     contentType: token.mediaType,
@@ -527,11 +529,12 @@ const add: Subcommand = {
     }
 
     const concurrency = Math.max(1, Math.min((ctx.flags['--concurrency'] as number | undefined) ?? 3, 10));
+    const adding = `Adding ${String(plan.inputs.length)} document${plan.inputs.length === 1 ? '' : 's'}`;
     let done = 0;
 
-    output.spinner(`Adding ${String(plan.inputs.length)} document${plan.inputs.length === 1 ? '' : 's'}`);
+    output.spinner(adding);
 
-    const settled = await runWithConcurrency(plan.inputs, concurrency, async (input) => {
+    const addInput = async (input: (typeof plan.inputs)[number]): Promise<AddResult> => {
       const registered =
         input.kind === 'file' ? await uploadFile(ctx, input, common) : await registerUrl(ctx, input.url, common);
       const result: AddResult = {
@@ -559,10 +562,17 @@ const add: Subcommand = {
         }
       }
 
-      done += 1;
-      output.spinner(`Adding ${String(plan.inputs.length)} documents (${String(done)} done)`);
-
       return result;
+    };
+
+    const settled = await runWithConcurrency(plan.inputs, concurrency, async (input) => {
+      // Count every finished input, failed ones too, so the counter reaches the total.
+      try {
+        return await addInput(input);
+      } finally {
+        done += 1;
+        output.spinner(`${adding} (${String(done)} done)`);
+      }
     });
 
     output.stopSpinner();
@@ -814,14 +824,12 @@ const download: Subcommand = {
 
     if (fs.existsSync(target) && !ctx.flags['--force']) {
       body.destroy();
-      throw new Error(
-        `${path.relative(ctx.client.cwd, target) || target} already exists. Pass --force to overwrite it.`
-      );
+      throw new Error(`${displayPath(ctx.client.cwd, target)} already exists. Pass --force to overwrite it.`);
     }
 
     await pipeline(body, fs.createWriteStream(target));
     ctx.client.output.success(
-      `Saved ${path.relative(ctx.client.cwd, target) || target} (${formatBytes(fs.statSync(target).size)})`
+      `Saved ${displayPath(ctx.client.cwd, target)} (${formatBytes(fs.statSync(target).size)})`
     );
 
     return 0;

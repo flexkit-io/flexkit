@@ -55,7 +55,41 @@ export const normalizeError = (error: unknown): Error => {
   return isErrorLike(error) ? Object.assign(new Error(errorMessage), error) : new Error(errorMessage);
 };
 
-export default async function responseError(res: Response, fallbackMessage = null): Promise<APIError> {
+/**
+ * The message an API error body carries. Routes answer in different shapes:
+ * `{ errorMessage: string | string[] | { message }[] }` (automations, skills),
+ * `{ error: string | { message } }` and `{ message }` (deploy). This is the one
+ * place that reads them, so every command shows the same text for a response.
+ */
+export function getErrorBodyMessage(body: unknown): string | null {
+  if (!isObject(body)) {
+    return null;
+  }
+
+  const { errorMessage, error, message } = body;
+
+  if (typeof errorMessage === 'string' && errorMessage) {
+    return errorMessage;
+  }
+
+  if (Array.isArray(errorMessage) && errorMessage.length > 0) {
+    return errorMessage
+      .map((entry) => (isObject(entry) && typeof entry.message === 'string' ? entry.message : String(entry)))
+      .join('\n');
+  }
+
+  if (typeof error === 'string' && error) {
+    return error;
+  }
+
+  if (isObject(error) && typeof error.message === 'string' && error.message) {
+    return error.message;
+  }
+
+  return typeof message === 'string' && message ? message : null;
+}
+
+export default async function responseError(res: Response, fallbackMessage: string | null = null): Promise<APIError> {
   let body: unknown;
 
   if (!res.ok) {
@@ -66,25 +100,13 @@ export default async function responseError(res: Response, fallbackMessage = nul
     }
   }
 
-  let message: string | null = fallbackMessage;
   let details: object | undefined;
 
   if (isObject(body)) {
-    details = body;
-    const maybeError = body.error;
-
-    if (typeof maybeError === 'string') {
-      message = maybeError;
-    }
-
-    if (isObject(maybeError) && typeof maybeError.message === 'string') {
-      const { message: nestedMessage } = maybeError;
-      message = nestedMessage;
-      details = { ...body, ...maybeError };
-    }
+    details = isObject(body.error) ? { ...body, ...body.error } : body;
   }
 
-  return new APIError(message ?? 'Response Error', res, details);
+  return new APIError(getErrorBodyMessage(body) ?? fallbackMessage ?? 'Response Error', res, details);
 }
 
 export function isAPIError(v: unknown): v is APIError {
