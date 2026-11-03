@@ -45,6 +45,13 @@ export interface ProjectSummary {
   team: { id: string; name: string };
 }
 
+/** A team the signed-in user belongs to; owners can create projects in it. */
+export interface HostedTeam {
+  id: string;
+  name: string;
+  role: 'owner' | 'member';
+}
+
 export interface HostedUser {
   avatarUrl: string | null;
   displayName: string | null;

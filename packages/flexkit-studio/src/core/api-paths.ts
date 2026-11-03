@@ -37,8 +37,10 @@ export const userApiPaths = {
   logout: `/api/flexkit/${USER_API_SEGMENT}/auth/logout`,
   /** POST: product events only Studio sees (see core/analytics/product-events.ts). */
   productEvents: `/api/flexkit/${USER_API_SEGMENT}/product-events`,
-  /** Signed-in user plus every project they can open. */
+  /** Signed-in user, every project they can open, and their teams. */
   me: `/api/flexkit/${USER_API_SEGMENT}/me`,
+  /** POST `{ name, teamId? }`: create a project owned by the signed-in user. */
+  myProjects: `/api/flexkit/${USER_API_SEGMENT}/me/projects`,
   /** The signed-in user's notification preferences (desktop kinds, approval email). */
   notificationPreferences: `/api/flexkit/${USER_API_SEGMENT}/me/notification-preferences`,
   /** Web Push: GET the VAPID public key, POST or DELETE this browser's subscription. */

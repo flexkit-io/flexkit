@@ -1,16 +1,19 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { userApiPaths } from '../api-paths';
-import type { HostedUser, ProjectSummary } from './types';
+import type { HostedTeam, HostedUser, ProjectSummary } from './types';
 
 export type HostedSession =
   | { status: 'loading' }
   | { status: 'anonymous' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; user: HostedUser; projects: ProjectSummary[] };
+  | { status: 'ready'; user: HostedUser; projects: ProjectSummary[]; teams: HostedTeam[] };
 
-type MeResponse = { projects: ProjectSummary[]; user: HostedUser };
+/** `teams` is missing from backends older than Studio onboarding. */
+type MeResponse = { projects: ProjectSummary[]; teams?: HostedTeam[]; user: HostedUser };
+
+const SESSION_KEY = 'hosted-session';
 type MeOutcome = { kind: 'anonymous' } | { kind: 'error'; message: string } | { kind: 'ready'; data: MeResponse };
 
 async function fetchMe(): Promise<MeOutcome> {
@@ -44,16 +47,26 @@ export function toHostedSession(outcome: MeOutcome | undefined): HostedSession {
     return { status: 'error', message: outcome.message };
   }
 
-  return { status: 'ready', projects: outcome.data.projects, user: outcome.data.user };
+  return {
+    status: 'ready',
+    projects: outcome.data.projects,
+    teams: outcome.data.teams ?? [],
+    user: outcome.data.user,
+  };
 }
 
 /** Hosted mode: who is signed in and which projects they can open. Fetched once per page load. */
 export function useHostedSession(): HostedSession {
-  const { data } = useSWR('hosted-session', fetchMe, {
+  const { data } = useSWR(SESSION_KEY, fetchMe, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     shouldRetryOnError: false,
   });
 
   return toHostedSession(data);
+}
+
+/** Re-reads `/api/me`, e.g. after creating a project, so its id is known before navigating to it. */
+export async function refreshHostedSession(): Promise<void> {
+  await mutate(SESSION_KEY);
 }

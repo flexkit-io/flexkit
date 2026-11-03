@@ -7,7 +7,7 @@ import { useAuth } from '../../auth/auth-context';
 import { assetSchema } from '../../entities/assets-schema';
 import { tagSchema } from '../../entities/tags-schema';
 import { builtInApps } from '../apps/built-in-apps';
-import type { AppOptions, ProjectSchemaError, ProjectSummary, ProjectUiConfig, StudioMode } from './types';
+import type { AppOptions, HostedTeam, ProjectSchemaError, ProjectSummary, ProjectUiConfig, StudioMode } from './types';
 import type { Entity } from '../types';
 import { useProjectSchema, useProjectSchemas } from './use-project-schemas';
 
@@ -30,6 +30,8 @@ export interface ConfigContext {
   projectIds: string[];
   /** Hosted mode: name, avatar, role and team of each project, known before any schema loads. */
   projectSummaries: ProjectSummary[];
+  /** Hosted mode: the user's teams with their role; owners can create projects in them. */
+  teams: HostedTeam[];
   /** Per project id: why its schema could not be loaded. */
   schemaErrors: { [projectId: string]: ProjectSchemaError };
   isLoadingSchemas: boolean;
@@ -45,9 +47,12 @@ const ConfigContext = createContext<ConfigContext>({
   projects: [],
   projectIds: [],
   projectSummaries: [],
+  teams: [],
   schemaErrors: {},
   isLoadingSchemas: false,
 });
+
+const NO_TEAMS: HostedTeam[] = [];
 
 /** Appends the reserved asset and tag entities to a deployed schema. */
 export function upsertReservedEntities(schema: Entity[]): Entity[] {
@@ -59,12 +64,14 @@ export function upsertReservedEntities(schema: Entity[]): Entity[] {
 export function ConfigProvider({
   projectIds,
   projectSummaries = [],
+  teams = NO_TEAMS,
   mode = 'projects',
   userId,
   children,
 }: {
   projectIds: string[];
   projectSummaries?: ProjectSummary[];
+  teams?: HostedTeam[];
   mode?: StudioMode;
   /** Hosted mode: the signed-in user's id, known before the per-project `/users/me` call. */
   userId?: string;
@@ -106,10 +113,11 @@ export function ConfigProvider({
       projects,
       projectIds,
       projectSummaries,
+      teams,
       schemaErrors: errors,
       isLoadingSchemas: isLoading,
     };
-  }, [currentProjectId, errors, isLoading, mode, projectIds, projectSummaries, projects]);
+  }, [currentProjectId, errors, isLoading, mode, projectIds, projectSummaries, projects, teams]);
 
   return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
 }

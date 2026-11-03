@@ -10,7 +10,21 @@ describe('hosted session state', () => {
     assert.deepEqual(toHostedSession({ kind: 'error', message: 'down' }), { status: 'error', message: 'down' });
 
     const data = { user: { id: 'u', email: 'a@b.io', displayName: null, avatarUrl: null }, projects: [] };
-    assert.deepEqual(toHostedSession({ kind: 'ready', data }), { status: 'ready', user: data.user, projects: [] });
+    // Backends before Studio onboarding send no teams.
+    assert.deepEqual(toHostedSession({ kind: 'ready', data }), {
+      status: 'ready',
+      user: data.user,
+      projects: [],
+      teams: [],
+    });
+
+    const teams = [{ id: 't', name: 'Acme', role: 'owner' as const }];
+    assert.deepEqual(toHostedSession({ kind: 'ready', data: { ...data, teams } }), {
+      status: 'ready',
+      user: data.user,
+      projects: [],
+      teams,
+    });
   });
 
   it('wraps a single schema outcome in the shared state shape', () => {
