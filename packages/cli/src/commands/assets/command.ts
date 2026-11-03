@@ -1,6 +1,7 @@
 import type { Command } from '../help';
 
 export const assetsUploadCommand: Command = {
+  parent: 'assets',
   name: 'upload',
   description: 'Upload files or URLs as project assets. Identical files are deduplicated by content hash.',
   arguments: [
@@ -67,6 +68,7 @@ export const assetsUploadCommand: Command = {
 };
 
 export const assetsExportCommand: Command = {
+  parent: 'assets',
   name: 'export',
   description: 'Export all project assets (files + metadata) into a tarball that can be re-imported.',
   arguments: [

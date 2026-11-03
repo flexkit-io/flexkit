@@ -3,6 +3,7 @@ import { hostname } from 'node:os';
 import path from 'node:path';
 import { startDevConnect, type DevConnectHandle } from '@flexkit/tools/dev';
 import type Client from '../../util/client';
+import { projectApiUrl } from '../../util/client';
 import { isTempBundle } from '../../util/bundle-module';
 import { loadEnvFiles } from '../../util/env-file';
 import { CantFindToolsFile, InvalidToolsFile, loadToolsDefinition, resolveToolsFile } from '../../util/get-tools';
@@ -17,7 +18,7 @@ import { formatDevEvent } from './events';
 const RELOAD_DEBOUNCE_MS = 150;
 
 function getProjectApiOrigin(client: Client, projectId: string): string {
-  return client.apiUrl.replace('https://', `https://${projectId}.`);
+  return projectApiUrl(client.apiUrl, projectId);
 }
 
 function getClientLabel(cwd: string): string {

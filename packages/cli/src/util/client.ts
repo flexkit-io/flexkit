@@ -22,6 +22,7 @@ import userAgent from './user-agent';
 import type { Output } from './output/create-output';
 import responseError from './error-utils';
 import sleep from './sleep';
+import { isValidProjectId } from './project-link';
 
 export interface FetchOptions extends Omit<RequestInit, 'body'> {
   body?: BodyInit | JSONObject;
@@ -40,6 +41,37 @@ export interface ClientOptions extends Stdio {
   flexkitConfig?: FlexkitConfig;
   localConfigPath?: string;
   agent?: Agent;
+}
+
+/**
+ * The host of the account API (`/api/projects`, `/api/me`, `/api/usage/…`):
+ * the API host without its `api.` label, `https://api.flexkit.io` →
+ * `https://flexkit.io`. Project APIs live on `https://<projectId>.api.flexkit.io`.
+ */
+export function getAccountApiUrl(apiUrl: string): string {
+  const url = new URL(apiUrl);
+
+  if (url.hostname.startsWith('api.')) {
+    url.hostname = url.hostname.slice(4);
+  }
+
+  return url.origin;
+}
+
+/**
+ * The API base URL of one project: `https://api.flexkit.io` →
+ * `https://<projectId>.api.flexkit.io`. Throws on an ID that isn't a plain host
+ * label, so a crafted ID can never move requests (and the token) to another host.
+ */
+export function projectApiUrl(apiUrl: string, projectId: string): string {
+  if (!isValidProjectId(projectId)) {
+    throw new Error(`Invalid project ID "${projectId}".`);
+  }
+
+  const url = new URL(apiUrl);
+  url.hostname = `${projectId}.${url.hostname}`;
+
+  return url.href.replace(/\/+$/, '');
 }
 
 export const isJSONObject = (v: BodyInit | JSONObject | undefined): v is JSONObject => {
@@ -113,11 +145,13 @@ export default class Client extends EventEmitter implements Stdio {
   }
 
   private _fetch(_url: string, opts: FetchOptions = {}): Promise<Response> {
-    let baseUrl = this.apiUrl;
+    let baseUrl: string;
 
-    if (opts.projectId) {
-      // Change the base URL to include the project ID as a subdomain
-      baseUrl = this.apiUrl.replace('https://', `https://${opts.projectId}.`);
+    try {
+      // Project routes live on the project's API host; account routes on the account host.
+      baseUrl = opts.projectId ? projectApiUrl(this.apiUrl, opts.projectId) : getAccountApiUrl(this.apiUrl);
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
     }
 
     const url = new URL(_url, baseUrl);
@@ -169,6 +203,11 @@ export default class Client extends EventEmitter implements Stdio {
     );
   }
 
+  /** Sends one authenticated request without retries and returns the response whatever its status. */
+  rawFetch(url: string, opts: FetchOptions = {}): Promise<Response> {
+    return this._fetch(url, opts);
+  }
+
   fetch(url: string, opts: FetchOptions & { json: false }): Promise<Response>;
   fetch<T extends object>(url: string, opts?: FetchOptions): Promise<JsonResponse<T>>;
   fetch(url: string, opts: FetchOptions = {}): Promise<Response | null> {
@@ -206,7 +245,7 @@ export default class Client extends EventEmitter implements Stdio {
     url: string | URL,
     opts?: FetchOptions
   ): AsyncGenerator<T & { pagination: PaginationOptions }> {
-    const endpoint = typeof url === 'string' ? new URL(url, this.apiUrl) : new URL(url.href);
+    const endpoint = typeof url === 'string' ? new URL(url, getAccountApiUrl(this.apiUrl)) : new URL(url.href);
 
     if (!endpoint.searchParams.has('limit')) {
       endpoint.searchParams.set('limit', '100');

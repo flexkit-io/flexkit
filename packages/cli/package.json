@@ -46,6 +46,7 @@
     "@types/load-json-file": "2.0.7",
     "@types/node": "^22.1.0",
     "@types/write-json-file": "2.2.1",
+    "@vercel/blob": "0.25.0",
     "ansi-escapes": "4.3.2",
     "arg": "5.0.2",
     "async-listen": "3.0.1",

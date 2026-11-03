@@ -1,6 +1,7 @@
 import type { Command } from '../help';
 
 export const projectListCommand: Command = {
+  parent: 'project',
   name: 'ls',
   description: 'List projects, or get a single project by name or id.',
   arguments: [
@@ -35,6 +36,7 @@ export const projectListCommand: Command = {
 };
 
 export const projectAddCommand: Command = {
+  parent: 'project',
   name: 'add',
   description: 'Create a project.',
   arguments: [
@@ -65,6 +67,7 @@ export const projectAddCommand: Command = {
 };
 
 export const projectRemoveCommand: Command = {
+  parent: 'project',
   name: 'rm',
   description: 'Remove a project by id or name.',
   arguments: [
