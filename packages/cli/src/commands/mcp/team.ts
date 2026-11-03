@@ -1,4 +1,5 @@
 import type Client from '../../util/client';
+import { getAccountApiUrl } from '../../util/client';
 import { findProjectLink } from '../../util/project-link';
 
 interface MeResponse {
@@ -23,7 +24,5 @@ export async function findTeamId(client: Client, projectId: string): Promise<str
 
 /** The Dashboard origin next to the API host: `https://api.flexkit.io` → `https://flexkit.io`. */
 export function dashboardOrigin(apiUrl: string): string {
-  const url = new URL(apiUrl);
-
-  return `https://${url.host.startsWith('api.') ? url.host.slice(4) : url.host}`;
+  return getAccountApiUrl(apiUrl);
 }

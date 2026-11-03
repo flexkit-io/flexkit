@@ -188,6 +188,9 @@ async function decideApproval(opts: TurnOptions, approval: ChatApprovalData): Pr
       });
     } catch (err: unknown) {
       client.output.warn(getApiErrorMessage(err));
+
+      // The approval is still pending, so the turn stays blocked on it.
+      return 'pending';
     }
 
     return 'decided';
@@ -337,7 +340,13 @@ export async function streamTurn(
 
       if (action.kind === 'question') {
         settled.add(action.question.questionId);
-        await answerQuestion(opts, chatId, action.question);
+
+        // The turn stays blocked on an answer the server refused: stop and show how to answer later.
+        if (!(await answerQuestion(opts, chatId, action.question))) {
+          waitingAction = action;
+
+          return false;
+        }
       } else if (action.kind === 'approval') {
         if ((await decideApproval(opts, action.approval)) === 'pending') {
           waitingAction = action;

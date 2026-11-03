@@ -266,7 +266,10 @@ export async function streamRun(
       }
     } catch (err: unknown) {
       // 4xx answers are final; dropped connections are retried from the cursor.
-      if ((err as { status?: number }).status !== undefined || ++failures >= 5) {
+      const { status } = err as { status?: number };
+      const isClientError = status !== undefined && status >= 400 && status < 500;
+
+      if (isClientError || ++failures >= 5) {
         throw err;
       }
 

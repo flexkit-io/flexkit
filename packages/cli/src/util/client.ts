@@ -58,6 +58,22 @@ export function getAccountApiUrl(apiUrl: string): string {
   return url.origin;
 }
 
+/**
+ * The API base URL of one project: `https://api.flexkit.io` →
+ * `https://<projectId>.api.flexkit.io`. Throws on an ID that isn't a plain host
+ * label, so a crafted ID can never move requests (and the token) to another host.
+ */
+export function projectApiUrl(apiUrl: string, projectId: string): string {
+  if (!isValidProjectId(projectId)) {
+    throw new Error(`Invalid project ID "${projectId}".`);
+  }
+
+  const url = new URL(apiUrl);
+  url.hostname = `${projectId}.${url.hostname}`;
+
+  return url.href.replace(/\/+$/, '');
+}
+
 export const isJSONObject = (v: BodyInit | JSONObject | undefined): v is JSONObject => {
   return typeof v === 'object' && v.constructor === Object;
 };
@@ -129,14 +145,14 @@ export default class Client extends EventEmitter implements Stdio {
   }
 
   private _fetch(_url: string, opts: FetchOptions = {}): Promise<Response> {
-    if (opts.projectId !== undefined && !isValidProjectId(opts.projectId)) {
-      return Promise.reject(new Error(`Invalid project ID "${opts.projectId}".`));
-    }
+    let baseUrl: string;
 
-    // Project routes live on the project's API host; account routes on the account host.
-    const baseUrl = opts.projectId
-      ? this.apiUrl.replace('https://', `https://${opts.projectId}.`)
-      : getAccountApiUrl(this.apiUrl);
+    try {
+      // Project routes live on the project's API host; account routes on the account host.
+      baseUrl = opts.projectId ? projectApiUrl(this.apiUrl, opts.projectId) : getAccountApiUrl(this.apiUrl);
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
 
     const url = new URL(_url, baseUrl);
 

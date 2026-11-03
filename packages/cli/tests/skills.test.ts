@@ -281,4 +281,17 @@ describe('planSkillPush', () => {
       ['gone']
     );
   });
+
+  it('prunes nothing while a file is invalid', () => {
+    const plan = planSkillPush(
+      [local({ file: 'pricing.md', name: 'pricing', description: undefined })],
+      [remote({ id: 'gone', name: 'gone' })],
+      { prune: true }
+    );
+
+    assert.deepEqual(
+      plan.actions.map((action) => action.type),
+      ['invalid']
+    );
+  });
 });

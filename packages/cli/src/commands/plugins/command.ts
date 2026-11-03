@@ -110,7 +110,7 @@ export const pluginsRemoveCommand: Command = {
 export const pluginsConnectCommand: Command = {
   name: 'connect',
   description:
-    "Connect an account to a plugin. Sign-in plugins open the plugin's page in Studio, where you choose Connect, and the CLI waits until the account appears. Token and credentials plugins are connected right here: pass the values with --token or --set, or answer the prompts. Connecting installs the plugin when needed.",
+    "Connect an account to a plugin. Sign-in plugins open the plugin's page in Studio, where you choose Connect, and the CLI waits until the account appears. Token and credentials plugins are connected right here: pass the values with --api-token or --set, or answer the prompts. Connecting installs the plugin when needed.",
   arguments: [{ name: 'pluginId', required: true }],
   options: [
     {
@@ -123,7 +123,7 @@ export const pluginsConnectCommand: Command = {
       deprecated: false,
     },
     {
-      name: 'token',
+      name: 'api-token',
       shorthand: null,
       type: String,
       argument: 'VALUE|@FILE|-',
@@ -180,7 +180,7 @@ export const pluginsConnectCommand: Command = {
     },
     {
       name: 'Connect a token plugin from an environment variable',
-      value: 'echo "$TINYBIRD_TOKEN" | flexkit plugins connect tinybird --token -',
+      value: 'echo "$TINYBIRD_TOKEN" | flexkit plugins connect tinybird --api-token -',
     },
   ],
 };

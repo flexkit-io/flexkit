@@ -357,7 +357,8 @@ function describeSource(source: SkillSource): string {
  * remote skill by its `id` front matter first, then by name (case-insensitive,
  * as the API treats names). Skills from code or plugins are never written:
  * code skills sync from flexkit.tools.ts and plugin skills update with their
- * plugin. Remote Studio skills no file matched are deleted only with `prune`.
+ * plugin. Remote Studio skills no file matched are deleted only with `prune`,
+ * and only when every file is valid.
  */
 export function planSkillPush(locals: LocalSkill[], remotes: SkillDto[], options: { prune?: boolean } = {}): PushPlan {
   const actions: PushAction[] = [];
@@ -448,8 +449,10 @@ export function planSkillPush(locals: LocalSkill[], remotes: SkillDto[], options
   }
 
   const unmatched = remotes.filter((skill) => skill.source === 'studio' && !matched.has(skill.id));
+  // An invalid file may be the only match of a remote skill, so prune nothing until every file is valid.
+  const hasInvalid = actions.some((action) => action.type === 'invalid');
 
-  if (options.prune) {
+  if (options.prune && !hasInvalid) {
     actions.push(...unmatched.map((remote): PushAction => ({ type: 'delete', remote })));
   }
 

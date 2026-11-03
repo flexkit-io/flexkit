@@ -1,4 +1,5 @@
 import sleep from './sleep';
+import { projectApiUrl } from './client';
 import type Client from './client';
 
 export type GraphQLError = {
@@ -31,7 +32,7 @@ function isRetryableNetworkError(error: unknown): boolean {
 }
 
 export function getProjectApiUrl(client: Client, projectId: string): string {
-  return client.apiUrl.replace('https://', `https://${projectId}.`);
+  return projectApiUrl(client.apiUrl, projectId);
 }
 
 /**

@@ -187,9 +187,12 @@ const main = async (): Promise<number | undefined> => {
   const apiUrl = (argv.flags['--api'] ?? process.env.FLEXKIT_API_URL ?? config.api ?? DEFAULT_API_URL).replace(/\/+$/, '');
 
   // FLEXKIT_TOKEN authenticates CI and scripts without `flexkit login`; --token still wins.
+  // login and logout always act on the stored session: logging out must not revoke the
+  // env token, and a new login must be saved.
   const envToken = process.env.FLEXKIT_TOKEN?.trim();
+  const managesStoredSession = argv.args[2] === 'login' || argv.args[2] === 'logout';
 
-  if (envToken && !argv.flags['--token']) {
+  if (envToken && !argv.flags['--token'] && !managesStoredSession) {
     authConfig = { ...authConfig, token: envToken, skipWrite: true };
   }
 

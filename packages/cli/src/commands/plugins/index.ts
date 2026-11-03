@@ -380,7 +380,7 @@ async function connectToken(
   scope: PluginScope
 ): Promise<number> {
   const { client } = ctx;
-  const flag = ctx.flags['--token'] as string | undefined;
+  const flag = ctx.flags['--api-token'] as string | undefined;
   const field: CredentialField = {
     key: 'token',
     label: connect.tokenLabel,
@@ -394,7 +394,7 @@ async function connectToken(
 
   if (!token) {
     if (!client.stdin.isTTY) {
-      client.output.error(`Missing ${connect.tokenLabel}. Pass --token VALUE, --token @file or --token - (stdin).`);
+      client.output.error(`Missing ${connect.tokenLabel}. Pass --api-token VALUE, --api-token @file or --api-token - (stdin).`);
 
       return 1;
     }
@@ -505,7 +505,7 @@ const connect: Subcommand = {
   needsProject: true,
   flags: {
     '--scope': String,
-    '--token': String,
+    '--api-token': String,
     '--method': String,
     '--set': [String] as [StringConstructor],
     '--reconnect': String,
@@ -561,9 +561,9 @@ const connect: Subcommand = {
       return connectToken(ctx, pluginId, connectInfo, scope);
     }
 
-    if (ctx.flags['--token'] || ctx.flags['--set'] || ctx.flags['--method'] || ctx.flags['--reconnect']) {
+    if (ctx.flags['--api-token'] || ctx.flags['--set'] || ctx.flags['--method'] || ctx.flags['--reconnect']) {
       client.output.error(
-        `${plugin.name} connects with a sign-in in Studio; --token, --set, --method and --reconnect do not apply.`
+        `${plugin.name} connects with a sign-in in Studio; --api-token, --set, --method and --reconnect do not apply.`
       );
 
       return 1;

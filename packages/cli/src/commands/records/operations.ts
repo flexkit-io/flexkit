@@ -531,6 +531,14 @@ export function buildUpdateInput(
         checkSingle(field, ids);
 
         const linked = getLinkedIds(current, field);
+
+        // Only the first RELATIONSHIP_LIMIT links are read, so a diff against them would be wrong.
+        if (field.kind === 'ref-multiple' && linked.length >= RELATIONSHIP_LIMIT) {
+          throw new Error(
+            `${field.name} has ${String(RELATIONSHIP_LIMIT)} or more links, too many to replace safely. Use \`flexkit query\` with a mutation that connects or disconnects the links you mean.`
+          );
+        }
+
         const removed = linked.filter((item) => !ids.includes(item));
         const added = ids.filter((item) => !linked.includes(item));
         const operations: Json[] = [];

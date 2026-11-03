@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import { getAccountApiUrl } from '../../util/client';
 
 /**
  * Pure helpers for `flexkit mcp`: the hosted MCP server URL and merging a
@@ -28,10 +29,9 @@ export function mcpOrigin(apiUrl: string, env: Record<string, string | undefined
     return override.replace(/\/+$/, '');
   }
 
-  const url = new URL(apiUrl);
-  const host = url.host.startsWith('api.') ? url.host.slice(4) : url.host;
+  const url = new URL(getAccountApiUrl(apiUrl));
 
-  return `https://mcp.${host}`;
+  return `${url.protocol}//mcp.${url.host}`;
 }
 
 export function buildMcpUrl({

@@ -56,20 +56,15 @@ function parseLink(raw: string): ProjectLink | null {
   }
 }
 
-/**
- * Finds the nearest `.flexkit/project.json`, walking up from `startDir` to the
- * filesystem root, so commands run from a subfolder of a linked project too.
- */
-export function findProjectLink(startDir: string): FoundProjectLink | null {
+/** The nearest `.flexkit/project.json`, walking up from `startDir` to the filesystem root. */
+export function findLinkFile(startDir: string): string | null {
   let dir = path.resolve(startDir);
 
   for (;;) {
     const file = getLinkFilePath(dir);
 
     if (fs.existsSync(file)) {
-      const link = parseLink(fs.readFileSync(file, 'utf8'));
-
-      return link ? { link, file } : null;
+      return file;
     }
 
     const parent = path.dirname(dir);
@@ -80,6 +75,23 @@ export function findProjectLink(startDir: string): FoundProjectLink | null {
 
     dir = parent;
   }
+}
+
+/**
+ * Reads the nearest `.flexkit/project.json`, so commands run from a subfolder
+ * of a linked project too. Returns null when there is none or it is invalid;
+ * use `findLinkFile` to tell the two apart.
+ */
+export function findProjectLink(startDir: string): FoundProjectLink | null {
+  const file = findLinkFile(startDir);
+
+  if (!file) {
+    return null;
+  }
+
+  const link = parseLink(fs.readFileSync(file, 'utf8'));
+
+  return link ? { link, file } : null;
 }
 
 /**

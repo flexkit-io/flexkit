@@ -1,6 +1,6 @@
 import type Client from './client';
 import { getCommandName } from './pkg';
-import { findProjectLink } from './project-link';
+import { findLinkFile, findProjectLink, isValidProjectId } from './project-link';
 
 export type ProjectSource = 'flag' | 'env' | 'link' | 'config';
 
@@ -20,6 +20,25 @@ export interface ResolvedProject {
  * Prints an error and returns null when none of them names a single project.
  */
 export function resolveProjectId(client: Client, projectFlag: string | undefined): ResolvedProject | null {
+  const resolved = findProject(client, projectFlag);
+
+  if (resolved && !isValidProjectId(resolved.projectId)) {
+    client.output.error(`Invalid project ID "${resolved.projectId}" (from ${SOURCE_LABELS[resolved.source]}).`);
+
+    return null;
+  }
+
+  return resolved;
+}
+
+const SOURCE_LABELS: Record<ProjectSource, string> = {
+  flag: '--project',
+  env: 'FLEXKIT_PROJECT_ID',
+  link: '.flexkit/project.json',
+  config: 'flexkit.config.ts',
+};
+
+function findProject(client: Client, projectFlag: string | undefined): ResolvedProject | null {
   if (projectFlag) {
     return { projectId: projectFlag, source: 'flag' };
   }
@@ -30,10 +49,22 @@ export function resolveProjectId(client: Client, projectFlag: string | undefined
     return { projectId: fromEnv, source: 'env' };
   }
 
-  const found = findProjectLink(client.cwd);
+  const linkFile = findLinkFile(client.cwd);
 
-  if (found) {
-    return { projectId: found.link.projectId, source: 'link' };
+  if (linkFile) {
+    const found = findProjectLink(client.cwd);
+
+    if (found) {
+      return { projectId: found.link.projectId, source: 'link' };
+    }
+
+    // Don't fall back to another project when the link is broken: a destructive
+    // command would silently act on the wrong one.
+    client.output.error(
+      `${linkFile} is not a valid project link. Run ${getCommandName('link')} again, or pass --project <id>.`
+    );
+
+    return null;
   }
 
   const projects = client.flexkitConfig?.projects ?? [];

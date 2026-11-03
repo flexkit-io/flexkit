@@ -605,7 +605,11 @@ const push: Subcommand = {
 
     ctx.client.output.stopSpinner();
 
-    const plan = planSkillPush(locals, remotes, { prune });
+    const plan = planSkillPush(locals, remotes, { prune: prune && parseErrors.length === 0 });
+
+    if (prune && plan.unmatched.length > 0 && [...parseErrors, ...plan.actions].some((a) => a.type === 'invalid')) {
+      ctx.client.output.warn('Nothing is pruned while a file is invalid. Fix the files marked invalid and push again.');
+    }
     const actions = [...parseErrors, ...plan.actions];
     const writes = actions.filter((action) => ['create', 'update', 'delete'].includes(action.type));
     const deletes = actions.filter((action) => action.type === 'delete').length;
