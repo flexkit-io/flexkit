@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.1.22
+
+### Patch Changes
+
+- 952f627: `flexkit logs --json` prints the page as an object, `{ type, since, until, limit, data, nextBefore }`, so a script can read `nextBefore` to fetch the next page with `--before`. Entries are in `.data`, newest first; `--follow --json` still prints one entry per line.
+
 ## 0.1.21
 
 ### Patch Changes
