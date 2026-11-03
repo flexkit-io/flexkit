@@ -92,7 +92,7 @@ function reportApprovalError(client: Client, err: unknown): number {
 
     if (err.status === 403 && /user session/i.test(message)) {
       client.output.error(
-        `Approvals can only be read and decided by a signed-in member, not with an API token. Run ${getCommandName('login')} and try again.`
+        `Approving and denying needs a signed-in member, not an API token (tokens can only list and inspect approvals). Run ${getCommandName('login')} and try again.`
       );
 
       return 1;

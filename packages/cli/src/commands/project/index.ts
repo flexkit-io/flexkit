@@ -5,7 +5,18 @@ import { handleError } from '../../util/handle-error';
 import { getCommandName } from '../../util/pkg';
 import { isAPIError, isObject } from '../../util/error-utils';
 import { help } from '../help';
-import { projectAddCommand, projectCommand, projectListCommand, projectRemoveCommand } from './command';
+import { reportError } from '../../util/command-group';
+import { printJson } from '../../util/output/format';
+import { resolveProjectId } from '../../util/project-context';
+import {
+  projectAddCommand,
+  projectCommand,
+  projectListCommand,
+  projectPauseCommand,
+  projectRemoveCommand,
+  projectUnpauseCommand,
+} from './command';
+import { describePauseResult, describePauseState, isConfirmedName, type PauseResult, type PauseState } from './pause';
 
 interface Team {
   id: string;
@@ -271,6 +282,79 @@ async function runRemove(
   return 0;
 }
 
+interface PauseOptions {
+  jsonOutput: boolean;
+  projectFlag: string | undefined;
+  yes: boolean;
+}
+
+/** `flexkit project pause|unpause`: acts on the resolved project (`--project`, env, link). */
+async function runPause(client: Client, action: 'pause' | 'unpause', options: PauseOptions): Promise<number> {
+  const resolved = resolveProjectId(client, options.projectFlag);
+
+  if (!resolved) {
+    return 1;
+  }
+
+  const { projectId } = resolved;
+  const { output } = client;
+
+  try {
+    const state = await client.fetch<PauseState>('/pause', { projectId });
+    let body: { confirmProjectName: string } | undefined;
+
+    if (action === 'pause') {
+      if (state.pausedBy === 'spend') {
+        output.error(`${describePauseState(state)} Raise the monthly limit or switch to Unlimited in Billing instead.`);
+
+        return 1;
+      }
+
+      if (!options.yes) {
+        if (!client.stdin.isTTY) {
+          output.error(
+            `Pausing "${state.projectName}" needs confirmation. Pass --yes when running without a terminal.`
+          );
+
+          return 1;
+        }
+
+        output.log(
+          `${describePauseState(state)} Pausing stops GraphQL, automations and agent chat until it is unpaused.`
+        );
+
+        const typed = await client.input.text({ message: `Type the project name (${state.projectName}) to pause it:` });
+
+        if (!isConfirmedName(typed, state.projectName)) {
+          output.error('The name does not match; nothing changed.');
+
+          return 1;
+        }
+      }
+
+      body = { confirmProjectName: state.projectName };
+    }
+
+    output.spinner(action === 'pause' ? 'Pausing the project' : 'Unpausing the project');
+    const result = await client.fetch<PauseResult>(`/${action}`, { projectId, method: 'POST', body });
+    output.stopSpinner();
+
+    if (options.jsonOutput) {
+      printJson(client, result);
+
+      return 0;
+    }
+
+    output.success(describePauseResult(result, state.projectName));
+
+    return 0;
+  } catch (err: unknown) {
+    output.stopSpinner();
+
+    return reportError(client, err);
+  }
+}
+
 function printHelp(client: Client, subcommand: string | undefined): number {
   const { columns } = client.stderr;
 
@@ -298,6 +382,18 @@ function printHelp(client: Client, subcommand: string | undefined): number {
     return 2;
   }
 
+  if (subcommand === 'pause') {
+    client.output.print(help(projectPauseCommand, { columns }));
+
+    return 2;
+  }
+
+  if (subcommand === 'unpause') {
+    client.output.print(help(projectUnpauseCommand, { columns }));
+
+    return 2;
+  }
+
   client.output.error(`The ${subcommand} subcommand does not exist`);
 
   return 1;
@@ -311,6 +407,10 @@ export default async function main(client: Client): Promise<number> {
       '--help': Boolean,
       '-h': '--help',
       '--json': Boolean,
+      '--yes': Boolean,
+      '-y': '--yes',
+      '--project': String,
+      '-p': '--project',
     });
   } catch (err: unknown) {
     handleError(err);
@@ -332,6 +432,14 @@ export default async function main(client: Client): Promise<number> {
     );
 
     return 1;
+  }
+
+  if (subcommand === 'pause' || subcommand === 'unpause') {
+    return runPause(client, subcommand, {
+      jsonOutput,
+      projectFlag: argv.flags['--project'],
+      yes: argv.flags['--yes'] ?? false,
+    });
   }
 
   try {

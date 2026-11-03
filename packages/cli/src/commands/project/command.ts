@@ -97,11 +97,82 @@ export const projectRemoveCommand: Command = {
   ],
 };
 
+const pauseOptions: Command['options'] = [
+  {
+    name: 'project',
+    shorthand: 'p',
+    type: String,
+    argument: 'ID',
+    description: 'Project to use (default: linked project)',
+    deprecated: false,
+  },
+  {
+    name: 'json',
+    shorthand: null,
+    type: Boolean,
+    description: 'Print the API response as JSON on stdout',
+    deprecated: false,
+  },
+];
+
+export const projectPauseCommand: Command = {
+  parent: 'project',
+  name: 'pause',
+  description:
+    "Pause the project (Pro plans): GraphQL, automations and agent chat stop until an owner unpauses it. Asks you to type the project's name, as the dashboard does. Owners only, signed in with `flexkit login`; API tokens can't pause a project.",
+  arguments: [],
+  options: [
+    ...pauseOptions,
+    {
+      name: 'yes',
+      shorthand: 'y',
+      type: Boolean,
+      description: 'Skip typing the project name (needed without a terminal)',
+      deprecated: false,
+    },
+  ],
+  examples: [
+    {
+      name: 'Pause the linked project',
+      value: 'flexkit project pause',
+    },
+    {
+      name: 'Pause another project from a script',
+      value: 'flexkit project pause --project 3pbqd8xkz1 --yes',
+    },
+  ],
+};
+
+export const projectUnpauseCommand: Command = {
+  parent: 'project',
+  name: 'unpause',
+  description:
+    'Bring a paused project back online. A pause from on-demand usage limits or an overdue invoice is lifted in Billing instead. Owners only, signed in with `flexkit login`.',
+  arguments: [],
+  options: pauseOptions,
+  examples: [
+    {
+      name: 'Unpause the linked project',
+      value: 'flexkit project unpause',
+    },
+    {
+      name: 'Unpause another project',
+      value: 'flexkit project unpause --project 3pbqd8xkz1',
+    },
+  ],
+};
+
 export const projectCommand: Command = {
   name: 'project',
   description: 'Manage projects.',
   arguments: [],
-  subcommands: [projectListCommand, projectAddCommand, projectRemoveCommand],
+  subcommands: [
+    projectListCommand,
+    projectAddCommand,
+    projectRemoveCommand,
+    projectPauseCommand,
+    projectUnpauseCommand,
+  ],
   options: [
     {
       name: 'json',
@@ -123,6 +194,10 @@ export const projectCommand: Command = {
     {
       name: 'Remove a project',
       value: 'flexkit project rm my-project-id',
+    },
+    {
+      name: 'Pause the linked project',
+      value: 'flexkit project pause',
     },
   ],
 };

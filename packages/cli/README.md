@@ -43,12 +43,17 @@ flexkit runs logs <runId> --follow
 flexkit skills pull ./skills      # keep skills in git; push them back with `flexkit skills push`
 flexkit knowledge add ./docs --wait
 
+flexkit logs --since 1h --follow  # API request logs; also `logs webhooks` and `logs llm`
+flexkit webhooks ls
+flexkit members invite ana@example.com --role developer
+flexkit tokens create ci --role developer   # for FLEXKIT_TOKEN in CI
+
 flexkit api /automations          # call any API endpoint with your credentials
 ```
 
 Every command prints help with examples: `flexkit <command> --help`. Commands that read data accept `--json` and print it on stdout, so the output can be piped to `jq`.
 
-In CI, set `FLEXKIT_TOKEN` and `FLEXKIT_PROJECT_ID` instead of logging in.
+In CI, set `FLEXKIT_TOKEN` and `FLEXKIT_PROJECT_ID` instead of logging in. API tokens can't manage tokens or members, pause the project, or read anyone's chats and agent memory; those need `flexkit login`.
 
 ## Documentation
 

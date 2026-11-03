@@ -16,6 +16,12 @@ import knowledgeCommand from './knowledge';
 import pluginsCommand from './plugins';
 import usageCommand from './usage';
 import mcpCommand from './mcp';
+import tokensCommand from './tokens';
+import membersCommand from './members';
+import webhooksCommand from './webhooks';
+import corsCommand from './cors';
+import logsCommand from './logs';
+import memoryCommand from './memory';
 
 type CommandHandler = (client: Client) => Promise<number>;
 
@@ -42,4 +48,10 @@ export const commandRegistry: Record<string, CommandHandler | undefined> = {
   plugins: pluginsCommand,
   usage: usageCommand,
   mcp: mcpCommand,
+  tokens: tokensCommand,
+  members: membersCommand,
+  webhooks: webhooksCommand,
+  cors: corsCommand,
+  logs: logsCommand,
+  memory: memoryCommand,
 };

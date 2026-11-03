@@ -9,12 +9,15 @@ export const help = (): string => `
 
       link                 [nameOrId]  Link the current folder to a project
       unlink                           Remove the link of the current folder
-      project                          Manage projects (ls, add, rm)
+      project                          Manage projects (ls, add, rm, pause, unpause)
       deploy                           Deploy the current schema and observe progress in real time
       deployments                      List and inspect schema deployments
       schema                           Pull, show and diff the deployed schema
       dev                              Run the custom tools and code skills from flexkit.tools.ts locally
       tools                            Manage the production custom-tools catalog
+      webhooks                         Manage the project's webhooks
+      cors                             Manage the origins allowed to call the API from a browser
+      logs                 [type]      Show API, webhook and AI request logs
 
   ${chalk.dim('Data:')}
 
@@ -35,11 +38,14 @@ export const help = (): string => `
       knowledge                        Upload, search and link knowledge documents
       plugins                          Install and connect plugins
       mcp                              Connect AI clients to the project's MCP server
+      memory                           Read and edit what the agent remembers about you
 
   ${chalk.dim('Account:')}
 
       activity                         Read the project's activity inbox
       usage                            Show usage and limits
+      members                          Invite, remove and change the roles of project members
+      tokens                           Create, list and revoke project API tokens
       login                [email]     Logs into your Flexkit account
       logout                           Logs out of your account
       whoami                           Shows the username of the currently logged in user
