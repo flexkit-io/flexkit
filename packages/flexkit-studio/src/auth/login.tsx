@@ -61,9 +61,14 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
       <div className="fk:container fk:relative fk:h-[calc(100vh-3rem)] fk:flex fk:items-center fk:justify-center fk:lg:px-0">
         <div className="fk:w-full fk:lg:p-8">
           <div className="fk:mx-auto fk:flex fk:flex-col fk:justify-center fk:sm:w-[350px]">
-            <h1 className="fk:mb-4 fk:text-2xl fk:text-center fk:font-medium fk:tracking-tight">
-              Login to Flexkit Studio
+            <h1 className="fk:mb-1 fk:text-2xl fk:text-center fk:font-medium fk:tracking-tight">
+              {isHosted ? 'Welcome to Flexkit' : 'Sign in to Flexkit Studio'}
             </h1>
+            {isHosted ? (
+              <p className="fk:mb-4 fk:text-sm fk:text-center fk:text-muted-foreground">Sign in or create an account</p>
+            ) : (
+              <div className="fk:mb-3" />
+            )}
             {!isHosted && projectIds.length > 1 ? (
               <div className="fk:flex-col fk:space-y-2 fk:mb-3">
                 <Label className="fk:text-sm fk:font-normal fk:text-left fk:text-muted-foreground" htmlFor="project">
@@ -99,9 +104,6 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
               />
             ) : (
               <>
-                <p className="fk:mt-2 fk:mb-2 fk:text-sm fk:text-left fk:text-muted-foreground">
-                  Choose login provider
-                </p>
                 <div className="fk:flex fk:flex-col fk:space-y-6">
                   {error ? (
                     <div className="fk:flex fk:flex-col fk:items-center fk:space-y-2">

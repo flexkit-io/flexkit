@@ -6,12 +6,12 @@ import { Login } from '../../auth/login';
 import { ConfigProvider } from '../../core/config/config-context';
 import { DesktopEffects } from '../../core/desktop-effects';
 import { pickStartProjectId, readLastProjectId } from '../../core/config/last-project';
-import type { ProjectSummary, StudioMode } from '../../core/config/types';
+import type { HostedTeam, ProjectSummary, StudioMode } from '../../core/config/types';
 import { useHostedSession } from '../../core/config/use-hosted-session';
 import { GraphQLProvider } from '../../graphql-client/graphql-context';
 import { ActionsManager } from '../../entities/actions-manager';
 import { Loading } from '../components/loading';
-import { NoProjects } from '../components/no-projects';
+import { FirstProject } from '../components/first-project';
 import { Alert, AlertDescription, AlertTitle } from '../primitives/alert';
 import { Button } from '../primitives/button';
 import { DrawerModalProvider } from '../drawer-modal-context';
@@ -22,16 +22,24 @@ function Providers({
   mode,
   projectIds,
   projectSummaries,
+  teams,
   userId,
 }: {
   mode: StudioMode;
   projectIds: string[];
   projectSummaries?: ProjectSummary[];
+  teams?: HostedTeam[];
   userId?: string;
 }): JSX.Element {
   return (
     <AuthProvider mode={mode}>
-      <ConfigProvider mode={mode} projectIds={projectIds} projectSummaries={projectSummaries} userId={userId}>
+      <ConfigProvider
+        mode={mode}
+        projectIds={projectIds}
+        projectSummaries={projectSummaries}
+        teams={teams}
+        userId={userId}
+      >
         <GraphQLProvider>
           <DrawerModalProvider>
             <ActionsManager />
@@ -102,7 +110,7 @@ function HostedRoot(): JSX.Element {
   const projectIds = session.projects.map((project) => project.id);
 
   if (projectIds.length === 0) {
-    return <NoProjects user={session.user} />;
+    return <FirstProject teams={session.teams} user={session.user} />;
   }
 
   if (location.pathname === '/') {
@@ -111,7 +119,15 @@ function HostedRoot(): JSX.Element {
     return <NavigateCompat replace to={`/${startProjectId ?? ''}`} />;
   }
 
-  return <Providers mode="hosted" projectIds={projectIds} projectSummaries={session.projects} userId={session.user.id} />;
+  return (
+    <Providers
+      mode="hosted"
+      projectIds={projectIds}
+      projectSummaries={session.projects}
+      teams={session.teams}
+      userId={session.user.id}
+    />
+  );
 }
 
 export function Root({ projectIds }: { projectIds?: string[] }): JSX.Element {
