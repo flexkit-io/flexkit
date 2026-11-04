@@ -667,6 +667,27 @@ function ComposerDraftSync({ draftKey }: { draftKey: string }): null {
   return null;
 }
 
+/** Puts a message that could not be sent back into the composer (and so into its stored draft). */
+function ComposerRestore({
+  onRestored,
+  text,
+}: {
+  onRestored: (_text: null) => void;
+  text: string | null;
+}): null {
+  const { textInput } = usePromptInputController();
+  const { setInput } = textInput;
+
+  useEffect(() => {
+    if (text !== null) {
+      setInput(text);
+      onRestored(null);
+    }
+  }, [onRestored, setInput, text]);
+
+  return null;
+}
+
 function ChatComposer({
   api,
   effort,
@@ -1382,6 +1403,8 @@ export function AgentChatPage(): JSX.Element {
   // going back to this page or reloading it never sends it again.
   const onboardingPrompt = (location.state as OnboardingNavigationState | null)?.onboardingPrompt;
   const handledPromptKeyRef = useRef<string | null>(null);
+  // A first message that failed to send goes back into the composer, so it is not lost.
+  const [promptToRestore, setPromptToRestore] = useState<string | null>(null);
 
   useEffect(() => {
     if (
@@ -1401,6 +1424,7 @@ export function AgentChatPage(): JSX.Element {
     handledPromptKeyRef.current = location.key;
     navigate(location.pathname, { replace: true, state: null });
     void handleSend(onboardingPrompt, []).catch((error: unknown) => {
+      setPromptToRestore(onboardingPrompt);
       setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
     });
     // handleSend is redeclared every render; the guards above make this run once per navigation.
@@ -1600,6 +1624,7 @@ export function AgentChatPage(): JSX.Element {
   return (
     <PromptInputProvider>
       <ComposerDraftSync draftKey={getComposerDraftKey(chatProjectId, chatId)} />
+      <ComposerRestore onRestored={setPromptToRestore} text={promptToRestore} />
       <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
         <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
           <Tooltip>
