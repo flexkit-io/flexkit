@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { CheckCircle2, CornerDownRightIcon, LoaderCircle, TriangleAlert } from 'lucide-react';
 import useSWR from 'swr';
 import {
@@ -9,9 +9,12 @@ import {
   type StarterStatus,
 } from '../../../core/config/onboarding';
 import { useConfig } from '../../../core/config/config-context';
+import { revalidateProjectSchema } from '../../../core/config/use-project-schemas';
 import { Button } from '../../../ui/primitives/button';
 import { fetcher } from '../api';
-import { watchStarter } from '../starter-watch';
+import { starterSchemaDeployed, watchStarter } from '../starter-watch';
+
+const POLL_MS = 3000;
 
 /** How long after the sample store was added its questions still greet an empty chat. */
 const SAMPLE_PROMPTS_DAYS = 14;
@@ -38,7 +41,10 @@ export function StarterPanel({
   onPrompt: (prompt: string) => void;
   projectId: string;
 }): JSX.Element | null {
+  // While shown, the panel polls on its own: the watch below gives up after a while (a starter can sit
+  // queued for long), and the screen must still catch up when the starter finally runs.
   const { data, mutate } = useSWR<{ starter: StarterStatus | null }>(starterPath(projectId), fetcher, {
+    refreshInterval: (latest) => (isStarterRunning(latest?.starter) ? POLL_MS : 0),
     revalidateOnFocus: false,
   });
   const starter = data?.starter ?? null;
@@ -50,12 +56,20 @@ export function StarterPanel({
   const [retryError, setRetryError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
 
-  // The watch outlives this panel, which unmounts as soon as a chat starts.
+  const seenRunning = useRef(false);
+
+  // The watch outlives this panel, which unmounts as soon as a chat starts. Restart it on every change
+  // of a running starter, in case an earlier watch gave up; it runs once per project at a time.
   useEffect(() => {
     if (running) {
+      seenRunning.current = true;
       watchStarter({ projectId });
+    } else if (seenRunning.current && starter && starterSchemaDeployed(starter)) {
+      // This panel saw the deploy finish, possibly after the watch stopped: load the new schema.
+      seenRunning.current = false;
+      void revalidateProjectSchema(projectId);
     }
-  }, [projectId, running]);
+  }, [projectId, running, starter]);
 
   if (!starter) {
     return null;
