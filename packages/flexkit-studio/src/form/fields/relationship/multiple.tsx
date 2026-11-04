@@ -95,6 +95,7 @@ export default function MultipleRelationship({
   );
   const entityQuery = getRelatedItemsQuery({
     attributeName: name,
+    defaultScope,
     relatedEntityName: relationshipEntityName,
     scope,
     schema,

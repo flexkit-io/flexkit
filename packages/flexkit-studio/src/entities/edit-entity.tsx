@@ -1,6 +1,7 @@
 'use client';
 
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { defaultScopeName } from '../core/default-scope';
 import type { JSX, ReactNode } from 'react';
 import { find, propEq } from 'ramda';
 import { toast } from 'sonner';
@@ -47,7 +48,7 @@ export default function EditEntity({ action, depth, isFocused, nested }: Props):
   const { currentProject, currentProjectId } = useConfig();
   const schema = useMemo(() => currentProject?.schema ?? [], [currentProject]);
   const scopes = currentProject?.scopes;
-  const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
+  const defaultScope = defaultScopeName(scopes);
   const entitySchema = find(propEq(entityNamePlural, 'plural'))(schema) as Entity | undefined;
   const entityName = entitySchema?.name ?? entityNamePlural;
   const { scope } = useAppContext();
@@ -177,6 +178,7 @@ export default function EditEntity({ action, depth, isFocused, nested }: Props):
         newData,
         {
           currentUser: auth.user,
+          defaultScope,
         }
       );
 
@@ -197,7 +199,18 @@ export default function EditEntity({ action, depth, isFocused, nested }: Props):
       });
       runMutation(true);
     },
-    [apolloClient, auth.user, currentScope, entityId, entityNamePlural, runMutation, schema, setMutation, setOptions]
+    [
+      defaultScope,
+      apolloClient,
+      auth.user,
+      currentScope,
+      entityId,
+      entityNamePlural,
+      runMutation,
+      schema,
+      setMutation,
+      setOptions,
+    ]
   );
   const data = results as FormEntityItem[];
   const hasData = data.length > 0;

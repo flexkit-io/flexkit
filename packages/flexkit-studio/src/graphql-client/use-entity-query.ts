@@ -1,3 +1,4 @@
+import { useDefaultScope } from '../core/default-scope';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { prop, uniqBy } from 'ramda';
 import { gql, NetworkStatus } from '@apollo/client';
@@ -83,6 +84,7 @@ export function useEntityQuery({
   // Must include entity/scope — variables alone collide across entity navigations.
   const syncedQueryKeyRef = useRef<string | null>(null);
   const pendingQueryKeyRef = useRef<string | null>(null);
+  const defaultScope = useDefaultScope();
   const totalCountField = `${entityNamePlural}Total`;
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const canUseTotalCount =
@@ -91,14 +93,15 @@ export function useEntityQuery({
     (unsupportedTotalCount?.field !== totalCountField || unsupportedTotalCount.schema !== schema);
   const countMode = canUseTotalCount ? 'total' : 'aggregate';
   const queryDocument = useMemo(
-    () => gql(getEntityQuery(entityNamePlural, scope, schema, { selection, countMode, includeCount }).query),
-    [entityNamePlural, scope, schema, selection, countMode, includeCount]
+    () =>
+      gql(getEntityQuery(entityNamePlural, scope, schema, { selection, countMode, includeCount, defaultScope }).query),
+    [entityNamePlural, scope, schema, selection, countMode, includeCount, defaultScope]
   );
   // fetchMore pages skip the top-level aggregate count (a filtered label scan
   // on the server); the total from the first page still stands.
   const fetchMoreDocument = useMemo(
-    () => gql(getEntityQuery(entityNamePlural, scope, schema, { selection, includeCount: false }).query),
-    [entityNamePlural, scope, schema, selection]
+    () => gql(getEntityQuery(entityNamePlural, scope, schema, { selection, includeCount: false, defaultScope }).query),
+    [entityNamePlural, scope, schema, selection, defaultScope]
   );
   const { schemaErrorMessage, setSchemaErrorMessage } = useGraphQLError();
   const {
@@ -197,7 +200,14 @@ export function useEntityQuery({
           },
         })
         .then(({ data: res }) => {
-          const mappedFetchMoreResults = mapResults({ data: res, entityNamePlural, isForm, schema, scope });
+          const mappedFetchMoreResults = mapResults({
+            data: res,
+            entityNamePlural,
+            isForm,
+            schema,
+            scope,
+            defaultScope,
+          });
           // Advance by the fetched page window (capped at limit), not by how many unique
           // rows survived client-side merge. Cap protects against Apollo returning a
           // merged cache blob larger than the requested page.
@@ -234,7 +244,7 @@ export function useEntityQuery({
           setIsLoadingMore(false);
         });
     },
-    [entityNamePlural, isForm, schema, scope]
+    [defaultScope, entityNamePlural, isForm, schema, scope]
   );
 
   const reload = useCallback(
@@ -261,7 +271,7 @@ export function useEntityQuery({
         .current()
         .then(({ data: res }) => {
           const queryKey = JSON.stringify({ entityNamePlural, scope, selection, includeCount, variables });
-          const mapped = mapResults({ data: res, entityNamePlural, isForm, schema, scope });
+          const mapped = mapResults({ data: res, entityNamePlural, isForm, schema, scope, defaultScope });
 
           syncedQueryKeyRef.current = queryKey;
           pendingQueryKeyRef.current = null;
@@ -276,7 +286,7 @@ export function useEntityQuery({
           setIsReloading(false);
         });
     },
-    [entityNamePlural, isForm, schema, scope, selection, includeCount, variables]
+    [defaultScope, entityNamePlural, isForm, schema, scope, selection, includeCount, variables]
   );
 
   useEffect(() => {
@@ -315,12 +325,13 @@ export function useEntityQuery({
       return;
     }
 
-    const mapped = mapResults({ data, entityNamePlural, isForm, schema, scope });
+    const mapped = mapResults({ data, entityNamePlural, isForm, schema, scope, defaultScope });
     syncedQueryKeyRef.current = queryKey;
     pendingQueryKeyRef.current = null;
     nextOffsetRef.current = getVariablesOffset(variables) + mapped.results.length;
     setResult(mapped);
   }, [
+    defaultScope,
     data,
     effectiveError,
     entityNamePlural,
@@ -350,12 +361,13 @@ export function useEntityQuery({
     }
 
     const queryKey = JSON.stringify({ entityNamePlural, scope, selection, includeCount, variables });
-    const mapped = mapResults({ data, entityNamePlural, isForm, schema, scope });
+    const mapped = mapResults({ data, entityNamePlural, isForm, schema, scope, defaultScope });
     syncedQueryKeyRef.current = queryKey;
     pendingQueryKeyRef.current = null;
     nextOffsetRef.current = getVariablesOffset(variables) + mapped.results.length;
     setResult(mapped);
   }, [
+    defaultScope,
     data,
     effectiveError,
     entityNamePlural,
@@ -388,7 +400,7 @@ export function useEntityQuery({
         .current()
         .then(({ data: res }) => {
           const queryKey = JSON.stringify({ entityNamePlural, scope, selection, includeCount, variables });
-          const mapped = mapResults({ data: res, entityNamePlural, isForm, schema, scope });
+          const mapped = mapResults({ data: res, entityNamePlural, isForm, schema, scope, defaultScope });
           syncedQueryKeyRef.current = queryKey;
           pendingQueryKeyRef.current = null;
           nextOffsetRef.current = getVariablesOffset(variables) + mapped.results.length;
@@ -436,7 +448,7 @@ export function useEntityQuery({
       unsubscribeRemoval();
       unsubscribePatch();
     };
-  }, [entityNamePlural, isForm, schema, scope, selection, includeCount, variables]);
+  }, [defaultScope, entityNamePlural, isForm, schema, scope, selection, includeCount, variables]);
 
   return {
     // Refetch keeps existing rows visible; only initial load / explicit reload show as loading.
@@ -462,6 +474,7 @@ function getVariablesOffset(variables: OperationVariables | undefined): number {
 function mapResults(
   args: {
     data: (EntityQueryResults & EntityQueryAggregate) | undefined;
+    defaultScope: string;
   } & UseEntityQueryParams
 ): MappedEntityQueryResults | MappedFormEntityQueryResults {
   const entityNamePlural = args.entityNamePlural as keyof FormEntityItem;
@@ -471,7 +484,7 @@ function mapResults(
   }
 
   return args.isForm
-    ? mapQueryResultForFormFields(args.entityNamePlural, args.scope, args.data, args.schema)
+    ? mapQueryResultForFormFields(args.entityNamePlural, args.scope, args.data, args.schema, args.defaultScope)
     : mapQueryResult(args.entityNamePlural, args.scope, args.data, args.schema);
 }
 

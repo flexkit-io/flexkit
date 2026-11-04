@@ -131,7 +131,7 @@ export function getEntityColors(schema: Entity[], theme: 'light' | 'dark'): { [e
  * current scope's value for local ones. Relationship display attributes fall
  * back to the id.
  */
-export function getDisplaySelection(entity: Entity | undefined, scope: string): string {
+export function getDisplaySelection(entity: Entity | undefined, scope: string, defaultScope = 'default'): string {
   const display = getDisplayAttribute(entity);
 
   if (!display) {
@@ -145,21 +145,33 @@ export function getDisplaySelection(entity: Entity | undefined, scope: string): 
   }
 
   if (scopeType === 'local') {
-    return `${display.name} { ${getScopeFields(scope)} }`;
+    return `${display.name} { ${getScopeFields(scope, defaultScope)} }`;
   }
 
   return '';
 }
 
-/** The scope value and the default one to fall back on, as the Desk queries select them. */
-export function getScopeFields(scope: string): string {
-  return scope === 'default' ? 'default' : `default ${scope}`;
+/**
+ * The scope value and the default one to fall back on, as the Desk queries
+ * select them: the default scope's value always comes back as `default`,
+ * whatever the project named that scope.
+ */
+export function getScopeFields(scope: string, defaultScope = 'default'): string {
+  const fallback = defaultScope === 'default' ? 'default' : `default: ${defaultScope}`;
+
+  return scope === defaultScope ? fallback : `${fallback} ${scope}`;
 }
 
-function getRelatedSelection(attribute: Attribute, schema: Entity[], scope: string, args: string): string {
+function getRelatedSelection(
+  attribute: Attribute,
+  schema: Entity[],
+  scope: string,
+  args: string,
+  defaultScope?: string
+): string {
   const relatedEntity = getEntity(schema, attribute.relationship?.entity ?? '');
 
-  return `${attribute.name}${args} { _id ${getDisplaySelection(relatedEntity, scope)} }`;
+  return `${attribute.name}${args} { _id ${getDisplaySelection(relatedEntity, scope, defaultScope)} }`;
 }
 
 function getCountSelection(attribute: Attribute): string {
@@ -175,11 +187,13 @@ export const EXPAND_HOP_MAX_RECORDS = 5;
  * counting every relationship of every record is what makes a load slow.
  */
 export function buildRecordsQuery({
+  defaultScope,
   entity,
   schema,
   scope,
   expand,
 }: {
+  defaultScope?: string;
   entity: Entity;
   schema: Entity[];
   scope: string;
@@ -187,14 +201,14 @@ export function buildRecordsQuery({
 }): string {
   const relationships = expand
     ? getRelationshipAttributes(entity).map((attribute) =>
-        getRelatedSelection(attribute, schema, scope, `(limit: ${EXPAND_PAGE})`)
+        getRelatedSelection(attribute, schema, scope, `(limit: ${EXPAND_PAGE})`, defaultScope)
       )
     : [];
 
   return `query GraphRecords($where: ${entity.name}Where, $limit: Int) {
   ${entity.plural}(where: $where, limit: $limit) {
     _id
-    ${getDisplaySelection(entity, scope)}
+    ${getDisplaySelection(entity, scope, defaultScope)}
     ${relationships.join('\n    ')}
   }
 }`;
@@ -202,11 +216,13 @@ export function buildRecordsQuery({
 
 /** One more page of a single relationship of one record. */
 export function buildExpandQuery({
+  defaultScope,
   entity,
   schema,
   scope,
   attribute,
 }: {
+  defaultScope?: string;
   entity: Entity;
   schema: Entity[];
   scope: string;
@@ -215,7 +231,7 @@ export function buildExpandQuery({
   return `query GraphExpand($id: ID!, $offset: Int, $limit: Int) {
   ${entity.plural}(where: { _id: { eq: $id } }) {
     _id
-    ${getRelatedSelection(attribute, schema, scope, '(limit: $limit, offset: $offset)')}
+    ${getRelatedSelection(attribute, schema, scope, '(limit: $limit, offset: $offset)', defaultScope)}
   }
 }`;
 }
@@ -247,9 +263,19 @@ export function getDetailAttributes(entity: Entity): Attribute[] {
 }
 
 /** The scalar values of one record for the inspector. */
-export function buildDetailsQuery({ entity, scope }: { entity: Entity; scope: string }): string {
+export function buildDetailsQuery({
+  defaultScope,
+  entity,
+  scope,
+}: {
+  defaultScope?: string;
+  entity: Entity;
+  scope: string;
+}): string {
   const fields = getDetailAttributes(entity).map((attribute) =>
-    getAttributeScope(attribute) === 'local' ? `${attribute.name} { ${getScopeFields(scope)} }` : attribute.name
+    getAttributeScope(attribute) === 'local'
+      ? `${attribute.name} { ${getScopeFields(scope, defaultScope)} }`
+      : attribute.name
   );
 
   return `query GraphDetails($id: ID!) {

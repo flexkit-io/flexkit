@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { defaultScopeName } from '../core/default-scope';
 import type { JSX, ReactNode } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { find, propEq } from 'ramda';
@@ -41,7 +42,7 @@ export default function AddEntity({ action, depth, isFocused, nested }: Props): 
   const { currentProject } = useConfig();
   const schema = useMemo(() => currentProject?.schema ?? [], [currentProject]);
   const scopes = currentProject?.scopes;
-  const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
+  const defaultScope = defaultScopeName(scopes);
   const entitySchema = find(propEq(entityName, 'name'))(schema) as Entity | undefined;
   const entityNamePlural = entitySchema?.plural ?? entityName;
   const { scope } = useAppContext();
@@ -103,6 +104,7 @@ export default function AddEntity({ action, depth, isFocused, nested }: Props): 
       const _id = uuidv4();
       const mutation = getEntityCreateMutation(entityNamePlural, schema, newData, _id, {
         currentUser: auth.user,
+        defaultScope,
       });
 
       setMutation(gql`
@@ -117,7 +119,18 @@ export default function AddEntity({ action, depth, isFocused, nested }: Props): 
       });
       runMutation(true);
     },
-    [action._id, apolloClient, auth.user, entityNamePlural, handleClose, runMutation, schema, setMutation, setOptions]
+    [
+      defaultScope,
+      action._id,
+      apolloClient,
+      auth.user,
+      entityNamePlural,
+      handleClose,
+      runMutation,
+      schema,
+      setMutation,
+      setOptions,
+    ]
   );
 
   return (

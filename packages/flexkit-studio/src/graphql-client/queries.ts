@@ -255,6 +255,18 @@ function getTopLevelCountSelection(
   return getConnectionCountSelection(entityNamePlural, '(where: $where)');
 }
 
+/** The default scope when a project names none; also the key results carry the default value under. */
+export const DEFAULT_SCOPE_KEY = 'default';
+
+/**
+ * Selects the default scope's value under the key `default`, whatever the
+ * project named its default scope (`default: eu`), so results always read
+ * the fallback value as `.default`.
+ */
+function defaultValueSelection(defaultScope: string): string {
+  return defaultScope === DEFAULT_SCOPE_KEY ? DEFAULT_SCOPE_KEY : `${DEFAULT_SCOPE_KEY}: ${defaultScope}`;
+}
+
 /**
  * Selection set for a related entity's display attribute only — enough for list-grid
  * relationship columns (mapQueryResult / sliceFirstThreeItems).
@@ -263,13 +275,15 @@ function getDisplayAttributeSelection(
   primaryAttribute: Attribute | undefined,
   scope: string,
   schema: Schema,
-  forList = false
+  forList = false,
+  defaultScope = DEFAULT_SCOPE_KEY
 ): string {
   if (!primaryAttribute) {
     return '';
   }
 
-  const additionalScope = scope === 'default' ? '' : `${scope}\n        `;
+  const additionalScope = scope === defaultScope ? '' : `${scope}\n        `;
+  const defaultValue = defaultValueSelection(defaultScope);
 
   if (isAssetAttribute(primaryAttribute)) {
     if (forList) {
@@ -280,7 +294,7 @@ function getDisplayAttributeSelection(
   }
 
   if (getAttributeScope(primaryAttribute) === 'local') {
-    return `      ${primaryAttribute.name} {\n        _id\n        default\n        ${additionalScope}}\n`;
+    return `      ${primaryAttribute.name} {\n        _id\n        ${defaultValue}\n        ${additionalScope}}\n`;
   }
 
   if (getAttributeScope(primaryAttribute) === 'relationship') {
@@ -294,7 +308,7 @@ function getDisplayAttributeSelection(
     const fieldAttribute = find(propEq(field, 'name'))(nestedEntity?.attributes ?? []) as Attribute | undefined;
     const localAttributeQuery =
       fieldAttribute && getAttributeScope(fieldAttribute) === 'local'
-        ? `{\n          _id\n          default\n          ${additionalScope}}\n`
+        ? `{\n          _id\n          ${defaultValue}\n          ${additionalScope}}\n`
         : '';
 
     if (primaryAttribute.relationship?.mode === 'single') {
@@ -310,11 +324,14 @@ function getDisplayAttributeSelection(
 function getFullRelatedEntityAttributesSelection(
   relatedEntity: Entity | undefined,
   scope: string,
-  schema: Schema
+  schema: Schema,
+  defaultScope = DEFAULT_SCOPE_KEY
 ): string {
+  const defaultValue = defaultValueSelection(defaultScope);
+
   return (
     relatedEntity?.attributes.reduce((relatedAcc, relatedAttribute) => {
-      const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
+      const additionalScope = scope === defaultScope ? '' : `${scope}\n    `;
 
       // Related-entity assets only render as CDN-path thumbnails in grids; the
       // base64 lqip payload is form-field-only and skipped at this depth.
@@ -323,7 +340,7 @@ function getFullRelatedEntityAttributesSelection(
       }
 
       if (getAttributeScope(relatedAttribute) === 'local') {
-        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        default\n      ${additionalScope}\n}\n    `;
+        return `${relatedAcc}\n      ${relatedAttribute.name} {\n        _id\n        ${defaultValue}\n      ${additionalScope}\n}\n    `;
       }
 
       if (getAttributeScope(relatedAttribute) === 'relationship') {
@@ -335,7 +352,7 @@ function getFullRelatedEntityAttributesSelection(
         ) as Attribute;
         const localAttributeQuery =
           getAttributeScope(relationshipAttribute) === 'local'
-            ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
+            ? `{\n      _id\n      ${defaultValue}\n      ${additionalScope}}\n        `
             : '';
 
         if (relatedAttribute.relationship?.mode === 'single') {
@@ -429,8 +446,12 @@ export function getEntityQuery(
     includeCount?: boolean;
     countMode?: EntityQueryCountMode;
     operationName?: string;
+    /** The project's default scope (the one with `isDefault`). */
+    defaultScope?: string;
   }
 ): EntityQuery {
+  const defaultScope = options?.defaultScope ?? DEFAULT_SCOPE_KEY;
+  const defaultValue = defaultValueSelection(defaultScope);
   const requestedSelection = options?.selection ?? 'full';
   const selection = requestedSelection === 'display' ? 'list' : requestedSelection;
   const includeCount = options?.includeCount ?? true;
@@ -478,14 +499,14 @@ export function getEntityQuery(
     return requestedSelection === 'display' || shouldSelectAttributeInList(attributesByName[attributeName]);
   });
   const defaultScopedAttr = localAttributes.reduce(
-    (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n    }\n  `,
+    (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      ${defaultValue}\n    }\n  `,
     ''
   );
   const scopedAttribute = localAttributes.reduce(
-    (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      default\n      ${scope}\n    }\n  `,
+    (acc, attribute) => `${acc}\n    ${attribute} {\n      _id\n      ${defaultValue}\n      ${scope}\n    }\n  `,
     ''
   );
-  const localAttributesList: string = scope === 'default' ? defaultScopedAttr : scopedAttribute;
+  const localAttributesList: string = scope === defaultScope ? defaultScopedAttr : scopedAttribute;
   let imageFieldsSelection = `_id\n      path\n      url`;
 
   if (selection !== 'list') {
@@ -517,7 +538,7 @@ export function getEntityQuery(
 
     if (selection === 'list') {
       const displayAttribute = getDisplayAttribute(relatedEntity);
-      const primarySelection = getDisplayAttributeSelection(displayAttribute, scope, schema, true);
+      const primarySelection = getDisplayAttributeSelection(displayAttribute, scope, schema, true, defaultScope);
       const relatedLimit = attribute.relationship?.mode === 'single' ? 1 : 3;
 
       return (
@@ -528,7 +549,7 @@ export function getEntityQuery(
       );
     }
 
-    const attributesNameList = getFullRelatedEntityAttributesSelection(relatedEntity, scope, schema);
+    const attributesNameList = getFullRelatedEntityAttributesSelection(relatedEntity, scope, schema, defaultScope);
 
     return (
       `${getConnectionCountSelection(attribute.name).trim()}` +
@@ -687,7 +708,8 @@ export function mapQueryResultForFormFields(
   entityNamePlural: string,
   scope: string,
   results: EntityQueryResults,
-  schema: Schema
+  schema: Schema,
+  defaultScope = DEFAULT_SCOPE_KEY
 ): MappedFormEntityQueryResults {
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const attributes = entitySchema?.attributes ?? [];
@@ -721,12 +743,12 @@ export function mapQueryResultForFormFields(
       return {
         ...acc,
         [attributeName]: {
-          value: localAttribute ? getValueByScope(localAttribute, scope) : null,
+          value: localAttribute ? getValueByScope(localAttribute, scope, defaultScope) : null,
           disabled: Boolean(
             localAttribute &&
             localAttribute[scope] === null &&
             getAttributeScope(attributeSchema) === 'local' &&
-            scope !== 'default'
+            scope !== defaultScope
           ),
           scope,
           _id: localAttribute ? localAttribute._id : null,
@@ -801,14 +823,15 @@ export function mapQueryResultForFormFields(
  */
 function getValueByScope(
   attribute: AttributeValue | AttributeValue[],
-  scope: string
+  scope: string,
+  defaultScope: string
 ): FormFieldValue[] | AttributeValue | AttributeValue[] | string | null {
   if (Array.isArray(attribute)) {
     return attribute.reduce((result: FormFieldValue[], attr: AttributeValue) => {
       if (attr[scope] ?? attr.default) {
         const option = {
           _id: attr._id,
-          disabled: Boolean(attr.scope === null && scope !== 'default'),
+          disabled: Boolean(attr.scope === null && scope !== defaultScope),
           scope,
           value: attr[scope] ?? attr.default,
         };
@@ -833,7 +856,7 @@ export function getEntityUpdateMutation(
   schema: Schema,
   originalData: FormEntityItem,
   dataToMutate: FormEntityItem,
-  options?: { currentUser?: User; responseFields?: string }
+  options?: { currentUser?: User; responseFields?: string; defaultScope?: string }
 ): string {
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const entityName = entitySchema?.name ?? entityNamePlural;
@@ -851,7 +874,8 @@ export function getEntityUpdateMutation(
   const relationshipAttributes = relationshipAttributesUpdate(attributes, originalData, data);
   const responseType = entityNamePlural;
   const attributeNamesList =
-    options?.responseFields ?? formatResponseFieldsForMutation(schema, entityNamePlural, scope);
+    options?.responseFields ??
+    formatResponseFieldsForMutation(schema, entityNamePlural, scope, options?.defaultScope ?? DEFAULT_SCOPE_KEY);
   const operationName = `Update${getOperationEntityName(entityNamePlural)}`;
 
   return (
@@ -1289,7 +1313,13 @@ function stringifyStringLiteral(value: string): string {
   return JSON.stringify(value);
 }
 
-function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: string, scope: string): string {
+function formatResponseFieldsForMutation(
+  schema: Schema,
+  entityNamePlural: string,
+  scope: string,
+  defaultScope: string
+): string {
+  const defaultValue = defaultValueSelection(defaultScope);
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const schemaAttributes = entitySchema?.attributes ?? [];
   const globalAttributesArray = getAttributeListByScope('global', schemaAttributes);
@@ -1330,25 +1360,25 @@ function formatResponseFieldsForMutation(schema: Schema, entityNamePlural: strin
       }
 
       if (primaryAttributeScope === 'local') {
-        list = `  ${attributeName} {\n      _id\n      ${primaryAttributeName} {\n        _id\n        default\n        ${scope}\n      }\n    }\n  `;
+        list = `  ${attributeName} {\n      _id\n      ${primaryAttributeName} {\n        _id\n        ${defaultValue}\n        ${scope}\n      }\n    }\n  `;
       }
     }
 
     if (relationshipMode === 'multiple' && relationshipEntityAttributes.length) {
       const multipleRelationshipAttributes = relationshipEntityAttributes.reduce((str, attribute) => {
         if (getAttributeScope(attribute) === 'local') {
-          return `${str}        ${attribute.name} {\n          _id\n          default\n          ${scope}\n        }\n`;
+          return `${str}        ${attribute.name} {\n          _id\n          ${defaultValue}\n          ${scope}\n        }\n`;
         }
 
         if (getAttributeScope(attribute) === 'relationship') {
-          const additionalScope = scope === 'default' ? '' : `${scope}\n    `;
+          const additionalScope = scope === defaultScope ? '' : `${scope}\n    `;
           const relationshipEntity = find(propEq(attribute.relationship?.entity, 'name'))(schema) as Entity | undefined;
           const relationshipAttribute = find(propEq(attribute.relationship?.field, 'name'))(
             relationshipEntity?.attributes ?? []
           ) as Attribute;
           const localAttributeQuery =
             getAttributeScope(relationshipAttribute) === 'local'
-              ? `{\n      _id\n      default\n      ${additionalScope}}\n        `
+              ? `{\n      _id\n      ${defaultValue}\n      ${additionalScope}}\n        `
               : '';
 
           if (attribute.relationship?.mode === 'single') {
@@ -1457,8 +1487,10 @@ export function getEntityCreateMutation(
   schema: Schema,
   entityData: FormEntityItem,
   _id: string,
-  _options?: { currentUser?: User }
+  options?: { currentUser?: User; defaultScope?: string }
 ): string {
+  // A new record's values go to the default scope.
+  const defaultScope = options?.defaultScope ?? DEFAULT_SCOPE_KEY;
   const entitySchema = getEntitySchema(schema, entityNamePlural);
   const attributes = entitySchema?.attributes ?? [];
   const pluralizedEntityName = capitalize(entitySchema?.plural ?? '');
@@ -1469,11 +1501,11 @@ export function getEntityCreateMutation(
 
   const data = filterOutInvalidAttributes(attributes, entityData);
   const globalAttributes = globalAttributesUpdate(attributes, data, 'create');
-  const localAttributes = localAttributesCreate(attributes, data, 'default', _id);
+  const localAttributes = localAttributesCreate(attributes, data, defaultScope, _id);
   const imageAttributes = imageAttributesCreate(attributes, data);
   const relationshipAttributes = relationshipAttributesCreate(attributes, data);
   const responseType = entityNamePlural;
-  const attributeNamesList = formatResponseFieldsForMutation(schema, responseType, 'default');
+  const attributeNamesList = formatResponseFieldsForMutation(schema, responseType, defaultScope, defaultScope);
   const operationName = `Create${getOperationEntityName(entityNamePlural)}`;
 
   return (
@@ -1580,11 +1612,13 @@ function relationshipAttributesCreate(schemaAttributes: Attribute[], data: FormE
 }
 
 export function getRelatedItemsQuery({
+  defaultScope,
   relatedEntityName,
   scope,
   schema,
 }: {
   attributeName: string;
+  defaultScope?: string;
   relatedEntityName: string;
   scope: string;
   schema: Schema;
@@ -1602,6 +1636,7 @@ export function getRelatedItemsQuery({
   return getEntityQuery(queryEntityName, scope, schema, {
     selection: 'list',
     operationName: `GetRelated${getOperationEntityName(queryEntityName)}`,
+    defaultScope,
   });
 }
 

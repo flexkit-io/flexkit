@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { defaultScopeName } from '../../core/default-scope';
 import type { JSX } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/auth-context';
@@ -60,7 +61,7 @@ export function Root(): JSX.Element {
   const location = useLocation();
   const dispatchAction = useDispatch();
   const theme = resolvedTheme === 'dark' ? 'dark' : 'light';
-  const defaultScope = currentProject?.scopes?.find((item) => item.isDefault)?.name ?? 'default';
+  const defaultScope = defaultScopeName(currentProject?.scopes);
   const scopeField = scope || defaultScope;
   // Space-bound entities are hidden from non-members, as in Desk; the API
   // rejects their data either way.
