@@ -139,7 +139,7 @@ export function StarterPanel({
             />
           </div>
         ) : null}
-        <p className="fk:text-xs">This takes about a minute. You can already ask the agent anything.</p>
+        <p className="fk:text-xs">This usually takes under a minute. You can already ask the agent anything.</p>
       </div>
     );
   }
