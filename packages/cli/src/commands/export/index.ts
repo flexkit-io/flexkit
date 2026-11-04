@@ -164,12 +164,14 @@ function serializeEntityLine(
         }
 
         const scopesWithValue = Object.keys(values);
-        const onlyDefault = scopesWithValue.length === 1 && scopesWithValue[0] === 'default';
+        // getScopeNames puts the default scope first, whatever it is named.
+        const [defaultScope] = scopeNames;
+        const onlyDefault = scopesWithValue.length === 1 && scopesWithValue[0] === defaultScope;
 
         // Default-only values stay plain scalars; anything scoped beyond the
         // default is wrapped in _scopes so the import can restore every scope.
         if (onlyDefault) {
-          line[attribute.name] = values.default;
+          line[attribute.name] = values[defaultScope ?? 'default'];
         } else if (scopesWithValue.length > 0) {
           line[attribute.name] = { _scopes: values };
         }

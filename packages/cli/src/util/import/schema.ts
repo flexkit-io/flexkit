@@ -46,13 +46,15 @@ export function getEntitySchemas(project: ConfiguredProject): EntitySchema[] {
 }
 
 /**
- * Returns every scope name of the project ('default' first). Locally scoped
- * attribute nodes have one GraphQL field per scope name.
+ * Returns every scope name of the project, the default scope (`isDefault`,
+ * whatever its name) first; `['default']` for a project without scopes.
+ * Locally scoped attribute nodes have one GraphQL field per scope name.
  */
 export function getScopeNames(project: ConfiguredProject): string[] {
-  const names = (project.scopes ?? []).map((scope) => scope.name);
+  const scopes = project.scopes ?? [];
+  const defaultScope = scopes.find((scope) => scope.isDefault)?.name ?? scopes[0]?.name ?? 'default';
 
-  return ['default', ...names.filter((name) => name !== 'default')];
+  return [defaultScope, ...scopes.map((scope) => scope.name).filter((name) => name !== defaultScope)];
 }
 
 /**

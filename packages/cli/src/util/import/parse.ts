@@ -59,15 +59,15 @@ function readEntityRef(value: unknown): string | null {
 
 /**
  * Reads the per-scope values of a locally scoped attribute. Accepts either a
- * plain value (applied to the default scope) or {"_scopes": {"default": ...,
- * "uk": ...}} with one entry per project scope.
+ * plain value (applied to the default scope, the first of `scopeNames`) or
+ * {"_scopes": {"default": ..., "uk": ...}} with one entry per project scope.
  */
 function readScopedValues(
   value: unknown,
   scopeNames: string[]
 ): { values?: { [scope: string]: unknown }; error?: string } {
   if (!isPlainObject(value)) {
-    return { values: { default: value } };
+    return { values: { [scopeNames[0] ?? 'default']: value } };
   }
 
   if (!isPlainObject(value._scopes)) {
