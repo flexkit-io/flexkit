@@ -1,4 +1,5 @@
 import type Client from '../../util/client';
+import { getDefaultScopeName } from '../../util/default-scope';
 import { isAPIError } from '../../util/error-utils';
 
 export interface RecordAttribute {
@@ -73,9 +74,7 @@ export function isScalarKind(kind: AttributeKind): boolean {
 /** Builds the scope list the GraphQL generator uses (`default` when the project has no scopes). */
 export function toRecordSchema(entities: RecordEntity[], scopes: ScopeDefinition[] | undefined): RecordSchema {
   const scopeNames = scopes && scopes.length > 0 ? scopes.map((scope) => scope.name) : ['default'];
-  const defaultScope =
-    scopes?.find((scope) => scope.isDefault)?.name ??
-    (scopeNames.includes('default') ? 'default' : (scopeNames[0] ?? 'default'));
+  const defaultScope = getDefaultScopeName(scopes);
 
   return {
     entities: entities.filter((entity) => !entity.name.startsWith('_')),

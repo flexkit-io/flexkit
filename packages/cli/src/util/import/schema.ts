@@ -1,4 +1,5 @@
 import type { UiAttribute as Attribute } from '@flexkit/schema';
+import { getDefaultScopeName } from '../default-scope';
 import type { FlexkitConfig } from '../../types';
 
 export type ConfiguredProject = FlexkitConfig['projects'][number];
@@ -52,7 +53,7 @@ export function getEntitySchemas(project: ConfiguredProject): EntitySchema[] {
  */
 export function getScopeNames(project: ConfiguredProject): string[] {
   const scopes = project.scopes ?? [];
-  const defaultScope = scopes.find((scope) => scope.isDefault)?.name ?? scopes[0]?.name ?? 'default';
+  const defaultScope = getDefaultScopeName(scopes);
 
   return [defaultScope, ...scopes.map((scope) => scope.name).filter((name) => name !== defaultScope)];
 }

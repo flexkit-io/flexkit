@@ -263,7 +263,7 @@ export const DEFAULT_SCOPE_KEY = 'default';
  * project named its default scope (`default: eu`), so results always read
  * the fallback value as `.default`.
  */
-function defaultValueSelection(defaultScope: string): string {
+export function defaultValueSelection(defaultScope: string): string {
   return defaultScope === DEFAULT_SCOPE_KEY ? DEFAULT_SCOPE_KEY : `${DEFAULT_SCOPE_KEY}: ${defaultScope}`;
 }
 

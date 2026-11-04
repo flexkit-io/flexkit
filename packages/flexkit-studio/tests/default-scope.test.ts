@@ -46,14 +46,24 @@ describe('default scope', () => {
 
   it('reads the fallback from the aliased default value', () => {
     const results = {
-      products: [{ _id: 'p1', _updatedAt: '', sku: 'A1', title: [{ _id: 't1', default: 'Sofa', uk: null }] }],
+      products: [
+        {
+          __typename: 'product',
+          _id: 'p1',
+          _updatedAt: '',
+          sku: 'A1',
+          title: [{ _id: 't1', default: 'Sofa', uk: null }],
+        },
+      ],
     };
 
     assert.equal(mapQueryResult('products', 'uk', results, schema).results[0]?.title, 'Sofa');
   });
 
   it('does not offer "use default value" for fields in the default scope', () => {
-    const results = { products: [{ _id: 'p1', sku: 'A1', title: [{ _id: 't1', default: 'Sofa', eu: null }] }] };
+    const results = {
+      products: [{ __typename: 'product', _id: 'p1', sku: 'A1', title: [{ _id: 't1', default: 'Sofa', eu: null }] }],
+    };
     const [record] = mapQueryResultForFormFields('products', 'eu', results, schema, 'eu').results;
 
     assert.equal(record?.title?.disabled, false);

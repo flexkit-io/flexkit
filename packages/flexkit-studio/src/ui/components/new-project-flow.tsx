@@ -153,6 +153,12 @@ export function NewProjectFlow({
         setError(`${outcome.project.name} was created, but the starter could not be applied: ${applied.message}`);
         setIsSubmitting(false);
 
+        // List it now, so closing the dialog does not hide the project until a reload. The welcome screen
+        // (first project) would leave this flow once the session lists a project, so it waits for Continue.
+        if (!isFirstProject && !created) {
+          await rememberCreatedProject(outcome);
+        }
+
         return;
       }
 

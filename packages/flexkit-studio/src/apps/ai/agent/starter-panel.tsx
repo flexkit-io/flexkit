@@ -14,7 +14,8 @@ import { Button } from '../../../ui/primitives/button';
 import { fetcher } from '../api';
 import { starterSchemaDeployed, watchStarter } from '../starter-watch';
 
-const POLL_MS = 3000;
+/** A fallback for when the watch below has given up; the watch itself polls every 2 s. */
+const POLL_MS = 10_000;
 
 /** How long after the sample store was added its questions still greet an empty chat. */
 const SAMPLE_PROMPTS_DAYS = 14;

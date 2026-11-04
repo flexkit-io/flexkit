@@ -1,4 +1,5 @@
 import { find, propEq } from 'ramda';
+import { DEFAULT_SCOPE_KEY, defaultValueSelection } from '../../graphql-client/queries';
 import { getAttributeScope } from '../../core/attribute-scope';
 import { getDisplayAttribute } from '../../core/get-display-attribute';
 import type { Attribute, Entity } from '../../core/types';
@@ -131,7 +132,11 @@ export function getEntityColors(schema: Entity[], theme: 'light' | 'dark'): { [e
  * current scope's value for local ones. Relationship display attributes fall
  * back to the id.
  */
-export function getDisplaySelection(entity: Entity | undefined, scope: string, defaultScope = 'default'): string {
+export function getDisplaySelection(
+  entity: Entity | undefined,
+  scope: string,
+  defaultScope = DEFAULT_SCOPE_KEY
+): string {
   const display = getDisplayAttribute(entity);
 
   if (!display) {
@@ -156,8 +161,8 @@ export function getDisplaySelection(entity: Entity | undefined, scope: string, d
  * select them: the default scope's value always comes back as `default`,
  * whatever the project named that scope.
  */
-export function getScopeFields(scope: string, defaultScope = 'default'): string {
-  const fallback = defaultScope === 'default' ? 'default' : `default: ${defaultScope}`;
+export function getScopeFields(scope: string, defaultScope = DEFAULT_SCOPE_KEY): string {
+  const fallback = defaultValueSelection(defaultScope);
 
   return scope === defaultScope ? fallback : `${fallback} ${scope}`;
 }
