@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useReducer, useRef, useState } from 'react';
+import { useDefaultScope } from '../../core/default-scope';
 import type { Dispatch } from 'react';
 import { gql } from '@apollo/client';
 import { useApolloClient } from '@apollo/client/react';
@@ -48,6 +49,7 @@ function errorMessage(error: unknown, fallback = 'The records could not be loade
  * so the roles and spaces of the signed-in member apply to every node.
  */
 export function useScene({ schema, scope }: { schema: Entity[]; scope: string }): SceneApi {
+  const defaultScope = useDefaultScope();
   const client = useApolloClient();
   const [state, dispatch] = useReducer(sceneReducer, EMPTY_SCENE);
   const [pending, setPending] = useState(0);
@@ -64,7 +66,7 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
 
       try {
         const result = await client.query<RecordsResult>({
-          query: gql(buildRecordsQuery({ entity, schema, scope, expand })),
+          query: gql(buildRecordsQuery({ defaultScope, entity, schema, scope, expand })),
           variables: {
             where: ids ? { _id: { in: ids } } : undefined,
             limit,
@@ -88,7 +90,7 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
         setPending((count) => count - 1);
       }
     },
-    [client, schema, scope]
+    [defaultScope, client, schema, scope]
   );
 
   const expandAll = useCallback(
@@ -119,7 +121,7 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
 
       try {
         const result = await client.query<RecordsResult>({
-          query: gql(buildExpandQuery({ entity, schema, scope, attribute })),
+          query: gql(buildExpandQuery({ defaultScope, entity, schema, scope, attribute })),
           variables: { id: node.id, offset, limit: EXPAND_PAGE },
           fetchPolicy: 'network-only',
         });
@@ -141,7 +143,7 @@ export function useScene({ schema, scope }: { schema: Entity[]; scope: string })
         setPending((count) => count - 1);
       }
     },
-    [client, schema, scope, state.fetched, state.nodes]
+    [defaultScope, client, schema, scope, state.fetched, state.nodes]
   );
 
   const runQuery = useCallback(

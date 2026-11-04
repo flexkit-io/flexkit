@@ -113,6 +113,11 @@ describe('display selection', () => {
   it('falls back to nothing without an entity', () => {
     assert.equal(getDisplaySelection(undefined, 'en'), '');
   });
+
+  it('aliases the default value when the default scope has another name', () => {
+    assert.equal(getDisplaySelection(product, 'en', 'en'), 'name { default: en }');
+    assert.equal(getDisplaySelection(product, 'de', 'en'), 'name { default: en de }');
+  });
 });
 
 describe('queries', () => {

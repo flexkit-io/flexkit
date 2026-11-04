@@ -44,7 +44,7 @@ export async function send<T>(
     const json = (await response.json().catch(() => ({}))) as { code?: string; error?: string } & T;
 
     if (response.ok) {
-      return { ok: true, ...json };
+      return { ...json, ok: true };
     }
 
     return {

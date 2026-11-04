@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDefaultScope } from '../../core/default-scope';
 import type { JSX } from 'react';
 import { ChevronDownIcon, LoaderCircleIcon, PlayIcon } from 'lucide-react';
 import type { Entity } from '../../core/types';
@@ -68,7 +69,8 @@ export function QueryPane({
   // The schema is introspected once the view has been opened, not on every Graph visit.
   const [opened, setOpened] = useState(!hidden);
   const graphqlSchema = useGraphQLSchema(opened ? projectId : undefined, schemaHash);
-  const examples = useMemo(() => exampleQueries(schema, scope), [schema, scope]);
+  const defaultScope = useDefaultScope();
+  const examples = useMemo(() => exampleQueries(schema, scope, defaultScope), [defaultScope, schema, scope]);
   const [query, setQuery] = useState(() => readComposerDraft(queryStorageKey(projectId)) || examples[0]?.query || '');
   // The schema may arrive after the pane mounts: the first example fills an
   // editor that started empty, once, so clearing it later is left alone.

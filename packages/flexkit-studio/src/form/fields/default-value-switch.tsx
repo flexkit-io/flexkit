@@ -1,4 +1,6 @@
 import { useId } from 'react';
+import { useDefaultScope } from '../../core/default-scope';
+import { DEFAULT_SCOPE_KEY } from '../../graphql-client/queries';
 import type { JSX } from 'react';
 import { Checkbox } from '../../ui/primitives/checkbox';
 
@@ -11,8 +13,10 @@ type Props = {
 
 export function DefaultValueSwitch({ scope, checked, disabled, onChange }: Props): JSX.Element | null {
   const elementId = useId();
+  const defaultScope = useDefaultScope();
 
-  if (!scope || scope === 'default') {
+  // Values in the default scope are the fallback themselves; `default` also marks unscoped (global) fields.
+  if (!scope || scope === DEFAULT_SCOPE_KEY || scope === defaultScope) {
     return null;
   }
 

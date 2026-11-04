@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { defaultScopeName } from './default-scope';
 import useSWR from 'swr';
 import { find, propEq } from 'ramda';
 import { apiPaths } from './api-paths';
@@ -17,7 +18,7 @@ export function useSearch(
   const { currentProject } = useConfig();
   const schema = useMemo(() => currentProject?.schema ?? [], [currentProject]);
   const scopes = currentProject?.scopes;
-  const defaultScope = scopes?.find((s) => s.isDefault)?.name ?? 'default';
+  const defaultScope = defaultScopeName(scopes);
   const swrKey = searchRequest?.commonParams.q ? JSON.stringify(searchRequest) : null;
   const { data, error, isLoading } = useSWR(
     swrKey,

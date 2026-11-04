@@ -205,16 +205,16 @@ export function graphFromQueryResult({
 }
 
 /** One example query per entity with relationships, with a few related records each. */
-export function exampleQueries(schema: Entity[], scope: string): ExampleQuery[] {
+export function exampleQueries(schema: Entity[], scope: string, defaultScope?: string): ExampleQuery[] {
   return getGraphEntities(schema).map((entity) => {
     const relationships = getRelationshipAttributes(entity)
       .slice(0, EXAMPLE_RELATIONSHIPS)
       .map((attribute) => {
         const related = getEntity(schema, attribute.relationship?.entity ?? '');
 
-        return `    ${attribute.name}(limit: ${EXAMPLE_RELATED_LIMIT}) {\n      _id\n      ${getDisplaySelection(related, scope)}\n    }`;
+        return `    ${attribute.name}(limit: ${EXAMPLE_RELATED_LIMIT}) {\n      _id\n      ${getDisplaySelection(related, scope, defaultScope)}\n    }`;
       });
-    const display = getDisplaySelection(entity, scope);
+    const display = getDisplaySelection(entity, scope, defaultScope);
 
     return {
       entity: entity.name,

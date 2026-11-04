@@ -95,6 +95,7 @@ export default function MultipleRelationship({
   );
   const entityQuery = getRelatedItemsQuery({
     attributeName: name,
+    defaultScope,
     relatedEntityName: relationshipEntityName,
     scope,
     schema,
@@ -471,13 +472,13 @@ function dataAdapter({ data, defaultScope, relationshipEntitySchema, scope }: Da
         | undefined;
 
       if (fieldNode && typeof fieldNode === 'object') {
-        return fieldNode[scope] ?? fieldNode[defaultScope] ?? '';
+        return fieldNode[scope] ?? fieldNode.default ?? fieldNode[defaultScope] ?? '';
       }
 
       return fieldNode;
     }
 
-    return node[scope] ?? node[defaultScope];
+    return node[scope] ?? node.default ?? node[defaultScope];
   };
 
   return data.map(

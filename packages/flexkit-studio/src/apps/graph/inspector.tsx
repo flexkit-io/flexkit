@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useDefaultScope } from '../../core/default-scope';
 import type { JSX } from 'react';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
@@ -72,9 +73,10 @@ export function GraphInspector({
   onHide,
 }: GraphInspectorProps): JSX.Element {
   const entity = getEntity(schema, node.entity);
+  const defaultScope = useDefaultScope();
   const detailsDocument = useMemo(
-    () => gql(entity ? buildDetailsQuery({ entity, scope }) : 'query GraphDetails { __typename }'),
-    [entity, scope]
+    () => gql(entity ? buildDetailsQuery({ defaultScope, entity, scope }) : 'query GraphDetails { __typename }'),
+    [defaultScope, entity, scope]
   );
   const countsDocument = useMemo(
     () => gql(entity ? buildCountsQuery({ entity }) : 'query GraphCounts { __typename }'),

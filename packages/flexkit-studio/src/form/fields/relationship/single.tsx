@@ -142,7 +142,7 @@ export default function SingleRelationship({
           if (typeof primaryValue === 'string') {
             displayValue = primaryValue;
           } else {
-            displayValue = ((primaryValue?.[scope] ?? primaryValue?.[defaultScope]) as string | undefined) ?? '';
+            displayValue = ((primaryValue?.[scope] ?? primaryValue?.default ?? primaryValue?.[defaultScope]) as string | undefined) ?? '';
           }
         }
 
