@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { CheckCircle2, CornerDownRightIcon, LoaderCircle, TriangleAlert } from 'lucide-react';
 import useSWR from 'swr';
 import {
@@ -8,11 +8,13 @@ import {
   starterPath,
   type StarterStatus,
 } from '../../../core/config/onboarding';
-import { revalidateProjectSchema } from '../../../core/config/use-project-schemas';
+import { useConfig } from '../../../core/config/config-context';
 import { Button } from '../../../ui/primitives/button';
 import { fetcher } from '../api';
+import { watchStarter } from '../starter-watch';
 
-const POLL_MS = 2000;
+/** How long after the sample store was added its questions still greet an empty chat. */
+const SAMPLE_PROMPTS_DAYS = 14;
 
 const STATE_LABELS: { [state in StarterStatus['state']]: string } = {
   queued: 'Getting your store ready…',
@@ -37,23 +39,23 @@ export function StarterPanel({
   projectId: string;
 }): JSX.Element | null {
   const { data, mutate } = useSWR<{ starter: StarterStatus | null }>(starterPath(projectId), fetcher, {
-    refreshInterval: (latest) => (isStarterRunning(latest?.starter) ? POLL_MS : 0),
     revalidateOnFocus: false,
   });
   const starter = data?.starter ?? null;
-  const wasRunning = useRef(false);
+  const running = isStarterRunning(starter);
+  const { projectSummaries } = useConfig();
+  const summary = projectSummaries.find((project) => project.id === projectId);
+  // Applying a starter is for owners; without a hosted summary the backend decides.
+  const canRetry = !summary || summary.role === 'owner';
   const [retryError, setRetryError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
 
-  // Load the new schema the moment it is deployed, so Desk and the menu show it.
+  // The watch outlives this panel, which unmounts as soon as a chat starts.
   useEffect(() => {
-    if (isStarterRunning(starter)) {
-      wasRunning.current = true;
-    } else if (wasRunning.current && starter?.state === 'completed') {
-      wasRunning.current = false;
-      void revalidateProjectSchema(projectId);
+    if (running) {
+      watchStarter({ projectId });
     }
-  }, [projectId, starter]);
+  }, [projectId, running]);
 
   if (!starter) {
     return null;
@@ -66,37 +68,43 @@ export function StarterPanel({
           <TriangleAlert className="fk:size-4 fk:text-destructive" />
           {STATE_LABELS.failed}
         </p>
-        <p className="fk:text-muted-foreground">{retryError ?? starter.error ?? 'Please try again.'}</p>
-        <Button
-          disabled={retrying}
-          onClick={() => {
-            setRetrying(true);
-            setRetryError(null);
-            void applyStarter(projectId, { template: starter.template, sampleData: starter.sampleData }).then(
-              async (outcome) => {
-                setRetrying(false);
+        <p className="fk:text-muted-foreground">
+          {retryError ?? starter.error ?? 'Please try again.'}
+          {canRetry ? null : ' Ask the project owner to try again.'}
+        </p>
+        {canRetry ? (
+          <Button
+            disabled={retrying}
+            onClick={() => {
+              setRetrying(true);
+              setRetryError(null);
+              void applyStarter(projectId, { template: starter.template, sampleData: starter.sampleData }).then(
+                async (outcome) => {
+                  setRetrying(false);
 
-                if (!outcome.ok) {
-                  setRetryError(outcome.message);
+                  if (!outcome.ok) {
+                    setRetryError(outcome.message);
 
-                  return;
+                    return;
+                  }
+
+                  await mutate({ starter: outcome.starter }, { revalidate: false });
+                  watchStarter({ projectId });
                 }
-
-                await mutate({ starter: outcome.starter }, { revalidate: true });
-              }
-            );
-          }}
-          size="sm"
-          variant="outline"
-        >
-          {retrying ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : null}
-          Try again
-        </Button>
+              );
+            }}
+            size="sm"
+            variant="outline"
+          >
+            {retrying ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : null}
+            Try again
+          </Button>
+        ) : null}
       </div>
     );
   }
 
-  if (isStarterRunning(starter)) {
+  if (running) {
     const progress = starter.state === 'seeding' && starter.progress ? starter.progress : null;
 
     return (
@@ -119,6 +127,11 @@ export function StarterPanel({
         <p className="fk:text-xs">This takes about a minute. You can already ask the agent anything.</p>
       </div>
     );
+  }
+
+  // Past the first days the store is likely real data, or gone.
+  if (!isRecent(starter.completedAt)) {
+    return null;
   }
 
   // Questions only make sense once the sample store exists.
@@ -169,4 +182,10 @@ export function StarterPrompts({
       ))}
     </div>
   );
+}
+
+function isRecent(completedAt: string | undefined): boolean {
+  const time = completedAt ? Date.parse(completedAt) : Number.NaN;
+
+  return Number.isFinite(time) && Date.now() - time < SAMPLE_PROMPTS_DAYS * 24 * 60 * 60 * 1000;
 }

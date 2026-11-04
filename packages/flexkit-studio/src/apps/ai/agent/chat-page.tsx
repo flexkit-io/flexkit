@@ -1390,6 +1390,8 @@ export function AgentChatPage(): JSX.Element {
       chatId ||
       !projectId ||
       !api ||
+      // Wait for the model catalog, so the first turn uses the remembered or default model.
+      !toolsData ||
       modelPending ||
       sendingRef.current
     ) {
@@ -1403,7 +1405,7 @@ export function AgentChatPage(): JSX.Element {
     });
     // handleSend is redeclared every render; the guards above make this run once per navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, chatId, location.key, modelPending, onboardingPrompt, projectId]);
+  }, [api, chatId, location.key, modelPending, onboardingPrompt, projectId, toolsData]);
 
   if (!projectId || !api) {
     return (

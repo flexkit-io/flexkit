@@ -1,7 +1,13 @@
 import { useId, useState, type JSX, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, MessageSquareText, ShoppingBag, Sparkles, type LucideIcon } from 'lucide-react';
-import { createHostedProject, newProjectPath, ownedTeams } from '../../core/config/create-project';
+import { watchStarter } from '../../apps/ai/starter-watch';
+import {
+  createHostedProject,
+  newProjectPath,
+  ownedTeams,
+  type CreateProjectOutcome,
+} from '../../core/config/create-project';
 import {
   applyStarter,
   describeBusinessPrompt,
@@ -66,6 +72,8 @@ export function NewProjectFlow({
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Set once the project exists, so a failed starter is retried on it instead of creating another project.
+  const [created, setCreated] = useState<Extract<CreateProjectOutcome, { ok: true }> | null>(null);
 
   async function submitName(): Promise<void> {
     const trimmed = displayName.trim();
@@ -114,10 +122,12 @@ export function NewProjectFlow({
     setIsSubmitting(true);
 
     // No owned team yet: let the backend create the personal team.
-    const outcome = await createHostedProject({
-      name: name.trim(),
-      ...(selectedTeamId ? { teamId: selectedTeamId } : {}),
-    });
+    const outcome =
+      created ??
+      (await createHostedProject({
+        name: name.trim(),
+        ...(selectedTeamId ? { teamId: selectedTeamId } : {}),
+      }));
 
     if (!outcome.ok) {
       setError(outcome.message);
@@ -130,13 +140,23 @@ export function NewProjectFlow({
       return;
     }
 
+    setCreated(outcome);
+
     const projectId = outcome.project.id;
     const start = toProjectStart(startKind, sampleData, description);
     let state: OnboardingNavigationState = {};
 
     if (start.kind === 'starter') {
-      // The project exists either way; the chat shows the starter's progress, or its failure with a retry.
-      await applyStarter(projectId, { template: start.template, sampleData: start.sampleData });
+      const applied = await applyStarter(projectId, { template: start.template, sampleData: start.sampleData });
+
+      if (!applied.ok) {
+        setError(`${outcome.project.name} was created, but the starter could not be applied: ${applied.message}`);
+        setIsSubmitting(false);
+
+        return;
+      }
+
+      watchStarter({ projectId });
     } else if (start.kind === 'describe') {
       state = { onboardingPrompt: describeBusinessPrompt(start.description) };
     }
@@ -294,11 +314,15 @@ export function NewProjectFlow({
       {errorAlert}
       <StepActions
         isSubmitting={isSubmitting}
-        onBack={() => {
-          setError(null);
-          setStep('project');
-        }}
-        submitLabel="Create project"
+        onBack={
+          created
+            ? undefined
+            : () => {
+                setError(null);
+                setStep('project');
+              }
+        }
+        submitLabel={created ? 'Continue' : 'Create project'}
       />
     </StepForm>
   );

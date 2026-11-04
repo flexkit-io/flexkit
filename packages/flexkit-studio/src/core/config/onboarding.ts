@@ -25,9 +25,15 @@ export function starterPath(projectId: string): string {
   return `/api/flexkit/${projectId}/starter`;
 }
 
-type Failure = { ok: false; code: string; message: string };
+export type Failure = { ok: false; code: string; message: string };
 
-async function send<T>(url: string, method: 'PATCH' | 'POST', body: unknown): Promise<({ ok: true } & T) | Failure> {
+/** A JSON request to the hosted BFF, with its failures mapped to a message the UI can show. */
+export async function send<T>(
+  url: string,
+  method: 'PATCH' | 'POST',
+  body: unknown,
+  fallbackMessage = 'Something went wrong. Please try again.'
+): Promise<({ ok: true } & T) | Failure> {
   try {
     const response = await fetch(url, {
       method,
@@ -44,7 +50,7 @@ async function send<T>(url: string, method: 'PATCH' | 'POST', body: unknown): Pr
     return {
       ok: false,
       code: json.code ?? 'unknown_error',
-      message: json.error ?? 'Something went wrong. Please try again.',
+      message: json.error ?? fallbackMessage,
     };
   } catch {
     return {
