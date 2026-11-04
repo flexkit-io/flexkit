@@ -23,6 +23,7 @@ export default defineConfig({
     'tests/onboarding.test.ts',
     'tests/starter-watch.test.ts',
     'tests/default-scope.test.ts',
+    'tests/prompt-suggestions.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',

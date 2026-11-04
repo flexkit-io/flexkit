@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from 'react';
-import { CheckCircle2, CornerDownRightIcon, LoaderCircle, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, CornerDownRightIcon, LoaderCircle, TriangleAlert, XIcon } from 'lucide-react';
 import useSWR from 'swr';
 import {
   applyStarter,
@@ -12,6 +12,7 @@ import { useConfig } from '../../../core/config/config-context';
 import { revalidateProjectSchema } from '../../../core/config/use-project-schemas';
 import { Button } from '../../../ui/primitives/button';
 import { fetcher } from '../api';
+import { usePromptSuggestions } from './prompt-suggestions';
 import { starterSchemaDeployed, watchStarter } from '../starter-watch';
 
 /** A fallback for when the watch below has given up; the watch itself polls every 2 s. */
@@ -39,7 +40,7 @@ export function StarterPanel({
   projectId,
 }: {
   canSend: boolean;
-  onPrompt: (prompt: string) => void;
+  onPrompt: (prompt: string) => Promise<boolean>;
   projectId: string;
 }): JSX.Element | null {
   // While shown, the panel polls on its own: the watch below gives up after a while (a starter can sit
@@ -160,41 +161,79 @@ export function StarterPanel({
   }
 
   return (
+    <SampleStorePrompts canSend={canSend} completedAt={starter.completedAt} onPrompt={onPrompt} projectId={projectId} />
+  );
+}
+
+/** Questions the sample store answers; each disappears once used, and all can be hidden. */
+function SampleStorePrompts({
+  canSend,
+  completedAt,
+  onPrompt,
+  projectId,
+}: {
+  canSend: boolean;
+  /** The starter run these questions belong to; a re-applied starter offers them again. */
+  completedAt: string | undefined;
+  onPrompt: (prompt: string) => Promise<boolean>;
+  projectId: string;
+}): JSX.Element | null {
+  const suggestions = usePromptSuggestions(projectId, 'sample-store', COMMERCE_STARTER_PROMPTS, completedAt);
+
+  if (suggestions.visible.length === 0) {
+    return null;
+  }
+
+  return (
     <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-2xl fk:flex-col fk:items-center fk:gap-3">
       <p className="fk:flex fk:items-center fk:gap-2 fk:text-sm fk:text-muted-foreground">
         <CheckCircle2 className="fk:size-4 fk:text-emerald-600" />
         The Aven Living sample store is ready. Try asking:
       </p>
-      <StarterPrompts canSend={canSend} onPrompt={onPrompt} prompts={COMMERCE_STARTER_PROMPTS} />
+      <StarterPrompts canSend={canSend} onPrompt={onPrompt} suggestions={suggestions} />
     </div>
   );
 }
 
+/** Suggested prompts as chips; a used one disappears, and "Hide suggestions" dismisses the rest. */
 export function StarterPrompts({
   canSend,
   onPrompt,
-  prompts,
+  suggestions,
 }: {
   canSend: boolean;
-  onPrompt: (prompt: string) => void;
-  prompts: readonly string[];
+  onPrompt: (prompt: string) => Promise<boolean>;
+  suggestions: ReturnType<typeof usePromptSuggestions>;
 }): JSX.Element {
   return (
-    <div className="fk:flex fk:flex-wrap fk:justify-center fk:gap-2">
-      {prompts.map((prompt) => (
-        <button
-          className="fk:inline-flex fk:max-w-full fk:items-center fk:gap-1.5 fk:rounded-full fk:border fk:border-border/70 fk:bg-muted/40 fk:px-3 fk:py-1.5 fk:text-left fk:text-sm fk:text-muted-foreground fk:transition-colors fk:hover:border-border fk:hover:bg-muted fk:hover:text-foreground fk:disabled:opacity-60 fk:corner-squircle"
-          disabled={!canSend}
-          key={prompt}
-          onClick={() => {
-            onPrompt(prompt);
-          }}
-          type="button"
-        >
-          <CornerDownRightIcon className="fk:size-3 fk:shrink-0" />
-          <span>{prompt}</span>
-        </button>
-      ))}
+    <div className="fk:flex fk:flex-col fk:items-center fk:gap-2">
+      <div className="fk:flex fk:flex-wrap fk:justify-center fk:gap-2">
+        {suggestions.visible.map((prompt) => (
+          <button
+            className="fk:inline-flex fk:max-w-full fk:items-center fk:gap-1.5 fk:rounded-full fk:border fk:border-border/70 fk:bg-muted/40 fk:px-3 fk:py-1.5 fk:text-left fk:text-sm fk:text-muted-foreground fk:transition-colors fk:hover:border-border fk:hover:bg-muted fk:hover:text-foreground fk:disabled:opacity-60 fk:corner-squircle"
+            disabled={!canSend}
+            key={prompt}
+            onClick={() => {
+              // Only a prompt that was actually sent stops being offered.
+              void onPrompt(prompt).then((sent) => {
+                if (sent) suggestions.markUsed(prompt);
+              });
+            }}
+            type="button"
+          >
+            <CornerDownRightIcon className="fk:size-3 fk:shrink-0" />
+            <span>{prompt}</span>
+          </button>
+        ))}
+      </div>
+      <button
+        className="fk:inline-flex fk:items-center fk:gap-1 fk:text-xs fk:text-muted-foreground fk:transition-colors fk:hover:text-foreground"
+        onClick={suggestions.hideAll}
+        type="button"
+      >
+        <XIcon className="fk:size-3" />
+        Hide suggestions
+      </button>
     </div>
   );
 }
