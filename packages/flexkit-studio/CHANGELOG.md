@@ -1,5 +1,13 @@
 # @flexkit/studio
 
+## 0.2.35
+
+### Patch Changes
+
+- 58e2c20: Desk, record forms and the Graph app now work with a default scope of any name: they find it through `isDefault` instead of expecting a scope called `default`. Projects whose default scope is named after a market (for example `eu`) no longer show "Cannot query field default", and new records are saved in that scope.
+- 58e2c20: When the first message of a "Describe your business" project cannot be sent, the description goes back into the chat composer instead of being lost.
+- 58e2c20: The new project's chat no longer stays on "Getting your store ready…" after the commerce starter finished: it keeps checking the starter's progress for as long as the chat is open.
+
 ## 0.2.34
 
 ### Patch Changes
