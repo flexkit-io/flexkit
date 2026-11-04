@@ -35,6 +35,7 @@ import {
 } from '../../../ui';
 import { fetcher, paths, type ApiClient } from '../api';
 import { EMPTY_STARTER_PROMPTS, starterPath, type OnboardingNavigationState } from '../../../core/config/onboarding';
+import { usePromptSuggestions, type AgentProfile } from './prompt-suggestions';
 import { StarterPanel, StarterPrompts } from './starter-panel';
 import { findPastedPluginToken } from '../plugin-token-format';
 import type { Marketplace } from '../plugin-types';
@@ -1241,10 +1242,10 @@ function EmptyConversation({
   canSend: boolean;
   /** False for a project without entities yet: the chat suggests how to design them. */
   hasSchema: boolean;
-  onPrompt: (prompt: string) => void;
+  onPrompt: (prompt: string) => Promise<boolean>;
   projectId: string;
 }): JSX.Element {
-  const { data, isLoading } = useSWR<{ preferredName: string | null }>(paths(projectId).agentProfile(), fetcher);
+  const { data, isLoading } = useSWR<AgentProfile>(paths(projectId).agentProfile(), fetcher);
   // Pick once the profile resolves so the greeting never flashes from a
   // generic salute to a personalized one.
   const greeting = useMemo(() => {
@@ -1253,7 +1254,8 @@ function EmptyConversation({
     }
 
     return pickGreeting(data?.preferredName ?? null);
-  }, [data, isLoading]);
+    // Keyed on the name, not the whole profile: saving a suggestion change must not pick a new greeting.
+  }, [data?.preferredName, isLoading]);
 
   return (
     <div className="fk:flex fk:flex-col fk:items-center fk:gap-6 fk:pb-2 fk:text-center">
@@ -1271,20 +1273,21 @@ function EmptySchemaPrompts({
   projectId,
 }: {
   canSend: boolean;
-  onPrompt: (prompt: string) => void;
+  onPrompt: (prompt: string) => Promise<boolean>;
   projectId: string;
 }): JSX.Element | null {
   // Shares the StarterPanel request; a project with a starter shows its progress there instead.
   const { data, error } = useSWR<{ starter: unknown }>(starterPath(projectId), fetcher, { revalidateOnFocus: false });
+  const suggestions = usePromptSuggestions(projectId, 'empty-schema', EMPTY_STARTER_PROMPTS);
 
-  if ((data === undefined && error === undefined) || data?.starter) {
+  if ((data === undefined && error === undefined) || data?.starter || suggestions.visible.length === 0) {
     return null;
   }
 
   return (
     <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-2xl fk:flex-col fk:items-center fk:gap-3">
       <p className="fk:text-sm fk:text-muted-foreground">This project has no schema yet. Start with:</p>
-      <StarterPrompts canSend={canSend} onPrompt={onPrompt} prompts={EMPTY_STARTER_PROMPTS} />
+      <StarterPrompts canSend={canSend} onPrompt={onPrompt} suggestions={suggestions} />
     </div>
   );
 }
@@ -1667,11 +1670,16 @@ export function AgentChatPage(): JSX.Element {
               <EmptyConversation
                 canSend={!sending && !modelPending}
                 hasSchema={currentProject ? currentProject.schema.some((entity) => !entity.name.startsWith('_')) : true}
-                onPrompt={(prompt) => {
-                  void handleSend(prompt, []).catch((error: unknown) => {
-                    setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
-                  });
-                }}
+                onPrompt={(prompt) =>
+                  handleSend(prompt, []).then(
+                    () => true,
+                    (error: unknown) => {
+                      setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
+
+                      return false;
+                    }
+                  )
+                }
                 projectId={chatProjectId}
               />
             )}

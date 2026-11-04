@@ -119,6 +119,10 @@ export interface ApiClient {
   cancelRun: (_runId: string) => Promise<MutationResult>;
   createAgentChat: (_input?: { modelId?: string | null }) => Promise<{ chat: AgentChat }>;
   deleteAgentChat: (_chatId: string) => Promise<{ success: boolean }>;
+  /** Saves one change to the signed-in user's suggested prompts: a prompt used, or a set hidden. */
+  savePromptSuggestion: (
+    _change: { set: string; used: string } | { set: string; hide: true }
+  ) => Promise<{ promptSuggestions: { [setKey: string]: { hidden: boolean; used: string[] } } }>;
   getAgentChatStreamUrl: (_chatId: string, _workflowRunId: string) => string;
   renameAgentChat: (_chatId: string, _title: string) => Promise<{ chat: AgentChat }>;
   sendAgentChatMessage: (_chatId: string, _input: SendAgentChatMessageInput) => Promise<AgentChatTurn>;
@@ -274,6 +278,11 @@ export function createApiClient(projectId: string): ApiClient {
       request<{ chat: AgentChat }>(agentChatsBasePath, {
         body: JSON.stringify({ modelId: input?.modelId ?? null }),
         method: 'POST',
+      }),
+    savePromptSuggestion: (change) =>
+      request(`${projectBasePath}/agent/profile`, {
+        method: 'PATCH',
+        body: JSON.stringify({ promptSuggestion: change }),
       }),
     deleteAgentChat: async (chatId) =>
       request<{ success: boolean }>(`${agentChatsBasePath}/${encodeURIComponent(chatId)}`, { method: 'DELETE' }),
