@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.1.23
+
+### Patch Changes
+
+- 58e2c20: `flexkit import` and `flexkit export` find the default scope through `isDefault`, so projects whose default scope has another name (for example `eu`) import plain values into it and export them as plain values again.
+
 ## 0.1.22
 
 ### Patch Changes
