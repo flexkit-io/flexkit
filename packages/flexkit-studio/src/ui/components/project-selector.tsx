@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '../primitives/select';
 import type { ProjectSummary, ProjectUiConfig } from '../../core/config/types';
-import { CreateProjectForm } from './create-project-form';
+import { NewProjectFlow } from './new-project-flow';
 import { getProjectLabel, groupProjectIdsByTeam } from './project-label';
 
 /** Select value of the "New project" entry; project ids are ten lowercase characters, so it cannot collide. */
@@ -86,12 +86,12 @@ export function ProjectSelector({ projectId, projectIds, projectSummaries = [], 
             <DialogHeader>
               <DialogTitle>New project</DialogTitle>
               <DialogDescription>
-                Projects start on the Free plan. The AI agent helps you design the schema once it opens.
+                Projects start on the Free plan. Start from the commerce starter, or let the AI agent design the schema
+                with you.
               </DialogDescription>
             </DialogHeader>
             {isCreating ? (
-              <CreateProjectForm
-                autoFocus
+              <NewProjectFlow
                 onCancel={() => {
                   setIsCreating(false);
                 }}

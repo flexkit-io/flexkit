@@ -12,6 +12,7 @@ import { Button } from '../ui/primitives/button';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '../ui/primitives/form';
 import { Input } from '../ui/primitives/input';
 import { apiPaths, baseApiUrl, userApiPaths } from '../core/api-paths';
+import { getDesktop } from '../core/desktop';
 
 const formSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
@@ -144,8 +145,11 @@ export default function EmailLogin({
       {hasOtpBeenSent ? (
         <Alert className="fk:dark:bg-foreground fk:dark:text-background" variant="default">
           <AlertDescription>
-            Keep this window open and in a new tab open the link we just sent to:{' '}
-            <strong>{form.getValues('email')}</strong> (
+            We sent a sign-in link to <strong>{form.getValues('email')}</strong>.{' '}
+            {getDesktop()
+              ? 'Open it on this computer, and Flexkit signs you in here automatically.'
+              : 'Open it in a new tab and keep this one open: you are signed in here as soon as you click it.'}{' '}
+            (
             <Button
               className="fk:p-0 fk:hover:underline fk:text-link"
               onClick={() => {
@@ -153,7 +157,7 @@ export default function EmailLogin({
               }}
               variant="link"
             >
-              undo
+              use a different email
             </Button>
             )
           </AlertDescription>
