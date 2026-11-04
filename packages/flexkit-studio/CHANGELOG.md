@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.2.36
+
+### Patch Changes
+
+- 3d42ee9: Suggested prompts in an empty chat (the sample-store questions and the "design a schema" prompts) can now be dismissed: a suggestion disappears once it has been sent, and "Hide suggestions" removes the rest. The choice is saved for the signed-in user in each project, so it carries across browsers and the desktop app.
+- a4cd6e2: The commerce starter's progress message now says it usually takes under a minute, matching how fast the starter runs.
+
 ## 0.2.35
 
 ### Patch Changes
