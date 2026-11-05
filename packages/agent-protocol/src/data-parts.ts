@@ -50,6 +50,18 @@ export const knowledgeCitationSchema = z.object({
   versionId: z.string(),
 });
 
+/** One past chat the Search Chats tool returned, with the message that matched. */
+export const chatSearchResultSchema = z.object({
+  chatId: z.string(),
+  chatTitle: z.string(),
+  /** YYYY-MM-DD of the matched message. */
+  date: z.string(),
+  excerpt: z.string(),
+  messageId: z.string(),
+});
+
+export type ChatSearchResult = z.infer<typeof chatSearchResultSchema>;
+
 export type KnowledgeLocator = z.infer<typeof knowledgeLocatorSchema>;
 
 export type KnowledgeCitation = z.infer<typeof knowledgeCitationSchema>;
@@ -164,6 +176,20 @@ export const dataPartSchema = z.object({
     sourceId: z.string(),
     sourceTitle: z.string().optional(),
     locator: knowledgeLocatorSchema.optional(),
+    status: z.enum(['loading', 'done', 'error']),
+    error: errorSchema.optional(),
+  }),
+  /** A search over the user's own past chats; `results` holds the matched chats once it finished. */
+  'chat-search': z.object({
+    query: z.string(),
+    results: z.array(chatSearchResultSchema).optional(),
+    status: z.enum(['loading', 'done', 'error']),
+    error: errorSchema.optional(),
+  }),
+  /** The agent reading a window of one of the user's past chats. */
+  'read-chat': z.object({
+    chatId: z.string(),
+    chatTitle: z.string().optional(),
     status: z.enum(['loading', 'done', 'error']),
     error: errorSchema.optional(),
   }),

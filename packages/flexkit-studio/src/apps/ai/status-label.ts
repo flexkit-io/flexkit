@@ -17,6 +17,7 @@ const ROLLING_STATUS_PART_TYPES = new Set<string>([
   'data-load-skill',
   'data-plan',
   'data-plugin-call',
+  'data-read-chat',
   'data-read-source',
   'data-run-command',
   'data-search-schema',
@@ -233,6 +234,26 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
     return data.query ? truncateLabel(`Searching knowledge for "${data.query}"`) : 'Searching knowledge';
   }
 
+  if (part.type === 'data-chat-search') {
+    const data = getPartData<ReplayDataParts['chat-search']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.query ? truncateLabel(`Searching past chats for "${data.query}"`) : 'Searching past chats';
+  }
+
+  if (part.type === 'data-read-chat') {
+    const data = getPartData<ReplayDataParts['read-chat']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.chatTitle ? truncateLabel(`Reading the chat "${data.chatTitle}"`) : 'Reading a past chat';
+  }
+
   if (part.type === 'data-read-source') {
     const data = getPartData<ReplayDataParts['read-source']>(part);
 
@@ -254,6 +275,7 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
  */
 const AGENT_INTERNAL_ERROR_PART_TYPES = new Set<string>([
   'data-execute-graphql',
+  'data-read-chat',
   'data-read-source',
   'data-search-schema',
   'data-validate-graphql',
@@ -309,6 +331,10 @@ export function isHiddenReplayPart(part: ReplayMessagePart): boolean {
   // While a knowledge search runs the status line shows it; the card appears once it has results.
   if (part.type === 'data-knowledge-search') {
     return getPartData<ReplayDataParts['knowledge-search']>(part).status === 'loading';
+  }
+
+  if (part.type === 'data-chat-search') {
+    return getPartData<ReplayDataParts['chat-search']>(part).status === 'loading';
   }
 
   if (part.type === 'data-mutation-approval') {

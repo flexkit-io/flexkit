@@ -313,6 +313,21 @@ describe('export status', () => {
   });
 });
 
+describe('chat history parts', () => {
+  it('labels a running chat search and chat read, and hides them once done', () => {
+    const search = dataPart('data-chat-search', { query: 'churn', status: 'loading' });
+    const read = dataPart('data-read-chat', { chatId: 'c1', chatTitle: 'Churn report', status: 'loading' });
+
+    assert.equal(getLiveStatusLabel(message([search])), 'Searching past chats for "churn"');
+    assert.equal(getLiveStatusLabel(message([read])), 'Reading the chat "Churn report"');
+    assert.equal(getLiveStatusLabel(message([dataPart('data-read-chat', { chatId: 'c1', status: 'loading' })])), 'Reading a past chat');
+    assert.equal(isHiddenReplayPart(search), true);
+    assert.equal(isHiddenReplayPart(dataPart('data-chat-search', { query: 'churn', results: [], status: 'done' })), false);
+    assert.equal(isHiddenReplayPart(dataPart('data-read-chat', { chatId: 'c1', status: 'done' })), true);
+    assert.equal(isHiddenReplayPart(dataPart('data-read-chat', { chatId: 'c1', status: 'error', error: { message: 'x' } })), true);
+  });
+});
+
 describe('knowledge parts', () => {
   it('reports the search and the read as status labels while they run', () => {
     const search = dataPart('data-knowledge-search', { query: 'return window', status: 'loading' });
