@@ -12,19 +12,26 @@ export function getAgentChatPath(projectId: string, chatId: string): string {
   return `/${encodeURIComponent(projectId)}/ai/agent/chats/${encodeURIComponent(chatId)}`;
 }
 
-/** One entry per chat in rank order; a chat listed twice keeps its first match. */
-export function uniquePastChats(results: PastChatResult[] | undefined): PastChatResult[] {
+/** The first item for each key, in order. */
+export function uniqueBy<Item>(items: Item[] | undefined, getKey: (item: Item) => string): Item[] {
   const seen = new Set<string>();
 
-  return (results ?? []).filter((result) => {
-    if (seen.has(result.chatId)) {
+  return (items ?? []).filter((item) => {
+    const key = getKey(item);
+
+    if (seen.has(key)) {
       return false;
     }
 
-    seen.add(result.chatId);
+    seen.add(key);
 
     return true;
   });
+}
+
+/** One entry per chat in rank order; a chat listed twice keeps its first match. */
+export function uniquePastChats(results: PastChatResult[] | undefined): PastChatResult[] {
+  return uniqueBy(results, (result) => result.chatId);
 }
 
 export function summarizeChatSearch(query: string, chats: PastChatResult[]): string {

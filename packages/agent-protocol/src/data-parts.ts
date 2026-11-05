@@ -62,6 +62,20 @@ export const chatSearchResultSchema = z.object({
 
 export type ChatSearchResult = z.infer<typeof chatSearchResultSchema>;
 
+/** One past automation run the Search Runs tool returned. */
+export const runSearchResultSchema = z.object({
+  automationId: z.string(),
+  automationName: z.string(),
+  /** YYYY-MM-DD the run started. */
+  date: z.string(),
+  excerpt: z.string(),
+  runId: z.string(),
+  /** How the run ended; Search Runs only returns finished runs. */
+  status: z.enum(['success', 'failed', 'skipped', 'cancelled']),
+});
+
+export type RunSearchResult = z.infer<typeof runSearchResultSchema>;
+
 export type KnowledgeLocator = z.infer<typeof knowledgeLocatorSchema>;
 
 export type KnowledgeCitation = z.infer<typeof knowledgeCitationSchema>;
@@ -190,6 +204,21 @@ export const dataPartSchema = z.object({
   'read-chat': z.object({
     chatId: z.string(),
     chatTitle: z.string().optional(),
+    status: z.enum(['loading', 'done', 'error']),
+    error: errorSchema.optional(),
+  }),
+  /** A search over past automation runs; `results` holds the matched runs once it finished. */
+  'run-search': z.object({
+    query: z.string(),
+    results: z.array(runSearchResultSchema).optional(),
+    status: z.enum(['loading', 'done', 'error']),
+    error: errorSchema.optional(),
+  }),
+  /** The agent reading the transcript of one past automation run. */
+  'read-run': z.object({
+    runId: z.string(),
+    automationId: z.string().optional(),
+    automationName: z.string().optional(),
     status: z.enum(['loading', 'done', 'error']),
     error: errorSchema.optional(),
   }),

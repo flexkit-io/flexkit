@@ -18,6 +18,7 @@ const ROLLING_STATUS_PART_TYPES = new Set<string>([
   'data-plan',
   'data-plugin-call',
   'data-read-chat',
+  'data-read-run',
   'data-read-source',
   'data-run-command',
   'data-search-schema',
@@ -254,6 +255,26 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
     return data.chatTitle ? truncateLabel(`Reading the chat "${data.chatTitle}"`) : 'Reading a past chat';
   }
 
+  if (part.type === 'data-run-search') {
+    const data = getPartData<ReplayDataParts['run-search']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.query.trim() ? truncateLabel(`Searching past runs for "${data.query}"`) : 'Looking at the latest runs';
+  }
+
+  if (part.type === 'data-read-run') {
+    const data = getPartData<ReplayDataParts['read-run']>(part);
+
+    if (data.status !== 'loading') {
+      return null;
+    }
+
+    return data.automationName ? truncateLabel(`Reading a run of "${data.automationName}"`) : 'Reading a past run';
+  }
+
   if (part.type === 'data-read-source') {
     const data = getPartData<ReplayDataParts['read-source']>(part);
 
@@ -276,6 +297,7 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
 const AGENT_INTERNAL_ERROR_PART_TYPES = new Set<string>([
   'data-execute-graphql',
   'data-read-chat',
+  'data-read-run',
   'data-read-source',
   'data-search-schema',
   'data-validate-graphql',
@@ -335,6 +357,10 @@ export function isHiddenReplayPart(part: ReplayMessagePart): boolean {
 
   if (part.type === 'data-chat-search') {
     return getPartData<ReplayDataParts['chat-search']>(part).status === 'loading';
+  }
+
+  if (part.type === 'data-run-search') {
+    return getPartData<ReplayDataParts['run-search']>(part).status === 'loading';
   }
 
   if (part.type === 'data-mutation-approval') {

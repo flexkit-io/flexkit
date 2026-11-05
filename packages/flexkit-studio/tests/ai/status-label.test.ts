@@ -357,3 +357,19 @@ describe('knowledge parts', () => {
     assert.equal(getRollingStatusError(failedRead), null);
   });
 });
+
+describe('run history parts', () => {
+  it('labels a running run search and run read, and hides them once done', () => {
+    const search = dataPart('data-run-search', { query: 'leads', status: 'loading' });
+    const read = dataPart('data-read-run', { automationName: 'Lead follow-up', runId: 'r1', status: 'loading' });
+
+    assert.equal(getLiveStatusLabel(message([search])), 'Searching past runs for "leads"');
+    assert.equal(getLiveStatusLabel(message([read])), 'Reading a run of "Lead follow-up"');
+    assert.equal(getLiveStatusLabel(message([dataPart('data-read-run', { runId: 'r1', status: 'loading' })])), 'Reading a past run');
+    assert.equal(getLiveStatusLabel(message([dataPart('data-run-search', { query: '', status: 'loading' })])), 'Looking at the latest runs');
+    assert.equal(isHiddenReplayPart(search), true);
+    assert.equal(isHiddenReplayPart(dataPart('data-run-search', { query: 'leads', results: [], status: 'done' })), false);
+    assert.equal(isHiddenReplayPart(dataPart('data-read-run', { runId: 'r1', status: 'done' })), true);
+    assert.equal(isHiddenReplayPart(dataPart('data-read-run', { runId: 'r1', status: 'error', error: { message: 'x' } })), true);
+  });
+});
