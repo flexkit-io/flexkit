@@ -16,6 +16,7 @@ export default defineConfig({
     'tests/ai/plugin-credentials-form.test.ts',
     'tests/ai/knowledge-parts.test.ts',
     'tests/ai/past-chat-parts.test.ts',
+    'tests/ai/past-run-parts.test.ts',
     'tests/ai/attachment-state.test.ts',
   ],
   format: ['esm'],

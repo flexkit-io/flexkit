@@ -71,6 +71,7 @@ import { watchSchemaDeployment } from './schema-deploy-watch';
 import { MessageAttachments } from './agent/attachments';
 import { getKnowledgeSourcePath, groupCitationsBySource, summarizeKnowledgeSearch } from './knowledge-parts';
 import { getAgentChatPath, summarizeChatSearch, uniquePastChats } from './past-chat-parts';
+import { getAutomationRunPath, getRunStatusLabel, summarizeRunSearch, uniquePastRuns } from './past-run-parts';
 import { MonitorEventCard } from './agent/monitor-parts';
 import { PluginConnectCard } from './agent/plugin-connect-card';
 
@@ -693,6 +694,10 @@ export function MessagePart({
     return <ChatSearchPart message={getPartData<ReplayDataParts['chat-search']>(part)} />;
   }
 
+  if (part.type === 'data-run-search') {
+    return <RunSearchPart message={getPartData<ReplayDataParts['run-search']>(part)} />;
+  }
+
   if (part.type === 'data-knowledge-search') {
     return <KnowledgeSearchPart message={getPartData<ReplayDataParts['knowledge-search']>(part)} />;
   }
@@ -1291,6 +1296,68 @@ function ChatSearchPart({ message }: { message: ReplayDataParts['chat-search'] }
                 <p className="fk:pl-6 fk:text-xs fk:text-muted-foreground">
                   <span className="fk:mr-1 fk:font-medium fk:text-foreground/80">{chat.date}:</span>
                   <span className="fk:italic">“{chat.excerpt}”</span>
+                </p>
+              </div>
+            ))}
+          </SourcesContent>
+        </Sources>
+      ) : null}
+    </ToolMessage>
+  );
+}
+
+function RunSearchPart({ message }: { message: ReplayDataParts['run-search'] }): JSX.Element {
+  const { currentProjectId } = useConfig();
+  const runs = useMemo(() => uniquePastRuns(message.results), [message.results]);
+
+  if (message.status === 'error') {
+    return (
+      <StatusToolPart
+        error={message.error?.message ?? 'The search of past runs failed'}
+        icon={<HistoryIcon className="fk:size-3.5" />}
+        loading={false}
+        message={message.error?.message ?? 'The search of past runs failed'}
+        title="Past runs"
+      />
+    );
+  }
+
+  return (
+    <ToolMessage>
+      <ToolHeader>
+        <HistoryIcon className="fk:size-3.5" />
+        <span>Past runs</span>
+      </ToolHeader>
+      <p className="fk:mt-1 fk:text-xs fk:text-muted-foreground">{summarizeRunSearch(message.query, runs)}</p>
+      {runs.length > 0 ? (
+        <Sources className="fk:mb-0 fk:mt-2">
+          <SourcesTrigger count={runs.length}>
+            <p className="fk:font-medium">{runs.length === 1 ? 'Show the run' : `Show ${String(runs.length)} runs`}</p>
+            <ChevronDownIcon className="fk:size-4" />
+          </SourcesTrigger>
+          <SourcesContent className="fk:w-full">
+            {runs.map((run) => (
+              <div className="fk:flex fk:flex-col fk:gap-1" key={run.runId}>
+                {currentProjectId ? (
+                  <Link
+                    className="fk:flex fk:w-fit fk:items-center fk:gap-2 fk:font-medium fk:text-foreground fk:underline-offset-2 fk:hover:underline"
+                    to={getAutomationRunPath(currentProjectId, run.automationId, run.runId)}
+                  >
+                    <BotIcon className="fk:size-4" />
+                    <span>{run.automationName}</span>
+                  </Link>
+                ) : (
+                  <span className="fk:flex fk:items-center fk:gap-2 fk:font-medium fk:text-foreground">
+                    <BotIcon className="fk:size-4" />
+                    <span>{run.automationName}</span>
+                  </span>
+                )}
+                <p className="fk:pl-6 fk:text-xs fk:text-muted-foreground">
+                  <span className="fk:mr-1 fk:font-medium fk:text-foreground/80">
+                    {run.date} · {getRunStatusLabel(run.status)}
+                    {run.excerpt ? ':' : null}
+                  </span>
+                  {run.excerpt ? <span className="fk:italic">“{run.excerpt}”</span> : null}
                 </p>
               </div>
             ))}

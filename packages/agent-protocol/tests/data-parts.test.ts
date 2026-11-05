@@ -33,6 +33,35 @@ describe('dataPartSchema', () => {
     assert.equal(dataPartSchema.shape['read-chat'].safeParse({ status: 'done' }).success, false);
   });
 
+  it('validates automation run searches and reads', () => {
+    const result = {
+      automationId: 'a1',
+      automationName: 'Lead follow-up',
+      date: '2026-11-04',
+      excerpt: 'Emailed 3 leads',
+      runId: 'r1',
+      status: 'success',
+    };
+
+    assert.ok(dataPartSchema.shape['run-search'].safeParse({ query: 'leads', status: 'loading' }).success);
+    assert.ok(dataPartSchema.shape['run-search'].safeParse({ query: 'leads', results: [result], status: 'done' }).success);
+    assert.equal(
+      dataPartSchema.shape['run-search'].safeParse({ query: 'leads', results: [{ runId: 'r1' }], status: 'done' }).success,
+      false
+    );
+    assert.equal(
+      dataPartSchema.shape['run-search'].safeParse({ query: 'leads', results: [{ ...result, status: 'running' }], status: 'done' })
+        .success,
+      false
+    );
+    assert.ok(dataPartSchema.shape['read-run'].safeParse({ runId: 'r1', status: 'loading' }).success);
+    assert.ok(
+      dataPartSchema.shape['read-run'].safeParse({ automationId: 'a1', automationName: 'Lead follow-up', runId: 'r1', status: 'done' })
+        .success
+    );
+    assert.equal(dataPartSchema.shape['read-run'].safeParse({ status: 'done' }).success, false);
+  });
+
   it('validates user questions and their answers', () => {
     const question = {
       header: 'Format',
