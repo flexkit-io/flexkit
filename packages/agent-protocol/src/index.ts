@@ -1,4 +1,5 @@
 export {
+  chatSearchResultSchema,
   DATA_PART_TYPES,
   dataPartSchema,
   errorSchema,
@@ -7,6 +8,7 @@ export {
   knowledgeLocatorSchema,
   userQuestionAnswerSchema,
   userQuestionSchema,
+  type ChatSearchResult,
   type DataPart,
   type DataPartMessageType,
   type DataPartType,

@@ -20,6 +20,19 @@ describe('dataPartSchema', () => {
     assert.equal(dataPartSchema.shape['run-summary'].safeParse({ status: 'success' }).success, false);
   });
 
+  it('validates chat history searches and reads', () => {
+    const result = { chatId: 'c1', chatTitle: 'Churn report', date: '2026-10-28', excerpt: 'Churn was 4%', messageId: 'm1' };
+
+    assert.ok(dataPartSchema.shape['chat-search'].safeParse({ query: 'churn', status: 'loading' }).success);
+    assert.ok(dataPartSchema.shape['chat-search'].safeParse({ query: 'churn', results: [result], status: 'done' }).success);
+    assert.equal(
+      dataPartSchema.shape['chat-search'].safeParse({ query: 'churn', results: [{ chatId: 'c1' }], status: 'done' }).success,
+      false
+    );
+    assert.ok(dataPartSchema.shape['read-chat'].safeParse({ chatId: 'c1', chatTitle: 'Churn report', status: 'done' }).success);
+    assert.equal(dataPartSchema.shape['read-chat'].safeParse({ status: 'done' }).success, false);
+  });
+
   it('validates user questions and their answers', () => {
     const question = {
       header: 'Format',

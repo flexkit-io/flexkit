@@ -15,6 +15,7 @@ import {
   DatabaseZapIcon,
   DownloadIcon,
   FileTextIcon,
+  HistoryIcon,
   LibraryIcon,
   LinkIcon,
   LoaderCircle,
@@ -69,6 +70,7 @@ import type { AutomationApproval, AutomationRun } from './types';
 import { watchSchemaDeployment } from './schema-deploy-watch';
 import { MessageAttachments } from './agent/attachments';
 import { getKnowledgeSourcePath, groupCitationsBySource, summarizeKnowledgeSearch } from './knowledge-parts';
+import { getAgentChatPath, summarizeChatSearch, uniquePastChats } from './past-chat-parts';
 import { MonitorEventCard } from './agent/monitor-parts';
 import { PluginConnectCard } from './agent/plugin-connect-card';
 
@@ -687,6 +689,10 @@ export function MessagePart({
     return isStrayFence ? null : <TextPart part={part} />;
   }
 
+  if (part.type === 'data-chat-search') {
+    return <ChatSearchPart message={getPartData<ReplayDataParts['chat-search']>(part)} />;
+  }
+
   if (part.type === 'data-knowledge-search') {
     return <KnowledgeSearchPart message={getPartData<ReplayDataParts['knowledge-search']>(part)} />;
   }
@@ -1222,6 +1228,70 @@ function KnowledgeSearchPart({ message }: { message: ReplayDataParts['knowledge-
                     </li>
                   ))}
                 </ul>
+              </div>
+            ))}
+          </SourcesContent>
+        </Sources>
+      ) : null}
+    </ToolMessage>
+  );
+}
+
+/**
+ * A finished Search Chats call: the user's past chats the agent found, each
+ * linking to the chat. While the search runs only the status line mentions it
+ * (see `isHiddenReplayPart`).
+ */
+function ChatSearchPart({ message }: { message: ReplayDataParts['chat-search'] }): JSX.Element {
+  const { currentProjectId } = useConfig();
+  const chats = useMemo(() => uniquePastChats(message.results), [message.results]);
+
+  if (message.status === 'error') {
+    return (
+      <StatusToolPart
+        error={message.error?.message ?? 'The search of past chats failed'}
+        icon={<HistoryIcon className="fk:size-3.5" />}
+        loading={false}
+        message={message.error?.message ?? 'The search of past chats failed'}
+        title="Past chats"
+      />
+    );
+  }
+
+  return (
+    <ToolMessage>
+      <ToolHeader>
+        <HistoryIcon className="fk:size-3.5" />
+        <span>Past chats</span>
+      </ToolHeader>
+      <p className="fk:mt-1 fk:text-xs fk:text-muted-foreground">{summarizeChatSearch(message.query, chats)}</p>
+      {chats.length > 0 ? (
+        <Sources className="fk:mb-0 fk:mt-2">
+          <SourcesTrigger count={chats.length}>
+            <p className="fk:font-medium">{chats.length === 1 ? 'Show the chat' : `Show ${String(chats.length)} chats`}</p>
+            <ChevronDownIcon className="fk:size-4" />
+          </SourcesTrigger>
+          <SourcesContent className="fk:w-full">
+            {chats.map((chat) => (
+              <div className="fk:flex fk:flex-col fk:gap-1" key={chat.chatId}>
+                {currentProjectId ? (
+                  <Link
+                    className="fk:flex fk:w-fit fk:items-center fk:gap-2 fk:font-medium fk:text-foreground fk:underline-offset-2 fk:hover:underline"
+                    to={getAgentChatPath(currentProjectId, chat.chatId)}
+                  >
+                    <MessageSquareIcon className="fk:size-4" />
+                    <span>{chat.chatTitle}</span>
+                  </Link>
+                ) : (
+                  <span className="fk:flex fk:items-center fk:gap-2 fk:font-medium fk:text-foreground">
+                    <MessageSquareIcon className="fk:size-4" />
+                    <span>{chat.chatTitle}</span>
+                  </span>
+                )}
+                <p className="fk:pl-6 fk:text-xs fk:text-muted-foreground">
+                  <span className="fk:mr-1 fk:font-medium fk:text-foreground/80">{chat.date}:</span>
+                  <span className="fk:italic">“{chat.excerpt}”</span>
+                </p>
               </div>
             ))}
           </SourcesContent>
