@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.39
+
+### Patch Changes
+
+- 5358431: Update the README and package description to describe what Flexkit offers today.
+
 ## 0.2.38
 
 ### Patch Changes
