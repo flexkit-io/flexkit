@@ -13,18 +13,80 @@
 
 </div>
 
-**The open-source React platform for building internal tools, PIMs, CRMs, ERPs, and custom business data apps - fast.**
+**The AI operating system for e-commerce.**
 
-⸻
+Your data, context, workflows and agents in one system. Flexkit connects the tools you already use, learns how your store works, runs it around the clock and gets smarter with every outcome.
 
-Flexkit is a schema-driven, developer-first platform for modeling and managing structured business data.
-Define your data model once, sync it, and instantly get a fully-featured admin UI, a GraphQL API on top of a graph database, and a modern Studio where teams can create, explore, and relate business entities with ease.
+This repository holds the open-source parts of Flexkit: the **Studio** (a React app you can mount inside your own app), the **CLI** and the **SDK** for defining your data model and your own agent tools. They are MIT-licensed. The data backend and the agent are hosted by Flexkit.
 
-Build production-ready internal tools, PIMs, CRMs, and complex admin interfaces in a fraction of the time — without sacrificing flexibility or developer control.
+[Website](https://flexkit.io) · [Documentation](https://flexkit.io/docs) · [Discussions](https://github.com/orgs/flexkit-io/discussions)
 
-## Getting Started
+## One system, six layers
 
-Visit [https://flexkit.io/docs](https://flexkit.io/docs) to view the full documentation.
+Flexkit holds your business data and the context around it. It picks the right model for each task and runs agents across the tools you already use. Your team sets the limits.
+
+| Layer           | What it does                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Data**        | Your products, orders, customers and suppliers as linked records, so agents see how everything connects.            |
+| **Context**     | Your documents, written rules and past decisions, so agents cite their sources and work the way your team does.     |
+| **Models**      | Models from OpenAI, Anthropic, Google and xAI. Flexkit picks one for each task, or you choose your own.             |
+| **Agents**      | Automations that run on a schedule or a trigger, and ask first before changing what you have not allowed.           |
+| **Connections** | Plugins from Shopify and Stripe to Slack and Google Workspace, plus access from Claude, ChatGPT and any MCP client. |
+| **Control**     | Roles set what each person can do, spaces set what they can see, and every run leaves a transcript to read.         |
+
+## What you get
+
+- **Your business, connected.** Flexkit stores your business as a graph of the records you choose (products, orders, customers, suppliers or anything else) with the relationships between them as first-class data. An agent answers by walking that graph, from a low-stock alert to the open orders it affects to the supplier who can refill it.
+- **Keep your systems, connect their data.** Your shop, ERP and CRM stay where they are. Sync what matters to Flexkit through its GraphQL API or a plugin, and Flexkit links it into one record.
+- **It learns how your business works.** Drop in supplier PDFs, return policies and price lists, and the agent reads them and cites the passage. Write your rules once as skills, and every chat and automation follows them. What the team keeps agreeing on becomes shared memory.
+- **Ask anything, get a real answer.** The agent answers from your own records, querying the live data each time. It charts the result, exports it as a file, and changes records once you approve. When it needs a decision, it asks instead of guessing.
+- **Runs your business around the clock.** Anything you would ask twice can run on its own: every morning, when an order comes in, when stock drops, or when another system sends a signal. Results go to Slack or Teams, and changes you have not allowed wait for a yes.
+- **The right model for each job.** A quick model for a lookup, a stronger one for a long run. Choose a model yourself for any chat or automation, and switch the day a better one ships.
+- **Your team stays in control.** Five built-in roles say what someone may do. Spaces say what they may see, down to a single field, and the same rule holds in tables, in chat, in automations, in the API and in AI clients.
+
+And everything around it:
+
+- **Describe your business, get a data model.** The agent proposes the record types and the links between them; nothing changes until you approve.
+- **One record, every market.** Keep a price, a name or a description per market or language, with a default to fall back on.
+- **A thousand records in one ask.** Reprice a collection or retag a season. Flexkit counts what will change first and runs it in the background once you approve.
+- **Reports you can send.** Ask for a report and get a page or a PDF, with a link that keeps working.
+- **Type it, say it or attach it.** Dictate a question, or drop in a photo, a spreadsheet or a supplier's PDF and ask about what is in it.
+
+## Works where you already work
+
+Flexkit runs in the browser, as a desktop app for macOS and Windows, inside your own React app, and inside Claude, ChatGPT, Cursor or any MCP client (signed in with your Flexkit account, with your role and spaces applied).
+
+Plugins connect it to **Shopify, Slack, Microsoft Teams, Notion, Stripe** (preview), **Google Workspace** (preview), **Axiom** and **Tinybird**, so the agent can read and act in the tools your team already uses. Developers can add their own tools from code.
+
+## For developers
+
+- **The data model in code.** Define it in `flexkit.config.ts` and deploy it from the terminal.
+- **A GraphQL API for everything,** generated from your data model.
+- **Your own tools behind the agent.** Expose server-side functions from your app as tools and code skills.
+- **A CLI** for records, queries, automations, skills, knowledge, plugins, logs, tokens and more. See the [CLI README](https://github.com/flexkit-io/flexkit/tree/main/packages/cli).
+
+### Packages
+
+| Package                                                                                              | Description                                                                                                   |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| [`@flexkit/studio`](https://github.com/flexkit-io/flexkit/tree/main/packages/flexkit-studio)         | The Studio: tables, record editing, chat, automations and the rest of the workspace as a React component.     |
+| [`@flexkit/schema`](https://github.com/flexkit-io/flexkit/tree/main/packages/schema)                 | `defineConfig` / `defineEntity` and the serializer that turns `flexkit.config.ts` into the deployable schema. |
+| [`@flexkit/tools`](https://github.com/flexkit-io/flexkit/tree/main/packages/tools)                   | Define, serve and run custom tools and code skills from your own server.                                      |
+| [`@flexkit/cli`](https://github.com/flexkit-io/flexkit/tree/main/packages/cli)                       | The `flexkit` command-line interface.                                                                         |
+| [`@flexkit/agent-protocol`](https://github.com/flexkit-io/flexkit/tree/main/packages/agent-protocol) | Schemas and types shared between the agent platform and the Studio UI.                                        |
+
+The [`apps`](https://github.com/flexkit-io/flexkit/tree/main/apps) folder has the desktop app, the hosted Studio, and example host apps for Next.js, Astro and TanStack Start.
+
+## Getting started
+
+Visit [flexkit.io/docs](https://flexkit.io/docs) for the full documentation.
+
+```shell
+npm install --global @flexkit/cli
+flexkit login
+flexkit link      # link this folder to a project
+flexkit deploy    # deploy the schema from flexkit.config.ts
+```
 
 ### Define your schema
 
@@ -106,6 +168,13 @@ export default defineTools({
   ],
 });
 ```
+
+## Security and data
+
+- Business data is hosted in the EU and is never used to train models.
+- Credentials for connected tools are encrypted with AES-256-GCM.
+- Every proposed change leaves an approval record, every automation run a transcript, and every schema deploy a history entry.
+- Export the whole project, records and files, as one archive that re-imports cleanly.
 
 ## Contributing
 
