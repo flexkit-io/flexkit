@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.2.40
+
+### Patch Changes
+
+- 7ae4e17: Explain hibernated projects. A Free project hibernates after a week without activity: its data is kept and an owner wakes it up from the dashboard. Studio shows a "Project Hibernated" notice with a link to wake it up (from the new `PROJECT_HIBERNATED` API error code), and `flexkit project pause|unpause` says the project is hibernated and points to the dashboard instead of trying to pause or unpause it.
+- 599c7a7: Studio no longer tells people to run `flexkit deploy` when a project or its schema cannot be loaded. Opening a project that is not in your list (deleted, a wrong link, or not shared with you) shows **Project not found** with what to do next, and a self-hosted Studio points to the project ID and the Flexkit API handler. A request that no longer matches a changed schema asks you to reload the page.
+
 ## 0.2.39
 
 ### Patch Changes
