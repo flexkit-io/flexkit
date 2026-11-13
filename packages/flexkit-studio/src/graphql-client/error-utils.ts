@@ -82,8 +82,8 @@ export function getGraphQLSchemaMismatchMessage(error?: ErrorLike): string | nul
   }
 
   return [
-    'The deployed schema is out of sync with your local Flexkit schema.',
-    'Run `flexkit deploy` using the CLI to apply your latest schema changes.',
+    'The project schema changed since this page loaded, so some fields no longer match.',
+    'Reload the page to use the latest schema.',
     ...messages.map((message) => `- ${message}`),
   ].join('\n');
 }

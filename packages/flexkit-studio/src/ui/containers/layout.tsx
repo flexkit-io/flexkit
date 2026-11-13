@@ -29,8 +29,9 @@ function SchemaUnavailable({
   /** Hosted mode (desktop and web app): plain-language copy and a way back to the projects the account can open. */
   isHosted?: boolean;
 }): JSX.Element {
-  // A project that was never deployed still loads (with an empty schema), so a 404 means the
-  // project itself is gone, or, in a self-hosted Studio, that the Flexkit API handler is not mounted.
+  // A project that was never deployed still loads (with an empty schema). In hosted mode a 404 is a
+  // project missing from the account's list: deleted, a wrong link, or one the account was never added
+  // to. In a self-hosted Studio it means the Flexkit API handler is not mounted or the ID is wrong.
   const isMissing = error.status === 404;
   const isForbidden = error.status === 401 || error.status === 403;
   const title = isMissing
@@ -40,7 +41,7 @@ function SchemaUnavailable({
       : 'Could not load the project';
   const description = isMissing
     ? isHosted
-      ? `Project "${projectId}" does not exist or was deleted.`
+      ? `Project "${projectId}" does not exist, was deleted, or your account is not a member of it. If you need access, ask a project owner to invite you.`
       : `Flexkit could not find project "${projectId}". Check the project ID passed to FlexkitStudio and that the Flexkit API handler is mounted in this app.`
     : isForbidden
       ? `Your account is not a member of project "${projectId}". Ask a project owner to invite you.`
@@ -108,7 +109,12 @@ export function Layout(): JSX.Element {
     }
 
     return (
-      <SchemaUnavailable error={{ status: 403, message: 'No access to this project' }} projectId={projectId} isHosted />
+      // Not in the account's project list: it may be deleted or never shared, and the Studio cannot tell which.
+      <SchemaUnavailable
+        error={{ status: 404, message: 'Project not found' }}
+        isHosted={mode === 'hosted'}
+        projectId={projectId}
+      />
     );
   }
 
