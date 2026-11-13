@@ -15,6 +15,7 @@ type EntityMutationResponse = [
     loading: boolean;
     error: ErrorLike | undefined;
     isProjectDisabled: boolean;
+    isProjectHibernated: boolean;
     isProjectReadOnly: boolean;
   },
 ];
@@ -32,12 +33,16 @@ export function useEntityMutation(): EntityMutationResponse {
   // Parse 403 error response to determine the specific error code
   const serverError = getServerError(error);
 
+  const isProjectHibernated =
+    serverError?.statusCode === 403 &&
+    parseErrorBody<{ code?: string }>(serverError.bodyText)?.code === 'PROJECT_HIBERNATED';
+
   const { isProjectDisabled, isProjectReadOnly } = (() => {
     if (serverError?.statusCode === 403) {
       const responseBody = parseErrorBody<{ code?: string }>(serverError.bodyText);
 
       if (responseBody && typeof responseBody.code === 'string') {
-        if (responseBody.code === 'PROJECT_PAUSED') {
+        if (responseBody.code === 'PROJECT_PAUSED' || responseBody.code === 'PROJECT_HIBERNATED') {
           return {
             isProjectDisabled: true,
             isProjectReadOnly: false,
@@ -71,5 +76,10 @@ export function useEntityMutation(): EntityMutationResponse {
     }
   }, [runMutation, mutateFunction]);
 
-  return [setRunMutation, setMutation, setOptions, { data, loading, error, isProjectDisabled, isProjectReadOnly }];
+  return [
+    setRunMutation,
+    setMutation,
+    setOptions,
+    { data, loading, error, isProjectDisabled, isProjectHibernated, isProjectReadOnly },
+  ];
 }

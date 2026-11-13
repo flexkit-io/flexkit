@@ -31,7 +31,7 @@ export function List(): JSX.Element {
   const entityId = query.get('id');
   const { scope } = useAppContext();
   const { schemaErrorMessage } = useGraphQLError();
-  const { currentProject } = useConfig();
+  const { currentProject, currentProjectId } = useConfig();
   const schema = currentProject?.schema ?? [];
   const [sorting, setSorting] = useState<SortingState>([]);
   const [viewMode, setViewMode] = useState<AssetViewMode>(() => getStoredViewMode());
@@ -87,7 +87,7 @@ export function List(): JSX.Element {
     setStoredViewMode(mode);
   }
 
-  const { isLoading, isLoadingMore, fetchMore, count, data, isProjectDisabled } = useEntityQuery({
+  const { isLoading, isLoadingMore, fetchMore, count, data, isProjectDisabled, isProjectHibernated } = useEntityQuery({
     entityNamePlural: entityName ?? '',
     schema,
     scope,
@@ -119,7 +119,7 @@ export function List(): JSX.Element {
   if (isProjectDisabled) {
     return (
       <div className="fk:flex fk:flex-col fk:h-full fk:pl-3">
-        <ProjectDisabled />
+        <ProjectDisabled isHibernated={isProjectHibernated} projectId={currentProjectId} />
       </div>
     );
   }
