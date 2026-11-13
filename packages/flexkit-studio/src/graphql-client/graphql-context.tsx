@@ -99,8 +99,10 @@ function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): A
         message = serverError.bodyText;
       }
 
+      // `||`: an empty 400 body leaves '' here, which would hide the alert.
       setSchemaErrorMessage(
-        message ?? 'There is an error in the deployed Flexkit schema. Fix flexkit.config.ts and run flexkit deploy.'
+        message?.trim() ||
+          'A request to the project did not match its schema. Reload the page, and contact support if it keeps happening.'
       );
     }
 
