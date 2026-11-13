@@ -18,6 +18,24 @@ describe('project pause helpers', () => {
     );
     assert.match(describePauseState({ ...online, pausedBy: 'spend', suspendedSince: '2026-11-01' }), /on-demand usage/);
     assert.equal(describePauseState({ ...online, readOnlySince: '2026-11-01' }), '"Shop" is read-only.');
+    assert.match(
+      describePauseState({
+        ...online,
+        hibernationState: 'hibernated',
+        pausedBy: 'hibernation',
+        suspendedSince: '2026-11-01',
+      }),
+      /hibernated after a week without activity.*dashboard/
+    );
+    assert.match(
+      describePauseState({
+        ...online,
+        hibernationState: 'waking',
+        pausedBy: 'hibernation',
+        suspendedSince: '2026-11-01',
+      }),
+      /waking up/
+    );
   });
 
   it('needs the exact project name, ignoring surrounding spaces', () => {

@@ -58,6 +58,8 @@ export function useEntityQuery({
   isLoading: boolean;
   isLoadingMore: boolean;
   isProjectDisabled: boolean;
+  /** Disabled because the Free project is hibernated (also sets isProjectDisabled). */
+  isProjectHibernated: boolean;
   isProjectReadOnly: boolean;
   reload: (options?: { preserve?: boolean }) => Promise<void>;
   schemaErrorMessage: string | null;
@@ -134,12 +136,16 @@ export function useEntityQuery({
   const serverError = getServerError(effectiveError);
   const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(effectiveError);
 
+  const isProjectHibernated =
+    serverError?.statusCode === 403 &&
+    parseErrorBody<{ code?: string }>(serverError.bodyText)?.code === 'PROJECT_HIBERNATED';
+
   const { isProjectDisabled, isProjectReadOnly } = (() => {
     if (serverError?.statusCode === 403) {
       const responseBody = parseErrorBody<{ code?: string }>(serverError.bodyText);
 
       if (responseBody && typeof responseBody.code === 'string') {
-        if (responseBody.code === 'PROJECT_PAUSED') {
+        if (responseBody.code === 'PROJECT_PAUSED' || responseBody.code === 'PROJECT_HIBERNATED') {
           return {
             isProjectDisabled: true,
             isProjectReadOnly: false,
@@ -452,14 +458,14 @@ export function useEntityQuery({
 
   return {
     // Refetch keeps existing rows visible; only initial load / explicit reload show as loading.
-    isLoading:
-      (isLoading && networkStatus !== NetworkStatus.refetch) || isReloading || isTotalCountFallbackLoading,
+    isLoading: (isLoading && networkStatus !== NetworkStatus.refetch) || isReloading || isTotalCountFallbackLoading,
     isLoadingMore,
     fetchMore,
     reload,
     count: result.count,
     data: result.results,
     isProjectDisabled,
+    isProjectHibernated,
     isProjectReadOnly,
     schemaErrorMessage,
   };
@@ -488,11 +494,7 @@ function mapResults(
     : mapQueryResult(args.entityNamePlural, args.scope, args.data, args.schema);
 }
 
-function applyEntityListPatches(
-  prev: Results,
-  patches: EntityListRowPatch[],
-  sort: unknown
-): Results {
+function applyEntityListPatches(prev: Results, patches: EntityListRowPatch[], sort: unknown): Results {
   const patchById = new Map(patches.map((patch) => [patch._id, patch]));
   let didPatch = false;
   const nextResults = prev.results.map((row) => {

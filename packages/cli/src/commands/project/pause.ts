@@ -2,7 +2,9 @@
 
 /** `GET /pause` on the project host. */
 export interface PauseState {
-  pausedBy: 'manual' | 'spend' | null;
+  /** Where a hibernated Free project is; absent from older servers. */
+  hibernationState?: 'hibernating' | 'hibernated' | 'waking' | null;
+  pausedBy: 'hibernation' | 'manual' | 'spend' | null;
   projectName: string;
   readOnlySince: string | null;
   suspendedSince: string | null;
@@ -16,6 +18,18 @@ export interface PauseResult {
 
 /** One line for the current state, shown before asking to confirm. */
 export function describePauseState(state: PauseState): string {
+  if (state.pausedBy === 'hibernation') {
+    if (state.hibernationState === 'waking') {
+      return `"${state.projectName}" is waking up from hibernation.`;
+    }
+
+    if (state.hibernationState === 'hibernating') {
+      return `"${state.projectName}" is going into hibernation after a week without activity.`;
+    }
+
+    return `"${state.projectName}" is hibernated after a week without activity. Its data is kept; wake it up from the project page in the dashboard.`;
+  }
+
   if (state.pausedBy === 'manual') {
     return `"${state.projectName}" is paused.`;
   }

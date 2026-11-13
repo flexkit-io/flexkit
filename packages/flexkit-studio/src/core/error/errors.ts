@@ -1,8 +1,16 @@
-export const FLEXKIT_ERROR_CODES = ['PROJECT_PAUSED', 'PROJECT_NOT_FOUND', 'READ_ONLY_MODE', 'UNKNOWN_ERROR'] as const;
+export const FLEXKIT_ERROR_CODES = [
+  'PROJECT_HIBERNATED',
+  'PROJECT_PAUSED',
+  'PROJECT_NOT_FOUND',
+  'READ_ONLY_MODE',
+  'UNKNOWN_ERROR',
+] as const;
 
 export type FlexkitErrorCode = (typeof FLEXKIT_ERROR_CODES)[number];
 
 export const FLEXKIT_ERROR_MESSAGES: Record<FlexkitErrorCode, string> = {
+  PROJECT_HIBERNATED:
+    'This Free project is hibernated after a week without activity. Its data is safe; wake it up from the dashboard.',
   PROJECT_PAUSED: 'This project has been paused.',
   PROJECT_NOT_FOUND: 'The requested project ID was not found',
   READ_ONLY_MODE: 'This project is currently in read only mode and changes cannot be saved',

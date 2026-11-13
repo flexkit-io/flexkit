@@ -78,13 +78,14 @@ export function List(): JSX.Element {
         ...(sortNotNullWhere ? { where: sortNotNullWhere } : {}),
       };
 
-  const { isLoading, isLoadingMore, fetchMore, reload, count, data, isProjectDisabled } = useEntityQuery({
-    entityNamePlural: entityName ?? '',
-    schema,
-    scope,
-    variables,
-    selection: 'list',
-  });
+  const { isLoading, isLoadingMore, fetchMore, reload, count, data, isProjectDisabled, isProjectHibernated } =
+    useEntityQuery({
+      entityNamePlural: entityName ?? '',
+      schema,
+      scope,
+      variables,
+      selection: 'list',
+    });
 
   function handleSortingChange(updater: Updater<SortingState>): void {
     setSorting(updater);
@@ -119,7 +120,7 @@ export function List(): JSX.Element {
   if (isProjectDisabled) {
     return (
       <div className="fk:flex fk:flex-col fk:h-full fk:px-4 fk:pt-3">
-        <ProjectDisabled />
+        <ProjectDisabled isHibernated={isProjectHibernated} projectId={currentProjectId} />
       </div>
     );
   }

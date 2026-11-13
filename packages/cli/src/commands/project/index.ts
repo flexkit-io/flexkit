@@ -303,6 +303,13 @@ async function runPause(client: Client, action: 'pause' | 'unpause', options: Pa
     const state = await client.fetch<PauseState>('/pause', { projectId });
     let body: { confirmProjectName: string } | undefined;
 
+    // A hibernated project comes back by waking it up in the dashboard, which restores its data.
+    if (state.pausedBy === 'hibernation') {
+      output.error(describePauseState(state));
+
+      return 1;
+    }
+
     if (action === 'pause') {
       if (state.pausedBy === 'spend') {
         output.error(`${describePauseState(state)} Raise the monthly limit or switch to Unlimited in Billing instead.`);
