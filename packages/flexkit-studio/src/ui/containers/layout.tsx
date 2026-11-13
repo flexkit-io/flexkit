@@ -19,26 +19,29 @@ import { AppOutlet, useAppSessions } from './app-outlet';
 import { Navbar } from './navbar';
 import { useStudioVersion } from '../../core/use-studio-version';
 
-
 function SchemaUnavailable({
   projectId,
   error,
-  showHomeLink = false,
+  isHosted = false,
 }: {
   projectId: string;
   error: ProjectSchemaError;
-  /** Hosted mode: offer a way back to the projects the account can open. */
-  showHomeLink?: boolean;
+  /** Hosted mode (desktop and web app): plain-language copy and a way back to the projects the account can open. */
+  isHosted?: boolean;
 }): JSX.Element {
+  // A project that was never deployed still loads (with an empty schema), so a 404 means the
+  // project itself is gone, or, in a self-hosted Studio, that the Flexkit API handler is not mounted.
   const isMissing = error.status === 404;
   const isForbidden = error.status === 401 || error.status === 403;
   const title = isMissing
-    ? 'No deployed schema'
+    ? 'Project not found'
     : isForbidden
       ? 'No access to this project'
-      : 'Could not load the project schema';
+      : 'Could not load the project';
   const description = isMissing
-    ? `Project "${projectId}" has no deployed schema yet. Run \`flexkit deploy\` from the folder containing its flexkit.config.ts.`
+    ? isHosted
+      ? `Project "${projectId}" does not exist or was deleted.`
+      : `Flexkit could not find project "${projectId}". Check the project ID passed to FlexkitStudio and that the Flexkit API handler is mounted in this app.`
     : isForbidden
       ? `Your account is not a member of project "${projectId}". Ask a project owner to invite you.`
       : `${error.message} (project "${projectId}").`;
@@ -50,7 +53,7 @@ function SchemaUnavailable({
         <AlertTitle>{title}</AlertTitle>
         <AlertDescription className="fk:flex fk:flex-col fk:gap-2">
           <span>{description}</span>
-          {showHomeLink ? (
+          {isHosted ? (
             <Link className="fk:underline fk:underline-offset-4" to="/">
               Back to your projects
             </Link>
@@ -105,7 +108,7 @@ export function Layout(): JSX.Element {
     }
 
     return (
-      <SchemaUnavailable error={{ status: 403, message: 'No access to this project' }} projectId={projectId} showHomeLink />
+      <SchemaUnavailable error={{ status: 403, message: 'No access to this project' }} projectId={projectId} isHosted />
     );
   }
 
@@ -136,7 +139,7 @@ export function Layout(): JSX.Element {
             <SchemaUnavailable
               error={schemaError ?? { status: 0, message: 'The project schema is not available.' }}
               projectId={projectId}
-              showHomeLink={mode === 'hosted'}
+              isHosted={mode === 'hosted'}
             />
           )}
         </div>

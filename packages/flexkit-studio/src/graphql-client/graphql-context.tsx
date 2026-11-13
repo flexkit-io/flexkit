@@ -100,7 +100,7 @@ function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): A
       }
 
       setSchemaErrorMessage(
-        message ?? 'There is an error in the deployed Flexkit schema. Fix flexkit.config.ts and run flexkit deploy.'
+        message ?? 'The project schema could not be loaded. Reload the page, and contact support if it keeps happening.'
       );
     }
 
