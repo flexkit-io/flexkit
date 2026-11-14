@@ -193,12 +193,19 @@ function printAutomation(client: Client, automation: Automation): void {
   }
 
   for (const trigger of automation.triggers) {
-    client.output.print(
-      `  ${describeTrigger(trigger)}${typeof trigger.url === 'string' ? `  ${chalk.cyan(trigger.url)}` : ''}\n`
-    );
+    client.output.print(`  ${describeTrigger(trigger)}${describeTriggerUrl(trigger)}\n`);
   }
 
   client.output.print(`\n${chalk.dim('Instructions')}\n${automation.instructions}\n\n`);
+}
+
+/** The URL of a webhook trigger. The server withholds it from people who cannot manage automations. */
+function describeTriggerUrl(trigger: { type?: unknown; url?: unknown }): string {
+  if (typeof trigger.url === 'string' && trigger.url) {
+    return `  ${chalk.cyan(trigger.url)}`;
+  }
+
+  return trigger.type === 'webhook' ? `  ${chalk.dim('(URL visible to project owners and developers)')}` : '';
 }
 
 const ls: Subcommand = {

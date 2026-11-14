@@ -53,7 +53,7 @@ const editOptions = (create: boolean): CommandOption[] => [
     'KEY=VALUE'
   ),
   option('method', String, 'HTTP method: POST (default), PUT, PATCH, GET or DELETE', 'METHOD'),
-  option('secret', String, 'A shared secret stored with the webhook ("" clears it)', 'SECRET'),
+  option('secret', String, 'Sign each delivery with this secret ("" clears it and stops signing)', 'SECRET'),
 ];
 
 export const webhooksListCommand: Command = {
