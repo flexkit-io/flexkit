@@ -71,11 +71,44 @@ function sanitizeForFilename(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]/g, '_');
 }
 
+/** A file extension is letters and digits only; anything else (a slash, `..`) is not one. */
+const SAFE_EXTENSION_PATTERN = /^[A-Za-z0-9]{1,16}$/;
+
+/**
+ * The name of an asset's file inside the bundle. `extension` and `path` come
+ * from the project's data, which any editor can write, so neither is trusted
+ * to stay inside `files/`.
+ */
 export function assetBundleFilename(asset: ExportedAsset): string {
   const extensionFromPath = asset.path?.match(/\.([A-Za-z0-9]+)$/)?.[1];
-  const extension = asset.extension ?? extensionFromPath ?? 'bin';
+  const extension =
+    [asset.extension, extensionFromPath].find(
+      (candidate): candidate is string => typeof candidate === 'string' && SAFE_EXTENSION_PATTERN.test(candidate)
+    ) ?? 'bin';
 
   return `files/${sanitizeForFilename(asset._id)}.${extension}`;
+}
+
+/**
+ * Two assets must not share a bundle file: the second download would replace
+ * the first and both records would point at the same bytes. Ids that differ
+ * only in case or in characters a file name cannot hold end up that way.
+ */
+export function assertDistinctBundleFilenames(assets: ExportedAsset[]): void {
+  const idByFilename = new Map<string, string>();
+
+  for (const asset of assets) {
+    const key = assetBundleFilename(asset).toLowerCase();
+    const other = idByFilename.get(key);
+
+    if (other !== undefined && other !== asset._id) {
+      throw new Error(
+        `Assets "${other}" and "${asset._id}" would be saved under the same file name. Rename one of them and export again.`
+      );
+    }
+
+    idByFilename.set(key, asset._id);
+  }
 }
 
 export function serializeAssetLine(asset: ExportedAsset, bundleFile: string): string {
@@ -98,6 +131,11 @@ export function serializeAssetLine(asset: ExportedAsset, bundleFile: string): st
 export async function downloadAssetFile(client: Client, asset: ExportedAsset, destination: string): Promise<void> {
   if (!asset.path) {
     throw new Error(`Asset ${asset._id} has no file path.`);
+  }
+
+  // The path is the asset's own data; it must stay under the images route.
+  if (/[\\?#]/.test(asset.path) || asset.path.startsWith('/') || asset.path.split('/').includes('..')) {
+    throw new Error(`Asset ${asset._id} has an invalid file path.`);
   }
 
   const url = `${getImagesBaseUrl(client)}${asset.path}`;
@@ -169,6 +207,15 @@ export default async function exportAssets(
     output.log(flags.tag ? `No assets found with tag "${flags.tag}".` : 'No assets found.');
 
     return 0;
+  }
+
+  try {
+    assertDistinctBundleFilenames(withFiles);
+  } catch (error) {
+    output.stopSpinner();
+    output.error(error instanceof Error ? error.message : String(error));
+
+    return 1;
   }
 
   const stagingDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flexkit-assets-export-'));
