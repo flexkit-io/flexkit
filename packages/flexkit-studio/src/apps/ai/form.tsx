@@ -766,13 +766,26 @@ function WebhookTriggerRow({
 }): JSX.Element {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
-  const url = trigger.url ?? getWebhookTriggerUrl(projectId, trigger.token);
+  // The server withholds the URL, token and secret from people who cannot manage automations.
+  const isHidden = !trigger.url && !trigger.token;
+  const url = trigger.url || getWebhookTriggerUrl(projectId, trigger.token);
 
   function copyToClipboard(text: string, markCopied: (_copied: boolean) => void): void {
     void navigator.clipboard.writeText(text).then(() => {
       markCopied(true);
       window.setTimeout(() => markCopied(false), 1500);
     });
+  }
+
+  if (isHidden) {
+    return (
+      <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
+        <span>Webhook triggered</span>
+        <span className="fk:text-xs fk:text-muted-foreground">
+          Project owners and developers can see the webhook URL.
+        </span>
+      </div>
+    );
   }
 
   return (
