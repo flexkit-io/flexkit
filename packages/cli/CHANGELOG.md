@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.1.26
+
+### Patch Changes
+
+- e20486e: People who cannot manage automations no longer see an empty box where a webhook trigger's URL would be: Studio and `flexkit automations inspect` say that project owners and developers can see it. The help text of `flexkit webhooks --secret` now says that the secret signs each delivery.
+
 ## 0.1.25
 
 ### Patch Changes
