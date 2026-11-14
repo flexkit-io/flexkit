@@ -1,6 +1,6 @@
 'use client';
 
-import { JSX, useEffect, useRef, useState } from 'react';
+import { JSX, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useForm } from 'react-hook-form';
@@ -83,7 +83,8 @@ export default function EmailLogin({
   const hasOtpBeenSent = data && 'token' in data;
   const token = data && 'token' in data ? data.token : '';
 
-  useEffect(() => {
+  // Before paint, so the old heading never shows above the new text.
+  useLayoutEffect(() => {
     onEmailSentChange?.(Boolean(hasOtpBeenSent));
 
     return () => {
@@ -162,13 +163,14 @@ export default function EmailLogin({
   return (
     <div className="fk:w-full">
       {hasOtpBeenSent ? (
-        <div className="fk:flex fk:flex-col fk:items-center">
+        <div className="fk:flex fk:flex-col fk:items-center" role="status">
           <p className="fk:text-center fk:text-muted-foreground">
             {getDesktop()
               ? 'Keep Flexkit open and, on this computer, open the link we just sent to '
               : 'Keep this window open and in a new tab open the link we just sent to '}
-            <strong>{form.getValues('email')}</strong> (
+            <strong className="fk:break-words">{form.getValues('email')}</strong> (
             <Button
+              aria-label="Undo, use a different email"
               className="fk:h-auto fk:p-0 fk:text-base fk:font-normal fk:text-muted-foreground fk:hover:underline"
               onClick={() => {
                 window.location.reload();
@@ -182,11 +184,12 @@ export default function EmailLogin({
           {confirmationCode ? (
             <div className="fk:mt-6 fk:flex fk:flex-col fk:items-center">
               <p className="fk:text-center fk:text-sm fk:text-muted-foreground">Confirmation code</p>
-              <p
-                aria-label={`Confirmation code ${confirmationCode.split('').join(' ')}`}
-                className="fk:my-3 fk:font-mono fk:text-4xl fk:font-semibold fk:tracking-[0.2em] fk:text-foreground"
-              >
-                {confirmationCode.slice(0, 3)} {confirmationCode.slice(3)}
+              <p className="fk:my-3 fk:font-mono fk:text-4xl fk:font-semibold fk:tracking-[0.2em] fk:text-foreground">
+                <span aria-hidden="true">
+                  {confirmationCode.slice(0, 3)} {confirmationCode.slice(3)}
+                </span>
+                {/* Read digit by digit, not as two numbers. */}
+                <span className="fk:sr-only">{confirmationCode.split('').join(' ')}</span>
               </p>
               <p className="fk:text-center fk:text-sm fk:text-muted-foreground">
                 The page that opens asks you to approve this sign-in and shows this code.
