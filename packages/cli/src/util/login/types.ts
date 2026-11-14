@@ -1,4 +1,6 @@
 export interface LoginData {
+  /** Six digits the confirmation page shows too. Absent on older servers. */
+  confirmationCode?: string;
   token: string;
 }
 

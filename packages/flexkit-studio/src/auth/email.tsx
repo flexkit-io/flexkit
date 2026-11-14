@@ -64,7 +64,10 @@ export default function EmailLogin({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.getValues('email') }),
       }).then(
-        (res) => res.json() as Promise<{ token: string } | { error: { message: string; code: string } } | undefined>
+        (res) =>
+          res.json() as Promise<
+            { confirmationCode?: string; token: string } | { error: { message: string; code: string } } | undefined
+          >
       ),
     {
       revalidateIfStale: false,
@@ -76,6 +79,8 @@ export default function EmailLogin({
   const errorCode = data && 'error' in data && data.error.code;
   const hasOtpBeenSent = data && 'token' in data;
   const token = data && 'token' in data ? data.token : '';
+  // Shown here and on the page the emailed link opens, so the two can be compared.
+  const confirmationCode = data && 'token' in data ? data.confirmationCode : undefined;
 
   useEffect(() => {
     if (!hasOtpBeenSent) {
@@ -147,8 +152,17 @@ export default function EmailLogin({
           <AlertDescription>
             We sent a sign-in link to <strong>{form.getValues('email')}</strong>.{' '}
             {getDesktop()
-              ? 'Open it on this computer, and Flexkit signs you in here automatically.'
-              : 'Open it in a new tab and keep this one open: you are signed in here as soon as you click it.'}{' '}
+              ? 'Open it on this computer, and Flexkit signs you in here once you confirm it.'
+              : 'Open it in a new tab and keep this one open: you are signed in here once you confirm it.'}{' '}
+            {confirmationCode ? (
+              <>
+                The page asks you to approve this sign-in; its confirmation code is{' '}
+                <strong className="fk:font-mono fk:tracking-wider">
+                  {confirmationCode.slice(0, 3)} {confirmationCode.slice(3)}
+                </strong>
+                .{' '}
+              </>
+            ) : null}
             (
             <Button
               className="fk:p-0 fk:hover:underline fk:text-link"
