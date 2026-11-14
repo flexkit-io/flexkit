@@ -89,6 +89,28 @@ export function assetBundleFilename(asset: ExportedAsset): string {
   return `files/${sanitizeForFilename(asset._id)}.${extension}`;
 }
 
+/**
+ * Two assets must not share a bundle file: the second download would replace
+ * the first and both records would point at the same bytes. Ids that differ
+ * only in case or in characters a file name cannot hold end up that way.
+ */
+export function assertDistinctBundleFilenames(assets: ExportedAsset[]): void {
+  const idByFilename = new Map<string, string>();
+
+  for (const asset of assets) {
+    const key = assetBundleFilename(asset).toLowerCase();
+    const other = idByFilename.get(key);
+
+    if (other !== undefined && other !== asset._id) {
+      throw new Error(
+        `Assets "${other}" and "${asset._id}" would be saved under the same file name. Rename one of them and export again.`
+      );
+    }
+
+    idByFilename.set(key, asset._id);
+  }
+}
+
 export function serializeAssetLine(asset: ExportedAsset, bundleFile: string): string {
   return JSON.stringify({
     _id: asset._id,
@@ -109,6 +131,11 @@ export function serializeAssetLine(asset: ExportedAsset, bundleFile: string): st
 export async function downloadAssetFile(client: Client, asset: ExportedAsset, destination: string): Promise<void> {
   if (!asset.path) {
     throw new Error(`Asset ${asset._id} has no file path.`);
+  }
+
+  // The path is the asset's own data; it must stay under the images route.
+  if (/[\\?#]/.test(asset.path) || asset.path.startsWith('/') || asset.path.split('/').includes('..')) {
+    throw new Error(`Asset ${asset._id} has an invalid file path.`);
   }
 
   const url = `${getImagesBaseUrl(client)}${asset.path}`;
@@ -180,6 +207,15 @@ export default async function exportAssets(
     output.log(flags.tag ? `No assets found with tag "${flags.tag}".` : 'No assets found.');
 
     return 0;
+  }
+
+  try {
+    assertDistinctBundleFilenames(withFiles);
+  } catch (error) {
+    output.stopSpinner();
+    output.error(error instanceof Error ? error.message : String(error));
+
+    return 1;
   }
 
   const stagingDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flexkit-assets-export-'));

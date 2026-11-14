@@ -9,6 +9,7 @@ import { runWithConcurrency } from '../../util/concurrency';
 import { formatGraphQLErrors, graphqlRequest } from '../../util/graphql';
 import { getEntitySchemas, getClassifiedAttributes, getScopeNames, capitalize } from '../../util/import/schema';
 import {
+  assertDistinctBundleFilenames,
   assetBundleFilename,
   downloadAssetFile,
   fetchAllAssets,
@@ -315,6 +316,9 @@ export default async function main(client: Client): Promise<number> {
 
     const assets = await fetchAllAssets(client, projectId);
     const assetsWithFiles = assets.filter((asset) => asset.path);
+
+    assertDistinctBundleFilenames(assetsWithFiles);
+
     const bundleFileByAssetId = new Map(assetsWithFiles.map((asset) => [asset._id, assetBundleFilename(asset)]));
 
     // --- Entities ---

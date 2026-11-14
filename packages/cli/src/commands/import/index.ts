@@ -7,7 +7,7 @@ import { resolveProject } from '../../util/get-project';
 import { runWithConcurrency } from '../../util/concurrency';
 import { uploadSource } from '../../util/assets/upload';
 import { tagAssets } from '../../util/assets/tags';
-import { resolveImportInput, parseAssetLines } from '../../util/import/input';
+import { findRefsOutside, resolveImportInput, parseAssetLines } from '../../util/import/input';
 import { parseImportLines, resolveAssetRef } from '../../util/import/parse';
 import { getEntitySchemas, getClassifiedAttributes } from '../../util/import/schema';
 import {
@@ -190,6 +190,22 @@ export default async function main(client: Client): Promise<number> {
     }
 
     const uploads = planUploads(parseResult.assetRefs, assetsMeta, resolvedInput.baseDir);
+
+    if (resolvedInput.selfContained) {
+      const outside = findRefsOutside(
+        uploads.filter((upload) => !upload.source.isUrl).map((upload) => upload.ref),
+        resolvedInput.baseDir
+      );
+
+      if (outside.length > 0) {
+        for (const ref of outside) {
+          output.error(`The bundle refers to a file outside itself: ${ref}`);
+        }
+
+        return 1;
+      }
+    }
+
     const missingFiles = await validateLocalFiles(uploads);
 
     if (missingFiles.length > 0) {
@@ -392,10 +408,7 @@ export default async function main(client: Client): Promise<number> {
       output.spinner(`Connecting relationships for ${withRefs.length} entit${withRefs.length === 1 ? 'y' : 'ies'}...`);
 
       for (const parsed of withRefs) {
-        const update = buildRefConnectUpdate(
-          parsed,
-          replaceConnections.get(`${parsed.entity.name}:${parsed._id}`)
-        );
+        const update = buildRefConnectUpdate(parsed, replaceConnections.get(`${parsed.entity.name}:${parsed._id}`));
 
         if (!update) {
           continue;

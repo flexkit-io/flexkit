@@ -25,7 +25,24 @@ export type ImportInput = {
   dataLines: string[];
   assetLines: string[];
   cleanup: () => Promise<void>;
+  /**
+   * A tarball may come from someone else, so its file references must stay
+   * inside it. A directory or NDJSON file is the user's own and may point
+   * anywhere on their machine.
+   */
+  selfContained: boolean;
 };
+
+/** The local file references that point outside `baseDir`. */
+export function findRefsOutside(refs: string[], baseDir: string): string[] {
+  const root = path.resolve(baseDir);
+
+  return refs.filter((ref) => {
+    const relative = path.relative(root, path.resolve(ref));
+
+    return relative === '' || relative.startsWith('..') || path.isAbsolute(relative);
+  });
+}
 
 function isTarball(filePath: string): boolean {
   return filePath.endsWith('.tar.gz') || filePath.endsWith('.tgz') || filePath.endsWith('.tar');
@@ -89,7 +106,11 @@ async function findBundleRoot(directory: string): Promise<string> {
   return directory;
 }
 
-async function resolveDirectory(directory: string, cleanup: () => Promise<void>): Promise<ImportInput> {
+async function resolveDirectory(
+  directory: string,
+  cleanup: () => Promise<void>,
+  selfContained = false
+): Promise<ImportInput> {
   const bundleRoot = await findBundleRoot(directory);
   const dataLines = await readLinesIfExists(path.join(bundleRoot, 'data.ndjson'));
   const assetLines = await readLinesIfExists(path.join(bundleRoot, 'assets.ndjson'));
@@ -100,7 +121,7 @@ async function resolveDirectory(directory: string, cleanup: () => Promise<void>)
     throw new Error(`No data.ndjson or assets.ndjson found in ${directory}.`);
   }
 
-  return { baseDir: bundleRoot, dataLines, assetLines, cleanup };
+  return { baseDir: bundleRoot, dataLines, assetLines, cleanup, selfContained };
 }
 
 /**
@@ -121,20 +142,41 @@ export async function resolveImportInput(input: string, cwd: string): Promise<Im
   if (isTarball(absolutePath)) {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'flexkit-import-'));
 
-    await tar.extract({ file: absolutePath, cwd: tempDir });
-
-    return resolveDirectory(tempDir, async () => {
-      await fs.rm(tempDir, { recursive: true, force: true });
+    // Links are left out: a `files/a.png` that links to a file elsewhere on this machine would be uploaded.
+    await tar.extract({
+      file: absolutePath,
+      cwd: tempDir,
+      filter: (_entryPath, entry) => !('type' in entry) || entry.type === 'File' || entry.type === 'Directory',
     });
+
+    return resolveDirectory(
+      tempDir,
+      async () => {
+        await fs.rm(tempDir, { recursive: true, force: true });
+      },
+      true
+    );
   }
 
   const lines = await readLines(absolutePath);
 
   if (path.basename(absolutePath) === 'assets.ndjson') {
-    return { baseDir: path.dirname(absolutePath), dataLines: [], assetLines: lines, cleanup: noCleanup };
+    return {
+      baseDir: path.dirname(absolutePath),
+      dataLines: [],
+      assetLines: lines,
+      cleanup: noCleanup,
+      selfContained: false,
+    };
   }
 
-  return { baseDir: path.dirname(absolutePath), dataLines: lines, assetLines: [], cleanup: noCleanup };
+  return {
+    baseDir: path.dirname(absolutePath),
+    dataLines: lines,
+    assetLines: [],
+    cleanup: noCleanup,
+    selfContained: false,
+  };
 }
 
 export function parseAssetLines(lines: string[]): { assets: AssetMetadata[]; errors: string[] } {
