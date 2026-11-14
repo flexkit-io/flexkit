@@ -1,5 +1,11 @@
 # @flexkit/cli
 
+## 0.1.27
+
+### Patch Changes
+
+- b31cb3d: Email sign-in now shows a six-digit confirmation code in Studio and in `flexkit login`. The page that the emailed link opens asks you to approve the sign-in and shows the same code, so you can tell your own request from one somebody else started with your address.
+
 ## 0.1.26
 
 ### Patch Changes
