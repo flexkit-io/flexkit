@@ -71,9 +71,20 @@ function sanitizeForFilename(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]/g, '_');
 }
 
+/** A file extension is letters and digits only; anything else (a slash, `..`) is not one. */
+const SAFE_EXTENSION_PATTERN = /^[A-Za-z0-9]{1,16}$/;
+
+/**
+ * The name of an asset's file inside the bundle. `extension` and `path` come
+ * from the project's data, which any editor can write, so neither is trusted
+ * to stay inside `files/`.
+ */
 export function assetBundleFilename(asset: ExportedAsset): string {
   const extensionFromPath = asset.path?.match(/\.([A-Za-z0-9]+)$/)?.[1];
-  const extension = asset.extension ?? extensionFromPath ?? 'bin';
+  const extension =
+    [asset.extension, extensionFromPath].find(
+      (candidate): candidate is string => typeof candidate === 'string' && SAFE_EXTENSION_PATTERN.test(candidate)
+    ) ?? 'bin';
 
   return `files/${sanitizeForFilename(asset._id)}.${extension}`;
 }
