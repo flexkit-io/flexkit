@@ -1,7 +1,7 @@
 'use client';
 
 import { JSX, useEffect, useState } from 'react';
-import { createLoginState, serializeLoginStateCookie } from './token-endpoints';
+import { getOrCreateLoginState, serializeLoginStateCookie } from './token-endpoints';
 import useSWR from 'swr';
 import { Navigate, useHref, useLocation } from 'react-router-dom';
 import { Button } from '../ui/primitives/button';
@@ -34,12 +34,21 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
   const [loginState, setLoginState] = useState('');
 
   // The callback only accepts a login that starts with this value in the browser's cookie.
+  // Tabs share the value, and the cookie is renewed when a provider link is used, so a login
+  // screen that has been open for a while still works.
   useEffect(() => {
-    const state = createLoginState();
+    const isSecure = window.location.protocol === 'https:';
+    const state = getOrCreateLoginState(document.cookie, isSecure);
 
-    document.cookie = serializeLoginStateCookie(state, window.location.protocol === 'https:');
+    document.cookie = serializeLoginStateCookie(state, isSecure);
     setLoginState(state);
   }, []);
+
+  function renewLoginState(): void {
+    if (loginState) {
+      document.cookie = serializeLoginStateCookie(loginState, window.location.protocol === 'https:');
+    }
+  }
   const [isEmailSent, setIsEmailSent] = useState(false);
   // Providers and the OTP flow belong to the project picked in the selector, not the one in the URL.
   const providersUrl = isHosted ? userApiPaths.authProviders : apiPaths(selectedProjectId).authProviders;
@@ -148,6 +157,8 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
                       variant={provider.button.variant}
                     >
                       <a
+                        onAuxClick={renewLoginState}
+                        onClick={renewLoginState}
                         href={composeLoginHref({
                           url: provider.url,
                           projectId: isHosted ? undefined : selectedProjectId,

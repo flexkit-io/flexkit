@@ -3,6 +3,7 @@ import { afterEach, describe, it, mock } from 'node:test';
 import { handleFlexkitRequest } from '../src/auth/core-handler';
 import {
   createLoginState,
+  getOrCreateLoginState,
   getSafeRedirectPath,
   isExpectedLoginState,
   isSameOriginRequest,
@@ -62,7 +63,13 @@ describe('getSafeRedirectPath', () => {
       'https://studio.example.com.evil.example/x',
       'javascript:alert(1)',
       'data:text/html,x',
-      '/x\\r\\nSet-Cookie: a=b',
+      '/x\r\nSet-Cookie: a=b',
+      // Paths that normalise to `//host`, which a browser reads as another site.
+      'https://studio.example.com//evil.example/x',
+      '/..//evil.example/x',
+      '/.//evil.example',
+      '/%2e%2e//evil.example',
+      '/a/../..//evil.example',
       'relative/path',
       '',
       null,
@@ -83,25 +90,54 @@ describe('getSafeRedirectPath', () => {
 });
 
 describe('login state', () => {
-  it('creates a value the backend echoes, and a cookie that comes back on the provider redirect', () => {
+  const callback = (cookie: string, host = 'studio.example.com'): Request =>
+    request('/api/flexkit/get-token', { headers: { cookie, host } });
+
+  it('creates a value the backend echoes, in a cookie only this exact host can set', () => {
     const state = createLoginState();
 
     assert.match(state, /^[A-Za-z0-9_-]{32}$/);
     assert.notEqual(createLoginState(), state);
     assert.equal(
       serializeLoginStateCookie(state, true),
-      `flexkitLoginState=${state}; Path=/; Max-Age=600; SameSite=Lax; Secure`
+      `__Host-flexkitLoginState=${state}; Path=/; Max-Age=600; SameSite=Lax; Secure`
+    );
+    // Plain HTTP (local development) cannot use the prefix.
+    assert.equal(
+      serializeLoginStateCookie(state, false),
+      `flexkitLoginState=${state}; Path=/; Max-Age=600; SameSite=Lax`
     );
   });
 
+  it('reuses the state already in the cookie, so tabs do not invalidate each other', () => {
+    assert.equal(getOrCreateLoginState(`a=b; __Host-flexkitLoginState=${STATE}`, true), STATE);
+    assert.equal(getOrCreateLoginState(`flexkitLoginState=${STATE}`, false), STATE);
+    assert.notEqual(getOrCreateLoginState('', true), STATE);
+    assert.match(getOrCreateLoginState('__Host-flexkitLoginState=bad value', true), /^[A-Za-z0-9_-]{32}$/);
+  });
+
   it('accepts only the state this browser holds', () => {
-    assert.equal(isExpectedLoginState(STATE, `a=b; flexkitLoginState=${STATE}; c=d`), true);
-    assert.equal(isExpectedLoginState(STATE, 'flexkitLoginState=other-state-0123456789'), false);
-    assert.equal(isExpectedLoginState(STATE, ''), false);
-    assert.equal(isExpectedLoginState(null, `flexkitLoginState=${STATE}`), false);
+    assert.equal(isExpectedLoginState(STATE, callback(`a=b; __Host-flexkitLoginState=${STATE}; c=d`)), true);
+    assert.equal(isExpectedLoginState(STATE, callback('__Host-flexkitLoginState=other-state-0123456789')), false);
+    assert.equal(isExpectedLoginState(STATE, callback('')), false);
+    assert.equal(isExpectedLoginState(null, callback(`__Host-flexkitLoginState=${STATE}`)), false);
     // An empty value on both sides is not a match.
-    assert.equal(isExpectedLoginState('', 'flexkitLoginState='), false);
+    assert.equal(isExpectedLoginState('', callback('__Host-flexkitLoginState=')), false);
     assert.equal(readCookie('xflexkitLoginState=1; flexkitLoginState=2', 'flexkitLoginState'), '2');
+  });
+
+  it('does not accept the unprefixed cookie, which a sibling subdomain can plant, except on localhost', () => {
+    assert.equal(isExpectedLoginState(STATE, callback(`flexkitLoginState=${STATE}`)), false);
+    assert.equal(isExpectedLoginState(STATE, callback(`flexkitLoginState=${STATE}`, 'localhost:3000')), true);
+    assert.equal(isExpectedLoginState(STATE, callback(`flexkitLoginState=${STATE}`, '127.0.0.1:3000')), true);
+    // A planted bare cookie does not win over the real one either.
+    assert.equal(
+      isExpectedLoginState(
+        STATE,
+        callback(`flexkitLoginState=planted-state-0123456789; __Host-flexkitLoginState=${STATE}`)
+      ),
+      true
+    );
   });
 });
 
@@ -109,7 +145,16 @@ describe('isSessionId and isSameOriginRequest', () => {
   it('accepts a session id and nothing that could alter the cookie', () => {
     assert.equal(isSessionId(SID), true);
 
-    for (const value of ['', 'short', `${SID}; Domain=evil.example`, `${SID}\\r\\nX: y`, 42, null, undefined]) {
+    for (const value of [
+      '',
+      'short',
+      `${SID}; Domain=evil.example`,
+      `${SID}\r\nX: y`,
+      `${SID}\n`,
+      42,
+      null,
+      undefined,
+    ]) {
       assert.equal(isSessionId(value), false, String(value));
     }
   });
@@ -118,9 +163,36 @@ describe('isSessionId and isSameOriginRequest', () => {
     assert.equal(isSameOriginRequest(request('/x', { headers: { origin: ORIGIN } })), true);
     assert.equal(isSameOriginRequest(request('/x', { headers: { origin: 'https://evil.example' } })), false);
     assert.equal(isSameOriginRequest(request('/x', { headers: { origin: 'null' } })), false);
-    assert.equal(isSameOriginRequest(request('/x', { headers: { 'sec-fetch-site': 'same-origin' } })), true);
-    assert.equal(isSameOriginRequest(request('/x', { headers: { 'sec-fetch-site': 'cross-site' } })), false);
     assert.equal(isSameOriginRequest(request('/x')), false);
+  });
+
+  it("goes by the browser's own verdict when it sends one, whatever the proxy says about the host", () => {
+    // A reverse proxy that rewrites Host and forwards nothing.
+    const behindProxy = { host: 'internal:3000', origin: ORIGIN };
+
+    assert.equal(isSameOriginRequest(request('/x', { headers: behindProxy })), false);
+    assert.equal(
+      isSameOriginRequest(request('/x', { headers: { ...behindProxy, 'sec-fetch-site': 'same-origin' } })),
+      true
+    );
+
+    for (const verdict of ['cross-site', 'same-site', 'none']) {
+      assert.equal(
+        isSameOriginRequest(request('/x', { headers: { origin: ORIGIN, 'sec-fetch-site': verdict } })),
+        false
+      );
+    }
+  });
+
+  it('reads the first host of a chain of proxies', () => {
+    assert.equal(
+      isSameOriginRequest(
+        request('/x', {
+          headers: { host: 'internal', origin: ORIGIN, 'x-forwarded-host': 'studio.example.com, edge.internal' },
+        })
+      ),
+      true
+    );
   });
 });
 
@@ -129,7 +201,7 @@ describe('/api/flexkit/get-token', () => {
     const fetchMock = mock.method(globalThis, 'fetch', async () => Response.json({ sid: SID }));
     const result = await handle(
       request(`/api/flexkit/get-token?code=c1&state=${STATE}&redirect=${encodeURIComponent(`${ORIGIN}/desk`)}`, {
-        headers: { cookie: `flexkitLoginState=${STATE}` },
+        headers: { cookie: `__Host-flexkitLoginState=${STATE}` },
       })
     );
 
@@ -145,7 +217,7 @@ describe('/api/flexkit/get-token', () => {
       request('/api/flexkit/get-token?code=attacker-code'),
       request(`/api/flexkit/get-token?code=attacker-code&state=${STATE}`),
       request(`/api/flexkit/get-token?code=attacker-code&state=${STATE}`, {
-        headers: { cookie: 'flexkitLoginState=another-state-0123456789' },
+        headers: { cookie: '__Host-flexkitLoginState=another-state-0123456789' },
       }),
     ]) {
       const result = await handle(req);
@@ -157,12 +229,19 @@ describe('/api/flexkit/get-token', () => {
     assert.equal(fetchMock.mock.callCount(), 0);
   });
 
+  it('sends a refused login back to the page of the Studio it came from, not to the site root', async () => {
+    const result = await handle(request('/api/flexkit/get-token?code=x&redirect=%2Fstudio%2Fdesk'));
+
+    assert.equal(result.headers?.Location, '/studio/desk');
+    assert.equal(result.setCookie, undefined);
+  });
+
   it('never redirects to another site', async () => {
     mock.method(globalThis, 'fetch', async () => Response.json({ sid: SID }));
 
     const result = await handle(
       request(`/api/flexkit/get-token?code=c1&state=${STATE}&redirect=${encodeURIComponent('https://evil.example/')}`, {
-        headers: { cookie: `flexkitLoginState=${STATE}` },
+        headers: { cookie: `__Host-flexkitLoginState=${STATE}` },
       })
     );
 
@@ -173,7 +252,9 @@ describe('/api/flexkit/get-token', () => {
     mock.method(globalThis, 'fetch', async () => Response.json({ error: 'invalid' }));
 
     const result = await handle(
-      request(`/api/flexkit/get-token?code=bad&state=${STATE}`, { headers: { cookie: `flexkitLoginState=${STATE}` } })
+      request(`/api/flexkit/get-token?code=bad&state=${STATE}`, {
+        headers: { cookie: `__Host-flexkitLoginState=${STATE}` },
+      })
     );
 
     assert.equal(result.setCookie, undefined);

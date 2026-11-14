@@ -131,8 +131,14 @@ export default function EmailLogin({
                   },
                   body: JSON.stringify({ sid: confirmationResponse.sid }),
                 })
-                  .then(() => {
-                    finishLogin();
+                  .then((setTokenResponse) => {
+                    // A refusal (wrong origin behind a proxy, a malformed session) must not look like a sign-in.
+                    if (setTokenResponse.ok || setTokenResponse.redirected) {
+                      finishLogin();
+                    } else {
+                      // eslint-disable-next-line no-console -- the only trace of a misconfigured API route
+                      console.error(`Flexkit: /api/flexkit/set-token answered ${String(setTokenResponse.status)}`);
+                    }
                   })
                   .catch(() => {
                     // TODO: inform the user about the error, maybe the /set-token route is not available or properly configured

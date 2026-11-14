@@ -115,14 +115,15 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     const redirect = getSafeRedirectPath(url.searchParams.get('redirect'), request);
 
     // Only a login this browser started may put a session into its cookie.
-    if (!isExpectedLoginState(url.searchParams.get('state'), request.headers.get('cookie'))) {
-      return { type: 'redirect', status: 307, headers: { Location: '/' } };
+    // Refused or failed: back to the Studio, where the login screen shows again.
+    if (!isExpectedLoginState(url.searchParams.get('state'), request)) {
+      return { type: 'redirect', status: 307, headers: { Location: redirect } };
     }
 
     const token = await getToken(url.searchParams.get('code') ?? '');
 
     if (!isSessionId(token.sid)) {
-      return { type: 'redirect', status: 307, headers: { Location: '/' } };
+      return { type: 'redirect', status: 307, headers: { Location: redirect } };
     }
 
     return {
