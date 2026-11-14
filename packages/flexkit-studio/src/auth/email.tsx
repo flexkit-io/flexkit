@@ -157,15 +157,7 @@ export default function EmailLogin({
             {getDesktop()
               ? 'Open it on this computer, and Flexkit signs you in here once you confirm it.'
               : 'Open it in a new tab and keep this one open: you are signed in here once you confirm it.'}{' '}
-            {confirmationCode ? (
-              <>
-                The page asks you to approve this sign-in; its confirmation code is{' '}
-                <strong className="fk:font-mono fk:tracking-wider">
-                  {confirmationCode.slice(0, 3)} {confirmationCode.slice(3)}
-                </strong>
-                .{' '}
-              </>
-            ) : null}
+            {confirmationCode ? 'The page asks you to approve this sign-in and shows the code below. ' : null}
             (
             <Button
               className="fk:p-0 fk:hover:underline fk:text-link"
@@ -177,6 +169,17 @@ export default function EmailLogin({
               use a different email
             </Button>
             )
+            {confirmationCode ? (
+              <span className="fk:mt-4 fk:flex fk:flex-col fk:items-center">
+                <span className="fk:text-sm fk:opacity-70">Confirmation code</span>
+                <span
+                  aria-label={`Confirmation code ${confirmationCode.split('').join(' ')}`}
+                  className="fk:my-2 fk:font-mono fk:text-4xl fk:font-semibold fk:tracking-[0.2em]"
+                >
+                  {confirmationCode.slice(0, 3)} {confirmationCode.slice(3)}
+                </span>
+              </span>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : (
