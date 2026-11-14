@@ -16,7 +16,11 @@ export default async function doEmailLogin(client: Client, email: string): Promi
   try {
     const data = await executeLogin(client, email);
     verificationToken = data.token;
-    ({ confirmationCode } = data);
+    // Only the six digits the confirmation page shows; anything else is not worth comparing.
+    confirmationCode =
+      typeof data.confirmationCode === 'string' && /^\d{6}$/.test(data.confirmationCode)
+        ? data.confirmationCode
+        : undefined;
   } catch (err: unknown) {
     output.error(errorToString(err));
 
@@ -66,7 +70,7 @@ export default async function doEmailLogin(client: Client, email: string): Promi
 }
 
 export function formatConfirmationCode(code: string): string {
-  return code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
+  return `${code.slice(0, 3)} ${code.slice(3)}`;
 }
 
 async function executeLogin(client: Client, email: string): Promise<LoginData> {

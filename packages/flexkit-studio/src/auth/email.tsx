@@ -80,7 +80,10 @@ export default function EmailLogin({
   const hasOtpBeenSent = data && 'token' in data;
   const token = data && 'token' in data ? data.token : '';
   // Shown here and on the page the emailed link opens, so the two can be compared.
-  const confirmationCode = data && 'token' in data ? data.confirmationCode : undefined;
+  const confirmationCode =
+    data && 'token' in data && typeof data.confirmationCode === 'string' && /^\d{6}$/.test(data.confirmationCode)
+      ? data.confirmationCode
+      : undefined;
 
   useEffect(() => {
     if (!hasOtpBeenSent) {

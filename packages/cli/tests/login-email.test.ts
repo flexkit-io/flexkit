@@ -7,8 +7,4 @@ describe('formatConfirmationCode', () => {
     assert.equal(formatConfirmationCode('483921'), '483 921');
     assert.equal(formatConfirmationCode('004120'), '004 120');
   });
-
-  it('leaves any other value as it is', () => {
-    assert.equal(formatConfirmationCode('1234'), '1234');
-  });
 });
