@@ -64,7 +64,10 @@ export default function EmailLogin({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.getValues('email') }),
       }).then(
-        (res) => res.json() as Promise<{ token: string } | { error: { message: string; code: string } } | undefined>
+        (res) =>
+          res.json() as Promise<
+            { confirmationCode?: string; token: string } | { error: { message: string; code: string } } | undefined
+          >
       ),
     {
       revalidateIfStale: false,
@@ -76,6 +79,11 @@ export default function EmailLogin({
   const errorCode = data && 'error' in data && data.error.code;
   const hasOtpBeenSent = data && 'token' in data;
   const token = data && 'token' in data ? data.token : '';
+  // Shown here and on the page the emailed link opens, so the two can be compared.
+  const confirmationCode =
+    data && 'token' in data && typeof data.confirmationCode === 'string' && /^\d{6}$/.test(data.confirmationCode)
+      ? data.confirmationCode
+      : undefined;
 
   useEffect(() => {
     if (!hasOtpBeenSent) {
@@ -147,8 +155,9 @@ export default function EmailLogin({
           <AlertDescription>
             We sent a sign-in link to <strong>{form.getValues('email')}</strong>.{' '}
             {getDesktop()
-              ? 'Open it on this computer, and Flexkit signs you in here automatically.'
-              : 'Open it in a new tab and keep this one open: you are signed in here as soon as you click it.'}{' '}
+              ? 'Open it on this computer, and Flexkit signs you in here once you confirm it.'
+              : 'Open it in a new tab and keep this one open: you are signed in here once you confirm it.'}{' '}
+            {confirmationCode ? 'The page asks you to approve this sign-in and shows the code below. ' : null}
             (
             <Button
               className="fk:p-0 fk:hover:underline fk:text-link"
@@ -160,6 +169,17 @@ export default function EmailLogin({
               use a different email
             </Button>
             )
+            {confirmationCode ? (
+              <span className="fk:mt-4 fk:flex fk:flex-col fk:items-center">
+                <span className="fk:text-sm fk:opacity-70">Confirmation code</span>
+                <span
+                  aria-label={`Confirmation code ${confirmationCode.split('').join(' ')}`}
+                  className="fk:my-2 fk:font-mono fk:text-4xl fk:font-semibold fk:tracking-[0.2em]"
+                >
+                  {confirmationCode.slice(0, 3)} {confirmationCode.slice(3)}
+                </span>
+              </span>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : (

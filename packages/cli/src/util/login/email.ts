@@ -8,6 +8,7 @@ import type { LoginData, LoginResult } from './types';
 
 export default async function doEmailLogin(client: Client, email: string): Promise<LoginResult> {
   let verificationToken;
+  let confirmationCode: string | undefined;
   const { output } = client;
 
   output.spinner('Sending you an email');
@@ -15,6 +16,11 @@ export default async function doEmailLogin(client: Client, email: string): Promi
   try {
     const data = await executeLogin(client, email);
     verificationToken = data.token;
+    // Only the six digits the confirmation page shows; anything else is not worth comparing.
+    confirmationCode =
+      typeof data.confirmationCode === 'string' && /^\d{6}$/.test(data.confirmationCode)
+        ? data.confirmationCode
+        : undefined;
   } catch (err: unknown) {
     output.error(errorToString(err));
 
@@ -24,6 +30,14 @@ export default async function doEmailLogin(client: Client, email: string): Promi
   // Clear up `Sending email` success message
   output.print(eraseLines(1));
   output.print(`We sent an email to ${highlightOutput(email)}. Please follow the steps provided inside it.\n`);
+
+  if (confirmationCode) {
+    // The page the link opens shows the same code: approve the sign-in only if they match.
+    output.print(
+      `The page will ask you to approve this sign-in. Its confirmation code is ${highlightOutput(formatConfirmationCode(confirmationCode))}.\n`
+    );
+  }
+
   output.spinner('Waiting for your confirmation');
 
   let result;
@@ -53,6 +67,10 @@ export default async function doEmailLogin(client: Client, email: string): Promi
     sid: result.sid,
     email,
   };
+}
+
+export function formatConfirmationCode(code: string): string {
+  return `${code.slice(0, 3)} ${code.slice(3)}`;
 }
 
 async function executeLogin(client: Client, email: string): Promise<LoginData> {
