@@ -20,9 +20,12 @@ const formSchema = z.object({
 
 export default function EmailLogin({
   projectId,
+  onEmailSentChange,
   redirectTo,
   setIsEmailLogin,
 }: {
+  /** Tells the login screen that the link was sent, so it can show the matching heading. */
+  onEmailSentChange?: (_isSent: boolean) => void;
   /** Omitted in hosted mode: the OTP flow then goes through the Studio's own user-level API route. */
   projectId?: string;
   /** Absolute URL to open once the session cookie is set; defaults to reloading the current page. */
@@ -79,6 +82,14 @@ export default function EmailLogin({
   const errorCode = data && 'error' in data && data.error.code;
   const hasOtpBeenSent = data && 'token' in data;
   const token = data && 'token' in data ? data.token : '';
+
+  useEffect(() => {
+    onEmailSentChange?.(Boolean(hasOtpBeenSent));
+
+    return () => {
+      onEmailSentChange?.(false);
+    };
+  }, [hasOtpBeenSent, onEmailSentChange]);
   // Shown here and on the page the emailed link opens, so the two can be compared.
   const confirmationCode =
     data && 'token' in data && typeof data.confirmationCode === 'string' && /^\d{6}$/.test(data.confirmationCode)
@@ -151,37 +162,38 @@ export default function EmailLogin({
   return (
     <div className="fk:w-full">
       {hasOtpBeenSent ? (
-        <Alert className="fk:dark:bg-foreground fk:dark:text-background" variant="default">
-          <AlertDescription>
-            We sent a sign-in link to <strong>{form.getValues('email')}</strong>.{' '}
+        <div className="fk:flex fk:flex-col fk:items-center">
+          <p className="fk:text-center fk:text-muted-foreground">
             {getDesktop()
-              ? 'Open it on this computer, and Flexkit signs you in here once you confirm it.'
-              : 'Open it in a new tab and keep this one open: you are signed in here once you confirm it.'}{' '}
-            {confirmationCode ? 'The page asks you to approve this sign-in and shows the code below. ' : null}
-            (
+              ? 'Keep Flexkit open and, on this computer, open the link we just sent to '
+              : 'Keep this window open and in a new tab open the link we just sent to '}
+            <strong>{form.getValues('email')}</strong> (
             <Button
-              className="fk:p-0 fk:hover:underline fk:text-link"
+              className="fk:h-auto fk:p-0 fk:text-base fk:font-normal fk:text-muted-foreground fk:hover:underline"
               onClick={() => {
                 window.location.reload();
               }}
               variant="link"
             >
-              use a different email
+              undo
             </Button>
             )
-            {confirmationCode ? (
-              <span className="fk:mt-4 fk:flex fk:flex-col fk:items-center">
-                <span className="fk:text-sm fk:opacity-70">Confirmation code</span>
-                <span
-                  aria-label={`Confirmation code ${confirmationCode.split('').join(' ')}`}
-                  className="fk:my-2 fk:font-mono fk:text-4xl fk:font-semibold fk:tracking-[0.2em]"
-                >
-                  {confirmationCode.slice(0, 3)} {confirmationCode.slice(3)}
-                </span>
-              </span>
-            ) : null}
-          </AlertDescription>
-        </Alert>
+          </p>
+          {confirmationCode ? (
+            <div className="fk:mt-6 fk:flex fk:flex-col fk:items-center">
+              <p className="fk:text-center fk:text-sm fk:text-muted-foreground">Confirmation code</p>
+              <p
+                aria-label={`Confirmation code ${confirmationCode.split('').join(' ')}`}
+                className="fk:my-3 fk:font-mono fk:text-4xl fk:font-semibold fk:tracking-[0.2em] fk:text-foreground"
+              >
+                {confirmationCode.slice(0, 3)} {confirmationCode.slice(3)}
+              </p>
+              <p className="fk:text-center fk:text-sm fk:text-muted-foreground">
+                The page that opens asks you to approve this sign-in and shows this code.
+              </p>
+            </div>
+          ) : null}
+        </div>
       ) : (
         <Form {...form}>
           <form
