@@ -11,6 +11,7 @@ export default defineConfig({
     'tests/project-label.test.ts',
     'tests/hosted-session.test.ts',
     'tests/bff-session.test.ts',
+    'tests/token-endpoints.test.ts',
     'tests/project-schema-key.test.ts',
     'tests/schema-deploy-watch.test.ts',
     'tests/app-sessions.test.ts',

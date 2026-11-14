@@ -225,6 +225,8 @@ export function createFlexkitElectronHandler({
         search,
         sessionToken: await sessionStore.get(),
         contentType: request.headers.get('content-type'),
+        // Only the app's own renderer can reach this scheme handler.
+        isTrustedCaller: true,
       });
     } catch (error) {
       // Offline, DNS, TLS: a thrown handler would surface as a failed fetch

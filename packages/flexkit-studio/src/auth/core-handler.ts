@@ -1,6 +1,7 @@
 import { resolveBffSession } from './bff-session';
 import { getToken } from './get-token';
 import { resolveProxyTarget } from './proxy-target';
+import { getSafeRedirectPath, isExpectedLoginState, isSameOriginRequest, isSessionId } from './token-endpoints';
 
 export interface FlexkitHandlerContext {
   request: Request;
@@ -8,6 +9,12 @@ export interface FlexkitHandlerContext {
   search: string;
   sessionToken: string;
   contentType: string | null;
+  /**
+   * The request can only come from the application's own page (the desktop
+   * app's private URL scheme), so it is not checked for its origin. Never set
+   * this for a handler that is reachable over HTTP.
+   */
+  isTrustedCaller?: boolean;
 }
 
 type FlexkitHandlerHeaders = { [key: string]: string };
@@ -99,15 +106,25 @@ function headersToObject(headers: Headers): { [key: string]: string } {
 }
 
 export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<FlexkitHandlerResult> {
-  const { request, pathname, search, sessionToken, contentType } = ctx;
+  const { request, pathname, search, sessionToken, contentType, isTrustedCaller = false } = ctx;
   const { body: requestBody, method } = request;
 
-  // Handle get-token endpoint
+  // Handle get-token endpoint: the provider login returns here with a one-time code.
   if (pathname === '/api/flexkit/get-token') {
     const url = new URL(request.url);
-    const code = url.searchParams.get('code') ?? '';
-    const token = await getToken(code);
-    const redirect = url.searchParams.get('redirect') ?? '/';
+    const redirect = getSafeRedirectPath(url.searchParams.get('redirect'), request);
+
+    // Only a login this browser started may put a session into its cookie.
+    // Refused or failed: back to the Studio, where the login screen shows again.
+    if (!isExpectedLoginState(url.searchParams.get('state'), request)) {
+      return { type: 'redirect', status: 307, headers: { Location: redirect } };
+    }
+
+    const token = await getToken(url.searchParams.get('code') ?? '');
+
+    if (!isSessionId(token.sid)) {
+      return { type: 'redirect', status: 307, headers: { Location: redirect } };
+    }
 
     return {
       type: 'redirect',
@@ -127,17 +144,25 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     };
   }
 
-  // Handle set-token endpoint
+  // Handle set-token endpoint: the login screen posts the session of a confirmed email login.
   if (pathname === '/api/flexkit/set-token' && method === 'POST') {
     const url = new URL(request.url);
-    const redirect = url.searchParams.get('redirect') ?? '/';
-    let sid = '';
+    const redirect = getSafeRedirectPath(url.searchParams.get('redirect'), request);
+
+    if (!isTrustedCaller && !isSameOriginRequest(request)) {
+      return { type: 'json', status: 403, body: { error: 'Forbidden' } };
+    }
+
+    let sid: unknown;
 
     try {
-      const body = (await request.json()) as { sid?: string };
-      sid = body.sid ?? '';
+      ({ sid } = (await request.json()) as { sid?: unknown });
     } catch {
-      sid = '';
+      sid = undefined;
+    }
+
+    if (!isSessionId(sid)) {
+      return { type: 'json', status: 400, body: { error: 'Invalid session' } };
     }
 
     return {

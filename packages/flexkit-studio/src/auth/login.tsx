@@ -1,6 +1,7 @@
 'use client';
 
-import { JSX, useState } from 'react';
+import { JSX, useEffect, useState } from 'react';
+import { getOrCreateLoginState, serializeLoginStateCookie } from './token-endpoints';
 import useSWR from 'swr';
 import { Navigate, useHref, useLocation } from 'react-router-dom';
 import { Button } from '../ui/primitives/button';
@@ -30,6 +31,24 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
   );
   const selectedProjectHref = useHref(`/${selectedProjectId}`);
   const [isEmailLogin, setIsEmailLogin] = useState(false);
+  const [loginState, setLoginState] = useState('');
+
+  // The callback only accepts a login that starts with this value in the browser's cookie.
+  // Tabs share the value, and the cookie is renewed when a provider link is used, so a login
+  // screen that has been open for a while still works.
+  useEffect(() => {
+    const isSecure = window.location.protocol === 'https:';
+    const state = getOrCreateLoginState(document.cookie, isSecure);
+
+    document.cookie = serializeLoginStateCookie(state, isSecure);
+    setLoginState(state);
+  }, []);
+
+  function renewLoginState(): void {
+    if (loginState) {
+      document.cookie = serializeLoginStateCookie(loginState, window.location.protocol === 'https:');
+    }
+  }
   const [isEmailSent, setIsEmailSent] = useState(false);
   // Providers and the OTP flow belong to the project picked in the selector, not the one in the URL.
   const providersUrl = isHosted ? userApiPaths.authProviders : apiPaths(selectedProjectId).authProviders;
@@ -138,11 +157,15 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
                       variant={provider.button.variant}
                     >
                       <a
+                        onAuxClick={renewLoginState}
+                        onClick={renewLoginState}
                         href={composeLoginHref({
                           url: provider.url,
                           projectId: isHosted ? undefined : selectedProjectId,
                           callback: desktop ? desktop.loginCallback : `${location.origin}/api/flexkit/get-token`,
                           fromPath,
+                          // The desktop app adds and checks its own state when it opens the link.
+                          state: desktop ? undefined : loginState,
                         })}
                       >
                         {provider.button.iconUrl ? (
@@ -266,9 +289,10 @@ interface CreateHrefForProviderOptions {
   /** Where Flexkit sends the session code: the BFF token route, or the desktop app's URL scheme. */
   callback: string;
   fromPath: string;
+  state?: string;
 }
 
-function composeLoginHref({ projectId, url, callback, fromPath }: CreateHrefForProviderOptions): string {
+function composeLoginHref({ projectId, url, callback, fromPath, state }: CreateHrefForProviderOptions): string {
   const params = new URLSearchParams();
   params.set('origin', callback);
 
@@ -277,6 +301,11 @@ function composeLoginHref({ projectId, url, callback, fromPath }: CreateHrefForP
   }
 
   params.set('redirect', fromPath);
+
+  // Echoed by the backend on the callback, which only accepts the login this browser started.
+  if (state) {
+    params.set('state', state);
+  }
 
   return `${url}?${params.toString()}`;
 }
