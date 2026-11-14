@@ -232,12 +232,12 @@ describe('createFlexkitElectronHandler', () => {
       new Request('flexkit://app/api/flexkit/set-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sid: 'sid-2' }),
+        body: JSON.stringify({ sid: 'fedcba9876543210fedcba9876543210' }),
       })
     );
 
     assert.equal(setToken.status, 204);
-    assert.equal(store.token, 'sid-2');
+    assert.equal(store.token, 'fedcba9876543210fedcba9876543210');
 
     const logout = await handler(new Request('flexkit://app/api/flexkit/logout'));
 
