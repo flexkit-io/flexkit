@@ -13,7 +13,7 @@ interface NextRequest {
 }
 
 interface NextResponseStatic {
-  json: (data: unknown, init?: { status?: number }) => Response;
+  json: (data: unknown, init?: { headers?: Headers; status?: number }) => Response;
   new (body: BodyInit | null, init?: ResponseInit): Response;
 }
 
@@ -72,7 +72,7 @@ function resultToNextResponse(result: FlexkitHandlerResultWithResponse, NextResp
     });
   }
 
-  return NextResponse.json(result.body, { status: result.status });
+  return NextResponse.json(result.body, { headers: responseHeaders, status: result.status });
 }
 
 /**

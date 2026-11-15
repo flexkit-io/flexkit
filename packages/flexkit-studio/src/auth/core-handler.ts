@@ -1,7 +1,13 @@
 import { resolveBffSession } from './bff-session';
 import { getToken } from './get-token';
 import { resolveProxyTarget } from './proxy-target';
-import { getSafeRedirectPath, isExpectedLoginState, isSameOriginRequest, isSessionId } from './token-endpoints';
+import {
+  getSafeRedirectPath,
+  isCrossSiteRequest,
+  isExpectedLoginState,
+  isSameOriginRequest,
+  isSessionId,
+} from './token-endpoints';
 
 export interface FlexkitHandlerContext {
   request: Request;
@@ -134,8 +140,13 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     };
   }
 
-  // Handle logout endpoint
+  // Handle logout endpoint. Another site must not be able to sign a visitor out with an image or
+  // a link that points here.
   if (pathname === '/api/flexkit/logout') {
+    if (!isTrustedCaller && isCrossSiteRequest(request)) {
+      return { type: 'json', status: 403, body: { error: 'Forbidden' } };
+    }
+
     return {
       type: 'redirect',
       status: 307,

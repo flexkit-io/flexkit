@@ -14,6 +14,9 @@ import { Input } from '../ui/primitives/input';
 import { apiPaths, baseApiUrl, userApiPaths } from '../core/api-paths';
 import { getDesktop } from '../core/desktop';
 
+/** How long the emailed link works. The screen checks for the confirmation until then. */
+const LOGIN_LINK_LIFETIME_MS = 60 * 60 * 1000;
+
 const formSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
 });
@@ -102,11 +105,12 @@ export default function EmailLogin({
       return;
     }
 
-    let calls = 0;
+    // A deadline, not a count of checks: a browser slows the timer of a tab in the background.
+    const deadline = Date.now() + LOGIN_LINK_LIFETIME_MS;
     const interval = setInterval(() => {
       // Start polling to check for email confirmation
       // if email is confirmed, redirect to dashboard
-      if (calls > 100) {
+      if (Date.now() > deadline) {
         clearInterval(interval);
         setHasOtpExpired(true);
 
@@ -152,7 +156,6 @@ export default function EmailLogin({
         .catch(() => {
           // do nothing, the user has not confirmed the email yet
         });
-      calls++;
     }, 3000);
 
     return () => {
@@ -168,7 +171,23 @@ export default function EmailLogin({
 
   return (
     <div className="fk:w-full">
-      {hasOtpBeenSent ? (
+      {hasOtpBeenSent && hasOtpExpired ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            The sign-in link has expired. Please{' '}
+            <Button
+              className="fk:p-0 fk:hover:underline"
+              onClick={() => {
+                window.location.reload();
+              }}
+              variant="link"
+            >
+              try again
+            </Button>
+            .
+          </AlertDescription>
+        </Alert>
+      ) : hasOtpBeenSent ? (
         <div className="fk:flex fk:flex-col fk:items-center" role="status">
           <p className="fk:text-center fk:text-muted-foreground">
             {getDesktop()
@@ -236,23 +255,6 @@ export default function EmailLogin({
                     try again
                   </Button>
                   .{' '}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            {hasOtpExpired ? (
-              <Alert variant="destructive">
-                <AlertDescription>
-                  The email verification link may have expired. Please{' '}
-                  <Button
-                    className="fk:p-0 fk:hover:underline"
-                    onClick={() => {
-                      window.location.reload();
-                    }}
-                    variant="link"
-                  >
-                    try again
-                  </Button>
-                  .
                 </AlertDescription>
               </Alert>
             ) : null}

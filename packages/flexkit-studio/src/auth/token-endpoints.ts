@@ -170,3 +170,33 @@ export function isSameOriginRequest(request: Request): boolean {
     return false;
   }
 }
+
+/**
+ * Whether a request is known to come from another site: the browser says so,
+ * or names an origin that is not this application's. Unlike
+ * `isSameOriginRequest`, a request that says nothing about where it comes
+ * from is let through, so this suits a route that existing integrations call
+ * with a plain GET, such as logout: opening it from the address bar or with a
+ * same-origin fetch keeps working, an image or a link on another site does
+ * not.
+ */
+export function isCrossSiteRequest(request: Request): boolean {
+  const fetchSite = request.headers.get('sec-fetch-site');
+
+  if (fetchSite) {
+    // `none` is a navigation the person started themselves, such as typing the address.
+    return fetchSite !== 'same-origin' && fetchSite !== 'none';
+  }
+
+  const origin = request.headers.get('origin');
+
+  if (!origin) {
+    return false;
+  }
+
+  try {
+    return new URL(origin).host.toLowerCase() !== getRequestHost(request);
+  } catch {
+    return true;
+  }
+}
