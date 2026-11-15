@@ -239,9 +239,9 @@ describe('createFlexkitElectronHandler', () => {
     assert.equal(setToken.status, 204);
     assert.equal(store.token, 'fedcba9876543210fedcba9876543210');
 
-    const logout = await handler(new Request('flexkit://app/api/flexkit/logout', { method: 'POST' }));
+    const logout = await handler(new Request('flexkit://app/api/flexkit/logout'));
 
-    assert.equal(logout.status, 200);
+    assert.equal(logout.status, 204);
     assert.equal(store.token, '');
     assert.equal(store.cleared, 1);
   });

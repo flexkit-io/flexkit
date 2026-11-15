@@ -302,26 +302,27 @@ describe('/api/flexkit/set-token', () => {
 });
 
 describe('logout', () => {
-  const logout = (init: { headers?: { [key: string]: string }; method?: string }) =>
-    handle(request('/api/flexkit/logout', init));
+  const logout = (headers: { [key: string]: string }, method = 'GET') =>
+    handle(request('/api/flexkit/logout', { headers, method }));
 
-  it('clears the session for the application itself', async () => {
-    const result = await logout({ headers: { 'sec-fetch-site': 'same-origin' }, method: 'POST' });
+  it('clears the session for the application itself and for a visit from the address bar', async () => {
+    for (const headers of [{ 'sec-fetch-site': 'same-origin' }, { 'sec-fetch-site': 'none' }, { origin: ORIGIN }, {}]) {
+      const result = await logout(headers);
 
-    assert.equal(result.status, 200);
-    assert.match(result.setCookie ?? '', /^sessionToken=; .*Max-Age=0;/);
+      assert.equal(result.status, 307);
+      assert.match(result.setCookie ?? '', /^sessionToken=; .*Max-Age=0;/);
+    }
   });
 
-  it('is not triggered by a link or an image on another site', async () => {
-    const result = await logout({ headers: { 'sec-fetch-site': 'cross-site' }, method: 'GET' });
-
-    assert.equal(result.status, 405);
-    assert.equal(result.setCookie, undefined);
-  });
-
-  it('refuses a post from another site', async () => {
-    for (const headers of [{ 'sec-fetch-site': 'cross-site' }, { origin: 'https://evil.example' }, {}]) {
-      const result = await logout({ headers, method: 'POST' });
+  it('is not triggered by an image, a link or a form on another site', async () => {
+    for (const [headers, method] of [
+      [{ 'sec-fetch-site': 'cross-site' }, 'GET'],
+      [{ 'sec-fetch-site': 'same-site' }, 'GET'],
+      [{ 'sec-fetch-site': 'cross-site', origin: ORIGIN }, 'POST'],
+      [{ origin: 'https://evil.example' }, 'POST'],
+      [{ origin: 'null' }, 'POST'],
+    ] as const) {
+      const result = await logout(headers, method);
 
       assert.equal(result.status, 403);
       assert.equal(result.setCookie, undefined);

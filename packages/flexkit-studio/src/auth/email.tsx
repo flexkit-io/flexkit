@@ -14,8 +14,8 @@ import { Input } from '../ui/primitives/input';
 import { apiPaths, baseApiUrl, userApiPaths } from '../core/api-paths';
 import { getDesktop } from '../core/desktop';
 
-/** The emailed link works for 15 minutes; the screen checks every 3 seconds for as long. */
-const MAX_CONFIRMATION_POLLS = 300;
+/** How long the emailed link works. The screen checks for the confirmation until then. */
+const LOGIN_LINK_LIFETIME_MS = 60 * 60 * 1000;
 
 const formSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
@@ -105,11 +105,12 @@ export default function EmailLogin({
       return;
     }
 
-    let calls = 0;
+    // A deadline, not a count of checks: a browser slows the timer of a tab in the background.
+    const deadline = Date.now() + LOGIN_LINK_LIFETIME_MS;
     const interval = setInterval(() => {
       // Start polling to check for email confirmation
       // if email is confirmed, redirect to dashboard
-      if (calls > MAX_CONFIRMATION_POLLS) {
+      if (Date.now() > deadline) {
         clearInterval(interval);
         setHasOtpExpired(true);
 
@@ -155,7 +156,6 @@ export default function EmailLogin({
         .catch(() => {
           // do nothing, the user has not confirmed the email yet
         });
-      calls++;
     }, 3000);
 
     return () => {

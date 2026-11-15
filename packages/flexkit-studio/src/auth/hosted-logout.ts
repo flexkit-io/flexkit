@@ -8,6 +8,6 @@ export async function signOutHosted(rootHref: string): Promise<void> {
     // The cookie is cleared below either way; the session expires server-side.
   }
 
-  await fetch('/api/flexkit/logout', { credentials: 'same-origin', method: 'POST' });
+  await fetch('/api/flexkit/logout', { credentials: 'include', method: 'GET' });
   window.location.assign(rootHref);
 }

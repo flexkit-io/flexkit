@@ -1,7 +1,13 @@
 import { resolveBffSession } from './bff-session';
 import { getToken } from './get-token';
 import { resolveProxyTarget } from './proxy-target';
-import { getSafeRedirectPath, isExpectedLoginState, isSameOriginRequest, isSessionId } from './token-endpoints';
+import {
+  getSafeRedirectPath,
+  isCrossSiteRequest,
+  isExpectedLoginState,
+  isSameOriginRequest,
+  isSessionId,
+} from './token-endpoints';
 
 export interface FlexkitHandlerContext {
   request: Request;
@@ -134,21 +140,17 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     };
   }
 
-  // Handle logout endpoint. Only the application's own page may ask for it: as a plain GET, any
-  // site could sign a visitor out with an image tag.
+  // Handle logout endpoint. Another site must not be able to sign a visitor out with an image or
+  // a link that points here.
   if (pathname === '/api/flexkit/logout') {
-    if (method !== 'POST') {
-      return { type: 'json', status: 405, body: { error: 'Method not allowed' }, headers: { Allow: 'POST' } };
-    }
-
-    if (!isTrustedCaller && !isSameOriginRequest(request)) {
+    if (!isTrustedCaller && isCrossSiteRequest(request)) {
       return { type: 'json', status: 403, body: { error: 'Forbidden' } };
     }
 
     return {
-      type: 'json',
-      status: 200,
-      body: { success: true },
+      type: 'redirect',
+      status: 307,
+      headers: { Location: '/' },
       setCookie: `sessionToken=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0;`,
     };
   }

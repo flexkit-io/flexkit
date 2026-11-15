@@ -39,7 +39,7 @@ export default function useAuthService(mode: StudioMode = 'projects'): AuthServi
         });
 
         // delete first-party auth cookie
-        await fetch('/api/flexkit/logout', { method: 'POST', credentials: 'same-origin' });
+        await fetch('/api/flexkit/logout', { method: 'GET', credentials: 'include' });
 
         window.location.reload();
       },
