@@ -300,3 +300,31 @@ describe('/api/flexkit/set-token', () => {
     assert.equal(result.headers?.Location, '/');
   });
 });
+
+describe('logout', () => {
+  const logout = (init: { headers?: { [key: string]: string }; method?: string }) =>
+    handle(request('/api/flexkit/logout', init));
+
+  it('clears the session for the application itself', async () => {
+    const result = await logout({ headers: { 'sec-fetch-site': 'same-origin' }, method: 'POST' });
+
+    assert.equal(result.status, 200);
+    assert.match(result.setCookie ?? '', /^sessionToken=; .*Max-Age=0;/);
+  });
+
+  it('is not triggered by a link or an image on another site', async () => {
+    const result = await logout({ headers: { 'sec-fetch-site': 'cross-site' }, method: 'GET' });
+
+    assert.equal(result.status, 405);
+    assert.equal(result.setCookie, undefined);
+  });
+
+  it('refuses a post from another site', async () => {
+    for (const headers of [{ 'sec-fetch-site': 'cross-site' }, { origin: 'https://evil.example' }, {}]) {
+      const result = await logout({ headers, method: 'POST' });
+
+      assert.equal(result.status, 403);
+      assert.equal(result.setCookie, undefined);
+    }
+  });
+});

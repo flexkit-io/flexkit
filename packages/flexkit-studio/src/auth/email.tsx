@@ -14,6 +14,9 @@ import { Input } from '../ui/primitives/input';
 import { apiPaths, baseApiUrl, userApiPaths } from '../core/api-paths';
 import { getDesktop } from '../core/desktop';
 
+/** The emailed link works for 15 minutes; the screen checks every 3 seconds for as long. */
+const MAX_CONFIRMATION_POLLS = 300;
+
 const formSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
 });
@@ -106,7 +109,7 @@ export default function EmailLogin({
     const interval = setInterval(() => {
       // Start polling to check for email confirmation
       // if email is confirmed, redirect to dashboard
-      if (calls > 100) {
+      if (calls > MAX_CONFIRMATION_POLLS) {
         clearInterval(interval);
         setHasOtpExpired(true);
 
@@ -168,7 +171,23 @@ export default function EmailLogin({
 
   return (
     <div className="fk:w-full">
-      {hasOtpBeenSent ? (
+      {hasOtpBeenSent && hasOtpExpired ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            The sign-in link has expired. Please{' '}
+            <Button
+              className="fk:p-0 fk:hover:underline"
+              onClick={() => {
+                window.location.reload();
+              }}
+              variant="link"
+            >
+              try again
+            </Button>
+            .
+          </AlertDescription>
+        </Alert>
+      ) : hasOtpBeenSent ? (
         <div className="fk:flex fk:flex-col fk:items-center" role="status">
           <p className="fk:text-center fk:text-muted-foreground">
             {getDesktop()
@@ -236,23 +255,6 @@ export default function EmailLogin({
                     try again
                   </Button>
                   .{' '}
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            {hasOtpExpired ? (
-              <Alert variant="destructive">
-                <AlertDescription>
-                  The email verification link may have expired. Please{' '}
-                  <Button
-                    className="fk:p-0 fk:hover:underline"
-                    onClick={() => {
-                      window.location.reload();
-                    }}
-                    variant="link"
-                  >
-                    try again
-                  </Button>
-                  .
                 </AlertDescription>
               </Alert>
             ) : null}

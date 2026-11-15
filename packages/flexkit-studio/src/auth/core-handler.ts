@@ -134,12 +134,21 @@ export async function handleFlexkitRequest(ctx: FlexkitHandlerContext): Promise<
     };
   }
 
-  // Handle logout endpoint
+  // Handle logout endpoint. Only the application's own page may ask for it: as a plain GET, any
+  // site could sign a visitor out with an image tag.
   if (pathname === '/api/flexkit/logout') {
+    if (method !== 'POST') {
+      return { type: 'json', status: 405, body: { error: 'Method not allowed' }, headers: { Allow: 'POST' } };
+    }
+
+    if (!isTrustedCaller && !isSameOriginRequest(request)) {
+      return { type: 'json', status: 403, body: { error: 'Forbidden' } };
+    }
+
     return {
-      type: 'redirect',
-      status: 307,
-      headers: { Location: '/' },
+      type: 'json',
+      status: 200,
+      body: { success: true },
       setCookie: `sessionToken=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0;`,
     };
   }
