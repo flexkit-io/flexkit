@@ -13,3 +13,7 @@ For bugs, open an issue. We appreciate that a lot, and will credit you as co-aut
 Report security vulnerabilities privately — see [`SECURITY.md`](./SECURITY.md), not a public issue.
 
 Please follow our [Code of Conduct](./CODE_OF_CONDUCT.md) in all interactions with the project.
+
+## Versioning and compatibility
+
+Flexkit follows semantic versioning, and we care a lot about not breaking your project on upgrade. Changes to a published package come with a changeset. While the packages are 0.x, breaking changes are `minor` bumps, and features and fixes are `patch` bumps. We prefer backward-compatible changes: deprecate before removing, and add rather than change. Breaking changes are called out in the release notes with migration steps. The details for contributors (and their agents) are in [`AGENTS.md`](./AGENTS.md#versioning-and-compatibility).
