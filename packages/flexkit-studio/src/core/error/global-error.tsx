@@ -5,7 +5,9 @@ import type { JSX } from 'react';
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom';
 import { DarkModeSwitch } from '../../ui/components/dark-mode-switch';
 import { isFlexkitError, getFlexkitErrorCode } from '../../core/error/errors';
+import { isChunkLoadError } from './chunk-load-error';
 import { reportStudioError } from './error-reporter';
+import { NewVersionNotice } from './new-version-notice';
 
 export function GlobalError(): JSX.Element {
   const error = useRouteError();
@@ -21,6 +23,10 @@ export function GlobalError(): JSX.Element {
   }, [error]);
 
   function errorMessage(): JSX.Element | null {
+    if (isChunkLoadError(error)) {
+      return <NewVersionNotice wholeStudio />;
+    }
+
     if (isRouteErrorResponse(error)) {
       if (error.status === 404) {
         return (

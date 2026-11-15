@@ -3,7 +3,9 @@ import type { ErrorInfo, JSX, ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '../../ui/primitives/alert';
+import { isChunkLoadError } from './chunk-load-error';
 import { reportStudioError } from './error-reporter';
+import { NewVersionNotice } from './new-version-notice';
 
 function ErrorAlert({ error }: { error: unknown }): JSX.Element {
   const errorText =
@@ -45,7 +47,11 @@ class ErrorBoundaryImpl extends Component<BoundaryProps, BoundaryState> {
   }
 
   render(): ReactNode {
-    return this.state.hasError ? <ErrorAlert error={this.state.error} /> : this.props.children;
+    if (!this.state.hasError) {
+      return this.props.children;
+    }
+
+    return isChunkLoadError(this.state.error) ? <NewVersionNotice /> : <ErrorAlert error={this.state.error} />;
   }
 }
 

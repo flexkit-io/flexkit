@@ -25,6 +25,7 @@ export default defineConfig({
     'tests/starter-watch.test.ts',
     'tests/default-scope.test.ts',
     'tests/prompt-suggestions.test.ts',
+    'tests/chunk-load-error.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',
