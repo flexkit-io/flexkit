@@ -5,7 +5,7 @@ import { LayoutGridIcon, LinkIcon, ListIcon, LoaderCircle, SearchIcon, UploadIco
 import { Link, useNavigate } from 'react-router-dom';
 import useSWRInfinite from 'swr/infinite';
 import { useIsViewing } from '../../core/apps/app-active';
-import { useCanMutate } from '../../core/permissions';
+import { useCanManageKnowledge } from '../../core/capabilities';
 import {
   Alert,
   AlertDescription,
@@ -535,7 +535,7 @@ function ListHeader(): JSX.Element {
 export function List(): JSX.Element {
   const { api, projectId } = useProjectKnowledge();
   const navigate = useNavigate();
-  const canMutate = useCanMutate();
+  const canManage = useCanManageKnowledge();
   const isViewing = useIsViewing();
   const status = useKnowledgeStatusFilter();
   const [search, setSearch] = useState('');
@@ -651,7 +651,7 @@ export function List(): JSX.Element {
   return (
     <main className="fk:flex fk:min-h-0 fk:flex-1 fk:flex-col">
       <ListHeader />
-      <AssetDropZone disabled={!canMutate} onDropFiles={addFiles}>
+      <AssetDropZone disabled={!canManage} onDropFiles={addFiles}>
         <div className="fk:min-h-0 fk:flex-1 fk:overflow-auto">
           <div className="fk:flex fk:w-full fk:flex-col fk:gap-5 fk:py-4 fk:pl-4 fk:pr-6">
             <div>
@@ -713,14 +713,14 @@ export function List(): JSX.Element {
                     <LayoutGridIcon className="fk:size-4" />
                   </ToggleGroupItem>
                 </ToggleGroup>
-                <PermissionTooltip disabled={!canMutate}>
-                  <Button disabled={!canMutate} size="sm" variant="outline" onClick={() => setIsUrlDialogOpen(true)}>
+                <PermissionTooltip disabled={!canManage}>
+                  <Button disabled={!canManage} size="sm" variant="outline" onClick={() => setIsUrlDialogOpen(true)}>
                     <LinkIcon />
                     Add web page
                   </Button>
                 </PermissionTooltip>
-                <PermissionTooltip disabled={!canMutate}>
-                  <Button disabled={!canMutate} size="sm" onClick={() => fileInputRef.current?.click()}>
+                <PermissionTooltip disabled={!canManage}>
+                  <Button disabled={!canManage} size="sm" onClick={() => fileInputRef.current?.click()}>
                     <UploadIcon />
                     Upload documents
                   </Button>

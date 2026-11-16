@@ -15,6 +15,8 @@ export { useSearch } from './core/use-search';
 export { defineConfig, defineEntity } from '@flexkit/schema';
 export { canAccessSpaces, filterAttributesForSpaces, filterEntitiesForSpaces } from './core/spaces';
 export { canMutateData, useCanMutate } from './core/permissions';
+export { resolveCapabilities, useCanDeleteRecords, useCanManageKnowledge, useCapabilities } from './core/capabilities';
+export type { Capabilities } from './core/capabilities';
 export { ALL_FIELDS_GROUP, ALL_FIELDS_GROUP_NAME } from './core/field-groups';
 
 // Core types

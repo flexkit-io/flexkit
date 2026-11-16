@@ -13,6 +13,7 @@ import { PermissionTooltip } from '../ui/components/permission-tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/primitives/select';
 import { useDispatch } from '../entities/actions-context';
 import { useAppContext, useAppDispatch } from '../core/app-context';
+import { useCanDeleteRecords } from '../core/capabilities';
 import { useCanMutate } from '../core/permissions';
 import { useConfig } from '../core/config/config-context';
 import { DataTableViewOptions } from './data-table-view-options';
@@ -20,6 +21,7 @@ import { DataTableSortedBy } from './data-table-sorted-by';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityDeleteMutation, getEntityDeleteWhere } from '../graphql-client/queries';
 import { getEntityListQueryName, scheduleEntityListRemoval } from '../graphql-client/refetch-entity-lists';
+import { getRoleRefusalMessage } from '../graphql-client/role-refusal';
 import { isKnowledgeLinkableEntity } from '../apps/knowledge/knowledge';
 
 // Loaded on demand: the Knowledge module should only download when a list of
@@ -52,6 +54,7 @@ export function DataTableToolbar<TData>({
   const [runMutation, setMutation, setOptions] = useEntityMutation();
   const [isDeleting, setIsDeleting] = useState(false);
   const canMutate = useCanMutate();
+  const canDeleteRecords = useCanDeleteRecords();
 
   // Collect selected entity ids from the table
   // @ts-expect-error -- the DataGrid's original type doesn't know about the _id property
@@ -123,8 +126,11 @@ export function DataTableToolbar<TData>({
               // Drop rows immediately, then soft-refetch counts/pages.
               await scheduleEntityListRemoval(apolloClient, getEntityListQueryName(entityName, schema), idsToDelete);
               toast.success(idsToDelete.length > 1 ? 'Items successfully deleted.' : 'Item successfully deleted.');
-            } catch {
-              toast.error('Failed to delete selected items.');
+            } catch (error) {
+              // A refusal of the role is already on screen in the server's own words.
+              if (!getRoleRefusalMessage(error as Error)) {
+                toast.error('Failed to delete selected items.');
+              }
             } finally {
               setIsDeleting(false);
             }
@@ -181,23 +187,22 @@ export function DataTableToolbar<TData>({
         ) : null}
         <DataTableSortedBy table={table} />
       </div>
-      {selectedIds.length > 0 ? (
-        <PermissionTooltip disabled={!canMutate}>
-          <Button
-            className="fk:h-8 fk:mr-2 fk:lg:flex"
-            disabled={isDeleting || !canMutate}
-            onClick={handleBatchDelete}
-            size="sm"
-            variant="destructive"
-          >
-            {isDeleting ? (
-              <Loader2 className="fk:mr-2 fk:h-4 fk:w-4 fk:animate-spin" />
-            ) : (
-              <Trash2 className="fk:mr-2 fk:h-4 fk:w-4" />
-            )}
-            Delete ({selectedIds.length})
-          </Button>
-        </PermissionTooltip>
+      {/* Rows stay selectable for the other bulk actions; only the delete is withheld. */}
+      {selectedIds.length > 0 && canDeleteRecords ? (
+        <Button
+          className="fk:h-8 fk:mr-2 fk:lg:flex"
+          disabled={isDeleting}
+          onClick={handleBatchDelete}
+          size="sm"
+          variant="destructive"
+        >
+          {isDeleting ? (
+            <Loader2 className="fk:mr-2 fk:h-4 fk:w-4 fk:animate-spin" />
+          ) : (
+            <Trash2 className="fk:mr-2 fk:h-4 fk:w-4" />
+          )}
+          Delete ({selectedIds.length})
+        </Button>
       ) : null}
       {entityName && isKnowledgeLinkableEntity(entityName) ? (
         <Suspense fallback={null}>

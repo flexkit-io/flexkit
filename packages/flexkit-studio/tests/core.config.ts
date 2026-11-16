@@ -26,6 +26,8 @@ export default defineConfig({
     'tests/default-scope.test.ts',
     'tests/prompt-suggestions.test.ts',
     'tests/chunk-load-error.test.ts',
+    'tests/capabilities.test.ts',
+    'tests/role-refusal.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',

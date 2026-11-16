@@ -22,6 +22,7 @@ import type { Table as ReactTable } from '@tanstack/react-table';
 import type { SearchRequestProps } from '../../../core/types';
 import { DataTableFacetedFilter } from '../../../data-grid/data-table-faceted-filter';
 import { DataTableSortedBy } from '../../../data-grid/data-table-sorted-by';
+import { useCanDeleteRecords } from '../../../core/capabilities';
 import { useCanMutate } from '../../../core/permissions';
 import { useDispatch } from '../../../entities/actions-context';
 import { useEntityQuery } from '../../../graphql-client/use-entity-query';
@@ -107,6 +108,7 @@ export function DataTableToolbar<TData>({
   const [tagDialogMode, setTagDialogMode] = useState<AssetTagDialogMode>(null);
   const { currentProjectSchema: schema } = useConfig();
   const canMutate = useCanMutate();
+  const canDeleteRecords = useCanDeleteRecords();
   const [search, setSearch] = useState('');
   const textWhereRef = useRef<WhereClause>({});
   const filterWhereRef = useRef<WhereClause>({});
@@ -394,11 +396,15 @@ export function DataTableToolbar<TData>({
               <DropdownMenuItem onClick={() => setTagDialogMode('remove')}>
                 <MinusIcon className="fk:mr-2 fk:h-4 fk:w-4" /> Remove tag
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleBatchDelete} className="fk:text-destructive">
-                <Trash2Icon className="fk:mr-2 fk:h-4 fk:w-4" /> Delete asset{selectedIds.length > 1 ? 's' : ''} (
-                {selectedIds.length})
-              </DropdownMenuItem>
+              {canDeleteRecords ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleBatchDelete} className="fk:text-destructive">
+                    <Trash2Icon className="fk:mr-2 fk:h-4 fk:w-4" /> Delete asset{selectedIds.length > 1 ? 's' : ''} (
+                    {selectedIds.length})
+                  </DropdownMenuItem>
+                </>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -6,7 +6,9 @@ import type { ApolloLink } from '@apollo/client';
 import { ApolloProvider } from '@apollo/client/react';
 import { ErrorLink } from '@apollo/client/link/error';
 import { CombinedGraphQLErrors, CombinedProtocolErrors } from '@apollo/client/errors';
-import { getGraphQLSchemaMismatchMessage, getServerError, parseErrorBody } from './error-utils';
+import { toast } from 'sonner';
+import { getGraphQLSchemaMismatchMessage, getServerError } from './error-utils';
+import { classifyBadRequest, getRoleRefusalMessage, ROLE_REFUSAL_TOAST_ID } from './role-refusal';
 import { useConfig } from '../core/config/config-context';
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
@@ -46,6 +48,18 @@ function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): A
       return;
     }
 
+    // A refusal of the member's role is not a schema problem: say what the
+    // server said and leave the banner (and the table under it) alone.
+    const roleRefusalMessage = getRoleRefusalMessage(error);
+
+    if (roleRefusalMessage) {
+      // Kept up longer than a passing notice: after a refused list query the table is simply
+      // empty, and this sentence is the only thing that says why.
+      toast.error(roleRefusalMessage, { duration: 12_000, id: ROLE_REFUSAL_TOAST_ID });
+
+      return;
+    }
+
     const schemaMismatchMessage = getGraphQLSchemaMismatchMessage(error);
 
     if (schemaMismatchMessage) {
@@ -67,43 +81,7 @@ function createErrorLink(setSchemaErrorMessage: (msg: string | null) => void): A
     const serverError = getServerError(error);
 
     if (serverError?.statusCode === 400) {
-      const responseBody = parseErrorBody<Record<string, unknown>>(serverError.bodyText);
-      let message: string | null = null;
-
-      if (responseBody && typeof responseBody === 'object') {
-        const {
-          error: responseError,
-          errors,
-          message: responseMessage,
-        } = responseBody as {
-          error?: unknown;
-          errors?: unknown;
-          message?: unknown;
-        };
-
-        if (typeof responseMessage === 'string') {
-          message = responseMessage;
-        } else if (Array.isArray(errors)) {
-          const [firstError] = errors as { message?: unknown }[];
-
-          if (firstError && typeof firstError.message === 'string') {
-            const { message: firstErrorMessage } = firstError;
-            message = firstErrorMessage;
-          }
-        } else if (typeof responseError === 'string') {
-          message = responseError;
-        } else {
-          message = JSON.stringify(responseBody);
-        }
-      } else {
-        message = serverError.bodyText;
-      }
-
-      // `||`: an empty 400 body leaves '' here, which would hide the alert.
-      setSchemaErrorMessage(
-        message?.trim() ||
-          'A request to the project did not match its schema. Reload the page, and contact support if it keeps happening.'
-      );
+      setSchemaErrorMessage(classifyBadRequest(serverError.bodyText).message);
     }
 
     if (serverError) {

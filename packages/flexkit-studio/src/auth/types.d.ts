@@ -6,6 +6,16 @@ export type User = {
   role: string;
   /** Space codes the user belongs to (owners receive every project space). */
   spaces: string[];
+  /**
+   * What the role may do in this project. Absent on older backends; read it
+   * through `resolveCapabilities` (or the `useCan…` hooks), which fall back to the role.
+   */
+  capabilities?: {
+    canDeleteRecords?: boolean;
+    canImportRecords?: boolean;
+    canManageKnowledge?: boolean;
+    canRunBulkChanges?: boolean;
+  };
 };
 
 export type Credentials = {

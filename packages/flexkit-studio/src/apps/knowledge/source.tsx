@@ -7,7 +7,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { useAuth } from '../../auth/auth-context';
 import { useIsViewing } from '../../core/apps/app-active';
-import { useCanMutate } from '../../core/permissions';
+import { useCanManageKnowledge } from '../../core/capabilities';
 import {
   Alert,
   AlertDescription,
@@ -183,7 +183,7 @@ function SourceSettings({
   projectId: string;
   source: KnowledgeSource;
 }): JSX.Element {
-  const canMutate = useCanMutate();
+  const canManage = useCanManageKnowledge();
   const [, auth] = useAuth();
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(knowledgePaths(projectId).spaces, fetcher);
   const userSpaceCodes = auth.user?.spaces ?? [];
@@ -201,7 +201,7 @@ function SourceSettings({
   }, [source.title]);
 
   async function save(patch: { agentVisible?: boolean; spaces?: string[]; title?: string }): Promise<void> {
-    if (!canMutate) {
+    if (!canManage) {
       return;
     }
 
@@ -219,7 +219,7 @@ function SourceSettings({
     }
   }
 
-  const disabled = !canMutate || isSaving || foreignSpaces.length > 0;
+  const disabled = !canManage || isSaving || foreignSpaces.length > 0;
   let spacesEmptyMessage = 'This project has no spaces yet, so every member can read it.';
 
   if (projectSpaces.length > 0) {
@@ -306,7 +306,7 @@ export function Source(): JSX.Element {
   const { api, projectId } = useProjectKnowledge();
   const { sourceId } = useParams<{ sourceId: string }>();
   const navigate = useNavigate();
-  const canMutate = useCanMutate();
+  const canManage = useCanManageKnowledge();
   const isViewing = useIsViewing();
   const [isBusy, setIsBusy] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
@@ -393,9 +393,9 @@ export function Source(): JSX.Element {
       <SourcePageHeader
         actions={
           <div className="fk:flex fk:items-center fk:gap-2">
-            <PermissionTooltip disabled={!canMutate}>
+            <PermissionTooltip disabled={!canManage}>
               <Button
-                disabled={!canMutate || isWorking || status.tone === 'busy'}
+                disabled={!canManage || isWorking || status.tone === 'busy'}
                 size="sm"
                 variant="outline"
                 onClick={() => void reindex()}
