@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '../primitives/dropdown-menu';
 import { useAuth } from '../../auth/auth-context';
+import { getAvatarInitial } from './avatar-initial';
 
 const AVATAR_COLORS = ['#06d9b6', '#a4f479', '#d4d323', '#fb468f', '#0ec4f1'];
 
@@ -37,7 +38,7 @@ export function UserNav({ projectId }: Props): JSX.Element {
         <Button className="fk:relative fk:h-8 fk:w-8 fk:rounded-full" variant="ghost">
           <Avatar className="fk:h-8 fk:w-8">
             {auth.user?.avatar_url ? <AvatarImage alt={auth.user.display_name} src={auth.user.avatar_url} /> : null}
-            <AvatarFallback className="fk:bg-transparent">
+            <AvatarFallback className="fk:relative fk:bg-transparent">
               <BoringAvatar
                 className="fk:size-8"
                 colors={AVATAR_COLORS}
@@ -45,6 +46,13 @@ export function UserNav({ projectId }: Props): JSX.Element {
                 size={32}
                 variant="marble"
               />
+              {/* The pattern alone looks the same for everyone at a glance; the initial says whose it is. */}
+              <span
+                aria-hidden="true"
+                className="fk:absolute fk:inset-0 fk:flex fk:items-center fk:justify-center fk:text-sm fk:font-semibold fk:leading-none fk:text-white fk:[text-shadow:0_1px_2px_rgb(0_0_0/0.45)] fk:select-none"
+              >
+                {getAvatarInitial(auth.user?.display_name, auth.user?.email)}
+              </span>
             </AvatarFallback>
           </Avatar>
         </Button>

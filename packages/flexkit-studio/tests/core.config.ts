@@ -28,6 +28,7 @@ export default defineConfig({
     'tests/chunk-load-error.test.ts',
     'tests/capabilities.test.ts',
     'tests/role-refusal.test.ts',
+    'tests/avatar-initial.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests',
