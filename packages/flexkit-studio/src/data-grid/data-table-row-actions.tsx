@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/primitives/dropdown-menu';
 import { useDispatch } from '../entities/actions-context';
-import { useCanMutate } from '../core/permissions';
+import { useCanDeleteRecords } from '../core/capabilities';
 
 interface DataTableRowActionsProps<TData> {
   entityName: string;
@@ -31,12 +31,12 @@ export function DataTableRowActions<TData>({
   options = { canDelete: true, canEdit: true },
 }: DataTableRowActionsProps<TData>): JSX.Element {
   const actionDispatch = useDispatch();
-  const canMutate = useCanMutate();
+  const canDeleteRecords = useCanDeleteRecords();
   // @ts-expect-error -- the DataGrid's original type doesn't know about the _id property
   const entityId = row.original._id;
-  // Read-only roles keep the pencil (the drawer doubles as their read view)
-  // but lose the delete affordance entirely.
-  const canDelete = (options.canDelete ?? true) && canMutate;
+  // Roles that may not delete (viewers, contributors) keep the pencil (the
+  // drawer is their read or edit view) but lose the delete affordance entirely.
+  const canDelete = (options.canDelete ?? true) && canDeleteRecords;
   const canEdit = options.canEdit ?? true;
 
   function handleEdit(): void {

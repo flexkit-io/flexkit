@@ -119,7 +119,7 @@ export const projectPauseCommand: Command = {
   parent: 'project',
   name: 'pause',
   description:
-    "Pause the project (Pro plans): GraphQL, automations and agent chat stop until an owner unpauses it. Asks you to type the project's name, as the dashboard does. Owners only, signed in with `flexkit login`; API tokens can't pause a project.",
+    "Pause the project (Pro plans): GraphQL, automations and agent chat stop until an owner or developer unpauses it. Asks you to type the project's name, as the dashboard does. Owners and developers only, signed in with `flexkit login`; API tokens can't pause a project.",
   arguments: [],
   options: [
     ...pauseOptions,
@@ -147,7 +147,7 @@ export const projectUnpauseCommand: Command = {
   parent: 'project',
   name: 'unpause',
   description:
-    'Bring a paused project back online. A pause from on-demand usage limits or an overdue invoice is lifted in Billing instead. Owners only, signed in with `flexkit login`.',
+    'Bring a paused project back online. A pause from on-demand usage limits or an overdue invoice is lifted in Billing instead. Owners and developers only, signed in with `flexkit login`.',
   arguments: [],
   options: pauseOptions,
   examples: [

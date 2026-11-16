@@ -18,7 +18,7 @@ import { useAppContext } from '../../core/app-context';
 import { useConfig } from '../../core/config/config-context';
 import { getDisplayAttribute } from '../../core/get-display-attribute';
 import type { Attribute, Entity } from '../../core/types';
-import { useCanMutate } from '../../core/permissions';
+import { useCanManageKnowledge } from '../../core/capabilities';
 import { useDispatch } from '../../entities/actions-context';
 import { getEntitySchema } from '../../graphql-client/queries';
 import type { MappedEntityItem } from '../../graphql-client/types';
@@ -387,7 +387,7 @@ function EntityKnowledgeDialog({
   open: boolean;
   projectId: string;
 }): JSX.Element {
-  const canMutate = useCanMutate();
+  const canManage = useCanManageKnowledge();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [detachingId, setDetachingId] = useState<string | null>(null);
   const { data, error, isLoading, mutate } = useSWR<KnowledgeEntitySources>(
@@ -436,7 +436,7 @@ function EntityKnowledgeDialog({
         projectId={projectId}
         sources={sources}
         renderAction={(source) =>
-          canMutate ? (
+          canManage ? (
             <DetachButton
               disabled={detachingId !== null}
               label={`Detach ${source.title}`}
@@ -467,8 +467,8 @@ function EntityKnowledgeDialog({
         </DialogHeader>
         <div className="fk:max-h-80 fk:overflow-y-auto">{body}</div>
         <div className="fk:flex fk:justify-end">
-          <PermissionTooltip disabled={!canMutate}>
-            <Button disabled={!canMutate} size="sm" variant="outline" onClick={() => setIsPickerOpen(true)}>
+          <PermissionTooltip disabled={!canManage}>
+            <Button disabled={!canManage} size="sm" variant="outline" onClick={() => setIsPickerOpen(true)}>
               <PaperclipIcon />
               Attach document
             </Button>
@@ -512,7 +512,7 @@ export function RecordKnowledgePanel({
 }): JSX.Element | null {
   const { api, projectId } = useProjectKnowledge();
   const { currentProject } = useConfig();
-  const canMutate = useCanMutate();
+  const canManage = useCanManageKnowledge();
   const [isOpen, setIsOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [detachingId, setDetachingId] = useState<string | null>(null);
@@ -582,7 +582,7 @@ export function RecordKnowledgePanel({
             projectId={projectId}
             sources={sources}
             renderAction={(source) =>
-              canMutate ? (
+              canManage ? (
                 <DetachButton
                   disabled={detachingId !== null}
                   label={`Detach ${source.title}`}
@@ -635,8 +635,8 @@ export function RecordKnowledgePanel({
             </button>
           </CollapsibleTrigger>
           {isOpen ? (
-            <PermissionTooltip disabled={!canMutate}>
-              <Button disabled={!canMutate} size="sm" variant="outline" onClick={() => setIsPickerOpen(true)}>
+            <PermissionTooltip disabled={!canManage}>
+              <Button disabled={!canManage} size="sm" variant="outline" onClick={() => setIsPickerOpen(true)}>
                 <PaperclipIcon />
                 Attach document
               </Button>
@@ -708,7 +708,7 @@ function useRecordLabels(group: KnowledgeLinkGroup, schema: Entity[], displayAtt
 }
 
 interface LinkedRecordGroupProps {
-  canMutate: boolean;
+  canManage: boolean;
   detachingKey: string | null;
   group: KnowledgeLinkGroup;
   onDetach: (_link: KnowledgeLink) => void;
@@ -755,7 +755,7 @@ function ResolvedLinkedRecordGroup({
 }
 
 function LinkedRecordRows({
-  canMutate,
+  canManage,
   detachingKey,
   entityLabel,
   group,
@@ -792,7 +792,7 @@ function LinkedRecordRows({
               >
                 {label}
               </button>
-              {canMutate ? (
+              {canManage ? (
                 <DetachButton
                   disabled={detachingKey !== null}
                   label={`Detach from ${label}`}
@@ -820,7 +820,7 @@ export function LinkedRecordsSection({
   projectId: string;
   source: KnowledgeSource;
 }): JSX.Element {
-  const canMutate = useCanMutate();
+  const canManage = useCanManageKnowledge();
   const [detachingKey, setDetachingKey] = useState<string | null>(null);
   const { data, error, isLoading, mutate } = useSWR<KnowledgeLinksList>(
     knowledgePaths(projectId).links(source.id),
@@ -920,7 +920,7 @@ export function LinkedRecordsSection({
       <div className="fk:flex fk:flex-col fk:gap-4">
         {groups.map((group) => (
           <LinkedRecordGroup
-            canMutate={canMutate}
+            canManage={canManage}
             detachingKey={detachingKey}
             group={group}
             key={group.entityPlural}
@@ -935,7 +935,7 @@ export function LinkedRecordsSection({
     <>
       <AppliesToEntities
         busy={detachingKey !== null}
-        canMutate={canMutate}
+        canManage={canManage}
         entities={entities}
         isLoading={isLoading && !data}
         onAttach={(entity) => void attachEntity(entity)}
@@ -965,7 +965,7 @@ export function LinkedRecordsSection({
  */
 function AppliesToEntities({
   busy,
-  canMutate,
+  canManage,
   entities,
   isLoading,
   onAttach,
@@ -973,7 +973,7 @@ function AppliesToEntities({
 }: {
   /** An attach or detach is in flight: no second one until it answers. */
   busy: boolean;
-  canMutate: boolean;
+  canManage: boolean;
   entities: KnowledgeEntityLink[];
   isLoading: boolean;
   onAttach: (_entity: Entity) => void;
@@ -1018,7 +1018,7 @@ function AppliesToEntities({
                 variant="secondary"
               >
                 <span className="fk:capitalize">{label}</span>
-                {canMutate ? (
+                {canManage ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
@@ -1038,9 +1038,9 @@ function AppliesToEntities({
             );
           })}
           <Popover open={isPickerOpen} onOpenChange={setIsPickerOpen}>
-            <PermissionTooltip disabled={!canMutate}>
+            <PermissionTooltip disabled={!canManage}>
               <PopoverTrigger asChild>
-                <Button className="fk:h-7" disabled={!canMutate || candidates.length === 0} size="sm" variant="outline">
+                <Button className="fk:h-7" disabled={!canManage || candidates.length === 0} size="sm" variant="outline">
                   <PlusIcon />
                   Add entity type
                 </Button>

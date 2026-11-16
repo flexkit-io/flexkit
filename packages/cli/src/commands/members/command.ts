@@ -10,6 +10,10 @@ function option(
   return { name, shorthand, type, argument, description, deprecated: false };
 }
 
+/** What each role may do, lowest first. Shown wherever a role is chosen. */
+export const ROLES_HELP =
+  'Roles, each adding to the one before: viewer reads; contributor creates and edits records, links related records and uploads assets; editor also deletes records and manages Knowledge documents; developer and owner also set up the project.';
+
 const jsonOption = option('json', Boolean, 'Print the API response as JSON on stdout');
 const projectOption = option('project', String, 'Project to use (default: linked project)', 'ID', 'p');
 const yesOption = option('yes', Boolean, 'Skip the confirmation prompt', undefined, 'y');
@@ -19,7 +23,7 @@ export const membersListCommand: Command = {
   description: 'List the members of the project with their roles. Needs an owner or developer.',
   arguments: [],
   options: [
-    option('role', String, 'Only these roles, comma separated (owner,developer,contributor,editor,viewer)', 'LIST'),
+    option('role', String, 'Only these roles, comma separated (viewer,contributor,editor,developer,owner)', 'LIST'),
     jsonOption,
     projectOption,
   ],
@@ -32,14 +36,13 @@ export const membersListCommand: Command = {
 
 export const membersInviteCommand: Command = {
   name: 'invite',
-  description:
-    'Invite people by email with a role. People without a Flexkit account get an invitation email; people already in the project get the new role. Only owners can invite owners.',
+  description: `Invite people by email with a role. People without a Flexkit account get an invitation email; people already in the project get the new role. Only owners can invite owners. ${ROLES_HELP}`,
   arguments: [{ name: 'email...', required: true }],
   options: [
     option(
       'role',
       String,
-      'Role to give: owner, developer, contributor, editor or viewer (default: viewer)',
+      'Role to give: viewer, contributor, editor, developer or owner (default: viewer)',
       'ROLE',
       'r'
     ),
@@ -58,8 +61,7 @@ export const membersInviteCommand: Command = {
 
 export const membersRoleCommand: Command = {
   name: 'role',
-  description:
-    "Change a member's role. The member is a user id or an email. Only owners can make someone an owner or change an owner's role, and the last owner keeps the role.",
+  description: `Change a member's role (viewer, contributor, editor, developer or owner). The member is a user id or an email. Only owners can make someone an owner or change an owner's role, and the last owner keeps the role. ${ROLES_HELP}`,
   arguments: [
     { name: 'member', required: true },
     { name: 'role', required: true },

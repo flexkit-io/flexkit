@@ -23,8 +23,11 @@ import {
   TooltipTrigger,
 } from '../../ui';
 import { gql } from '@apollo/client';
+import { toast } from 'sonner';
 import { useAppContext } from '../../core/app-context';
+import { useCanDeleteRecords } from '../../core/capabilities';
 import { useCanMutate } from '../../core/permissions';
+import { getRoleRefusalMessage } from '../../graphql-client/role-refusal';
 import { useEntityMutation } from '../../graphql-client/use-entity-mutation';
 import { useEntityQuery } from '../../graphql-client/use-entity-query';
 import {
@@ -54,6 +57,7 @@ export function Sidebar(): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const canMutate = useCanMutate();
+  const canDeleteRecords = useCanDeleteRecords();
 
   const entityName = '_tag';
   const entityNamePlural = '_tags';
@@ -114,23 +118,32 @@ export function Sidebar(): JSX.Element {
         ${entityQuery.query}
       `;
 
-      await new Promise<void>((resolve, reject) => {
-        setMutation(gql`
-          ${mutation}
-        `);
-        setOptions({
-          variables: { where: { _id: { eq: _id } } },
-          refetchQueries: [refreshQuery],
-          onCompleted: () => {
-            resolve();
-          },
-          onError: (error: Error) => {
-            reject(error);
-          },
+      try {
+        await new Promise<void>((resolve, reject) => {
+          setMutation(gql`
+            ${mutation}
+          `);
+          setOptions({
+            variables: { where: { _id: { eq: _id } } },
+            refetchQueries: [refreshQuery],
+            onCompleted: () => {
+              resolve();
+            },
+            onError: (error: Error) => {
+              reject(error);
+            },
+          });
+          runMutation(true);
         });
-        runMutation(true);
-      });
-      setIsDeleting(false);
+      } catch (error) {
+        // A refusal of the role is already on screen in the server's own words.
+        if (!getRoleRefusalMessage(error as Error)) {
+          toast.error('The tag could not be deleted.');
+        }
+      } finally {
+        // Without this a failed delete left the dialog's buttons disabled for good.
+        setIsDeleting(false);
+      }
     },
     [entityName, entityNamePlural, runMutation, schema, scope, setMutation, setOptions]
   );
@@ -278,16 +291,20 @@ export function Sidebar(): JSX.Element {
                     >
                       Edit
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="fk:text-destructive"
-                      onClick={() => {
-                        setTagToDelete(tag);
-                        setIsDeleteOpen(true);
-                      }}
-                    >
-                      Remove
-                    </DropdownMenuItem>
+                    {canDeleteRecords ? (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="fk:text-destructive"
+                          onClick={() => {
+                            setTagToDelete(tag);
+                            setIsDeleteOpen(true);
+                          }}
+                        >
+                          Remove
+                        </DropdownMenuItem>
+                      </>
+                    ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

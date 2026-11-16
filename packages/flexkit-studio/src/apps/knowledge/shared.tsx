@@ -13,7 +13,7 @@ import { Pdf } from '@untitledui/file-icons/dist/solid/pdf.mjs';
 import { Pptx } from '@untitledui/file-icons/dist/solid/pptx.mjs';
 import { Txt } from '@untitledui/file-icons/dist/solid/txt.mjs';
 import { useConfig } from '../../core/config/config-context';
-import { useCanMutate } from '../../core/permissions';
+import { useCanManageKnowledge } from '../../core/capabilities';
 import {
   Badge,
   Button,
@@ -203,7 +203,7 @@ export function SourceActionsMenu({
   trigger?: 'row' | 'page';
 }): JSX.Element | null {
   const { api, projectId } = useProjectKnowledge();
-  const canMutate = useCanMutate();
+  const canManage = useCanManageKnowledge();
   const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
 
@@ -263,14 +263,14 @@ export function SourceActionsMenu({
           ) : null}
           {onOpen || source.path || source.originUrl ? <DropdownMenuSeparator /> : null}
           <DropdownMenuItem
-            disabled={!canMutate || isBusy}
+            disabled={!canManage || isBusy}
             variant="destructive"
             onSelect={() => setIsConfirmingRemoval(true)}
           >
             <Trash2Icon />
             Remove
           </DropdownMenuItem>
-          {canMutate ? null : (
+          {canManage ? null : (
             <DropdownMenuLabel className="fk:max-w-56 fk:whitespace-normal fk:text-xs fk:font-normal fk:text-muted-foreground">
               Your member role cannot remove documents.
             </DropdownMenuLabel>

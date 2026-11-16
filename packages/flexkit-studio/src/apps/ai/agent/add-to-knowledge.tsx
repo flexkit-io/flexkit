@@ -4,7 +4,7 @@ import { BookOpenTextIcon, CheckIcon, LoaderCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSWRConfig } from 'swr';
 import { useConfig } from '../../../core/config/config-context';
-import { useCanMutate } from '../../../core/permissions';
+import { useCanManageKnowledge } from '../../../core/capabilities';
 import { toast, Tooltip, TooltipContent, TooltipTrigger } from '../../../ui';
 import { createKnowledgeApi } from '../../knowledge/api';
 import { getKnowledgeFileProblem, getKnowledgeSourcePath } from '../../knowledge/knowledge';
@@ -25,7 +25,7 @@ function isAgentChatDetailKey(key: unknown): boolean {
  */
 export function AddToKnowledgeButton({ attachment }: { attachment: AgentChatAttachment }): JSX.Element | null {
   const { currentProjectId } = useConfig();
-  const canMutate = useCanMutate();
+  const canManage = useCanManageKnowledge();
   const navigate = useNavigate();
   const { mutate } = useSWRConfig();
   const api = useMemo(() => (currentProjectId ? createKnowledgeApi(currentProjectId) : null), [currentProjectId]);
@@ -33,7 +33,7 @@ export function AddToKnowledgeButton({ attachment }: { attachment: AgentChatAtta
   const state = resolveAddToKnowledgeState(localState, attachment);
   const supported = getKnowledgeFileProblem({ name: attachment.filename, size: attachment.sizeBytes }) === null;
 
-  if (!api || !currentProjectId || !canMutate || !supported) {
+  if (!api || !currentProjectId || !canManage || !supported) {
     return null;
   }
 

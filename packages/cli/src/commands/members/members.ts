@@ -1,6 +1,11 @@
 /** Pure helpers of `flexkit members`: argument parsing and row formatting. */
 
-export const PROJECT_ROLES = ['owner', 'developer', 'contributor', 'editor', 'viewer'] as const;
+/**
+ * The project roles as a ladder, lowest first: viewers read; contributors
+ * create and edit records and upload assets; editors also delete records and
+ * manage Knowledge documents; developers and owners also set the project up.
+ */
+export const PROJECT_ROLES = ['viewer', 'contributor', 'editor', 'developer', 'owner'] as const;
 
 export type ProjectRole = (typeof PROJECT_ROLES)[number];
 
@@ -83,7 +88,10 @@ export function parseRoleFilter(value: string | undefined): ProjectRole[] | null
     .map((part) => parseRole(part, '--role'));
 }
 
-const ROLE_ORDER: { [role: string]: number } = Object.fromEntries(PROJECT_ROLES.map((role, index) => [role, index]));
+// Highest role first in listings, so the ladder is read from the top.
+const ROLE_ORDER: { [role: string]: number } = Object.fromEntries(
+  [...PROJECT_ROLES].reverse().map((role, index) => [role, index])
+);
 
 /** Owners first, then by role and name. */
 export function sortMembers(members: MemberDto[]): MemberDto[] {

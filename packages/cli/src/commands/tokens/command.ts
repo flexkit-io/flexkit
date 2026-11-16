@@ -33,10 +33,10 @@ export const tokensListCommand: Command = {
 export const tokensCreateCommand: Command = {
   name: 'create',
   description:
-    'Create a project API token and print it once. The token goes to stdout and the notes to stderr, so `$(flexkit tokens create …)` captures only the token. You cannot give a token a higher role than yours, nor spaces you are not in.',
+    'Create a project API token and print it once. The token goes to stdout and the notes to stderr, so `$(flexkit tokens create …)` captures only the token. You cannot give a token a higher role than yours, nor spaces you are not in. A viewer token reads; a contributor token also creates and edits records and uploads assets; an editor token also deletes records and manages Knowledge documents; a developer token also sets up the project.',
   arguments: [{ name: 'name', required: true }],
   options: [
-    option('role', String, 'Token role: viewer, editor, contributor or developer (default: viewer)', 'ROLE', 'r'),
+    option('role', String, 'Token role: viewer, contributor, editor or developer (default: viewer)', 'ROLE', 'r'),
     option(
       'space',
       [String],

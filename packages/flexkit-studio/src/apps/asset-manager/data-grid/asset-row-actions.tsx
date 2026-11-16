@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { Row } from '@tanstack/react-table';
 import { assetSchema } from '../../../entities/assets-schema';
+import { useCanDeleteRecords } from '../../../core/capabilities';
 import { useCanMutate } from '../../../core/permissions';
 import { useDispatch } from '../../../entities/actions-context';
 import {
@@ -37,6 +38,7 @@ export function AssetRowActions<TData>({ overlay = false, row }: AssetRowActions
   const [tagDialogMode, setTagDialogMode] = useState<AssetTagDialogMode>(null);
   const dispatch = useDispatch();
   const canMutate = useCanMutate();
+  const canDeleteRecords = useCanDeleteRecords();
   const asset = row.original as AssetRow;
   const assetId = asset._id ?? '';
   const assetUrl = asset.url ?? '';
@@ -116,18 +118,22 @@ export function AssetRowActions<TData>({ overlay = false, row }: AssetRowActions
             <MinusIcon className="fk:mr-2 fk:h-4 fk:w-4" />
             Remove tag
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            className="fk:text-destructive"
-            disabled={!assetId || !canMutate}
-            onClick={(event) => {
-              event.stopPropagation();
-              handleDelete();
-            }}
-          >
-            <Trash2Icon className="fk:mr-2 fk:h-4 fk:w-4" />
-            Delete
-          </DropdownMenuItem>
+          {canDeleteRecords ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="fk:text-destructive"
+                disabled={!assetId}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleDelete();
+                }}
+              >
+                <Trash2Icon className="fk:mr-2 fk:h-4 fk:w-4" />
+                Delete
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
       {tagDialogMode !== null ? (

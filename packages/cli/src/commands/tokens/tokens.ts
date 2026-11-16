@@ -1,7 +1,7 @@
 import { formatRelativeTime } from '../../util/output/format';
 
 /** Roles a project API token can have; owner tokens are never handed out. */
-export const TOKEN_ROLES = ['viewer', 'editor', 'contributor', 'developer'] as const;
+export const TOKEN_ROLES = ['viewer', 'contributor', 'editor', 'developer'] as const;
 export type TokenRole = (typeof TOKEN_ROLES)[number];
 
 export interface TokenSpace {

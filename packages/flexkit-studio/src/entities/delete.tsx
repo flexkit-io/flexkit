@@ -8,6 +8,7 @@ import { useApolloClient } from '@apollo/client/react';
 import { useEntityMutation } from '../graphql-client/use-entity-mutation';
 import { getEntityDeleteMutation, getEntityDeleteWhere } from '../graphql-client/queries';
 import { getEntityListQueryName, scheduleEntityListRemoval } from '../graphql-client/refetch-entity-lists';
+import { getRoleRefusalMessage } from '../graphql-client/role-refusal';
 import AlertDialog from '../ui/components/alert-dialog';
 import { useConfig } from '../core/config/config-context';
 import { useDispatch } from './actions-context';
@@ -59,7 +60,7 @@ export default function Delete({ action }: Props): JSX.Element {
   function handleDeletion(): Promise<void> {
     const mutation = getEntityDeleteMutation(action.payload.entityName, schema, idsToDelete);
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       setMutation(gql`
         ${mutation}
       `);
@@ -81,7 +82,18 @@ export default function Delete({ action }: Props): JSX.Element {
           resolve();
         },
         onError: (error: Error) => {
-          reject(error);
+          // A refusal of the role is already on screen in the server's own
+          // words (the GraphQL error link shows it); anything else gets a
+          // plain sentence so the delete never fails without a word.
+          if (!getRoleRefusalMessage(error)) {
+            toast.error(isBatch ? 'The items could not be deleted.' : 'The item could not be deleted.');
+          }
+
+          // Settle instead of rejecting: nobody awaits this with a catch (the
+          // confirm dialog and the silent path both fire and forget), and the
+          // action must leave the queue so the next delete starts clean.
+          dispatch({ type: 'Dismiss', _id: action._id, payload: {} });
+          resolve();
         },
       });
       runMutation(true);
