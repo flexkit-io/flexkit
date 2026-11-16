@@ -2,8 +2,21 @@ export type CustomerToolActor =
   | {
       kind: 'automation';
       automationId: string;
+      /**
+       * For a project or space automation: every space of the project, or the
+       * automation's one space. For a personal automation: the spaces of the
+       * member it belongs to, which it runs with.
+       */
       spaceCodes: string[];
       spaceId: string | null;
+      /**
+       * Set for a personal automation, which acts with its creator's access.
+       * Absent for project and space automations, and when the backend does
+       * not report it.
+       */
+      visibility?: 'personal';
+      /** The member a personal automation belongs to. Present together with `visibility`. */
+      creatorId?: string;
     }
   | {
       kind: 'chat';
@@ -59,11 +72,17 @@ export function parseCustomerToolActor(value: unknown): CustomerToolActor | null
       return null;
     }
 
+    // A personal automation says so and names its member. Both or neither: a handler that
+    // scopes data by member must never see "personal" without knowing whose it is.
+    const isPersonal =
+      record.visibility === 'personal' && typeof record.creatorId === 'string' && record.creatorId !== '';
+
     return {
       automationId: record.automationId,
       kind: 'automation',
       spaceCodes: record.spaceCodes,
       spaceId,
+      ...(isPersonal ? { creatorId: record.creatorId as string, visibility: 'personal' as const } : {}),
     };
   }
 
