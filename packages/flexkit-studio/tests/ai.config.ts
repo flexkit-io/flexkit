@@ -19,6 +19,7 @@ export default defineConfig({
     'tests/ai/past-run-parts.test.ts',
     'tests/ai/attachment-state.test.ts',
     'tests/ai/automation-access.test.ts',
+    'tests/ai/plugin-setup-notice.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests/ai',

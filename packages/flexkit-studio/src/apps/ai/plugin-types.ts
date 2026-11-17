@@ -69,6 +69,13 @@ export interface PluginCredentialsConnect {
   methods: PluginCredentialMethod[];
 }
 
+/** A step to take on the provider's side before connecting, declared by the plugin. */
+export interface PluginSetupNotice {
+  title?: string;
+  message: string;
+  link?: { label: string; url: string };
+}
+
 export interface MarketplacePlugin {
   usedBy: Array<{ id: string; name: string }>;
   id: string;
@@ -80,6 +87,8 @@ export interface MarketplacePlugin {
   versionId: string;
   updatedAt: string;
   preview: boolean;
+  /** Absent from older platforms. */
+  setupNotice?: PluginSetupNotice | null;
   capabilities: { agentTools: boolean; automationDelivery: boolean };
   /** Absent from older platforms, which only have sign-in plugins. */
   connect?: { type: 'oauth' } | PluginApiTokenConnect | PluginCredentialsConnect;

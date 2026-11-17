@@ -57,6 +57,7 @@ import type {
   PluginTools,
 } from './plugin-types';
 import { PluginLogo } from './plugin-logo';
+import { PluginSetupNotice } from './plugin-setup-notice';
 
 function httpsCatalogUrl(value: string): string | null {
   let url: URL;
@@ -940,6 +941,7 @@ export function PluginDetailPage(): JSX.Element {
             );
           })}
         </section>
+        {plugin.setupNotice && !isConnected(plugin) ? <PluginSetupNotice notice={plugin.setupNotice} /> : null}
         {!plugin.enabled ? (
           <Alert>
             <AlertDescription>This plugin is disabled by project policy.</AlertDescription>
