@@ -1,5 +1,36 @@
 # @flexkit/studio
 
+## 0.2.47
+
+### Patch Changes
+
+- 47b5c41: Editors and contributors can create their own personal automations, when the project allows it.
+
+  **Studio**
+  - Editors and contributors get the New Automation button when the project allows it.
+  - Their automation form is personal-only: visibility is fixed to Personal, and webhook triggers, Slack and Teams delivery, custom tools, the project's shared plugin connections, "any automation" and schema deployment job triggers, and Auto-approve are not offered. A short line says why. A job trigger that follows an automation they can no longer see keeps it and says so. Plugin tools use their own connections, and only read-only tools run.
+  - When an owner or developer makes an existing project or space automation personal, Studio asks first: only they will see and manage it, its subscribers are removed, and it runs with their own role and spaces. Only the person who created an automation can make it personal; for anyone else the Personal option is disabled and says so.
+  - When the server refuses to save, run or delete an automation, Studio shows its explanation instead of "Request failed".
+  - An automation the platform switched off says why in the list and on its page: switched off by an owner, the creator's role no longer allows it, the credit limit was reached, or loop protection.
+  - Activity shows automation notices (for example, an owner switched off one of your automations) with a neutral "Notice" label and a link to the automation, and the notification settings can mute them.
+  - New `canCreatePersonalAutomations` field in the `Capabilities` returned by `useCapabilities` and `resolveCapabilities`.
+
+  With an older backend that does not report the new capability, the Automations screens and the form behave exactly as before.
+
+  **Agent protocol**
+  - `ActivityItemKind` gains `automation_notice`.
+
+  **CLI**
+  - `flexkit activity` labels automation notices as "automation notice" and suggests `automations inspect <id>` for them.
+
+- 88b7943: When a plugin needs a step on the provider's side before connecting, such as an admin allowing Flexkit, its page and the chat connect card show it in a notice with a link to the provider's guide. The notice is hidden once the plugin is connected, and nothing changes on platforms that don't send notices.
+- 47b5c41: - The project selector no longer offers "New project". Create new projects from the Dashboard; an account's first project can still be created in Studio.
+  - The account menu under your avatar cuts a long name or email address to the menu width with an ellipsis; hover it to see it in full.
+  - Select fields have the same muted background as text inputs in dark mode, so every select in Studio matches the fields around it. This includes the exported `SelectTrigger` in custom apps; pass your own background class (for example `fk:dark:bg-transparent`) to keep one transparent.
+  - The project selector no longer lists projects you can't open. A self-hosted Studio lists every project in its configuration, and the ones you aren't a member of used to appear by their id and open to "No access to this project".
+- Updated dependencies [47b5c41]
+  - @flexkit/agent-protocol@0.3.15
+
 ## 0.2.46
 
 ### Patch Changes
