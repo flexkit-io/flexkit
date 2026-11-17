@@ -37,6 +37,7 @@ function item(overrides: Partial<ActivityItem>): ActivityItem {
 describe('activity formatting', () => {
   it('labels kinds and states', () => {
     assert.equal(formatKind('approval_request'), 'approval');
+    assert.equal(formatKind('automation_notice'), 'automation notice');
     assert.equal(formatKind('something_new'), 'something_new');
     assert.equal(describeState(item({ requiresAction: true, state: 'read' })), 'needs action');
     assert.equal(describeState(item({ requiresAction: true, state: 'done', resolution: 'approved' })), 'approved');
@@ -51,6 +52,10 @@ describe('activity formatting', () => {
     );
     assert.equal(nextStepCommand(item({ kind: 'question', chatId: 'c1', requiresAction: false })), 'chat show c1');
     assert.equal(nextStepCommand(item({ kind: 'automation_failure', automationRunId: 'r1' })), 'runs inspect r1');
+    assert.equal(
+      nextStepCommand(item({ kind: 'automation_notice', automationId: 'a1' })),
+      'automations inspect a1'
+    );
     assert.equal(nextStepCommand(item({})), null);
   });
 });

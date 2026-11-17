@@ -4,6 +4,7 @@ export type ActivityItemKind =
   | 'approval_request'
   | 'automation_result'
   | 'automation_failure'
+  | 'automation_notice'
   | 'monitor_event'
   | 'question';
 export type ActivityItemState = 'unread' | 'read' | 'done' | 'dismissed';
@@ -30,6 +31,7 @@ export interface ActivityItem {
 const KIND_LABELS: Record<ActivityItemKind, string> = {
   approval_request: 'approval',
   automation_failure: 'run failed',
+  automation_notice: 'automation notice',
   automation_result: 'run result',
   monitor_event: 'monitor',
   question: 'question',
@@ -69,6 +71,11 @@ export function nextStepCommand(item: ActivityItem): string | null {
 
   if (item.automationRunId) {
     return `runs inspect ${item.automationRunId}`;
+  }
+
+  // A notice is about the automation itself (switched off, limit reached), not a run.
+  if (item.kind === 'automation_notice' && item.automationId) {
+    return `automations inspect ${item.automationId}`;
   }
 
   return null;

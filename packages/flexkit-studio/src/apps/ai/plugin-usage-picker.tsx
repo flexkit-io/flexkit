@@ -151,14 +151,21 @@ export function PluginAccountSelect({
 
 const MAX_VISIBLE_TOOL_NAMES = 2;
 
-/** Scopes an automation may use for this plugin: what it supports, minus personal when policy forbids it. */
-function usableScopes(plugin: MarketplacePlugin): PluginScope[] {
-  return plugin.scopes.filter((scope) => scope === 'project' || plugin.allowPersonal);
+/**
+ * Scopes an automation may use for this plugin: what it supports, minus personal when policy forbids it.
+ * With `personalOnly` (an editor's or contributor's automation) only the member's own connections, plus
+ * `keep`, the scope a saved selection already uses, so a setting kept from before a role change still shows.
+ */
+function usableScopes(plugin: MarketplacePlugin, personalOnly = false, keep?: PluginScope): PluginScope[] {
+  return plugin.scopes.filter(
+    (scope) =>
+      (scope === 'project' || plugin.allowPersonal) && (!personalOnly || scope === 'personal' || scope === keep)
+  );
 }
 
-function emptyUsage(plugin: MarketplacePlugin): AutomationToolConfigInput {
+function emptyUsage(plugin: MarketplacePlugin, personalOnly = false): AutomationToolConfigInput {
   // Start on the project account when one exists, otherwise on the user's own.
-  const scopes = usableScopes(plugin);
+  const scopes = usableScopes(plugin, personalOnly);
   const personal =
     scopes.includes('personal') &&
     (!scopes.includes('project') ||
@@ -194,6 +201,7 @@ function selectedToolsSummary(selectedTools: string[]): string {
 function PluginToolRow({
   canManage,
   disabled,
+  personalOnly,
   plugin,
   projectId,
   usage,
@@ -202,13 +210,14 @@ function PluginToolRow({
 }: {
   canManage: boolean;
   disabled: boolean;
+  personalOnly: boolean;
   plugin: MarketplacePlugin;
   projectId: string;
   usage: AutomationToolConfigInput;
   onChange: (_usage: AutomationToolConfigInput) => void;
   onRemove: () => void;
 }): JSX.Element {
-  const scopes = usableScopes(plugin);
+  const scopes = usableScopes(plugin, personalOnly, usage.connectionMode);
   const hasAccounts = scopes.some((scope) => connectedAccounts(plugin, scope).length > 0);
   const choice: PluginAccountChoice | null = scopes.includes(usage.connectionMode)
     ? { connectionMode: usage.connectionMode, connectionId: usage.connectionId }
@@ -296,7 +305,10 @@ function PluginToolRow({
             >
               {status.text}
             </p>
-            {usage.connectionMode === 'personal' && usage.enabled ? (
+            {personalOnly ? (
+              // The server runs only the tools the plugin marks read-only for an editor's or contributor's automation.
+              <p className="fk:text-xs fk:text-muted-foreground">Only its read-only tools run in your automations.</p>
+            ) : usage.connectionMode === 'personal' && usage.enabled ? (
               <p className="fk:text-xs fk:text-muted-foreground">Using your account makes this automation personal.</p>
             ) : null}
           </div>
@@ -471,11 +483,14 @@ function AddPluginTools({
  */
 export function PluginUsagePicker({
   projectId,
+  personalOnly = false,
   value,
   disabled,
   onChange,
 }: {
   projectId: string;
+  /** Offer only the member's own connections; editors and contributors cannot use the project's shared ones. */
+  personalOnly?: boolean;
   value: AutomationToolConfigInput[];
   disabled: boolean;
   onChange: (value: AutomationToolConfigInput[]) => void;
@@ -484,7 +499,10 @@ export function PluginUsagePicker({
   const toolPlugins = (data?.plugins ?? []).filter((plugin) => plugin.capabilities.agentTools);
   const pluginsById = new Map(toolPlugins.map((plugin) => [plugin.id, plugin]));
   const addable = toolPlugins.filter(
-    (plugin) => plugin.enabled && !value.some((usage) => usage.pluginId === plugin.id)
+    (plugin) =>
+      plugin.enabled &&
+      !value.some((usage) => usage.pluginId === plugin.id) &&
+      usableScopes(plugin, personalOnly).length > 0
   );
 
   return (
@@ -496,6 +514,7 @@ export function PluginUsagePicker({
           <PluginToolRow
             disabled={disabled}
             canManage={data?.canManage ?? false}
+            personalOnly={personalOnly}
             key={usage.pluginId}
             plugin={plugin}
             projectId={projectId}
@@ -513,7 +532,7 @@ export function PluginUsagePicker({
       <AddPluginTools
         disabled={disabled || !data}
         plugins={addable}
-        onAdd={(plugin) => onChange([...value, emptyUsage(plugin)])}
+        onAdd={(plugin) => onChange([...value, emptyUsage(plugin, personalOnly)])}
       />
     </>
   );

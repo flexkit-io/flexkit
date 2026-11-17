@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { resolveCapabilities } from '../src/core/capabilities';
 
-const ALL = { canDeleteRecords: true, canImportRecords: true, canManageKnowledge: true, canRunBulkChanges: true };
-const NONE = { canDeleteRecords: false, canImportRecords: false, canManageKnowledge: false, canRunBulkChanges: false };
+const ALL = {
+  canCreatePersonalAutomations: true,
+  canDeleteRecords: true, canImportRecords: true, canManageKnowledge: true, canRunBulkChanges: true };
+const NONE = {
+  canCreatePersonalAutomations: false,
+  canDeleteRecords: false, canImportRecords: false, canManageKnowledge: false, canRunBulkChanges: false };
 
 describe('capabilities sent by the backend', () => {
   it('gives a viewer nothing', () => {
@@ -34,6 +38,30 @@ describe('capabilities sent by the backend', () => {
     // A role this Studio has never heard of still gets exactly what the backend says.
     assert.deepEqual(resolveCapabilities({ role: 'reviewer', capabilities: NONE }), NONE);
     assert.deepEqual(resolveCapabilities({ role: 'viewer', capabilities: ALL }), ALL);
+  });
+});
+
+describe('personal automations', () => {
+  it('follows the backend for an editor or contributor', () => {
+    assert.equal(
+      resolveCapabilities({ role: 'editor', capabilities: { ...ALL, canCreatePersonalAutomations: false } })
+        .canCreatePersonalAutomations,
+      false
+    );
+    assert.equal(
+      resolveCapabilities({ role: 'contributor', capabilities: { ...NONE, canCreatePersonalAutomations: true } })
+        .canCreatePersonalAutomations,
+      true
+    );
+  });
+
+  it('offers New Automation to every member but a viewer on an older backend, as before', () => {
+    assert.equal(resolveCapabilities({ role: 'viewer' }).canCreatePersonalAutomations, false);
+    assert.equal(resolveCapabilities({ role: 'contributor' }).canCreatePersonalAutomations, true);
+    assert.equal(
+      resolveCapabilities({ role: 'editor', capabilities: { canDeleteRecords: true } }).canCreatePersonalAutomations,
+      true
+    );
   });
 });
 

@@ -34,6 +34,16 @@ import {
   TooltipTrigger,
 } from '../../ui';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../ui/primitives/alert-dialog';
+import {
   BrainIcon,
   CheckIcon,
   CircleCheckBigIcon,
@@ -55,6 +65,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../auth/auth-context';
 import { useCanMutate } from '../../core/permissions';
+import { isMemberPersonalOnly, needsPersonalConversionConfirm } from './automation-access';
 import { fetcher, FetcherError, getWebhookTriggerUrl, paths, type ApiClient } from './api';
 import {
   coerceEffort,
@@ -913,12 +924,15 @@ function EntityTriggerRow({
 /** "When [a run of] [Order import] [succeeds]": runs after a deployment, another automation's run or a bulk action. */
 function JobTriggerRow({
   automationId,
+  memberPersonalOnly,
   onChange,
   projectId,
   trigger,
 }: {
   /** The automation being edited, which cannot follow its own jobs. */
   automationId?: string;
+  /** Members limited to personal automations may follow only automations they own, never "any automation". */
+  memberPersonalOnly: boolean;
   onChange: (_trigger: JobFormTrigger) => void;
   projectId: string;
   trigger: JobFormTrigger;
@@ -942,23 +956,28 @@ function JobTriggerRow({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {(Object.keys(JOB_KIND_LABELS) as AutomationJobKind[]).map((kind) => (
-            <SelectItem key={kind} value={kind}>
-              {JOB_KIND_LABELS[kind]}
-            </SelectItem>
-          ))}
+          {(Object.keys(JOB_KIND_LABELS) as AutomationJobKind[])
+            // A schema deployment is nobody's personal automation; one kept from before a role change still shows.
+            .filter((kind) => !memberPersonalOnly || kind !== 'schema_deploy' || trigger.job === kind)
+            .map((kind) => (
+              <SelectItem key={kind} value={kind}>
+                {JOB_KIND_LABELS[kind]}
+              </SelectItem>
+            ))}
         </SelectContent>
       </Select>
       {trigger.job === 'schema_deploy' ? null : (
         <Select
-          value={trigger.automationId ?? (trigger.job === 'bulk_action' ? ANY_AUTOMATION : '')}
+          value={trigger.automationId ?? (trigger.job === 'bulk_action' && !memberPersonalOnly ? ANY_AUTOMATION : '')}
           onValueChange={(value) => onChange({ ...trigger, automationId: value === ANY_AUTOMATION ? null : value })}
         >
           <SelectTrigger className="fk:h-7 fk:w-auto fk:max-w-60 fk:text-xs">
             <SelectValue placeholder="Choose an automation" />
           </SelectTrigger>
           <SelectContent>
-            {trigger.job === 'bulk_action' ? <SelectItem value={ANY_AUTOMATION}>any automation</SelectItem> : null}
+            {trigger.job === 'bulk_action' && !memberPersonalOnly ? (
+              <SelectItem value={ANY_AUTOMATION}>any automation</SelectItem>
+            ) : null}
             {others.map((automation) => (
               <SelectItem key={automation.id} value={automation.id}>
                 {automation.name}
@@ -1111,6 +1130,7 @@ function TriggersField({
   automationId,
   entities,
   errors,
+  memberPersonalOnly,
   onChange,
   projectId,
   triggers,
@@ -1119,6 +1139,8 @@ function TriggersField({
   automationId?: string;
   entities: string[];
   errors: { [triggerKey: string]: string };
+  /** Editors and contributors cannot add webhook triggers; the server refuses them. */
+  memberPersonalOnly: boolean;
   onChange: (_triggers: FormTrigger[]) => void;
   projectId: string;
   triggers: FormTrigger[];
@@ -1170,7 +1192,13 @@ function TriggersField({
                 <EntityTriggerRow entities={entities} trigger={trigger} onChange={updateTrigger} />
               ) : null}
               {trigger.type === 'job' ? (
-                <JobTriggerRow automationId={automationId} projectId={projectId} trigger={trigger} onChange={updateTrigger} />
+                <JobTriggerRow
+                  automationId={automationId}
+                  memberPersonalOnly={memberPersonalOnly}
+                  projectId={projectId}
+                  trigger={trigger}
+                  onChange={updateTrigger}
+                />
               ) : null}
               {trigger.type === 'poll' ? <PollTriggerRow trigger={trigger} onChange={updateTrigger} /> : null}
               <Button
@@ -1217,15 +1245,17 @@ function TriggersField({
               <DropdownMenuItem onClick={() => addScheduleTrigger(DEFAULT_CUSTOM_CRON)}>Custom (cron)</DropdownMenuItem>
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          <DropdownMenuItem
-            disabled={hasWebhookTrigger}
-            onClick={() =>
-              addTrigger({ key: createTriggerKey(), secret: null, token: crypto.randomUUID(), type: 'webhook' })
-            }
-          >
-            <WebhookIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
-            Webhook Triggered
-          </DropdownMenuItem>
+          {memberPersonalOnly ? null : (
+            <DropdownMenuItem
+              disabled={hasWebhookTrigger}
+              onClick={() =>
+                addTrigger({ key: createTriggerKey(), secret: null, token: crypto.randomUUID(), type: 'webhook' })
+              }
+            >
+              <WebhookIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
+              Webhook Triggered
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={() => addTrigger({ entities: [], events: ['create'], key: createTriggerKey(), type: 'entity' })}
           >
@@ -1233,7 +1263,15 @@ function TriggersField({
             Entity Events
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => addTrigger({ automationId: null, job: 'schema_deploy', key: createTriggerKey(), outcome: 'succeeded', type: 'job' })}
+            onClick={() =>
+              addTrigger({
+                automationId: null,
+                job: memberPersonalOnly ? 'automation_run' : 'schema_deploy',
+                key: createTriggerKey(),
+                outcome: 'succeeded',
+                type: 'job',
+              })
+            }
           >
             <CircleCheckBigIcon className="fk:mr-2 fk:size-4 fk:text-muted-foreground" />
             Job Finished
@@ -1428,6 +1466,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const { data: skillsData } = useSWR<SkillsList>(paths(projectId).skills({ limit: 100 }), fetcher);
   const [, auth] = useAuth();
   const canMutate = useCanMutate();
+  // Editors and contributors keep personal automations only, with a reduced feature set the server enforces.
+  const memberPersonalOnly = isMemberPersonalOnly(auth.user);
+  const [isConfirmingPersonal, setIsConfirmingPersonal] = useState(false);
   const userSpaceCodes = auth.user?.spaces ?? [];
   // Only spaces the caller belongs to are offered; the server rejects
   // bindings to spaces outside the caller's membership anyway.
@@ -1573,6 +1614,19 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     });
   }, [resolvedAttachedSkills, skillsById, skillsData, spaceId, unresolvedAttachedSkillIds, visibility]);
   const personalPluginInUse = usesEnabledPersonalPlugin(pluginUsages);
+
+  // The member profile can arrive after the form mounted, so the personal-only defaults apply once it does.
+  useEffect(() => {
+    if (!memberPersonalOnly) {
+      return;
+    }
+
+    setVisibility('personal');
+    setSpaceId(null);
+    // The server saves members' automations with "Require approval" whatever is sent.
+    setMutationPolicy('require_approval');
+  }, [memberPersonalOnly]);
+
   const validation = useMemo<FormValidation>(() => {
     const triggerErrors: { [triggerKey: string]: string } = {};
 
@@ -1589,7 +1643,18 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         triggerErrors[trigger.key] = 'Select at least one event (create, update or delete)';
       }
 
-      if (trigger.type === 'job' && trigger.job === 'automation_run' && !trigger.automationId) {
+      // Members cannot follow "any automation", so their new bulk-action triggers name one too. One saved
+      // before a role change is kept as it is: the server accepts it unchanged.
+      if (
+        trigger.type === 'job' &&
+        !trigger.automationId &&
+        (trigger.job === 'automation_run' ||
+          (memberPersonalOnly &&
+            trigger.job === 'bulk_action' &&
+            !(automation?.triggers ?? []).some(
+              (saved) => saved.type === 'job' && saved.job === 'bulk_action' && !saved.automationId && saved.outcome === trigger.outcome
+            )))
+      ) {
         triggerErrors[trigger.key] = 'Choose the automation whose runs start this one';
       }
 
@@ -1631,7 +1696,18 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       toolErrors,
       triggerErrors,
     };
-  }, [effectiveModelId, instructions, name, personalPluginInUse, spaceId, toolsFormData, triggers, visibility]);
+  }, [
+    automation?.triggers,
+    effectiveModelId,
+    instructions,
+    memberPersonalOnly,
+    name,
+    personalPluginInUse,
+    spaceId,
+    toolsFormData,
+    triggers,
+    visibility,
+  ]);
   const isValid = isFormValidationClean(validation);
   const showNameError = touched.name && Boolean(validation.name);
   const showInstructionsError = touched.instructions && Boolean(validation.instructions);
@@ -1858,7 +1934,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     });
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
 
     if (!canMutate) {
@@ -1871,6 +1947,18 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       return;
     }
 
+    // Making a shared automation personal hides it from everyone else and drops its subscribers: confirm first.
+    if (needsPersonalConversionConfirm({ memberPersonalOnly, nextVisibility: visibility, saved: automation })) {
+      setIsConfirmingPersonal(true);
+
+      return;
+    }
+
+    void save();
+  }
+
+  async function save(): Promise<void> {
+    setIsConfirmingPersonal(false);
     setIsSaving(true);
     setMessage('');
 
@@ -1928,7 +2016,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   }
 
   return (
-    <form className="fk:max-w-4xl fk:space-y-8 fk:px-1 fk:mx-auto" onSubmit={(event) => void handleSubmit(event)}>
+    <form className="fk:max-w-4xl fk:space-y-8 fk:px-1 fk:mx-auto" onSubmit={handleSubmit}>
       {message ? (
         <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive fk:corner-squircle">
           {message}
@@ -1975,9 +2063,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
         </p>
         <div className="fk:flex fk:items-center fk:gap-2">
           <Select
+            disabled={memberPersonalOnly}
             value={visibility}
             onValueChange={(value) => {
-              if (personalPluginInUse && value !== 'personal') {
+              if ((personalPluginInUse || memberPersonalOnly) && value !== 'personal') {
                 return;
               }
 
@@ -1992,12 +2081,16 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start">
-              <SelectItem disabled={personalPluginInUse} value="project">
-                Project
-              </SelectItem>
-              <SelectItem disabled={personalPluginInUse || selectableSpaces.length === 0} value="space">
-                Space
-              </SelectItem>
+              {memberPersonalOnly ? null : (
+                <>
+                  <SelectItem disabled={personalPluginInUse} value="project">
+                    Project
+                  </SelectItem>
+                  <SelectItem disabled={personalPluginInUse || selectableSpaces.length === 0} value="space">
+                    Space
+                  </SelectItem>
+                </>
+              )}
               <SelectItem value="personal">Personal</SelectItem>
             </SelectContent>
           </Select>
@@ -2021,7 +2114,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
             </Select>
           ) : null}
         </div>
-        {personalPluginInUse ? (
+        {memberPersonalOnly ? (
+          <p className="fk:text-xs fk:text-muted-foreground">
+            Your role can create personal automations: only you see them, and they run with your own access.
+          </p>
+        ) : personalPluginInUse ? (
           <p className="fk:text-xs fk:text-muted-foreground">
             This automation uses a personal plugin connection, so project and space visibility are unavailable.
           </p>
@@ -2039,6 +2136,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           automationId={automation?.id}
           entities={entitiesData?.entities ?? []}
           errors={validation.triggerErrors}
+          memberPersonalOnly={memberPersonalOnly}
           projectId={projectId}
           triggers={triggers}
           onChange={setTriggers}
@@ -2133,9 +2231,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           reviews a before/after preview in the Approvals inbox.
         </p>
         <Select
+          disabled={memberPersonalOnly}
           value={mutationPolicy}
           onValueChange={(value) => {
-            setMutationPolicy(value === 'auto_approve' ? 'auto_approve' : 'require_approval');
+            setMutationPolicy(value === 'auto_approve' && !memberPersonalOnly ? 'auto_approve' : 'require_approval');
           }}
         >
           <SelectTrigger aria-label="Mutation policy" className="fk:w-fit" id="automation-mutation-policy">
@@ -2143,9 +2242,14 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           </SelectTrigger>
           <SelectContent align="start">
             <SelectItem value="require_approval">Require approval (recommended)</SelectItem>
-            <SelectItem value="auto_approve">Auto-approve</SelectItem>
+            {memberPersonalOnly ? null : <SelectItem value="auto_approve">Auto-approve</SelectItem>}
           </SelectContent>
         </Select>
+        {memberPersonalOnly ? (
+          <p className="fk:text-xs fk:text-muted-foreground">
+            Your personal automations only read project data, so every change they propose waits for approval.
+          </p>
+        ) : null}
         {mutationPolicy === 'auto_approve' && pluginUsages.some((usage) => usage.enabled) ? (
           <p className="fk:flex fk:items-start fk:gap-1 fk:text-xs fk:text-warning" role="status">
             <TriangleAlertIcon className="fk:mt-px fk:size-3.5 fk:shrink-0" />
@@ -2275,6 +2379,12 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           <p className="fk:mb-3 fk:text-xs fk:text-muted-foreground">
             Configure additional destinations and built-in capabilities for this automation.
           </p>
+          {memberPersonalOnly ? (
+            <p className="fk:-mt-2 fk:mb-3 fk:text-xs fk:text-muted-foreground">
+              Slack and Teams delivery, custom tools and the project&rsquo;s shared plugin connections are for owners
+              and developers. Use your own plugin connections; results reach you in Activity and by email.
+            </p>
+          ) : null}
         </div>
         <div className="fk:rounded-lg fk:border fk:bg-muted/60 fk:dark:bg-muted/30 fk:corner-squircle">
           <div className="fk:rounded-t-lg fk:corner-squircle">
@@ -2298,6 +2408,11 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           {toolsFormData ? (
             TOOL_PROVIDERS.map((provider) => {
               const tool = toolsFormData[provider];
+
+              // Members cannot add channel delivery; one kept from before a role change stays visible so it can be removed.
+              if (memberPersonalOnly && !tool.enabled) {
+                return null;
+              }
               const providerLabel = provider === 'slack' ? 'Send to Slack' : 'Send to Microsoft Teams';
               const Icon = provider === 'slack' ? SlackIcon : TeamsIcon;
               const deliveryPlugin = deliveryPlugins[provider];
@@ -2489,74 +2604,78 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           </div>
           <Separator/>
 
-          <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted fk:corner-squircle">
-            <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
-              <div className="fk:flex fk:gap-2.5">
-                <WrenchIcon className="fk:mt-px fk:size-5 fk:text-muted-foreground" />
-                <div>
-                  <div className="fk:text-sm fk:font-medium">Custom tools</div>
-                  <p className="fk:text-xs fk:text-muted-foreground">
-                    Attached custom tools can be called during a run. Tools you do not attach stay unavailable to this
-                    automation.
-                  </p>
-                  {customToolsStatus ? (
-                    <p
-                      className={
-                        customToolsCatalog?.connected
-                          ? 'fk:mt-1 fk:text-xs fk:text-warning'
-                          : 'fk:mt-1 fk:text-xs fk:text-muted-foreground'
-                      }
-                    >
-                      {customToolsStatus}
-                    </p>
-                  ) : null}
+          {memberPersonalOnly && customToolNames.length === 0 ? null : (
+            <>
+              <div className="fk:m-1.5 fk:space-y-2 fk:rounded-md fk:px-1.25 fk:py-1.5 fk:hover:bg-muted fk:corner-squircle">
+                <div className="fk:flex fk:items-center fk:justify-between fk:gap-3">
+                  <div className="fk:flex fk:gap-2.5">
+                    <WrenchIcon className="fk:mt-px fk:size-5 fk:text-muted-foreground" />
+                    <div>
+                      <div className="fk:text-sm fk:font-medium">Custom tools</div>
+                      <p className="fk:text-xs fk:text-muted-foreground">
+                        Attached custom tools can be called during a run. Tools you do not attach stay unavailable to this
+                        automation.
+                      </p>
+                      {customToolsStatus ? (
+                        <p
+                          className={
+                            customToolsCatalog?.connected
+                              ? 'fk:mt-1 fk:text-xs fk:text-warning'
+                              : 'fk:mt-1 fk:text-xs fk:text-muted-foreground'
+                          }
+                        >
+                          {customToolsStatus}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <AttachCombobox
+                    disabled={!canMutate || memberPersonalOnly || attachableCustomTools.length === 0}
+                    emptyText="No custom tools match."
+                    items={attachableCustomTools.map((tool) => ({
+                      id: tool.name,
+                      label: tool.name,
+                      attached: customToolNames.includes(tool.name),
+                    }))}
+                    searchPlaceholder="Search custom tools…"
+                    onToggle={toggleCustomTool}
+                  />
                 </div>
-              </div>
-              <AttachCombobox
-                disabled={!canMutate || attachableCustomTools.length === 0}
-                emptyText="No custom tools match."
-                items={attachableCustomTools.map((tool) => ({
-                  id: tool.name,
-                  label: tool.name,
-                  attached: customToolNames.includes(tool.name),
-                }))}
-                searchPlaceholder="Search custom tools…"
-                onToggle={toggleCustomTool}
-              />
-            </div>
-            {customToolsCatalog && attachableCustomTools.length === 0 ? (
-              <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
-                No custom tools registered yet. Define them in flexkit.tools.ts, run `flexkit dev` or sync them from the Dashboard, then attach the ones this
-                automation needs.
-              </p>
-            ) : null}
-            {customToolNames.length > 0 ? (
-              <div className="fk:flex fk:flex-wrap fk:gap-1.5 fk:pl-7">
-                {customToolNames.map((toolName) => {
-                  const tool = customToolsByName[toolName];
-                  const label = tool?.name ?? toolName;
+                {customToolsCatalog && attachableCustomTools.length === 0 ? (
+                  <p className="fk:pl-7 fk:text-xs fk:text-muted-foreground">
+                    No custom tools registered yet. Define them in flexkit.tools.ts, run `flexkit dev` or sync them from the Dashboard, then attach the ones this
+                    automation needs.
+                  </p>
+                ) : null}
+                {customToolNames.length > 0 ? (
+                  <div className="fk:flex fk:flex-wrap fk:gap-1.5 fk:pl-7">
+                    {customToolNames.map((toolName) => {
+                      const tool = customToolsByName[toolName];
+                      const label = tool?.name ?? toolName;
 
-                  return (
-                    <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={toolName} variant="secondary">
-                      {label}
-                      <button
-                        aria-label={`Detach ${label}`}
-                        className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed fk:corner-squircle"
-                        disabled={!canMutate}
-                        type="button"
-                        onClick={() => toggleCustomTool(toolName, false)}
-                      >
-                        <XIcon className="fk:size-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
+                      return (
+                        <Badge className="fk:gap-1 fk:pr-1 fk:font-normal" key={toolName} variant="secondary">
+                          {label}
+                          <button
+                            aria-label={`Detach ${label}`}
+                            className="fk:cursor-pointer fk:rounded-sm fk:text-muted-foreground fk:hover:text-foreground disabled:fk:cursor-not-allowed fk:corner-squircle"
+                            disabled={!canMutate}
+                            type="button"
+                            onClick={() => toggleCustomTool(toolName, false)}
+                          >
+                            <XIcon className="fk:size-3" />
+                          </button>
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-          <Separator/>
+              <Separator/>
+            </>
+          )}
 
-          <PluginUsagePicker projectId={projectId} value={pluginUsages} disabled={!canMutate} onChange={(usages) => {
+          <PluginUsagePicker projectId={projectId} personalOnly={memberPersonalOnly} value={pluginUsages} disabled={!canMutate} onChange={(usages) => {
             setPluginUsages(usages);
 
             if (usesEnabledPersonalPlugin(usages)) {
@@ -2577,6 +2696,22 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           </Button>
         </PermissionTooltip>
       </div>
+
+      <AlertDialog open={isConfirmingPersonal} onOpenChange={setIsConfirmingPersonal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Make this automation personal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Only you will see and manage it. Its subscribers are removed, and it will run with your own role and
+              spaces instead of the project&rsquo;s access.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void save()}>Make personal</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

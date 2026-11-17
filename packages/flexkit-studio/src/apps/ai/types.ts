@@ -208,12 +208,23 @@ export interface SkillInput {
   visibility: AutomationVisibility;
 }
 
+/**
+ * `owner`: a project owner switched it off. `creator_role`: the creator's role
+ * no longer allows the automation. `credit_cap`: its credit limit was reached.
+ * `loop_protection`: it kept triggering itself.
+ */
+export type AutomationDisabledReason = 'owner' | 'creator_role' | 'credit_cap' | 'loop_protection';
+
 export interface Automation {
   toolConfigs?: AutomationToolConfigInput[];
   createdAt: string | null;
   createdBy?: string;
   /** Customer tool names attached to this automation. */
   customToolNames?: string[];
+  /** Who switched it off, when `disabledReason` is "owner". Absent from older API responses. */
+  disabledByName?: string | null;
+  /** Why the platform switched it off; null when on or switched off by hand. Absent from older API responses. */
+  disabledReason?: AutomationDisabledReason | null;
   enabled: boolean;
   id: string;
   instructions: string;

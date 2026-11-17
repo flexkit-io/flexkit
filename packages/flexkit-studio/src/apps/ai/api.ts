@@ -3,6 +3,7 @@ import type { PluginConnection, PluginScope, PluginTools } from './plugin-types'
 import { put } from '@vercel/blob/client';
 import { convertRecordedAudioToPcm } from './agent/dictation';
 import { getDesktop } from '../../core/desktop';
+import { getResponseErrorMessage } from './response-error';
 import { flexkitDomain } from '../../core/domains';
 import type {
   ActivityItem,
@@ -234,15 +235,14 @@ export function createApiClient(projectId: string): ApiClient {
       },
       ...init,
     });
-    const data = (await response.json()) as T;
-
     if (!response.ok) {
-      const error = data && typeof data === 'object' && 'error' in data ? String(data.error) : 'Request failed';
+      // A refusal reads `errorMessage` (automation routes) or `error` (the rest); an empty or HTML body keeps the old text.
+      const data: unknown = await response.json().catch(() => null);
 
-      throw new Error(error);
+      throw new Error(getResponseErrorMessage(data));
     }
 
-    return data;
+    return (await response.json()) as T;
   }
 
   return {
@@ -434,7 +434,7 @@ export function createApiClient(projectId: string): ApiClient {
       // Business errors (stale_preview, already_decided) come back as 400
       // with a structured body the caller must be able to inspect.
       if (!response.ok && typeof data.success !== 'boolean') {
-        throw new Error(data.error ? String(data.error) : 'Request failed');
+        throw new Error(getResponseErrorMessage(data));
       }
 
       return data;
@@ -507,9 +507,7 @@ export function createApiClient(projectId: string): ApiClient {
         };
       }
 
-      const error = data.error ? String(data.error) : 'Request failed';
-
-      throw new Error(error);
+      throw new Error(getResponseErrorMessage(data));
     },
     runAutomation: async (automationId) =>
       request<MutationResult & { runId?: string }>(`${automationsBasePath}/${encodeURIComponent(automationId)}/runs`, {

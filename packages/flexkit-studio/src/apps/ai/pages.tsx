@@ -22,7 +22,9 @@ import type { ColumnDef, ColumnFiltersState } from '@tanstack/react-table';
 import { useIsViewing } from '../../core/apps/app-active';
 import { useConfig } from '../../core/config/config-context';
 import { getDesktop } from '../../core/desktop';
+import { useCapabilities } from '../../core/capabilities';
 import { useCanMutate } from '../../core/permissions';
+import { getDisabledReasonLabel } from './automation-access';
 import {
   Badge,
   Button,
@@ -375,6 +377,9 @@ export function AutomationsPage(): JSX.Element {
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState('');
   const canMutate = useCanMutate();
+  // Editors and contributors may create personal automations when the project allows it; an older backend
+  // does not say, and then every member but a viewer is offered the button, as before.
+  const { canCreatePersonalAutomations } = useCapabilities();
   const scrollRef = useRef<HTMLDivElement>(null);
   const statusFilterValues = columnFilterValues(columnFilters, 'status');
   const visibilityFilterValues = columnFilterValues(columnFilters, 'visibility');
@@ -505,10 +510,17 @@ export function AutomationsPage(): JSX.Element {
       return;
     }
 
-    const result = await api.deleteAutomation(automation.id);
+    try {
+      const result = await api.deleteAutomation(automation.id);
 
-    if (!result.success) {
-      setMessage(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
+      if (!result.success) {
+        setMessage(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
+
+        return;
+      }
+    } catch (error) {
+      // A refusal (403/409) throws with the server's explanation.
+      setMessage(error instanceof Error ? error.message : 'Failed to delete automation.');
 
       return;
     }
@@ -545,6 +557,10 @@ export function AutomationsPage(): JSX.Element {
             <TableRow className="fk:cursor-pointer" key={automation.id} onClick={() => navigate(automation.id)}>
               <TableCell>
                 <span className="fk:font-medium">{automation.name}</span>
+                {/* Why the platform switched it off; older backends do not say, and nothing shows. */}
+                {getDisabledReasonLabel(automation) ? (
+                  <div className="fk:text-xs fk:text-muted-foreground">{getDisabledReasonLabel(automation)}</div>
+                ) : null}
               </TableCell>
               <TableCell className="fk:text-muted-foreground">{getTriggerSummary(automation)}</TableCell>
               <TableCell>
@@ -648,7 +664,7 @@ export function AutomationsPage(): JSX.Element {
         actions={
           <>
             <CreditButton projectId={projectId} />
-            {canMutate ? (
+            {canMutate && canCreatePersonalAutomations ? (
               <Button asChild className="fk:h-8" size="sm">
                 <Link to="new">
                   <Plus className="fk:mr-2 fk:size-4" />
@@ -752,6 +768,7 @@ export function AutomationDetailPage(): JSX.Element {
   const automationApi = api;
   const canRunAutomation = isAutomationRunnable(data.automation) && canMutate;
   const selectedAutomationId = automationId;
+  const disabledReason = getDisabledReasonLabel(data.automation);
 
   function handleRunNow(): void {
     if (!canRunAutomation) {
@@ -759,12 +776,20 @@ export function AutomationDetailPage(): JSX.Element {
     }
 
     startTransition(async () => {
-      const result = await automationApi.runAutomation(selectedAutomationId);
+      try {
+        const result = await automationApi.runAutomation(selectedAutomationId);
 
-      if (result.success && result.runId) {
-        navigate(`runs/${result.runId}`);
+        if (result.success && result.runId) {
+          navigate(`runs/${result.runId}`);
 
-        return;
+          return;
+        }
+
+        if (!result.success && result.errorMessage) {
+          toast.error(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to start the run.');
       }
 
       await mutate();
@@ -783,6 +808,9 @@ export function AutomationDetailPage(): JSX.Element {
         <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
         <div className="fk:flex-1">
           <h1 className="fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">{data.automation.name}</h1>
+          {disabledReason ? (
+            <p className="fk:mt-1 fk:text-sm fk:text-muted-foreground">Inactive: {disabledReason}</p>
+          ) : null}
         </div>
       </div>
       <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3 fk:pr-4">

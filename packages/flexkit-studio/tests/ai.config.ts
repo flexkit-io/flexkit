@@ -18,6 +18,7 @@ export default defineConfig({
     'tests/ai/past-chat-parts.test.ts',
     'tests/ai/past-run-parts.test.ts',
     'tests/ai/attachment-state.test.ts',
+    'tests/ai/automation-access.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests/ai',

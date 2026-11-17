@@ -3,8 +3,16 @@
  * automation run finished and its notify rule asked for it. `automation_failure`:
  * an automation run failed. `monitor_event`: a chat monitor woke the chat, or paused.
  * `question`: the chat agent asked the recipient a question and waits for the answer.
+ * `automation_notice`: something happened to one of the recipient's automations that they
+ * did not do themselves, such as an owner switching it off or its credit limit being reached.
  */
-export type ActivityItemKind = 'approval_request' | 'automation_result' | 'automation_failure' | 'monitor_event' | 'question';
+export type ActivityItemKind =
+  | 'approval_request'
+  | 'automation_result'
+  | 'automation_failure'
+  | 'automation_notice'
+  | 'monitor_event'
+  | 'question';
 
 /** `done` = resolved by the system (e.g. the approval was decided); `dismissed` = hidden by the recipient. */
 export type ActivityItemState = 'unread' | 'read' | 'done' | 'dismissed';
