@@ -1166,6 +1166,8 @@ export const PromptInputSelectTrigger = ({ className, ...props }: PromptInputSel
     className={cn(
       'fk:border-none fk:bg-transparent fk:font-medium fk:text-muted-foreground fk:shadow-none fk:transition-colors',
       'fk:hover:bg-accent fk:hover:text-foreground fk:aria-expanded:bg-accent fk:aria-expanded:text-foreground',
+      // The shared trigger has a muted fill in dark mode; this one sits inside the composer and stays transparent.
+      'fk:dark:bg-transparent fk:dark:aria-expanded:bg-accent',
       className
     )}
     {...props}

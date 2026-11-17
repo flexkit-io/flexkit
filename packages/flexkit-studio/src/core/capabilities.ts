@@ -9,6 +9,12 @@ import { canMutateData } from './permissions';
  * the Studio shows: the server checks every request again.
  */
 export type Capabilities = {
+  /**
+   * Creating automations. Owners and developers always may; editors and
+   * contributors may create their own personal automations when the project
+   * allows it. Older backends do not send it: the role decides, as before.
+   */
+  canCreatePersonalAutomations: boolean;
   canDeleteRecords: boolean;
   canImportRecords: boolean;
   canManageKnowledge: boolean;
@@ -18,6 +24,7 @@ export type Capabilities = {
 export type CapabilityName = keyof Capabilities;
 
 const CAPABILITY_NAMES: readonly CapabilityName[] = [
+  'canCreatePersonalAutomations',
   'canDeleteRecords',
   'canImportRecords',
   'canManageKnowledge',

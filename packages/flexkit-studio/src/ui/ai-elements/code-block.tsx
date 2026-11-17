@@ -437,7 +437,8 @@ export type CodeBlockLanguageSelectorTriggerProps = ComponentProps<typeof Select
 
 export const CodeBlockLanguageSelectorTrigger = ({ className, ...props }: CodeBlockLanguageSelectorTriggerProps) => (
   <SelectTrigger
-    className={cn('fk:h-7 fk:border-none fk:bg-transparent fk:px-2 fk:text-xs fk:shadow-none', className)}
+    // Transparent in the code block header, also in dark mode where the shared trigger has a muted fill.
+    className={cn('fk:h-7 fk:border-none fk:bg-transparent fk:px-2 fk:text-xs fk:shadow-none fk:dark:bg-transparent', className)}
     size="sm"
     {...props}
   />

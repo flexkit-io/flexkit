@@ -59,9 +59,14 @@ export function UserNav({ projectId }: Props): JSX.Element {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="fk:w-56" forceMount>
         <DropdownMenuLabel className="font-normal">
-          <div className="fk:flex fk:flex-col fk:space-y-1">
-            <p className="fk:text-sm fk:font-medium fk:leading-none">{auth.user?.display_name}</p>
-            <p className="fk:text-xs fk:leading-none fk:text-muted-foreground">{auth.user?.email}</p>
+          {/* A long name or address is cut to the menu width; the tooltip shows it in full. */}
+          <div className="fk:flex fk:min-w-0 fk:flex-col fk:space-y-1">
+            <p className="fk:truncate fk:text-sm fk:font-medium fk:leading-tight" title={auth.user?.display_name}>
+              {auth.user?.display_name}
+            </p>
+            <p className="fk:truncate fk:text-xs fk:leading-tight fk:text-muted-foreground" title={auth.user?.email}>
+              {auth.user?.email}
+            </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

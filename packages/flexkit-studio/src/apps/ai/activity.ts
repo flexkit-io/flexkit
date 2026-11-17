@@ -25,6 +25,11 @@ export function getActivitySourcePath(item: ActivityItem): string | null {
     return `automations/${item.automationId}/runs/${item.automationRunId}`;
   }
 
+  // A notice is about the automation itself (switched off, limit reached), not one of its runs.
+  if (item.kind === 'automation_notice' && item.automationId) {
+    return `automations/${item.automationId}`;
+  }
+
   return null;
 }
 
@@ -33,7 +38,11 @@ export function getActivitySourceLabel(item: ActivityItem): string | null {
     return 'View chat';
   }
 
-  return item.automationId && item.automationRunId ? 'View run' : null;
+  if (item.automationId && item.automationRunId) {
+    return 'View run';
+  }
+
+  return item.kind === 'automation_notice' && item.automationId ? 'View automation' : null;
 }
 
 const RESOLUTION_LABELS: { [key in ActivityItemResolution]: string } = {
@@ -57,6 +66,10 @@ export function getActivityStatusLabel(item: ActivityItem): string | null {
 
   if (item.kind === 'monitor_event') {
     return 'Monitor';
+  }
+
+  if (item.kind === 'automation_notice') {
+    return 'Notice';
   }
 
   if (item.resolution) {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ActivityItem } from '../../src/apps/ai/types';
 import {
+  getActivitySourceLabel,
   getActivitySourcePath,
   getActivityStatusLabel,
   getActivityStatusTone,
@@ -118,6 +119,24 @@ describe('activity item helpers', () => {
     assert.equal(getActivitySourcePath(result), 'automations/auto/runs/run');
     assert.equal(getActivityStatusTone(item('a', 'x')), 'attention');
     assert.equal(getActivityStatusLabel(item('m', 'x', { ...run, kind: 'monitor_event' })), 'Monitor');
+  });
+
+  it('labels automation notices neutrally and links to the automation', () => {
+    const notice = item('n', 'x', {
+      approvalId: null,
+      automationId: 'auto',
+      chatId: null,
+      kind: 'automation_notice',
+      requiresAction: false,
+    });
+
+    assert.equal(getActivityStatusLabel(notice), 'Notice');
+    assert.equal(getActivityStatusTone(notice), 'neutral');
+    assert.equal(isActivityItemOpen(notice), false);
+    assert.equal(getActivitySourcePath(notice), 'automations/auto');
+    assert.equal(getActivitySourceLabel(notice), 'View automation');
+    // A notice about a run still links to the run.
+    assert.equal(getActivitySourcePath({ ...notice, automationRunId: 'run' }), 'automations/auto/runs/run');
   });
 });
 

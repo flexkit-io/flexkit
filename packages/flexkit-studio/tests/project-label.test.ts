@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ProjectSummary, ProjectUiConfig } from '../src/core/config/types';
-import { getProjectLabel, groupProjectIdsByTeam } from '../src/ui/components/project-label';
+import { getProjectLabel, getSelectableProjectIds, groupProjectIdsByTeam } from '../src/ui/components/project-label';
 
 const summary = (id: string, name: string, team: { id: string; name: string }): ProjectSummary => ({
   avatarUrl: null,
@@ -33,5 +33,21 @@ describe('project labels', () => {
       { label: 'Acme', projectIds: ['p1', 'p2'] },
       { label: 'Zeta', projectIds: ['p3'] },
     ]);
+  });
+});
+
+describe('selectable projects', () => {
+  const errors = {
+    denied: { status: 403, message: 'Forbidden' },
+    signedOut: { status: 401, message: 'Unauthorized' },
+    broken: { status: 500, message: 'Server error' },
+  };
+
+  it('leaves out projects the person has no access to', () => {
+    assert.deepEqual(getSelectableProjectIds(['ok', 'denied', 'signedOut', 'broken'], errors, 'ok'), ['ok', 'broken']);
+  });
+
+  it('keeps the open project even without access, so the selector can name it', () => {
+    assert.deepEqual(getSelectableProjectIds(['ok', 'denied'], errors, 'denied'), ['ok', 'denied']);
   });
 });

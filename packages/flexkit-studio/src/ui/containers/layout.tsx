@@ -18,6 +18,7 @@ import { AppBar } from './appbar';
 import { AppOutlet, useAppSessions } from './app-outlet';
 import { Navbar } from './navbar';
 import { useStudioVersion } from '../../core/use-studio-version';
+import { getSelectableProjectIds } from '../components/project-label';
 
 function SchemaUnavailable({
   projectId,
@@ -136,7 +137,12 @@ export function Layout(): JSX.Element {
     <>
       {/* eslint-disable-next-line react/no-unknown-property -- vaul-drawer-wrapper custom property required by Vaul component */}
       <div className="fk:flex fk:flex-col fk:h-full flexkit-studio" vaul-drawer-wrapper="">
-        <Navbar projectId={projectId} projectIds={projectIds} projectSummaries={projectSummaries} projects={projects} />
+        <Navbar
+          projectId={projectId}
+          projectIds={getSelectableProjectIds(projectIds, schemaErrors, projectId)}
+          projectSummaries={projectSummaries}
+          projects={projects}
+        />
         <div className="fk:flex fk:h-full fk:max-h-[calc(100%-3.5rem)] fk:border-t fk:border-border fk:grow shrink">
           <AppBar apps={apps} version={version} {...appSessions} />
           {currentProject ? (

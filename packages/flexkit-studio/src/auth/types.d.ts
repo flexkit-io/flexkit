@@ -11,6 +11,7 @@ export type User = {
    * through `resolveCapabilities` (or the `useCan…` hooks), which fall back to the role.
    */
   capabilities?: {
+    canCreatePersonalAutomations?: boolean;
     canDeleteRecords?: boolean;
     canImportRecords?: boolean;
     canManageKnowledge?: boolean;
