@@ -65,7 +65,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../auth/auth-context';
 import { useCanMutate } from '../../core/permissions';
-import { isMemberPersonalOnly, needsPersonalConversionConfirm } from './automation-access';
+import { canMakePersonal, isMemberPersonalOnly, needsPersonalConversionConfirm } from './automation-access';
 import { fetcher, FetcherError, getWebhookTriggerUrl, paths, type ApiClient } from './api';
 import {
   coerceEffort,
@@ -937,11 +937,18 @@ function JobTriggerRow({
   projectId: string;
   trigger: JobFormTrigger;
 }): JSX.Element {
-  const { data } = useSWR<{ automations: Automation[] }>(
+  const { data } = useSWR<{ automations: Automation[]; hasMore?: boolean }>(
     trigger.job === 'schema_deploy' ? null : paths(projectId).automations({ limit: 100 }),
     fetcher
   );
   const others = (data?.automations ?? []).filter((automation) => automation.id !== automationId);
+  // A followed automation the list no longer returns (a member sees only their own personal ones) keeps its
+  // value; it is named as unseen instead of leaving the picker blank.
+  const followsUnlisted =
+    data !== undefined &&
+    Boolean(trigger.automationId) &&
+    trigger.automationId !== automationId &&
+    !others.some((automation) => automation.id === trigger.automationId);
 
   return (
     <div className="fk:flex fk:flex-1 fk:flex-wrap fk:items-center fk:gap-2 fk:text-sm">
@@ -977,6 +984,12 @@ function JobTriggerRow({
           <SelectContent>
             {trigger.job === 'bulk_action' && !memberPersonalOnly ? (
               <SelectItem value={ANY_AUTOMATION}>any automation</SelectItem>
+            ) : null}
+            {followsUnlisted && trigger.automationId ? (
+              <SelectItem disabled value={trigger.automationId}>
+                {/* Past the first page it may simply not be loaded, so only a complete list says it is unseen. */}
+                {data?.hasMore ? 'Another automation' : 'An automation you can no longer see'}
+              </SelectItem>
             ) : null}
             {others.map((automation) => (
               <SelectItem key={automation.id} value={automation.id}>
@@ -1469,6 +1482,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   // Editors and contributors keep personal automations only, with a reduced feature set the server enforces.
   const memberPersonalOnly = isMemberPersonalOnly(auth.user);
   const [isConfirmingPersonal, setIsConfirmingPersonal] = useState(false);
+  // Only the creator may make a shared automation personal; the server refuses anyone else.
+  const personalAllowed = canMakePersonal(automation, auth.user?.id);
   const userSpaceCodes = auth.user?.spaces ?? [];
   // Only spaces the caller belongs to are offered; the server rejects
   // bindings to spaces outside the caller's membership anyway.
@@ -1948,7 +1963,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     }
 
     // Making a shared automation personal hides it from everyone else and drops its subscribers: confirm first.
-    if (needsPersonalConversionConfirm({ memberPersonalOnly, nextVisibility: visibility, saved: automation })) {
+    if (
+      needsPersonalConversionConfirm({ memberPersonalOnly, nextVisibility: visibility, saved: automation, userId: auth.user?.id })
+    ) {
       setIsConfirmingPersonal(true);
 
       return;
@@ -2070,6 +2087,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                 return;
               }
 
+              if (value === 'personal' && !personalAllowed) {
+                return;
+              }
+
               setVisibility(value === 'space' || value === 'personal' ? value : 'project');
 
               if (value !== 'space') {
@@ -2091,7 +2112,9 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                   </SelectItem>
                 </>
               )}
-              <SelectItem value="personal">Personal</SelectItem>
+              <SelectItem disabled={!personalAllowed} value="personal">
+                Personal
+              </SelectItem>
             </SelectContent>
           </Select>
           {visibility === 'space' ? (
@@ -2122,6 +2145,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           <p className="fk:text-xs fk:text-muted-foreground">
             This automation uses a personal plugin connection, so project and space visibility are unavailable.
           </p>
+        ) : !personalAllowed ? (
+          <p className="fk:text-xs fk:text-muted-foreground">Only the person who created it can make it personal.</p>
         ) : null}
         {validation.plugins ? <FieldError message={validation.plugins} /> : null}
         {visibility === 'space' && validation.space ? <FieldError message={validation.space} /> : null}
@@ -2678,7 +2703,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           <PluginUsagePicker projectId={projectId} personalOnly={memberPersonalOnly} value={pluginUsages} disabled={!canMutate} onChange={(usages) => {
             setPluginUsages(usages);
 
-            if (usesEnabledPersonalPlugin(usages)) {
+            // Someone else's automation stays shared; the plugins error then asks for the project account.
+            if (usesEnabledPersonalPlugin(usages) && personalAllowed) {
               setVisibility('personal');
               setSpaceId(null);
             }

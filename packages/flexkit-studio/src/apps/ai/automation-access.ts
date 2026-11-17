@@ -30,6 +30,24 @@ export function isMemberPersonalOnly(user: MemberSubject): boolean {
 }
 
 /**
+ * Whether the signed-in member may make the stored automation personal. Only
+ * its creator may: the server refuses anyone else (`personal_requires_creator`),
+ * since it would hide a colleague's automation from the whole project. A new
+ * automation, one that is personal already, and one from an older API that
+ * does not say who created it are not limited here.
+ */
+export function canMakePersonal(
+  saved: Pick<Automation, 'createdBy' | 'visibility'> | undefined,
+  userId: string | null | undefined
+): boolean {
+  if (!saved || saved.visibility === 'personal' || !saved.createdBy) {
+    return true;
+  }
+
+  return saved.createdBy === userId;
+}
+
+/**
  * Whether saving needs the "make it personal" confirmation: an owner or
  * developer turning an existing project or space automation into a personal
  * one removes its subscribers and hands it to them, which is hard to undo.
@@ -38,13 +56,16 @@ export function needsPersonalConversionConfirm({
   memberPersonalOnly,
   nextVisibility,
   saved,
+  userId,
 }: {
   memberPersonalOnly: boolean;
   nextVisibility: AutomationVisibility;
   /** The stored automation; undefined when creating one. */
-  saved: Pick<Automation, 'visibility'> | undefined;
+  saved: Pick<Automation, 'createdBy' | 'visibility'> | undefined;
+  userId: string | null | undefined;
 }): boolean {
-  if (memberPersonalOnly || !saved || nextVisibility !== 'personal') {
+  // Someone else's automation cannot be made personal at all, so there is nothing to confirm.
+  if (memberPersonalOnly || !saved || nextVisibility !== 'personal' || !canMakePersonal(saved, userId)) {
     return false;
   }
 

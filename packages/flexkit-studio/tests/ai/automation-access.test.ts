@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  canMakePersonal,
   getDisabledReasonLabel,
   isMemberPersonalOnly,
   needsPersonalConversionConfirm,
@@ -33,7 +34,7 @@ describe('needsPersonalConversionConfirm', () => {
   it('asks an owner or developer who makes a shared automation personal', () => {
     for (const visibility of ['project', 'space', undefined] as const) {
       assert.equal(
-        needsPersonalConversionConfirm({ memberPersonalOnly: false, nextVisibility: 'personal', saved: { visibility } }),
+        needsPersonalConversionConfirm({ memberPersonalOnly: false, nextVisibility: 'personal', saved: { visibility }, userId: 'me' }),
         true,
         String(visibility)
       );
@@ -42,21 +43,43 @@ describe('needsPersonalConversionConfirm', () => {
 
   it('does not ask otherwise', () => {
     assert.equal(
-      needsPersonalConversionConfirm({ memberPersonalOnly: false, nextVisibility: 'personal', saved: undefined }),
+      needsPersonalConversionConfirm({ memberPersonalOnly: false, nextVisibility: 'personal', saved: undefined, userId: 'me' }),
       false
     );
     assert.equal(
-      needsPersonalConversionConfirm({ memberPersonalOnly: false, nextVisibility: 'personal', saved: { visibility: 'personal' } }),
+      needsPersonalConversionConfirm({ memberPersonalOnly: false, nextVisibility: 'personal', saved: { visibility: 'personal' }, userId: 'me' }),
       false
     );
     assert.equal(
-      needsPersonalConversionConfirm({ memberPersonalOnly: false, nextVisibility: 'space', saved: { visibility: 'project' } }),
+      needsPersonalConversionConfirm({ memberPersonalOnly: false, nextVisibility: 'space', saved: { visibility: 'project' }, userId: 'me' }),
       false
     );
     assert.equal(
-      needsPersonalConversionConfirm({ memberPersonalOnly: true, nextVisibility: 'personal', saved: { visibility: 'project' } }),
+      needsPersonalConversionConfirm({ memberPersonalOnly: true, nextVisibility: 'personal', saved: { visibility: 'project' }, userId: 'me' }),
       false
     );
+  });
+});
+
+describe('canMakePersonal', () => {
+  it('lets only the creator make a shared automation personal', () => {
+    assert.equal(canMakePersonal({ createdBy: 'me', visibility: 'project' }, 'me'), true);
+    assert.equal(canMakePersonal({ createdBy: 'someone', visibility: 'space' }, 'me'), false);
+    assert.equal(
+      needsPersonalConversionConfirm({
+        memberPersonalOnly: false,
+        nextVisibility: 'personal',
+        saved: { createdBy: 'someone', visibility: 'project' },
+        userId: 'me',
+      }),
+      false
+    );
+  });
+
+  it('does not limit new or personal automations, or an older API that does not say who created it', () => {
+    assert.equal(canMakePersonal(undefined, 'me'), true);
+    assert.equal(canMakePersonal({ createdBy: 'someone', visibility: 'personal' }, 'me'), true);
+    assert.equal(canMakePersonal({ visibility: 'project' }, 'me'), true);
   });
 });
 
@@ -84,7 +107,7 @@ describe('getResponseErrorMessage', () => {
       getResponseErrorMessage({ success: false, errorCode: 'member_webhook', errorMessage: 'No webhooks.', error: 'Forbidden' }),
       'No webhooks.'
     );
-    assert.equal(getResponseErrorMessage({ errorMessage: ['First.', 'Second.'] }), 'First., Second.');
+    assert.equal(getResponseErrorMessage({ errorMessage: ['First.', 'Second.'] }), 'First. Second.');
   });
 
   it('falls back to error, then to the default text', () => {

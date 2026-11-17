@@ -20,7 +20,8 @@ export function getResponseErrorMessage(data: unknown, fallback = 'Request faile
     const parts = errorMessage.filter((part): part is string => typeof part === 'string' && part.trim() !== '');
 
     if (parts.length > 0) {
-      return parts.join(', ');
+      // The parts are full sentences.
+      return parts.join(' ');
     }
   }
 

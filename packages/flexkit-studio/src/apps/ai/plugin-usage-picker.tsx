@@ -502,7 +502,8 @@ export function PluginUsagePicker({
     (plugin) =>
       plugin.enabled &&
       !value.some((usage) => usage.pluginId === plugin.id) &&
-      usableScopes(plugin, personalOnly).length > 0
+      // Members only see plugins they can connect themselves; owners and developers see every plugin, as before.
+      (!personalOnly || usableScopes(plugin, true).length > 0)
   );
 
   return (
