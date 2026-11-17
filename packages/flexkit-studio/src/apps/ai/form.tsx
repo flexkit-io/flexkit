@@ -583,7 +583,7 @@ function HourSelect({ onChange, value }: { onChange: (_hour: number) => void; va
     <Select value={value.toString()} onValueChange={(hour) => onChange(Number(hour))}>
       <SelectTrigger
         aria-label="Hour"
-        className="fk:h-7 fk:w-fit fk:gap-1 fk:border-transparent fk:bg-background/90 fk:px-2 fk:py-0 fk:text-sm fk:shadow-sm hover:fk:border-border"
+        className="fk:h-7 fk:w-fit fk:gap-1 fk:border-transparent fk:bg-background/90 fk:dark:bg-background/90 fk:px-2 fk:py-0 fk:text-sm fk:shadow-sm hover:fk:border-border"
         size="sm"
       >
         <SelectValue />
@@ -604,7 +604,7 @@ function DaySelect({ onChange, value }: { onChange: (_day: number) => void; valu
     <Select value={value.toString()} onValueChange={(day) => onChange(Number(day))}>
       <SelectTrigger
         aria-label="Day of week"
-        className="fk:h-7 fk:w-fit fk:gap-1 fk:border-transparent fk:bg-background/90 fk:px-2 fk:py-0 fk:text-sm fk:shadow-sm hover:fk:border-border"
+        className="fk:h-7 fk:w-fit fk:gap-1 fk:border-transparent fk:bg-background/90 fk:dark:bg-background/90 fk:px-2 fk:py-0 fk:text-sm fk:shadow-sm hover:fk:border-border"
         size="sm"
       >
         <SelectValue />
@@ -2181,7 +2181,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
               >
                 <SelectTrigger
                   aria-label="Model"
-                  className="fk:w-fit fk:border-transparent fk:bg-background/90 fk:px-2.5 fk:py-0 fk:text-xs fk:shadow-sm hover:fk:border-border"
+                  className="fk:w-fit fk:border-transparent fk:bg-background/90 fk:dark:bg-background/90 fk:px-2.5 fk:py-0 fk:text-xs fk:shadow-sm hover:fk:border-border"
                   size="sm"
                 >
                   <SelectValue placeholder="Select a model" />
@@ -2199,7 +2199,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                 <Select value={effectiveEffort} onValueChange={setEffort}>
                   <SelectTrigger
                     aria-label="Reasoning effort"
-                    className="fk:w-fit fk:border-transparent fk:bg-background/90 fk:px-2.5 fk:py-0 fk:text-xs fk:shadow-sm hover:fk:border-border"
+                    className="fk:w-fit fk:border-transparent fk:bg-background/90 fk:dark:bg-background/90 fk:px-2.5 fk:py-0 fk:text-xs fk:shadow-sm hover:fk:border-border"
                     size="sm"
                   >
                     <SelectValue placeholder="Effort" />
