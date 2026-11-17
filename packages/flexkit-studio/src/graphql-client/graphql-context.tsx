@@ -9,6 +9,7 @@ import { CombinedGraphQLErrors, CombinedProtocolErrors } from '@apollo/client/er
 import { toast } from 'sonner';
 import { getGraphQLSchemaMismatchMessage, getServerError } from './error-utils';
 import { classifyBadRequest, getRoleRefusalMessage, ROLE_REFUSAL_TOAST_ID } from './role-refusal';
+import { SchemaErrorHolders } from './schema-error-holders';
 import { useConfig } from '../core/config/config-context';
 import React, { createContext, useContext, useMemo, useState } from 'react';
 
@@ -20,6 +21,8 @@ const ApolloProviderCompat = ApolloProvider as unknown as React.ComponentType<{
 type GraphQLErrorContextValue = {
   schemaErrorMessage: string | null;
   setSchemaErrorMessage: React.Dispatch<React.SetStateAction<string | null>>;
+  /** The failing queries that hold the banner's message (see `SchemaErrorHolders`). */
+  schemaErrorHolders: SchemaErrorHolders;
 };
 
 const GraphQLErrorContext = createContext<GraphQLErrorContextValue | undefined>(undefined);
@@ -120,7 +123,11 @@ function client(
 export function GraphQLProvider({ children }: { children: React.ReactNode }): JSX.Element {
   const { currentProjectId } = useConfig();
   const [schemaErrorMessage, setSchemaErrorMessage] = useState<string | null>(null);
-  const ctx = useMemo(() => ({ schemaErrorMessage, setSchemaErrorMessage }), [schemaErrorMessage]);
+  const [schemaErrorHolders] = useState(() => new SchemaErrorHolders());
+  const ctx = useMemo(
+    () => ({ schemaErrorMessage, setSchemaErrorMessage, schemaErrorHolders }),
+    [schemaErrorMessage, schemaErrorHolders]
+  );
   const apolloClient = useMemo(() => client(currentProjectId, setSchemaErrorMessage), [currentProjectId]);
 
   return (

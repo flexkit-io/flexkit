@@ -105,7 +105,8 @@ export function useEntityQuery({
     () => gql(getEntityQuery(entityNamePlural, scope, schema, { selection, includeCount: false, defaultScope }).query),
     [entityNamePlural, scope, schema, selection, defaultScope]
   );
-  const { schemaErrorMessage, setSchemaErrorMessage } = useGraphQLError();
+  const { schemaErrorMessage, setSchemaErrorMessage, schemaErrorHolders } = useGraphQLError();
+  const [schemaErrorHolder] = useState(() => Symbol('entity-query'));
   const {
     loading: isLoading,
     data,
@@ -295,17 +296,29 @@ export function useEntityQuery({
     [defaultScope, entityNamePlural, isForm, schema, scope, selection, includeCount, variables]
   );
 
+  // Several queries share the banner; see SchemaErrorHolders for why a query
+  // that succeeds must not clear a message another one still holds.
   useEffect(() => {
     if (schemaMismatchMessage) {
+      schemaErrorHolders.hold(schemaErrorHolder, schemaMismatchMessage);
       setSchemaErrorMessage(schemaMismatchMessage);
 
       return;
     }
 
-    if (data && schemaErrorMessage && !effectiveError) {
-      setSchemaErrorMessage(null);
+    if (data && !effectiveError) {
+      schemaErrorHolders.release(schemaErrorHolder);
+      setSchemaErrorMessage((current) => schemaErrorHolders.afterRelease(current));
     }
-  }, [data, effectiveError, schemaErrorMessage, schemaMismatchMessage, setSchemaErrorMessage]);
+  }, [data, effectiveError, schemaErrorHolder, schemaErrorHolders, schemaMismatchMessage, setSchemaErrorMessage]);
+
+  useEffect(
+    () => () => {
+      schemaErrorHolders.release(schemaErrorHolder);
+      setSchemaErrorMessage((current) => schemaErrorHolders.afterRelease(current));
+    },
+    [schemaErrorHolder, schemaErrorHolders, setSchemaErrorMessage]
+  );
 
   useEffect(() => {
     if (effectiveError || schemaMismatchMessage || isTotalCountFallbackLoading) {

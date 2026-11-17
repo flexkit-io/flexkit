@@ -8,7 +8,7 @@ import { assetSchema } from '../../entities/assets-schema';
 import { tagSchema } from '../../entities/tags-schema';
 import { builtInApps } from '../apps/built-in-apps';
 import type { AppOptions, HostedTeam, ProjectSchemaError, ProjectSummary, ProjectUiConfig, StudioMode } from './types';
-import type { Entity } from '../types';
+import type { Attribute, Entity } from '../types';
 import { useProjectSchema, useProjectSchemas } from './use-project-schemas';
 
 export interface ConfigContext {
@@ -54,9 +54,24 @@ const ConfigContext = createContext<ConfigContext>({
 
 const NO_TEAMS: HostedTeam[] = [];
 
+/**
+ * Asset attributes have one widget, `asset`. Schemas the agent deployed before
+ * the backend fixed it say `image` or `file`, which Desk would query as a plain
+ * value (a GraphQL error) and edit as a text field.
+ */
+function withAssetWidgets(attribute: Attribute): Attribute {
+  if (attribute.dataType !== 'asset' || (attribute.inputType === 'asset' && (attribute.previewType ?? 'asset') === 'asset')) {
+    return attribute;
+  }
+
+  return { ...attribute, inputType: 'asset', previewType: 'asset' };
+}
+
 /** Appends the reserved asset and tag entities to a deployed schema. */
 export function upsertReservedEntities(schema: Entity[]): Entity[] {
-  const withoutReserved = schema.filter((entity) => entity.name !== assetSchema.name && entity.name !== tagSchema.name);
+  const withoutReserved = schema
+    .filter((entity) => entity.name !== assetSchema.name && entity.name !== tagSchema.name)
+    .map((entity) => ({ ...entity, attributes: entity.attributes.map(withAssetWidgets) }));
 
   return [...withoutReserved, assetSchema, tagSchema];
 }

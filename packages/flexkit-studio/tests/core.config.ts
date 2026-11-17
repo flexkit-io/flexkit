@@ -5,6 +5,7 @@ export default defineConfig({
     'tests/json-schema-to-zod.test.ts',
     'tests/icon-name.test.ts',
     'tests/project-schemas.test.ts',
+    'tests/schema-error.test.ts',
     'tests/rating-preview.test.ts',
     'tests/last-project.test.ts',
     'tests/proxy-target.test.ts',
