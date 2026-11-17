@@ -17,18 +17,23 @@ export class SchemaErrorHolders {
     this.held.delete(holder);
   }
 
-  /** The message to show after a query succeeded or went away: `current` unless nothing holds it. */
+  /**
+   * The message to show after a query succeeded or went away: `current` while
+   * a failing query holds it, otherwise a message another failing query still
+   * holds (the one on screen may have come from a query that recovered, or
+   * from a failed mutation), and nothing once no query fails.
+   */
   afterRelease(current: string | null): string | null {
-    if (current === null) {
-      return null;
-    }
+    let fallback: string | null = null;
 
     for (const message of this.held.values()) {
       if (message === current) {
         return current;
       }
+
+      fallback ??= message;
     }
 
-    return null;
+    return fallback;
   }
 }

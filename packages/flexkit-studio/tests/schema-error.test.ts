@@ -19,12 +19,25 @@ describe('SchemaErrorHolders', () => {
     assert.equal(holders.afterRelease('broken'), null);
   });
 
-  it('clears a message nobody holds, such as one a failed mutation raised', () => {
+  it('clears a message nobody holds once no query fails', () => {
     const holders = new SchemaErrorHolders();
 
-    holders.hold(Symbol('other'), 'other error');
     assert.equal(holders.afterRelease('from a mutation'), null);
     assert.equal(holders.afterRelease(null), null);
+  });
+
+  it('shows what another failing query holds when the message on screen is no longer held', () => {
+    const holders = new SchemaErrorHolders();
+    const desk = Symbol('desk');
+    const assets = Symbol('assets');
+
+    holders.hold(desk, 'desk error');
+    holders.hold(assets, 'assets error');
+    holders.release(assets);
+
+    assert.equal(holders.afterRelease('assets error'), 'desk error');
+    // A failed mutation's message on screen does not hide a query that still fails.
+    assert.equal(holders.afterRelease('from a mutation'), 'desk error');
   });
 });
 
