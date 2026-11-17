@@ -7,6 +7,7 @@ import { Button, Dialog, DialogContent, DialogDescription, DialogTitle } from '.
 import { createApiClient, fetcher } from '../api';
 import { connectPlugin } from '../plugin-token';
 import type { MarketplacePlugin, PluginDetail, PluginScope } from '../plugin-types';
+import { PluginSetupNotice } from '../plugin-setup-notice';
 import { describeConnectFailure, getPluginConnectState } from './plugin-connect-state';
 import { PluginLogo } from '../plugin-logo';
 
@@ -333,6 +334,7 @@ export function PluginConnectCard({
           </div>
         ) : null}
       </div>
+      {state.kind === 'connect' && plugin.setupNotice ? <PluginSetupNotice notice={plugin.setupNotice} /> : null}
       {state.kind === 'connect' || state.kind === 'reconnect' ? (
         <p className="fk:px-1 fk:text-xs fk:text-muted-foreground">
           Plugin actions follow your project's approval rules. Disconnect any time in AI → Plugins.
