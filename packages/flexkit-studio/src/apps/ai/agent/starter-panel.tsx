@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type JSX } from 'react';
-import { CheckCircle2, CornerDownRightIcon, LoaderCircle, TriangleAlert, XIcon } from 'lucide-react';
-import useSWR from 'swr';
+import { useEffect, useId, useRef, useState, type JSX } from 'react';
+import { CheckCircle2, CornerDownRightIcon, LoaderCircle, ShoppingBag, TriangleAlert, XIcon } from 'lucide-react';
+import useSWR, { useSWRConfig } from 'swr';
 import {
   applyStarter,
   COMMERCE_STARTER_PROMPTS,
@@ -11,6 +11,8 @@ import {
 import { useConfig } from '../../../core/config/config-context';
 import { revalidateProjectSchema } from '../../../core/config/use-project-schemas';
 import { Button } from '../../../ui/primitives/button';
+import { Label } from '../../../ui/primitives/label';
+import { Switch } from '../../../ui/primitives/switch';
 import { fetcher } from '../api';
 import { usePromptSuggestions } from './prompt-suggestions';
 import { starterSchemaDeployed, watchStarter } from '../starter-watch';
@@ -242,4 +244,69 @@ function isRecent(completedAt: string | undefined): boolean {
   const time = completedAt ? Date.parse(completedAt) : Number.NaN;
 
   return Number.isFinite(time) && Date.now() - time < SAMPLE_PROMPTS_DAYS * 24 * 60 * 60 * 1000;
+}
+
+/**
+ * A project with no schema and no starter, opened by its owner (see
+ * `canApplyStarter`): offers the
+ * commerce starter, which the new-project flow offers only to projects
+ * created in Studio (a project created in Dashboard or the CLI lands here
+ * with an empty chat). Applying it shows its progress in `StarterPanel`.
+ */
+export function StarterOffer({ projectId }: { projectId: string }): JSX.Element {
+  const { mutate } = useSWRConfig();
+  const [sampleData, setSampleData] = useState(true);
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const sampleId = useId();
+
+  function apply(): void {
+    setApplying(true);
+    setError(null);
+    void applyStarter(projectId, { template: 'commerce', sampleData }).then(async (outcome) => {
+      if (!outcome.ok) {
+        setApplying(false);
+        setError(outcome.message);
+
+        return;
+      }
+
+      // StarterPanel shares this request and takes over with the progress.
+      await mutate(starterPath(projectId), { starter: outcome.starter }, { revalidate: false });
+      watchStarter({ projectId });
+    });
+  }
+
+  return (
+    <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-xl fk:flex-col fk:gap-3 fk:rounded-lg fk:border fk:border-border fk:p-4 fk:text-left fk:text-sm">
+      <div className="fk:flex fk:items-start fk:gap-3">
+        <ShoppingBag className="fk:mt-0.5 fk:size-4 fk:shrink-0 fk:text-muted-foreground" />
+        <div className="fk:flex fk:flex-col fk:gap-0.5">
+          <p className="fk:font-medium">Start from the commerce starter</p>
+          <p className="fk:text-xs fk:text-muted-foreground">
+            22 ready-made entities for catalog, inventory, orders, customers and marketing, with EU, UK and US
+            markets. Usually ready in about a minute.
+          </p>
+        </div>
+      </div>
+      <div className="fk:flex fk:flex-wrap fk:items-center fk:justify-between fk:gap-3 fk:pl-7">
+        <div className="fk:flex fk:items-center fk:gap-2">
+          <Switch checked={sampleData} disabled={applying} id={sampleId} onCheckedChange={setSampleData} />
+          <Label className="fk:text-xs fk:font-normal fk:text-muted-foreground" htmlFor={sampleId}>
+            Add a sample store (Aven Living)
+          </Label>
+        </div>
+        <Button disabled={applying} onClick={apply} size="sm">
+          {applying ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : null}
+          Use the starter
+        </Button>
+      </div>
+      {error ? <p className="fk:pl-7 fk:text-xs fk:text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
+/** Applying a starter is for owners; without a hosted summary the backend decides. */
+export function canApplyStarter(role: string | undefined): boolean {
+  return role === undefined || role === 'owner';
 }

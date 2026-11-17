@@ -82,8 +82,8 @@ export function getGraphQLSchemaMismatchMessage(error?: ErrorLike): string | nul
   }
 
   return [
-    'The project schema changed since this page loaded, so some fields no longer match.',
-    'Reload the page to use the latest schema.',
+    'Some fields of the project schema do not match what the project API accepts.',
+    'If the schema just changed, reload the page. If the error stays, the schema itself needs fixing.',
     ...messages.map((message) => `- ${message}`),
   ].join('\n');
 }

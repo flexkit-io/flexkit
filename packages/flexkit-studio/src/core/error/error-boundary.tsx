@@ -1,21 +1,44 @@
 import { Component } from 'react';
 import type { ErrorInfo, JSX, ReactNode } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw, RotateCcw } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { Alert, AlertDescription, AlertTitle } from '../../ui/primitives/alert';
+import { Button } from '../../ui/primitives/button';
 import { isChunkLoadError } from './chunk-load-error';
 import { reportStudioError } from './error-reporter';
 import { NewVersionNotice } from './new-version-notice';
 
-function ErrorAlert({ error }: { error: unknown }): JSX.Element {
-  const errorText =
-    error instanceof Error ? error.message : 'An unexpected error has occurred. Please try refreshing the page.';
+/**
+ * A crash of the page, not something the user did: say so in plain words,
+ * offer a way out, and keep the technical message (often a minified React
+ * error) folded away for a bug report.
+ */
+function ErrorAlert({ error, onRetry }: { error: unknown; onRetry: () => void }): JSX.Element {
+  const technical = error instanceof Error ? error.message : null;
 
   return (
     <Alert variant="destructive">
       <AlertCircle className="fk:h-4 fk:w-4" />
-      <AlertTitle>Error</AlertTitle>
-      <AlertDescription>{errorText}</AlertDescription>
+      <AlertTitle>This page stopped working</AlertTitle>
+      <AlertDescription>
+        <p>Something went wrong while showing this page. Try again, or reload the page.</p>
+        <div className="fk:mt-2 fk:flex fk:flex-wrap fk:gap-2">
+          <Button onClick={onRetry} size="sm" variant="outline">
+            <RotateCcw className="fk:h-3.5 fk:w-3.5" />
+            Try again
+          </Button>
+          <Button onClick={() => window.location.reload()} size="sm" variant="outline">
+            <RefreshCw className="fk:h-3.5 fk:w-3.5" />
+            Reload
+          </Button>
+        </div>
+        {technical ? (
+          <details className="fk:mt-2 fk:text-xs">
+            <summary className="fk:cursor-pointer">Technical details</summary>
+            <p className="fk:mt-1 fk:break-words fk:font-mono">{technical}</p>
+          </details>
+        ) : null}
+      </AlertDescription>
     </Alert>
   );
 }
@@ -51,7 +74,11 @@ class ErrorBoundaryImpl extends Component<BoundaryProps, BoundaryState> {
       return this.props.children;
     }
 
-    return isChunkLoadError(this.state.error) ? <NewVersionNotice /> : <ErrorAlert error={this.state.error} />;
+    return isChunkLoadError(this.state.error) ? (
+      <NewVersionNotice />
+    ) : (
+      <ErrorAlert error={this.state.error} onRetry={() => this.setState({ error: null, hasError: false })} />
+    );
   }
 }
 

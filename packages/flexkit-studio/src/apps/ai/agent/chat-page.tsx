@@ -36,7 +36,7 @@ import {
 import { fetcher, paths, type ApiClient } from '../api';
 import { EMPTY_STARTER_PROMPTS, starterPath, type OnboardingNavigationState } from '../../../core/config/onboarding';
 import { usePromptSuggestions, type AgentProfile } from './prompt-suggestions';
-import { StarterPanel, StarterPrompts } from './starter-panel';
+import { canApplyStarter, StarterOffer, StarterPanel, StarterPrompts } from './starter-panel';
 import { findPastedPluginToken } from '../plugin-token-format';
 import type { Marketplace } from '../plugin-types';
 import {
@@ -1279,15 +1279,29 @@ function EmptySchemaPrompts({
   // Shares the StarterPanel request; a project with a starter shows its progress there instead.
   const { data, error } = useSWR<{ starter: unknown }>(starterPath(projectId), fetcher, { revalidateOnFocus: false });
   const suggestions = usePromptSuggestions(projectId, 'empty-schema', EMPTY_STARTER_PROMPTS);
+  const { projectSummaries } = useConfig();
+  // A project created outside Studio (Dashboard, CLI) never saw the new-project flow's starter choice.
+  const offerStarter =
+    error === undefined && canApplyStarter(projectSummaries.find((project) => project.id === projectId)?.role);
 
-  if ((data === undefined && error === undefined) || data?.starter || suggestions.visible.length === 0) {
+  if ((data === undefined && error === undefined) || data?.starter) {
+    return null;
+  }
+
+  if (!offerStarter && suggestions.visible.length === 0) {
     return null;
   }
 
   return (
     <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-2xl fk:flex-col fk:items-center fk:gap-3">
       <p className="fk:text-sm fk:text-muted-foreground">This project has no schema yet. Start with:</p>
-      <StarterPrompts canSend={canSend} onPrompt={onPrompt} suggestions={suggestions} />
+      {offerStarter ? <StarterOffer projectId={projectId} /> : null}
+      {suggestions.visible.length > 0 ? (
+        <>
+          {offerStarter ? <p className="fk:text-sm fk:text-muted-foreground">Or ask the agent:</p> : null}
+          <StarterPrompts canSend={canSend} onPrompt={onPrompt} suggestions={suggestions} />
+        </>
+      ) : null}
     </div>
   );
 }
@@ -1433,6 +1447,19 @@ export function AgentChatPage(): JSX.Element {
     // handleSend is redeclared every render; the guards above make this run once per navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [api, chatId, location.key, modelPending, onboardingPrompt, projectId, toolsData]);
+
+  // A prompt another app prepared (e.g. "Ask the agent" on a Schema mismatch)
+  // is typed into the composer, not sent: the user reads it and decides.
+  const composerPrompt = (location.state as OnboardingNavigationState | null)?.composerPrompt;
+
+  useEffect(() => {
+    if (!composerPrompt || chatId) {
+      return;
+    }
+
+    navigate(location.pathname, { replace: true, state: null });
+    setPromptToRestore(composerPrompt);
+  }, [chatId, composerPrompt, location.pathname, navigate]);
 
   if (!projectId || !api) {
     return (

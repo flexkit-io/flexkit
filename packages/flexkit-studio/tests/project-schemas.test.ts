@@ -55,4 +55,25 @@ describe('project schemas', () => {
       names
     );
   });
+
+  it('gives asset attributes the asset widgets whatever the schema says', () => {
+    const [post] = upsertReservedEntities([
+      {
+        name: 'post',
+        plural: 'posts',
+        attributes: [
+          { name: 'title', label: 'Title', dataType: 'string', scope: 'local', inputType: 'text', previewType: 'text' },
+          { name: 'cover', label: 'Cover', dataType: 'asset', scope: 'global', inputType: 'image', previewType: 'text' },
+        ],
+      },
+    ] as Parameters<typeof upsertReservedEntities>[0]);
+
+    assert.deepEqual(
+      post?.attributes.map(({ inputType, previewType }) => [inputType, previewType]),
+      [
+        ['text', 'text'],
+        ['asset', 'asset'],
+      ]
+    );
+  });
 });

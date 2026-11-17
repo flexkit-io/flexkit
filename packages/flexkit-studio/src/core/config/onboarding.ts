@@ -18,8 +18,12 @@ export type ProjectStart =
   | { kind: 'describe'; description: string }
   | { kind: 'empty' };
 
-/** Navigation state the onboarding hands the AI chat of a new project. */
-export type OnboardingNavigationState = { onboardingPrompt?: string };
+/**
+ * Navigation state handed to the AI chat: `onboardingPrompt` is sent as the
+ * first message of a new project; `composerPrompt` is only typed into the
+ * composer of a new chat, for the user to read, edit and send.
+ */
+export type OnboardingNavigationState = { onboardingPrompt?: string; composerPrompt?: string };
 
 export function starterPath(projectId: string): string {
   return `/api/flexkit/${projectId}/starter`;
