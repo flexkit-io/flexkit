@@ -17,6 +17,58 @@ import { getDesktop } from '../core/desktop';
 /** How long the emailed link works. The screen checks for the confirmation until then. */
 const LOGIN_LINK_LIFETIME_MS = 60 * 60 * 1000;
 
+/** The login this tab waits for, kept so a reload goes on waiting instead of showing the form again. */
+type PendingLogin = { confirmationCode?: string; email: string; sentAt: number; token: string };
+
+type SendOtpAnswer =
+  | { confirmationCode?: string; token: string }
+  | { error: { message: string; code: string } }
+  | undefined;
+
+/** One key per sign-in target: a project's API or the hosted Studio's own route. */
+function pendingLoginKey(projectId: string | undefined): string {
+  return `flexkit:pending-email-login:${projectId ?? ''}`;
+}
+
+function readPendingLogin(key: string): PendingLogin | null {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(key) ?? 'null') as Partial<PendingLogin> | null;
+
+    if (
+      typeof stored?.email !== 'string' ||
+      typeof stored.token !== 'string' ||
+      typeof stored.sentAt !== 'number' ||
+      Date.now() - stored.sentAt > LOGIN_LINK_LIFETIME_MS
+    ) {
+      return null;
+    }
+
+    return {
+      confirmationCode:
+        typeof stored.confirmationCode === 'string' && /^\d{6}$/.test(stored.confirmationCode)
+          ? stored.confirmationCode
+          : undefined,
+      email: stored.email,
+      sentAt: stored.sentAt,
+      token: stored.token,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePendingLogin(key: string, pending: PendingLogin | null): void {
+  try {
+    if (pending) {
+      sessionStorage.setItem(key, JSON.stringify(pending));
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Without storage a reload shows the form again.
+  }
+}
+
 const formSchema = z.object({
   email: z.email({ error: 'Please enter a valid email address' }),
 });
@@ -48,6 +100,9 @@ export default function EmailLogin({
   }
 
   const [hasOtpExpired, setHasOtpExpired] = useState(false);
+  const [isDeclined, setIsDeclined] = useState(false);
+  const storageKey = pendingLoginKey(projectId);
+  const [pending, setPending] = useState<PendingLogin | null>(null);
   const [shouldSendOtp, setShouldSendOtp] = useState(false);
   const { mutate } = useSWRConfig();
   const form = useForm({
@@ -57,7 +112,8 @@ export default function EmailLogin({
     },
   });
   // Project mode talks to the project API directly (open CORS); hosted mode stays same-origin through the BFF.
-  const sendOtpUrl = projectId === undefined ? userApiPaths.otpSend : new URL(apiPaths(projectId).loginOtpSend, baseApiUrl).href;
+  const sendOtpUrl =
+    projectId === undefined ? userApiPaths.otpSend : new URL(apiPaths(projectId).loginOtpSend, baseApiUrl).href;
   const confirmOtpUrl =
     projectId === undefined ? userApiPaths.otpConfirm : new URL(apiPaths(projectId).loginOtpConfirm, baseApiUrl).href;
   const { data, error, isLoading } = useSWR(
@@ -69,12 +125,7 @@ export default function EmailLogin({
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.getValues('email') }),
-      }).then(
-        (res) =>
-          res.json() as Promise<
-            { confirmationCode?: string; token: string } | { error: { message: string; code: string } } | undefined
-          >
-      ),
+      }).then((res) => res.json() as Promise<SendOtpAnswer>),
     {
       revalidateIfStale: false,
       revalidateOnFocus: false,
@@ -82,9 +133,39 @@ export default function EmailLogin({
       shouldRetryOnError: false,
     }
   );
-  const errorCode = data && 'error' in data && data.error.code;
-  const hasOtpBeenSent = data && 'token' in data;
-  const token = data && 'token' in data ? data.token : '';
+  const errorCode = data && 'error' in data ? data.error.code : undefined;
+  const hasOtpBeenSent = pending !== null;
+
+  // After a reload, go on waiting for the link this tab asked for. In an effect: storage is the browser's.
+  useEffect(() => {
+    setPending(readPendingLogin(storageKey));
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!data || !('token' in data)) {
+      return;
+    }
+
+    const sent: PendingLogin = {
+      // Shown here and on the page the emailed link opens, so the two can be compared.
+      confirmationCode:
+        typeof data.confirmationCode === 'string' && /^\d{6}$/.test(data.confirmationCode)
+          ? data.confirmationCode
+          : undefined,
+      email: form.getValues('email'),
+      sentAt: Date.now(),
+      token: data.token,
+    };
+
+    writePendingLogin(storageKey, sent);
+    setPending(sent);
+  }, [data, form, storageKey]);
+
+  /** Back to the form, for a new address or a new link. */
+  function startOver(): void {
+    writePendingLogin(storageKey, null);
+    window.location.reload();
+  }
 
   // Before paint, so the old heading never shows above the new text.
   useLayoutEffect(() => {
@@ -94,35 +175,40 @@ export default function EmailLogin({
       onEmailSentChange?.(false);
     };
   }, [hasOtpBeenSent, onEmailSentChange]);
-  // Shown here and on the page the emailed link opens, so the two can be compared.
-  const confirmationCode =
-    data && 'token' in data && typeof data.confirmationCode === 'string' && /^\d{6}$/.test(data.confirmationCode)
-      ? data.confirmationCode
-      : undefined;
+  const confirmationCode = pending?.confirmationCode;
 
   useEffect(() => {
-    if (!hasOtpBeenSent) {
+    if (!pending) {
       return;
     }
 
     // A deadline, not a count of checks: a browser slows the timer of a tab in the background.
-    const deadline = Date.now() + LOGIN_LINK_LIFETIME_MS;
+    const deadline = pending.sentAt + LOGIN_LINK_LIFETIME_MS;
     const interval = setInterval(() => {
       // Start polling to check for email confirmation
       // if email is confirmed, redirect to dashboard
       if (Date.now() > deadline) {
         clearInterval(interval);
+        writePendingLogin(storageKey, null);
         setHasOtpExpired(true);
 
         return;
       }
 
       const setTokenUrl = '/api/flexkit/set-token';
-      fetch(
-        `${confirmOtpUrl}?email=${encodeURIComponent(form.getValues('email'))}&token=${encodeURIComponent(token)}`,
-        { credentials: 'same-origin' }
-      )
+      fetch(`${confirmOtpUrl}?email=${encodeURIComponent(pending.email)}&token=${encodeURIComponent(pending.token)}`, {
+        credentials: 'same-origin',
+      })
         .then((res) => {
+          if (res.status === 410) {
+            // Declined on the confirmation page: it will never complete.
+            clearInterval(interval);
+            writePendingLogin(storageKey, null);
+            setIsDeclined(true);
+
+            return;
+          }
+
           if (res.status === 200) {
             // set the token cookie
             res
@@ -138,6 +224,7 @@ export default function EmailLogin({
                   .then((setTokenResponse) => {
                     // A refusal (wrong origin behind a proxy, a malformed session) must not look like a sign-in.
                     if (setTokenResponse.ok || setTokenResponse.redirected) {
+                      writePendingLogin(storageKey, null);
                       finishLogin();
                     } else {
                       // eslint-disable-next-line no-console -- the only trace of a misconfigured API route
@@ -161,45 +248,48 @@ export default function EmailLogin({
     return () => {
       clearInterval(interval);
     };
-  }, [confirmOtpUrl, form, hasOtpBeenSent, token]);
+  }, [confirmOtpUrl, pending, storageKey]);
 
   function handleEmailLogin(): void {
     setHasOtpExpired(false);
+    setIsDeclined(false);
     setShouldSendOtp(true);
     void mutate(sendOtpUrl);
   }
 
   return (
     <div className="fk:w-full">
-      {hasOtpBeenSent && hasOtpExpired ? (
+      {pending && isDeclined ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            This sign-in was declined on the confirmation page. If that was you,{' '}
+            <Button className="fk:p-0 fk:hover:underline" onClick={startOver} variant="link">
+              ask for a new link
+            </Button>
+            .
+          </AlertDescription>
+        </Alert>
+      ) : pending && hasOtpExpired ? (
         <Alert variant="destructive">
           <AlertDescription>
             The sign-in link has expired. Please{' '}
-            <Button
-              className="fk:p-0 fk:hover:underline"
-              onClick={() => {
-                window.location.reload();
-              }}
-              variant="link"
-            >
+            <Button className="fk:p-0 fk:hover:underline" onClick={startOver} variant="link">
               try again
             </Button>
             .
           </AlertDescription>
         </Alert>
-      ) : hasOtpBeenSent ? (
+      ) : pending ? (
         <div className="fk:flex fk:flex-col fk:items-center" role="status">
           <p className="fk:text-center fk:text-muted-foreground">
             {getDesktop()
               ? 'Keep Flexkit open and, on this computer, open the link we just sent to '
               : 'Keep this window open and in a new tab open the link we just sent to '}
-            <strong className="fk:break-words">{form.getValues('email')}</strong> (
+            <strong className="fk:break-words">{pending.email}</strong> (
             <Button
               aria-label="Undo, use a different email"
               className="fk:h-auto fk:p-0 fk:text-base fk:font-normal fk:text-muted-foreground fk:hover:underline"
-              onClick={() => {
-                window.location.reload();
-              }}
+              onClick={startOver}
               variant="link"
             >
               undo
@@ -241,7 +331,18 @@ export default function EmailLogin({
                 </AlertDescription>
               </Alert>
             )}
-            {errorCode === 'unknown_error' || error ? (
+            {errorCode === 'rate_limited' && (
+              <Alert variant="destructive">
+                <AlertDescription>Too many attempts. Please wait a few minutes and try again.</AlertDescription>
+              </Alert>
+            )}
+            {errorCode === 'invalid_email' && (
+              <Alert variant="destructive">
+                <AlertDescription>Please enter a valid email address.</AlertDescription>
+              </Alert>
+            )}
+            {/* Any other answer, including codes this version does not know yet, must still say something. */}
+            {(errorCode && !['invalid_email', 'not_exists', 'rate_limited'].includes(errorCode)) || error ? (
               <Alert variant="destructive">
                 <AlertDescription>
                   There was an unknown error, please{' '}
