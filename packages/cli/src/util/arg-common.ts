@@ -30,8 +30,6 @@ const ARG_COMMON = {
 
   '--google': Boolean,
 
-  '--bitbucket': Boolean,
-
   '--oob': Boolean,
 };
 

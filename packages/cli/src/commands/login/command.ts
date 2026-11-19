@@ -25,13 +25,6 @@ export const loginCommand: Command = {
       deprecated: false,
     },
     {
-      name: 'bitbucket',
-      description: 'Log in with Bitbucket',
-      shorthand: null,
-      type: String,
-      deprecated: false,
-    },
-    {
       name: 'oob',
       description: 'Log in with "out of band" authentication',
       shorthand: null,
