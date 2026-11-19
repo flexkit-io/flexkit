@@ -17,25 +17,33 @@ import { getDesktop } from '../core/desktop';
 /** How long the emailed link works. The screen checks for the confirmation until then. */
 const LOGIN_LINK_LIFETIME_MS = 60 * 60 * 1000;
 
-/** The login this tab waits for, kept so a reload goes on waiting instead of showing the form again. */
-type PendingLogin = { confirmationCode?: string; email: string; sentAt: number; token: string };
+/**
+ * The login this tab waits for, kept so a reload goes on waiting instead of showing the form again.
+ * `projectId` is the project it signs in to, `''` in hosted mode.
+ */
+export type PendingLogin = {
+  confirmationCode?: string;
+  email: string;
+  projectId: string;
+  sentAt: number;
+  token: string;
+};
+
+const PENDING_LOGIN_KEY = 'flexkit:pending-email-login';
 
 type SendOtpAnswer =
   | { confirmationCode?: string; token: string }
   | { error: { message: string; code: string } }
   | undefined;
 
-/** One key per sign-in target: a project's API or the hosted Studio's own route. */
-function pendingLoginKey(projectId: string | undefined): string {
-  return `flexkit:pending-email-login:${projectId ?? ''}`;
-}
-
-function readPendingLogin(key: string): PendingLogin | null {
+/** The login this tab was waiting for before a reload, if its link still works. */
+export function readPendingLogin(): PendingLogin | null {
   try {
-    const stored = JSON.parse(sessionStorage.getItem(key) ?? 'null') as Partial<PendingLogin> | null;
+    const stored = JSON.parse(sessionStorage.getItem(PENDING_LOGIN_KEY) ?? 'null') as Partial<PendingLogin> | null;
 
     if (
       typeof stored?.email !== 'string' ||
+      typeof stored.projectId !== 'string' ||
       typeof stored.token !== 'string' ||
       typeof stored.sentAt !== 'number' ||
       Date.now() - stored.sentAt > LOGIN_LINK_LIFETIME_MS
@@ -49,6 +57,7 @@ function readPendingLogin(key: string): PendingLogin | null {
           ? stored.confirmationCode
           : undefined,
       email: stored.email,
+      projectId: stored.projectId,
       sentAt: stored.sentAt,
       token: stored.token,
     };
@@ -57,12 +66,12 @@ function readPendingLogin(key: string): PendingLogin | null {
   }
 }
 
-function writePendingLogin(key: string, pending: PendingLogin | null): void {
+function writePendingLogin(pending: PendingLogin | null): void {
   try {
     if (pending) {
-      sessionStorage.setItem(key, JSON.stringify(pending));
+      sessionStorage.setItem(PENDING_LOGIN_KEY, JSON.stringify(pending));
     } else {
-      sessionStorage.removeItem(key);
+      sessionStorage.removeItem(PENDING_LOGIN_KEY);
     }
   } catch {
     // Without storage a reload shows the form again.
@@ -101,7 +110,7 @@ export default function EmailLogin({
 
   const [hasOtpExpired, setHasOtpExpired] = useState(false);
   const [isDeclined, setIsDeclined] = useState(false);
-  const storageKey = pendingLoginKey(projectId);
+  const [hasSignInFailed, setHasSignInFailed] = useState(false);
   const [pending, setPending] = useState<PendingLogin | null>(null);
   const [shouldSendOtp, setShouldSendOtp] = useState(false);
   const { mutate } = useSWRConfig();
@@ -136,10 +145,13 @@ export default function EmailLogin({
   const errorCode = data && 'error' in data ? data.error.code : undefined;
   const hasOtpBeenSent = pending !== null;
 
-  // After a reload, go on waiting for the link this tab asked for. In an effect: storage is the browser's.
-  useEffect(() => {
-    setPending(readPendingLogin(storageKey));
-  }, [storageKey]);
+  // After a reload, go on waiting for the link this tab asked for, if it was for this target.
+  // Before paint, so the form does not flash first; in an effect because storage is the browser's.
+  useLayoutEffect(() => {
+    const stored = readPendingLogin();
+
+    setPending(stored?.projectId === (projectId ?? '') ? stored : null);
+  }, [projectId]);
 
   useEffect(() => {
     if (!data || !('token' in data)) {
@@ -153,17 +165,18 @@ export default function EmailLogin({
           ? data.confirmationCode
           : undefined,
       email: form.getValues('email'),
+      projectId: projectId ?? '',
       sentAt: Date.now(),
       token: data.token,
     };
 
-    writePendingLogin(storageKey, sent);
+    writePendingLogin(sent);
     setPending(sent);
-  }, [data, form, storageKey]);
+  }, [data, form, projectId]);
 
   /** Back to the form, for a new address or a new link. */
   function startOver(): void {
-    writePendingLogin(storageKey, null);
+    writePendingLogin(null);
     window.location.reload();
   }
 
@@ -189,7 +202,7 @@ export default function EmailLogin({
       // if email is confirmed, redirect to dashboard
       if (Date.now() > deadline) {
         clearInterval(interval);
-        writePendingLogin(storageKey, null);
+        writePendingLogin(null);
         setHasOtpExpired(true);
 
         return;
@@ -203,13 +216,22 @@ export default function EmailLogin({
           if (res.status === 410) {
             // Declined on the confirmation page: it will never complete.
             clearInterval(interval);
-            writePendingLogin(storageKey, null);
+            writePendingLogin(null);
             setIsDeclined(true);
 
             return;
           }
 
           if (res.status === 200) {
+            // The answer used the request up: from here it either signs this browser in or fails,
+            // and a reload must not go on waiting for it.
+            clearInterval(interval);
+            writePendingLogin(null);
+
+            const failSignIn = (): void => {
+              setHasSignInFailed(true);
+            };
+
             // set the token cookie
             res
               .json()
@@ -224,20 +246,17 @@ export default function EmailLogin({
                   .then((setTokenResponse) => {
                     // A refusal (wrong origin behind a proxy, a malformed session) must not look like a sign-in.
                     if (setTokenResponse.ok || setTokenResponse.redirected) {
-                      writePendingLogin(storageKey, null);
                       finishLogin();
                     } else {
                       // eslint-disable-next-line no-console -- the only trace of a misconfigured API route
                       console.error(`Flexkit: /api/flexkit/set-token answered ${String(setTokenResponse.status)}`);
+                      failSignIn();
                     }
                   })
-                  .catch(() => {
-                    // TODO: inform the user about the error, maybe the /set-token route is not available or properly configured
-                  });
+                  // The /set-token route is missing or unreachable.
+                  .catch(failSignIn);
               })
-              .catch(() => {
-                // TODO: handle this error
-              });
+              .catch(failSignIn);
           }
         })
         .catch(() => {
@@ -248,7 +267,7 @@ export default function EmailLogin({
     return () => {
       clearInterval(interval);
     };
-  }, [confirmOtpUrl, pending, storageKey]);
+  }, [confirmOtpUrl, pending]);
 
   function handleEmailLogin(): void {
     setHasOtpExpired(false);
@@ -259,7 +278,17 @@ export default function EmailLogin({
 
   return (
     <div className="fk:w-full">
-      {pending && isDeclined ? (
+      {pending && hasSignInFailed ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Your email was verified, but this browser could not be signed in. Please{' '}
+            <Button className="fk:p-0 fk:hover:underline" onClick={startOver} variant="link">
+              ask for a new link
+            </Button>
+            .
+          </AlertDescription>
+        </Alert>
+      ) : pending && isDeclined ? (
         <Alert variant="destructive">
           <AlertDescription>
             This sign-in was declined on the confirmation page. If that was you,{' '}

@@ -1,6 +1,6 @@
 'use client';
 
-import { JSX, useEffect, useState } from 'react';
+import { JSX, useEffect, useLayoutEffect, useState } from 'react';
 import { getOrCreateLoginState, serializeLoginStateCookie } from './token-endpoints';
 import useSWR from 'swr';
 import { Navigate, useHref, useLocation } from 'react-router-dom';
@@ -14,7 +14,7 @@ import { useConfig } from '../core/config/config-context';
 import { getDesktop } from '../core/desktop';
 import { getProjectLabel } from '../ui/components/project-label';
 import { useAuth } from './auth-context';
-import EmailLogin from './email';
+import EmailLogin, { readPendingLogin } from './email';
 import { fetchProviders, type Provider } from './login-providers';
 
 /**
@@ -32,6 +32,26 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
   const selectedProjectHref = useHref(`/${selectedProjectId}`);
   const [isEmailLogin, setIsEmailLogin] = useState(false);
   const [loginState, setLoginState] = useState('');
+
+  // After a reload while an emailed link is awaited, go back to that wait: the email screen, for
+  // the project it was asked for. Before paint, so the provider list does not flash first.
+  useLayoutEffect(() => {
+    const pending = readPendingLogin();
+
+    if (!pending) {
+      return;
+    }
+
+    if (isHosted ? pending.projectId === '' : projectIds.includes(pending.projectId)) {
+      if (!isHosted) {
+        setSelectedProjectId(pending.projectId);
+      }
+
+      setIsEmailLogin(true);
+    }
+    // Once, on the first render: later changes are the person's own choices.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // The callback only accepts a login that starts with this value in the browser's cookie.
   // Tabs share the value, and the cookie is renewed when a provider link is used, so a login
