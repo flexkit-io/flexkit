@@ -59,11 +59,6 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        bitbucket: {
-          DEFAULT: '#0052CC',
-          foreground: '#FFFFFF',
-          hover: '#1668E2',
-        },
         github: {
           DEFAULT: '#24292f',
           foreground: '#FFFFFF',
