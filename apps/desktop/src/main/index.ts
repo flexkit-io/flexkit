@@ -58,6 +58,15 @@ function isStudioLoaded(window: BrowserWindow): boolean {
   return hasStudio(window) && !window.webContents.isLoading();
 }
 
+/** The callback of the login in flight came back without a session: its code was missing, spent or not exchanged. */
+const UNFINISHED_LOGIN_DETAIL =
+  'Flexkit did not return a session for this sign-in. Check your connection and sign in again.';
+/** A callback while a login is in flight, but not for it: an earlier sign-in, finished in another browser tab. */
+const OTHER_LOGIN_DETAIL =
+  'This sign-in was started earlier than the one Flexkit Studio is waiting for. Finish the most recent sign-in in your browser, or sign in again.';
+/** How long one callback may hold up the next: the code exchange has no timeout of its own. */
+const LOGIN_CALLBACK_TIMEOUT_MS = 30 * 1000;
+
 /**
  * The login callback arrived but the session could not be established.
  * Without this the Studio would just stay on the login page.
@@ -82,6 +91,9 @@ function reportLoginFailure(error: unknown): void {
   void (window ? dialog.showMessageBox(window, options) : dialog.showMessageBox(options));
 }
 
+/** Login callbacks in the order the OS handed them over. */
+let loginCallbacks: Promise<void> = Promise.resolve();
+
 /** A `flexkit://` URL from the OS: the login callback, or a path into the Studio. */
 async function handleAppUrl(url: string): Promise<void> {
   let parsed: URL;
@@ -102,37 +114,17 @@ async function handleAppUrl(url: string): Promise<void> {
   }
 
   if (parsed.host === LOGIN_CALLBACK_HOST) {
-    const expectedState = expectedLoginState();
-    let redirect: string | null = null;
+    // One callback at a time: a browser can hand over the same callback twice,
+    // and the second must see the login already finished, not race the first
+    // for the code and report the loser as a failed sign-in.
+    // A hung exchange must not hold every later sign-in up with it.
+    const callback = loginCallbacks.then(() => handleLoginCallback(url));
+    const timeout = new Promise<void>((resolve) => {
+      setTimeout(resolve, LOGIN_CALLBACK_TIMEOUT_MS).unref();
+    });
 
-    try {
-      redirect = await completeDesktopLogin(url, sessionStore, { expectedState });
-    } catch (error) {
-      // The code is spent either way; the next attempt starts a new login.
-      // The window handling below then treats this like a refused callback.
-      clearLoginState();
-      reportLoginFailure(error);
-    }
-
-    if (redirect !== null) {
-      clearLoginState();
-    }
-
-    if (process.env.FLEXKIT_DEBUG_PROTOCOL) {
-      console.log('[deep-link] login', redirect === null ? `refused (${expectedState === null ? 'no login in flight' : 'state or code'})` : `ok -> ${redirect}`);
-    }
-
-    // A refused code leaves the Studio where it is (the login page, or the
-    // path a first, accepted callback is still loading).
-    const window = getWindow();
-
-    if (redirect !== null) {
-      showStudio(redirect);
-    } else if (window && hasStudio(window)) {
-      focusWindow(window);
-    } else {
-      showStudio('/');
-    }
+    loginCallbacks = Promise.race([callback, timeout]).catch(() => undefined);
+    await callback;
 
     return;
   }
@@ -147,6 +139,55 @@ async function handleAppUrl(url: string): Promise<void> {
     } else {
       showStudio(path);
     }
+  }
+}
+
+async function handleLoginCallback(url: string): Promise<void> {
+  const expectedState = expectedLoginState();
+  // Read here rather than from the parsed callback: a callback without a
+  // usable code parses to nothing, and its state still says which login it is.
+  const isForLoginInFlight = expectedState !== null && new URL(url).searchParams.get('state') === expectedState;
+  let redirect: string | null = null;
+  let failed = false;
+
+  try {
+    redirect = await completeDesktopLogin(url, sessionStore, { expectedState });
+  } catch (error) {
+    // Storing the session failed (the keychain refused); the next attempt starts a new login.
+    clearLoginState();
+    reportLoginFailure(error);
+    failed = true;
+  }
+
+  if (redirect !== null) {
+    clearLoginState();
+  } else if (!failed && isForLoginInFlight) {
+    // This login came back without a session (no usable code, or the exchange
+    // failed). Its nonce is spent, so a repeat of this callback stays quiet.
+    clearLoginState();
+    reportLoginFailure(new Error(UNFINISHED_LOGIN_DETAIL));
+  } else if (!failed && expectedState !== null) {
+    // Another sign-in's callback. The one in flight may still arrive: keep its nonce.
+    reportLoginFailure(new Error(OTHER_LOGIN_DETAIL));
+  }
+  // With no login in flight (a link from elsewhere, a repeat of a finished one) it stays quiet.
+
+  if (process.env.FLEXKIT_DEBUG_PROTOCOL) {
+    const reason = expectedState === null ? 'no login in flight' : isForLoginInFlight ? 'no session for this login' : 'other login';
+
+    console.log('[deep-link] login', redirect === null ? `refused (${reason})` : `ok -> ${redirect}`);
+  }
+
+  // A refused code leaves the Studio where it is (the login page, or the
+  // path a first, accepted callback is still loading).
+  const window = getWindow();
+
+  if (redirect !== null) {
+    showStudio(redirect);
+  } else if (window && hasStudio(window)) {
+    focusWindow(window);
+  } else {
+    showStudio('/');
   }
 }
 
