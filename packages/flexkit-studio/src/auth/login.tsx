@@ -274,6 +274,8 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
         {/* workaround to allow Tailwind generate the classes for the login buttons, whose classes are added dynamically */}
         <div className="fk:hidden fk:text-white! fk:hover:text-white! fk:bg-github! fk:hover:bg-github-hover!" />
         <div className="fk:hidden fk:text-neutral-900! fk:hover:text-neutral-900! fk:bg-white! fk:hover:bg-neutral-100!" />
+        {/* The Google button's classes before the backend switched to the ones above; remove once it has. */}
+        <div className="fk:hidden fk:text-muted-foreground! fk:hover:bg-accent!" />
       </div>
       <div className="fk:flex fk:justify-center fk:items-center fk:h-12 fk:text-xs fk:text-muted-foreground fk:border-t fk:border-accent">
         <div className="fk:container fk:flex">
