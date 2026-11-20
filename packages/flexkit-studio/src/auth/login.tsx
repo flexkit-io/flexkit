@@ -272,7 +272,7 @@ export function Login({ projectId }: { projectId?: string }): JSX.Element {
           </div>
         </div>
         {/* workaround to allow Tailwind generate the classes for the login buttons, whose classes are added dynamically */}
-        <div className="fk:hidden fk:bg-github! fk:hover:bg-github-hover!" />
+        <div className="fk:hidden fk:text-white! fk:hover:text-white! fk:bg-github! fk:hover:bg-github-hover!" />
         <div className="fk:hidden fk:text-muted-foreground! fk:bg-white! fk:hover:bg-accent!" />
       </div>
       <div className="fk:flex fk:justify-center fk:items-center fk:h-12 fk:text-xs fk:text-muted-foreground fk:border-t fk:border-accent">
