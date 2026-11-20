@@ -159,6 +159,49 @@ describe('completeDesktopLogin', () => {
     assert.equal(await completeDesktopLogin('flexkit://auth/callback?code=bad&state=' + STATE, store, { expectedState: STATE }), null);
     assert.equal(store.token, '');
   });
+
+  it('stores nothing when the exchange answers with an error or no usable session', async () => {
+    const store = memoryStore();
+    const callback = `flexkit://auth/callback?code=${CODE}&state=${STATE}`;
+
+    globalThis.fetch = (async () => Response.json({ sid: 'sid-1' }, { status: 500 })) as typeof fetch;
+    assert.equal(await completeDesktopLogin(callback, store, { expectedState: STATE }), null);
+
+    globalThis.fetch = (async () => Response.json({ statusCode: 400, message: 'Invalid code' })) as typeof fetch;
+    assert.equal(await completeDesktopLogin(callback, store, { expectedState: STATE }), null);
+
+    globalThis.fetch = (async () => Response.json({ sid: 42 })) as typeof fetch;
+    assert.equal(await completeDesktopLogin(callback, store, { expectedState: STATE }), null);
+
+    globalThis.fetch = (async () => new Response('<html>Bad gateway</html>')) as typeof fetch;
+    assert.equal(await completeDesktopLogin(callback, store, { expectedState: STATE }), null);
+
+    assert.equal(store.token, '');
+  });
+
+  it('gives up on an exchange that does not answer', async () => {
+    const store = memoryStore();
+    let signal: AbortSignal | null | undefined;
+
+    // Rejects once the exchange's own deadline aborts it, as fetch does.
+    globalThis.fetch = ((_input: RequestInfo | URL, init?: RequestInit) => {
+      signal = init?.signal;
+
+      return new Promise((_resolve, reject) => {
+        signal?.addEventListener('abort', () => {
+          reject(signal?.reason);
+        });
+        // Stands in for the 15-second deadline, so the test does not wait for it.
+        setTimeout(() => {
+          reject(new DOMException('The operation timed out.', 'TimeoutError'));
+        }, 10);
+      });
+    }) as typeof fetch;
+
+    assert.equal(await completeDesktopLogin(`flexkit://auth/callback?code=${CODE}&state=${STATE}`, store, { expectedState: STATE }), null);
+    assert.ok(signal instanceof AbortSignal, 'the exchange has a deadline');
+    assert.equal(store.token, '');
+  });
 });
 
 describe('createFlexkitElectronHandler', () => {
