@@ -320,11 +320,20 @@ describe('chat history parts', () => {
 
     assert.equal(getLiveStatusLabel(message([search])), 'Searching past chats for "churn"');
     assert.equal(getLiveStatusLabel(message([read])), 'Reading the chat "Churn report"');
-    assert.equal(getLiveStatusLabel(message([dataPart('data-read-chat', { chatId: 'c1', status: 'loading' })])), 'Reading a past chat');
+    assert.equal(
+      getLiveStatusLabel(message([dataPart('data-read-chat', { chatId: 'c1', status: 'loading' })])),
+      'Reading a past chat'
+    );
     assert.equal(isHiddenReplayPart(search), true);
-    assert.equal(isHiddenReplayPart(dataPart('data-chat-search', { query: 'churn', results: [], status: 'done' })), false);
+    assert.equal(
+      isHiddenReplayPart(dataPart('data-chat-search', { query: 'churn', results: [], status: 'done' })),
+      false
+    );
     assert.equal(isHiddenReplayPart(dataPart('data-read-chat', { chatId: 'c1', status: 'done' })), true);
-    assert.equal(isHiddenReplayPart(dataPart('data-read-chat', { chatId: 'c1', status: 'error', error: { message: 'x' } })), true);
+    assert.equal(
+      isHiddenReplayPart(dataPart('data-read-chat', { chatId: 'c1', status: 'error', error: { message: 'x' } })),
+      true
+    );
   });
 });
 
@@ -365,11 +374,44 @@ describe('run history parts', () => {
 
     assert.equal(getLiveStatusLabel(message([search])), 'Searching past runs for "leads"');
     assert.equal(getLiveStatusLabel(message([read])), 'Reading a run of "Lead follow-up"');
-    assert.equal(getLiveStatusLabel(message([dataPart('data-read-run', { runId: 'r1', status: 'loading' })])), 'Reading a past run');
-    assert.equal(getLiveStatusLabel(message([dataPart('data-run-search', { query: '', status: 'loading' })])), 'Looking at the latest runs');
+    assert.equal(
+      getLiveStatusLabel(message([dataPart('data-read-run', { runId: 'r1', status: 'loading' })])),
+      'Reading a past run'
+    );
+    assert.equal(
+      getLiveStatusLabel(message([dataPart('data-run-search', { query: '', status: 'loading' })])),
+      'Looking at the latest runs'
+    );
     assert.equal(isHiddenReplayPart(search), true);
-    assert.equal(isHiddenReplayPart(dataPart('data-run-search', { query: 'leads', results: [], status: 'done' })), false);
+    assert.equal(
+      isHiddenReplayPart(dataPart('data-run-search', { query: 'leads', results: [], status: 'done' })),
+      false
+    );
     assert.equal(isHiddenReplayPart(dataPart('data-read-run', { runId: 'r1', status: 'done' })), true);
-    assert.equal(isHiddenReplayPart(dataPart('data-read-run', { runId: 'r1', status: 'error', error: { message: 'x' } })), true);
+    assert.equal(
+      isHiddenReplayPart(dataPart('data-read-run', { runId: 'r1', status: 'error', error: { message: 'x' } })),
+      true
+    );
+  });
+});
+
+describe('image status', () => {
+  it('names the image model while an image is being created, and nothing once it is done', () => {
+    const generating = dataPart('data-generated-image', {
+      model: 'bytedance/seedream-5.5',
+      modelName: 'Seedream',
+      prompt: 'A red bike',
+      status: 'generating',
+    });
+    const done = dataPart('data-generated-image', {
+      model: 'bytedance/seedream-5.5',
+      prompt: 'A red bike',
+      status: 'done',
+      url: 'https://p.api/artifacts/a/bike.png',
+    });
+
+    assert.equal(getLiveStatusLabel(message([generating])), 'Creating image with Seedream');
+    assert.equal(getLiveStatusLabel(message([done])), null);
+    assert.equal(isHiddenReplayPart(generating), false);
   });
 });

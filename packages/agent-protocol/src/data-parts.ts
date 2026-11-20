@@ -159,6 +159,26 @@ export const dataPartSchema = z.object({
     /** Persistent public URL of the stored artifact. */
     url: z.string().optional(),
   }),
+  /** An image the agent creates; the file is stored as a chat artifact. */
+  'generated-image': z.object({
+    /** Persistent artifact id, once stored. */
+    artifactId: z.string().optional(),
+    /** The ratio asked for; omitted when the model picked one. */
+    aspectRatio: z.string().optional(),
+    contentType: z.string().optional(),
+    error: errorSchema.optional(),
+    filename: z.string().optional(),
+    /** Image model id (`creator/model`). */
+    model: z.string(),
+    /** Display name of the image model. */
+    modelName: z.string().optional(),
+    /** The prompt the image model received. */
+    prompt: z.string(),
+    sizeBytes: z.number().optional(),
+    status: z.enum(['generating', 'done', 'error']),
+    /** Persistent public URL of the stored image. */
+    url: z.string().optional(),
+  }),
   'run-command': z.object({
     sandboxId: z.string(),
     commandId: z.string().optional(),

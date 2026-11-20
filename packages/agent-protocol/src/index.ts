@@ -17,6 +17,18 @@ export {
   type KnowledgeCitation,
   type KnowledgeLocator,
 } from './data-parts';
+export {
+  AGENT_IMAGE_ASPECT_RATIOS,
+  AGENT_IMAGE_MODEL_IDS,
+  AGENT_IMAGE_MODELS,
+  agentImageRequestSchema,
+  DEFAULT_AGENT_IMAGE_MODEL_ID,
+  getAgentImageModelName,
+  isAgentImageModelId,
+  type AgentImageAspectRatio,
+  type AgentImageModelId,
+  type AgentImageRequest,
+} from './images';
 export type {
   ActivityItem,
   ActivityItemKind,

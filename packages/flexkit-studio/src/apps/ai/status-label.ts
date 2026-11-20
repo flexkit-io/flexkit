@@ -44,7 +44,8 @@ export function isJevAutoApproved(message: ReplayDataParts['mutation-approval'])
   return (
     !message.decidedBy &&
     Boolean(
-      message.reason?.startsWith(JEV_APPROVAL_REASON_PREFIX) || message.reason?.startsWith(TOOL_ALLOW_RULE_REASON_PREFIX)
+      message.reason?.startsWith(JEV_APPROVAL_REASON_PREFIX) ||
+      message.reason?.startsWith(TOOL_ALLOW_RULE_REASON_PREFIX)
     )
   );
 }
@@ -135,6 +136,12 @@ function humanizeToolName(tool: string): string {
 
 /** Gerund label for a rolling-status part, or null once the call concluded. */
 export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
+  if (part.type === 'data-generated-image') {
+    const data = getPartData<ReplayDataParts['generated-image']>(part);
+
+    return data.status === 'generating' ? truncateLabel(`Creating image with ${data.modelName ?? data.model}`) : null;
+  }
+
   if (part.type === 'data-load-skill') {
     const data = getPartData<ReplayDataParts['load-skill']>(part);
 
@@ -174,7 +181,9 @@ export function getRollingStatusLabel(part: ReplayMessagePart): string | null {
       return null;
     }
 
-    return data.rowCount > 0 ? `Exporting records (${data.rowCount.toLocaleString('en-US')} so far)` : 'Exporting records';
+    return data.rowCount > 0
+      ? `Exporting records (${data.rowCount.toLocaleString('en-US')} so far)`
+      : 'Exporting records';
   }
 
   if (part.type === 'data-update-memory') {
@@ -304,7 +313,11 @@ const AGENT_INTERNAL_ERROR_PART_TYPES = new Set<string>([
 ]);
 
 export function getRollingStatusError(part: ReplayMessagePart): string | null {
-  if (!isRollingStatusPartType(part.type) || part.type === 'data-plan' || AGENT_INTERNAL_ERROR_PART_TYPES.has(part.type)) {
+  if (
+    !isRollingStatusPartType(part.type) ||
+    part.type === 'data-plan' ||
+    AGENT_INTERNAL_ERROR_PART_TYPES.has(part.type)
+  ) {
     return null;
   }
 
@@ -397,7 +410,9 @@ export function getPlanStatusLabel(message: ReplayMessage | undefined): string |
       return null;
     }
 
-    return truncateLabel(`Step ${(current + 1).toString()} of ${data.steps.length.toString()}: ${data.steps[current]!.step}`);
+    return truncateLabel(
+      `Step ${(current + 1).toString()} of ${data.steps.length.toString()}: ${data.steps[current]!.step}`
+    );
   }
 
   return null;

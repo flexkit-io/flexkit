@@ -284,6 +284,23 @@ export function createChatRenderer(): ChatRenderer {
         return side({ kind: 'info', text: `Change ${approval.status}: ${approval.operationsSummary}` });
       }
 
+      case 'data-generated-image': {
+        const url = asString(data.url);
+        const model = asString(data.modelName) || asString(data.model);
+
+        if (data.status === 'done' && url && !reportedArtifacts.has(url)) {
+          reportedArtifacts.add(url);
+
+          return side({ kind: 'info', text: `Image (${model}): ${url}` });
+        }
+
+        if (data.status === 'error') {
+          return side({ kind: 'error', text: `Could not create the image: ${asString(asRecord(data.error).message)}` });
+        }
+
+        return [];
+      }
+
       case 'data-run-artifact': {
         const url = asString(data.url);
         const filename = asString(data.filename);
@@ -447,6 +464,12 @@ function messageLines(message: ChatMessage, style: TranscriptStyle): string[] {
 
       if (data.url) {
         lines.push(style.dim(`[file] ${asString(data.filename)}: ${asString(data.url)}`));
+      }
+    } else if (type === 'data-generated-image') {
+      const data = asRecord(part.data);
+
+      if (data.url) {
+        lines.push(style.dim(`[image] ${asString(data.filename)}: ${asString(data.url)}`));
       }
     } else if (type === 'data-user-question') {
       const data = asRecord(part.data) as unknown as ChatQuestionData;
