@@ -34,6 +34,7 @@ import { Button, MessageResponse, Sources, SourcesContent, SourcesTrigger } from
 import useSWR from 'swr';
 import { createApiClient, fetcher, paths } from './api';
 import { ApprovalCard } from './approval-card';
+import { GeneratedImagePart } from './generated-image-part';
 import {
   type DecidedApprovals,
   messageHasPendingMutationApproval,
@@ -710,6 +711,10 @@ export function MessagePart({
     return <RunArtifactPart api={api} message={getPartData<ReplayDataParts['run-artifact']>(part)} />;
   }
 
+  if (part.type === 'data-generated-image') {
+    return <GeneratedImagePart message={getPartData<ReplayDataParts['generated-image']>(part)} />;
+  }
+
   if (part.type === 'data-tool-delivery') {
     return <ToolDeliveryPart message={getPartData<ReplayDataParts['tool-delivery']>(part)} />;
   }
@@ -1202,7 +1207,9 @@ function KnowledgeSearchPart({ message }: { message: ReplayDataParts['knowledge-
         <Sources className="fk:mb-0 fk:mt-2">
           <SourcesTrigger count={sources.length}>
             <p className="fk:font-medium">
-              {sources.length === 1 ? 'Show the cited passages' : `Show passages from ${String(sources.length)} documents`}
+              {sources.length === 1
+                ? 'Show the cited passages'
+                : `Show passages from ${String(sources.length)} documents`}
             </p>
             <ChevronDownIcon className="fk:size-4" />
           </SourcesTrigger>
@@ -1273,7 +1280,9 @@ function ChatSearchPart({ message }: { message: ReplayDataParts['chat-search'] }
       {chats.length > 0 ? (
         <Sources className="fk:mb-0 fk:mt-2">
           <SourcesTrigger count={chats.length}>
-            <p className="fk:font-medium">{chats.length === 1 ? 'Show the chat' : `Show ${String(chats.length)} chats`}</p>
+            <p className="fk:font-medium">
+              {chats.length === 1 ? 'Show the chat' : `Show ${String(chats.length)} chats`}
+            </p>
             <ChevronDownIcon className="fk:size-4" />
           </SourcesTrigger>
           <SourcesContent className="fk:w-full">
@@ -1540,7 +1549,13 @@ function UserQuestionPart({ data }: { data: ReplayDataParts['user-question'] }):
     <ToolMessage>
       <ToolHeader>
         <MessageCircleQuestionIcon className="fk:size-3.5" />
-        {data.status === 'pending' ? (plural ? 'The agent has questions' : 'The agent has a question') : plural ? 'Questions' : 'Question'}
+        {data.status === 'pending'
+          ? plural
+            ? 'The agent has questions'
+            : 'The agent has a question'
+          : plural
+            ? 'Questions'
+            : 'Question'}
       </ToolHeader>
       <div className="fk:mt-3">
         {/* Keyed by status so a settled stream part replaces the card's local state. */}
@@ -1645,4 +1660,3 @@ function getArtifactLabel(message: ReplayDataParts['run-artifact']): string {
 
   return 'Artifact';
 }
-

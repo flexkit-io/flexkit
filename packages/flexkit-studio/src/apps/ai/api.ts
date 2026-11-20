@@ -1,6 +1,7 @@
 import { getKnowledgeFileProblem } from '../knowledge/knowledge';
 import type { PluginConnection, PluginScope, PluginTools } from './plugin-types';
 import { put } from '@vercel/blob/client';
+import type { AgentImageRequest } from '@flexkit/agent-protocol';
 import { convertRecordedAudioToPcm } from './agent/dictation';
 import { getDesktop } from '../../core/desktop';
 import { getResponseErrorMessage } from './response-error';
@@ -44,6 +45,8 @@ export interface DecideApprovalInput {
 export interface SendAgentChatMessageInput {
   attachments?: AgentChatAttachment[];
   content: string;
+  /** Create Image is on: the turn starts by creating an image with these options. */
+  imageGeneration?: AgentImageRequest;
   modelId?: string | null;
 }
 
@@ -327,9 +330,9 @@ export function createApiClient(projectId: string): ApiClient {
 
       return { errorMessage: result.ok ? undefined : data.errorMessage, question: data.question };
     },
-    startAgentChat: async ({ attachments, content, modelId }) =>
+    startAgentChat: async ({ attachments, content, imageGeneration, modelId }) =>
       request<StartAgentChatResult>(agentChatsBasePath, {
-        body: JSON.stringify({ message: { attachments, content }, modelId: modelId ?? null }),
+        body: JSON.stringify({ message: { attachments, content, imageGeneration }, modelId: modelId ?? null }),
         method: 'POST',
       }),
     startQueuedAgentChatMessage: async (chatId, messageId) =>

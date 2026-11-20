@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DATA_PART_TYPES, dataPartSchema, isDataPartType } from '../src/data-parts';
+import { agentImageRequestSchema, DEFAULT_AGENT_IMAGE_MODEL_ID, isAgentImageModelId } from '../src/images';
 
 describe('dataPartSchema', () => {
   it('lists every part type once', () => {
@@ -128,5 +129,38 @@ describe('knowledge parts', () => {
     assert.equal(read.safeParse({ status: 'done' }).success, false);
     assert.ok(DATA_PART_TYPES.includes('knowledge-search'));
     assert.ok(DATA_PART_TYPES.includes('read-source'));
+  });
+});
+
+describe('image generation', () => {
+  it('validates a generated image part', () => {
+    const schema = dataPartSchema.shape['generated-image'];
+
+    assert.ok(schema.safeParse({ model: 'openai/gpt-image-2.6-sunburst', prompt: 'A red bike', status: 'generating' }).success);
+    assert.ok(
+      schema.safeParse({
+        artifactId: 'a1',
+        aspectRatio: '16:9',
+        contentType: 'image/png',
+        filename: 'red-bike.png',
+        model: 'bytedance/seedream-5.5',
+        modelName: 'Seedream',
+        prompt: 'A red bike',
+        sizeBytes: 120_000,
+        status: 'done',
+        url: 'https://example.com/a1/red-bike.png',
+      }).success
+    );
+    assert.equal(schema.safeParse({ model: 'x', prompt: 'y', status: 'uploading' }).success, false);
+  });
+
+  it('accepts only listed image models and ratios in a request', () => {
+    assert.ok(agentImageRequestSchema.safeParse({}).success);
+    assert.ok(agentImageRequestSchema.safeParse({ aspectRatio: '1:1', model: 'google/gemini-nano-banana-2.1' }).success);
+    assert.equal(agentImageRequestSchema.safeParse({ model: 'openai/dall-e-3' }).success, false);
+    assert.equal(agentImageRequestSchema.safeParse({ aspectRatio: '4:5' }).success, false);
+    assert.equal(agentImageRequestSchema.safeParse({ sourceArtifactId: 'not-a-uuid' }).success, false);
+    assert.ok(isAgentImageModelId(DEFAULT_AGENT_IMAGE_MODEL_ID));
+    assert.equal(isAgentImageModelId('openai/gpt-5'), false);
   });
 });

@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { CheckIcon, CopyIcon, CornerDownRightIcon, LoaderCircle, PencilIcon } from 'lucide-react';
+import { CheckIcon, CopyIcon, CornerDownRightIcon, LoaderCircle, PencilIcon, WandSparklesIcon } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import useSWR, { useSWRConfig } from 'swr';
 import {
@@ -12,6 +12,7 @@ import {
   PromptInputActionAddAttachments,
   PromptInputActionMenu,
   PromptInputActionMenuContent,
+  PromptInputActionMenuItem,
   PromptInputActionMenuTrigger,
   PromptInputBody,
   PromptInputFooter,
@@ -34,6 +35,15 @@ import {
   usePromptInputController,
 } from '../../../ui';
 import { fetcher, paths, type ApiClient } from '../api';
+import { GeneratedImageActionsContext, type GeneratedImageActions } from '../generated-image-part';
+import { ImageModeChip } from './image-mode-chip';
+import {
+  getImageModeAfterSend,
+  getImageModePlaceholder,
+  toImageGeneration,
+  toReusedImageRequest,
+  type AgentImageRequest,
+} from './image-mode';
 import { EMPTY_STARTER_PROMPTS, starterPath, type OnboardingNavigationState } from '../../../core/config/onboarding';
 import { usePromptSuggestions, type AgentProfile } from './prompt-suggestions';
 import { canApplyStarter, StarterOffer, StarterPanel, StarterPrompts } from './starter-panel';
@@ -669,13 +679,7 @@ function ComposerDraftSync({ draftKey }: { draftKey: string }): null {
 }
 
 /** Puts a message that could not be sent back into the composer (and so into its stored draft). */
-function ComposerRestore({
-  onRestored,
-  text,
-}: {
-  onRestored: (_text: null) => void;
-  text: string | null;
-}): null {
+function ComposerRestore({ onRestored, text }: { onRestored: (_text: null) => void; text: string | null }): null {
   const { textInput } = usePromptInputController();
   const { setInput } = textInput;
 
@@ -692,11 +696,13 @@ function ComposerRestore({
 function ChatComposer({
   api,
   effort,
+  imageMode,
   modelKey,
   modelPending,
   models,
   onEffortChange,
   onError,
+  onImageModeChange,
   onModelChange,
   onSend,
   onStop,
@@ -706,11 +712,14 @@ function ChatComposer({
 }: {
   api: ApiClient;
   effort: string | null;
+  /** Create Image is on when set: the next message creates an image. */
+  imageMode: AgentImageRequest | null;
   modelKey: string | null;
   modelPending: boolean;
   models: AutomationTools['models'];
   onEffortChange: (_effort: string) => void;
   onError: (_message: string | null) => void;
+  onImageModeChange: (_request: AgentImageRequest | null) => void;
   onModelChange: (_modelKey: string) => void;
   onSend: (_text: string, _attachments: AgentChatAttachment[]) => Promise<void>;
   onStop: () => Promise<void>;
@@ -815,8 +824,19 @@ function ChatComposer({
             />
             <PromptInputActionMenuContent>
               <PromptInputActionAddAttachments />
+              <PromptInputActionMenuItem onSelect={() => onImageModeChange(imageMode ?? {})}>
+                <WandSparklesIcon className="fk:mr-2 fk:size-4" /> Create image
+              </PromptInputActionMenuItem>
             </PromptInputActionMenuContent>
           </PromptInputActionMenu>
+          {imageMode ? (
+            <ImageModeChip
+              disabled={sending}
+              request={imageMode}
+              onChange={onImageModeChange}
+              onClear={() => onImageModeChange(null)}
+            />
+          ) : null}
           {selectableModels.length > 0 ? (
             <PromptInputSelect value={modelKey ?? undefined} onValueChange={onModelChange}>
               <PromptInputSelectTrigger aria-label="Model" className="fk:min-w-44">
@@ -1328,6 +1348,22 @@ export function AgentChatPage(): JSX.Element {
   const chatDetail = resolveDetail(rawChatDetail);
   const models = useMemo(() => toolsData?.tools.models ?? [], [toolsData]);
   const [selectedModelKey, setSelectedModelKey] = useState<string | null>(null);
+  // Create Image stays on for the chat it was turned on in until the user turns it off.
+  const [imageMode, setImageMode] = useState<AgentImageRequest | null>(null);
+  const imageModeChatIdRef = useRef(chatId);
+  /** The chat this page just started: moving into it from the new-chat screen keeps the mode. */
+  const startedChatIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const previous = imageModeChatIdRef.current;
+    const isStartedChat = previous === undefined && chatId !== undefined && chatId === startedChatIdRef.current;
+
+    if (previous !== chatId && !isStartedChat) {
+      setImageMode(null);
+    }
+
+    imageModeChatIdRef.current = chatId;
+  }, [chatId]);
   const [selectedEffort, setSelectedEffort] = useState<string | null>(null);
   // The chat's model id when Auto was last picked, so the selector only leaves
   // Auto once the chat reports a model the routed turn chose.
@@ -1478,11 +1514,21 @@ export function AgentChatPage(): JSX.Element {
   const isNewChat = !chatId && !visiblePendingMessage;
   const turnInProgress = Boolean(chatDetail && splitLiveTurn(chatDetail.messages).live);
 
-  async function sendFollowUp(targetChatId: string, text: string, attachments: AgentChatAttachment[]): Promise<void> {
+  async function sendFollowUp(
+    targetChatId: string,
+    text: string,
+    attachments: AgentChatAttachment[],
+    imageGeneration?: AgentImageRequest
+  ): Promise<void> {
     setPendingFollowUp({ attachments, chatId: targetChatId, text });
 
     try {
-      const result = await chatApi.sendAgentChatFollowUp(targetChatId, { attachments, content: text, modelId });
+      const result = await chatApi.sendAgentChatFollowUp(targetChatId, {
+        attachments,
+        content: text,
+        imageGeneration,
+        modelId,
+      });
 
       // The message answered the question the turn waited on: resume the live stream so the
       // card shows the reply, and refresh the turn status (no longer awaiting).
@@ -1544,11 +1590,35 @@ export function AgentChatPage(): JSX.Element {
     },
   };
 
-  async function handleSend(text: string, attachments: AgentChatAttachment[]): Promise<void> {
+  /**
+   * Sends a message. `imageRequest` overrides the composer's Create Image mode
+   * for this one message (an image card's "Try with"); null sends a plain message.
+   */
+  async function handleSend(
+    text: string,
+    attachments: AgentChatAttachment[],
+    options: { imageRequest?: AgentImageRequest | null } = {}
+  ): Promise<void> {
+    const fromComposer = options.imageRequest === undefined;
+    const imageGeneration = toImageGeneration(fromComposer ? imageMode : options.imageRequest);
+    const afterSend = (): void => {
+      if (fromComposer && imageMode) {
+        setImageMode(getImageModeAfterSend(imageMode));
+      }
+    };
+
     // Reject rather than resolve so the composer does not treat a duplicate
     // submit as a successful send and clear the attachments of the in-flight one.
     if (sendingRef.current) {
       throw new Error('A message is already being sent.');
+    }
+
+    // Create Image starts a turn of its own; it cannot steer or wait behind the running one.
+    if (imageGeneration && chatDetail && (turnInProgress || getNextQueuedMessage(chatDetail.messages))) {
+      const message = 'Create image starts a new turn. Wait for the agent to finish, or stop it, and send again.';
+
+      setSendError(message);
+      throw new Error(message);
     }
 
     if (modelPending) {
@@ -1572,7 +1642,8 @@ export function AgentChatPage(): JSX.Element {
           await chatApi.startQueuedAgentChatMessage(chatId, queuedBeforeThis.id).catch(() => undefined);
         }
 
-        await sendFollowUp(chatId, text, attachments);
+        await sendFollowUp(chatId, text, attachments, imageGeneration);
+        afterSend();
       } catch (error) {
         setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
         throw error;
@@ -1592,9 +1663,17 @@ export function AgentChatPage(): JSX.Element {
       // A new chat is created and its first message sent by one request: the
       // second round trip (and its auth) used to cost about half a second.
       const started = chatId
-        ? { chat: null, turn: await chatApi.sendAgentChatMessage(chatId, { attachments, content: text, modelId }) }
-        : await chatApi.startAgentChat({ attachments, content: text, modelId });
+        ? {
+            chat: null,
+            turn: await chatApi.sendAgentChatMessage(chatId, { attachments, content: text, imageGeneration, modelId }),
+          }
+        : await chatApi.startAgentChat({ attachments, content: text, imageGeneration, modelId });
+      afterSend();
       const { chat, turn } = started;
+
+      if (chat) {
+        startedChatIdRef.current = chat.id;
+      }
       const targetChatId = chatId ?? chat!.id;
 
       // Seed the confirmed turn without waiting for another network round trip.
@@ -1651,109 +1730,142 @@ export function AgentChatPage(): JSX.Element {
     }
   }
 
+  const imageActions: GeneratedImageActions = {
+    onEdit: ({ artifactId, model }) => {
+      setImageMode((current) => ({
+        ...current,
+        ...toReusedImageRequest({ model, sourceArtifactId: artifactId }),
+      }));
+      setSendError(null);
+      document.querySelector<HTMLTextAreaElement>('textarea[name="message"]')?.focus();
+    },
+    onRetry: ({ aspectRatio, model, modelName }) => {
+      // Like the composer: one send at a time.
+      if (sendingRef.current || modelPending) {
+        return;
+      }
+
+      void handleSend(`Create this image again with ${modelName}.`, [], {
+        imageRequest: toReusedImageRequest({ aspectRatio, model }),
+      }).catch((error: unknown) =>
+        setSendError(error instanceof Error ? error.message : 'Failed to send the message.')
+      );
+    },
+  };
+
   return (
-    <PromptInputProvider>
-      <ComposerDraftSync draftKey={getComposerDraftKey(chatProjectId, chatId)} />
-      <ComposerRestore onRestored={setPromptToRestore} text={promptToRestore} />
-      <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
-        <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
-            </TooltipTrigger>
-            <TooltipContent>Toggle Sidebar</TooltipContent>
-          </Tooltip>
-          <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
-          <div className="fk:flex fk:flex-1 fk:items-center fk:gap-2">
-            <h1 className="fk:truncate fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">
-              {chatId ? (chatDetail?.chat.title?.trim() ?? 'Chat') : 'Agent'}
-            </h1>
+    <GeneratedImageActionsContext.Provider value={imageActions}>
+      <PromptInputProvider>
+        <ComposerDraftSync draftKey={getComposerDraftKey(chatProjectId, chatId)} />
+        <ComposerRestore onRestored={setPromptToRestore} text={promptToRestore} />
+        <div className="fk:flex fk:h-full fk:min-h-0 fk:flex-col fk:gap-2">
+          <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-start fk:gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarTrigger className="fk:-ml-1 fk:h-4 fk:w-4" />
+              </TooltipTrigger>
+              <TooltipContent>Toggle Sidebar</TooltipContent>
+            </Tooltip>
+            <Separator orientation="vertical" className="fk:mt-1 fk:h-4" />
+            <div className="fk:flex fk:flex-1 fk:items-center fk:gap-2">
+              <h1 className="fk:truncate fk:text-lg fk:font-semibold fk:leading-none fk:tracking-tight">
+                {chatId ? (chatDetail?.chat.title?.trim() ?? 'Chat') : 'Agent'}
+              </h1>
+            </div>
           </div>
-        </div>
-        <div className="fk:flex fk:min-h-0 fk:flex-1 fk:gap-4">
-          <div
-            className={cn(
-              'fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-3',
-              isNewChat && 'fk:justify-center fk:pb-[12vh]'
-            )}
-          >
-            {!isNewChat ? (
-              // One element type for the pending and the loaded chat, so the
-              // status line survives the navigation after the chat is created.
-              <ChatApprovalContext.Provider value>
-                <PluginConnectContext.Provider value={pluginConnect}>
-                  <ChatConversation
-                    api={chatApi}
-                    chatId={chatId ?? null}
-                    pendingFollowUp={visiblePendingFollowUp}
-                    pendingMessage={visiblePendingMessage}
-                    projectId={projectId}
-                    questionAnsweredSignal={questionAnsweredSignal}
-                    resolveDetail={resolveDetail}
-                  />
-                </PluginConnectContext.Provider>
-              </ChatApprovalContext.Provider>
-            ) : (
-              <EmptyConversation
-                canSend={!sending && !modelPending}
-                hasSchema={currentProject ? currentProject.schema.some((entity) => !entity.name.startsWith('_')) : true}
-                onPrompt={(prompt) =>
-                  handleSend(prompt, []).then(
-                    () => true,
-                    (error: unknown) => {
-                      setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
+          <div className="fk:flex fk:min-h-0 fk:flex-1 fk:gap-4">
+            <div
+              className={cn(
+                'fk:flex fk:min-h-0 fk:min-w-0 fk:flex-1 fk:flex-col fk:gap-3',
+                isNewChat && 'fk:justify-center fk:pb-[12vh]'
+              )}
+            >
+              {!isNewChat ? (
+                // One element type for the pending and the loaded chat, so the
+                // status line survives the navigation after the chat is created.
+                <ChatApprovalContext.Provider value>
+                  <PluginConnectContext.Provider value={pluginConnect}>
+                    <ChatConversation
+                      api={chatApi}
+                      chatId={chatId ?? null}
+                      pendingFollowUp={visiblePendingFollowUp}
+                      pendingMessage={visiblePendingMessage}
+                      projectId={projectId}
+                      questionAnsweredSignal={questionAnsweredSignal}
+                      resolveDetail={resolveDetail}
+                    />
+                  </PluginConnectContext.Provider>
+                </ChatApprovalContext.Provider>
+              ) : (
+                <EmptyConversation
+                  canSend={!sending && !modelPending}
+                  hasSchema={
+                    currentProject ? currentProject.schema.some((entity) => !entity.name.startsWith('_')) : true
+                  }
+                  onPrompt={(prompt) =>
+                    handleSend(prompt, []).then(
+                      () => true,
+                      (error: unknown) => {
+                        setSendError(error instanceof Error ? error.message : 'Failed to send the message.');
 
-                      return false;
-                    }
-                  )
-                }
-                projectId={chatProjectId}
-              />
-            )}
-            <div className="fk:shrink-0 fk:pb-3">
-              {chatId ? (
-                <MonitorChips
-                  api={chatApi}
-                  chatId={chatId}
-                  projectId={projectId}
-                  sending={sending || modelPending}
-                  onTurnIntoAutomation={(monitor) => {
-                    // Like the composer: one send at a time.
-                    if (sendingRef.current || modelPending) {
-                      return;
-                    }
-
-                    void handleSend(`Turn the monitor “${monitor.description}” into an automation.`, []).catch(
-                      (error: unknown) =>
-                        setSendError(error instanceof Error ? error.message : 'Failed to send the message.')
-                    );
-                  }}
+                        return false;
+                      }
+                    )
+                  }
+                  projectId={chatProjectId}
                 />
-              ) : null}
-              {sendError ? (
-                <p className="fk:mx-auto fk:mb-2 fk:max-w-4xl fk:text-xs fk:text-destructive">{sendError}</p>
-              ) : null}
-              <ChatComposer
-                api={chatApi}
-                effort={effort}
-                modelKey={modelKey}
-                modelPending={modelPending}
-                models={models}
-                sending={sending}
-                streaming={turnInProgress}
-                onEffortChange={handleEffortChange}
-                onError={setSendError}
-                onModelChange={handleModelChange}
-                onSend={handleSend}
-                onStop={handleStop}
-                placeholder={
-                  turnInProgress ? 'Add context or steer the agent...' : `Ask Flexkit anything about ${projectName}...`
-                }
-              />
+              )}
+              <div className="fk:shrink-0 fk:pb-3">
+                {chatId ? (
+                  <MonitorChips
+                    api={chatApi}
+                    chatId={chatId}
+                    projectId={projectId}
+                    sending={sending || modelPending}
+                    onTurnIntoAutomation={(monitor) => {
+                      // Like the composer: one send at a time.
+                      if (sendingRef.current || modelPending) {
+                        return;
+                      }
+
+                      void handleSend(`Turn the monitor “${monitor.description}” into an automation.`, []).catch(
+                        (error: unknown) =>
+                          setSendError(error instanceof Error ? error.message : 'Failed to send the message.')
+                      );
+                    }}
+                  />
+                ) : null}
+                {sendError ? (
+                  <p className="fk:mx-auto fk:mb-2 fk:max-w-4xl fk:text-xs fk:text-destructive">{sendError}</p>
+                ) : null}
+                <ChatComposer
+                  api={chatApi}
+                  effort={effort}
+                  imageMode={imageMode}
+                  modelKey={modelKey}
+                  modelPending={modelPending}
+                  models={models}
+                  sending={sending}
+                  streaming={turnInProgress}
+                  onEffortChange={handleEffortChange}
+                  onError={setSendError}
+                  onImageModeChange={setImageMode}
+                  onModelChange={handleModelChange}
+                  onSend={handleSend}
+                  onStop={handleStop}
+                  placeholder={
+                    turnInProgress
+                      ? 'Add context or steer the agent...'
+                      : imageMode
+                        ? getImageModePlaceholder(imageMode)
+                        : `Ask Flexkit anything about ${projectName}...`
+                  }
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </PromptInputProvider>
+      </PromptInputProvider>
+    </GeneratedImageActionsContext.Provider>
   );
 }

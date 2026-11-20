@@ -190,7 +190,7 @@ export function useAttachmentUploads(api: ApiClient, onError: (_message: string)
   };
 }
 
-interface PreviewableImage {
+export interface PreviewableImage {
   filename: string;
   url: string;
 }
@@ -203,7 +203,7 @@ function isImageMediaType(mediaType: string | undefined): boolean {
  * Fullscreen view of one image attachment. The image is centred and grows to
  * fill the viewport but never beyond its intrinsic size.
  */
-function ImagePreviewDialog({ image, onClose }: { image: PreviewableImage | null; onClose: () => void }): JSX.Element {
+export function ImagePreviewDialog({ image, onClose }: { image: PreviewableImage | null; onClose: () => void }): JSX.Element {
   return (
     <Dialog onOpenChange={(open) => (open ? undefined : onClose())} open={image !== null}>
       <DialogContent
