@@ -154,6 +154,14 @@ export interface AutomationToolChannel {
   name: string;
   serviceUrl?: string;
   teamId?: string;
+  /** Slack, as listed: a private channel. Not saved with the automation. */
+  isPrivate?: boolean;
+  /**
+   * Slack, as listed for the signed-in member: whether their personal automations may post here
+   * (a public channel, or a private one their linked Slack account is in). Absent when the
+   * platform did not say. Not saved with the automation.
+   */
+  personalAllowed?: boolean;
 }
 
 export interface AutomationModel {

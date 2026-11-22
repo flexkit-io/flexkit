@@ -55,6 +55,7 @@ import {
   GraduationCapIcon,
   KeyRoundIcon,
   LoaderCircleIcon,
+  LockIcon,
   PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
@@ -64,6 +65,7 @@ import {
   XIcon,
 } from 'lucide-react';
 import { useAuth } from '../../auth/auth-context';
+import { flexkitDomain } from '../../core/domains';
 import { useCanMutate } from '../../core/permissions';
 import { canMakePersonal, isMemberPersonalOnly, needsPersonalConversionConfirm } from './automation-access';
 import { fetcher, FetcherError, getWebhookTriggerUrl, paths, type ApiClient } from './api';
@@ -133,8 +135,33 @@ interface ChannelPickerProps {
   loading: boolean;
   onChange: (_channels: AutomationToolChannel[]) => void;
   onRefresh: () => void;
+  /** A personal automation: it posts only to the channels its creator could post to. */
+  personal: boolean;
   provider: AutomationToolProvider;
   value: AutomationToolChannel[];
+}
+
+/** The platform page where members link their Slack account (Sign in with Slack). */
+const SLACK_ACCOUNT_URL = `https://${flexkitDomain}/dashboard/account/slack`;
+
+const PERSONAL_CHANNEL_REASON = "Private channel you're not in, or your Slack account isn't linked";
+
+/** What is saved of a channel: not the hints the list carries about it. */
+function toSavedChannel({ id, name, serviceUrl, teamId }: AutomationToolChannel): AutomationToolChannel {
+  return { id, name, ...(serviceUrl ? { serviceUrl } : {}), ...(teamId ? { teamId } : {}) };
+}
+
+/** A channel a personal automation may not post to, as the platform listed it. */
+function isBlockedForPersonal(channel: AutomationToolChannel | undefined, personal: boolean): boolean {
+  return personal && channel?.personalAllowed === false;
+}
+
+function LinkSlackAccount(): JSX.Element {
+  return (
+    <a className="fk:underline fk:underline-offset-2" href={SLACK_ACCOUNT_URL} rel="noopener noreferrer" target="_blank">
+      Link your Slack account
+    </a>
+  );
 }
 
 const TOOL_PROVIDERS: AutomationToolProvider[] = ['slack', 'teams'];
@@ -418,6 +445,7 @@ function ChannelPicker({
   loading,
   onChange,
   onRefresh,
+  personal,
   provider,
   value,
 }: ChannelPickerProps): JSX.Element {
@@ -427,6 +455,7 @@ function ChannelPicker({
   const selectedIds = new Set(value.map((channel) => channel.id));
   const providerLabel = provider === 'slack' ? 'Slack' : 'Teams';
   const filteredChannels = channels.filter((channel) => channel.name.toLowerCase().includes(query.toLowerCase()));
+  const listedById = new Map(channels.map((channel) => [channel.id, channel]));
 
   useEffect(() => {
     if (!open) {
@@ -467,7 +496,12 @@ function ChannelPicker({
       return;
     }
 
-    onChange([...value, channel]);
+    // A channel a personal automation may not post to is not added; one already chosen can be removed.
+    if (isBlockedForPersonal(channel, personal)) {
+      return;
+    }
+
+    onChange([...value, toSavedChannel(channel)]);
   }
 
   function handleRemove(channelId: string): void {
@@ -491,20 +525,28 @@ function ChannelPicker({
               {loading ? `Loading ${providerLabel} channels...` : `Select ${providerLabel} channels`}
             </span>
           ) : (
-            value.map((channel) => (
-              <Badge
-                className="fk:rounded-sm fk:bg-accent fk:text-xs fk:corner-squircle"
-                key={getChannelKey(channel)}
-                variant="secondary"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  handleRemove(channel.id);
-                }}
-              >
-                {channel.name}
-                <XIcon className="fk:ml-1 fk:size-3 fk:cursor-pointer" />
-              </Badge>
-            ))
+            value.map((channel) => {
+              const listed = listedById.get(channel.id);
+              const blocked = isBlockedForPersonal(listed, personal);
+
+              return (
+                <Badge
+                  className={`fk:rounded-sm fk:text-xs fk:corner-squircle ${blocked ? 'fk:bg-warning/15 fk:text-warning' : 'fk:bg-accent'}`}
+                  key={getChannelKey(channel)}
+                  title={blocked ? `${PERSONAL_CHANNEL_REASON}. Remove it, or link your Slack account.` : undefined}
+                  variant="secondary"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleRemove(channel.id);
+                  }}
+                >
+                  {blocked ? <TriangleAlertIcon aria-hidden className="fk:mr-1 fk:size-3" /> : null}
+                  {listed?.isPrivate ? <LockIcon aria-label="Private channel" className="fk:mr-1 fk:size-3" /> : null}
+                  {channel.name}
+                  <XIcon className="fk:ml-1 fk:size-3 fk:cursor-pointer" />
+                </Badge>
+              );
+            })
           )}
         </div>
         <ChevronsUpDownIcon className="fk:size-4 fk:shrink-0 fk:opacity-50" />
@@ -521,20 +563,35 @@ function ChannelPicker({
           </div>
           <div className="fk:max-h-56 fk:overflow-auto fk:p-1">
             {filteredChannels.length > 0 ? (
-              filteredChannels.map((channel) => (
-                <Button
-                  className="fk:h-auto fk:w-full fk:justify-start fk:rounded-sm fk:px-2 fk:py-1.5 fk:font-normal fk:corner-squircle"
-                  key={getChannelKey(channel)}
-                  type="button"
-                  variant="ghost"
-                  onClick={() => handleSelect(channel)}
-                >
-                  <CheckIcon
-                    className={`fk:mr-2 fk:size-4 ${selectedIds.has(channel.id) ? 'fk:opacity-100' : 'fk:opacity-0'}`}
-                  />
-                  {channel.name}
-                </Button>
-              ))
+              filteredChannels.map((channel) => {
+                const selected = selectedIds.has(channel.id);
+                // A chosen one stays clickable, so it can be removed.
+                const blocked = isBlockedForPersonal(channel, personal);
+
+                return (
+                  <Button
+                    aria-disabled={blocked && !selected}
+                    className={`fk:h-auto fk:w-full fk:justify-start fk:rounded-sm fk:px-2 fk:py-1.5 fk:font-normal fk:corner-squircle ${blocked && !selected ? 'fk:cursor-not-allowed fk:opacity-60' : ''}`}
+                    disabled={blocked && !selected}
+                    key={getChannelKey(channel)}
+                    title={blocked ? PERSONAL_CHANNEL_REASON : undefined}
+                    type="button"
+                    variant="ghost"
+                    onClick={() => handleSelect(channel)}
+                  >
+                    <CheckIcon className={`fk:mr-2 fk:size-4 ${selected ? 'fk:opacity-100' : 'fk:opacity-0'}`} />
+                    {channel.isPrivate ? (
+                      <LockIcon aria-label="Private channel" className="fk:mr-1 fk:size-3 fk:shrink-0" />
+                    ) : null}
+                    <span className="fk:flex fk:flex-col fk:items-start">
+                      <span>{channel.name}</span>
+                      {blocked ? (
+                        <span className="fk:text-xs fk:text-muted-foreground">{PERSONAL_CHANNEL_REASON}</span>
+                      ) : null}
+                    </span>
+                  </Button>
+                );
+              })
             ) : (
               <div className="fk:px-2 fk:py-6 fk:text-center fk:text-sm fk:text-muted-foreground">
                 {loading ? 'Loading channels...' : 'No channels found.'}
@@ -1445,6 +1502,8 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
   const [triggers, setTriggers] = useState<FormTrigger[]>(() => getInitialTriggers(automation));
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
+  /** The save was refused a Slack channel its creator cannot post to: they may link their account. */
+  const [suggestSlackLink, setSuggestSlackLink] = useState(false);
   const [touched, setTouched] = useState({ instructions: false, name: false });
   const [toolsFormData, setToolsFormData] = useState<AutomationToolsFormData | null>(null);
   const [connectingProvider, setConnectingProvider] = useState<AutomationToolProvider | null>(null);
@@ -1978,12 +2037,13 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
     setIsConfirmingPersonal(false);
     setIsSaving(true);
     setMessage('');
+    setSuggestSlackLink(false);
 
     const toolConfigs: AutomationToolConfigInput[] = TOOL_PROVIDERS.map((provider) => {
       const providerTools = toolsFormData?.[provider] ?? toolsData?.tools.providers[provider];
 
       return {
-        channels: providerTools?.channels ?? [],
+        channels: (providerTools?.channels ?? []).map(toSavedChannel),
         enabled: providerTools?.enabled ?? false,
         pluginId: provider,
         connectionMode: 'project',
@@ -2019,6 +2079,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
 
       if (!result.success) {
         setMessage(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
+        setSuggestSlackLink(result.errorCode === 'channel_not_reachable');
 
         return;
       }
@@ -2037,6 +2098,12 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
       {message ? (
         <div className="fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive fk:corner-squircle">
           {message}
+          {suggestSlackLink ? (
+            <>
+              {' '}
+              <LinkSlackAccount />
+            </>
+          ) : null}
         </div>
       ) : null}
 
@@ -2523,6 +2590,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                           channels={tool.availableChannels}
                           disabled={tool.loadingChannels || !canMutate}
                           loading={tool.loadingChannels}
+                          personal={visibility === 'personal'}
                           provider={provider}
                           value={tool.channels}
                           onChange={(channels) => updateTool(provider, { channels })}
@@ -2530,6 +2598,14 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                             void loadProviderChannels(provider, resolvedDeliveryConnectionIds[provider]);
                           }}
                         />
+                        {provider === 'slack' &&
+                        visibility === 'personal' &&
+                        tool.availableChannels.some((channel) => channel.personalAllowed === false) ? (
+                          <p className="fk:text-xs fk:text-muted-foreground">
+                            A personal automation posts only to public channels and to private channels you are in with
+                            a linked Slack account. <LinkSlackAccount />
+                          </p>
+                        ) : null}
                         {tool.channelsLoadError ? (
                           <p className="fk:flex fk:items-start fk:text-sm fk:text-warning fk:gap-1">
                             <TriangleAlertIcon className="fk:size-4 fk:shrink-0 fk:mt-0.5" />
