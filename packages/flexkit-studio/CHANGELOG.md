@@ -1,5 +1,11 @@
 # @flexkit/studio
 
+## 0.2.50
+
+### Patch Changes
+
+- 30bc01e: Owners and developers can turn on the Flexkit Agent in Slack from **AI → Plugins → Slack**: a switch per connected workspace lets members ask the agent in channels and direct messages, and **Channel spaces** sets which spaces each channel's answers may draw on. Against a platform without the Slack agent the section does not show.
+
 ## 0.2.49
 
 ### Patch Changes
