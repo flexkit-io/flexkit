@@ -156,9 +156,24 @@ function isBlockedForPersonal(channel: AutomationToolChannel | undefined, person
   return personal && channel?.personalAllowed === false;
 }
 
-function LinkSlackAccount(): JSX.Element {
+/** A Slack workspace id, as Sign in with Slack takes it to sign in to that workspace. */
+const SLACK_TEAM_ID = /^[TE][A-Z0-9]+$/;
+
+/** The Slack account page, signing in to the workspace `teamId` when it is known. */
+function getSlackAccountUrl(teamId: string | null | undefined): string {
+  return teamId && SLACK_TEAM_ID.test(teamId)
+    ? `${SLACK_ACCOUNT_URL}?team=${encodeURIComponent(teamId)}`
+    : SLACK_ACCOUNT_URL;
+}
+
+function LinkSlackAccount({ teamId }: { teamId?: string | null }): JSX.Element {
   return (
-    <a className="fk:underline fk:underline-offset-2" href={SLACK_ACCOUNT_URL} rel="noopener noreferrer" target="_blank">
+    <a
+      className="fk:underline fk:underline-offset-2"
+      href={getSlackAccountUrl(teamId)}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
       Link your Slack account
     </a>
   );
@@ -1816,6 +1831,10 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
 
     return { slack: resolve('slack'), teams: resolve('teams') };
   }, [deliveryConnectionIds, deliveryPlugins]);
+  /** The Slack workspace the automation posts to, so linking signs in to it. */
+  const slackTeamId =
+    deliveryPlugins.slack?.connections.find((connection) => connection.id === resolvedDeliveryConnectionIds.slack)
+      ?.externalAccountId ?? null;
   const loadProviderChannels = useCallback(
     async (provider: AutomationToolProvider, connectionId: string | null): Promise<void> => {
       channelRequestRef.current[provider] = connectionId;
@@ -2101,7 +2120,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
           {suggestSlackLink ? (
             <>
               {' '}
-              <LinkSlackAccount />
+              <LinkSlackAccount teamId={slackTeamId} />
             </>
           ) : null}
         </div>
@@ -2603,7 +2622,7 @@ export function AutomationForm({ api, automation, mode, onSaved, projectId }: Au
                         tool.availableChannels.some((channel) => channel.personalAllowed === false) ? (
                           <p className="fk:text-xs fk:text-muted-foreground">
                             A personal automation posts only to public channels and to private channels you are in with
-                            a linked Slack account. <LinkSlackAccount />
+                            a linked Slack account. <LinkSlackAccount teamId={slackTeamId} />
                           </p>
                         ) : null}
                         {tool.channelsLoadError ? (
