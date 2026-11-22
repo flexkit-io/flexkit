@@ -21,6 +21,7 @@ export default defineConfig({
     'tests/ai/automation-access.test.ts',
     'tests/ai/plugin-setup-notice.test.ts',
     'tests/ai/image-mode.test.ts',
+    'tests/ai/slack-agent-parts.test.ts',
   ],
   format: ['esm'],
   outDir: 'build/tests/ai',
