@@ -58,6 +58,7 @@ import type {
 } from './plugin-types';
 import { PluginLogo } from './plugin-logo';
 import { PluginSetupNotice } from './plugin-setup-notice';
+import { SlackAgentSection } from './slack-agent-settings';
 
 function httpsCatalogUrl(value: string): string | null {
   let url: URL;
@@ -954,6 +955,13 @@ export function PluginDetailPage(): JSX.Element {
             canManage={data.canManage}
             plugin={plugin}
             onConnect={(scope) => void perform(() => connectPlugin(api, plugin, scope))}
+          />
+        ) : null}
+        {plugin.id === 'slack' && data.canManage && isConnected(plugin) ? (
+          <SlackAgentSection
+            api={api}
+            base={base}
+            connectionsKey={plugin.connections.map((connection) => `${connection.id}:${connection.status}`).join(',')}
           />
         ) : null}
         <section className="fk:flex fk:flex-col fk:gap-3">

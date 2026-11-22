@@ -124,3 +124,35 @@ export interface PluginTools {
     expiresAt?: string;
   }>;
 }
+
+/** A Slack workspace of one of the project's Slack connections, and whether the agent answers there. */
+export interface SlackAgentConnection {
+  /**
+   * The workspace answers for another project; turning it on here moves it, and that project's
+   * channel spaces go. Absent from older platforms.
+   */
+  answersElsewhere?: boolean;
+  connectionId: string;
+  enabled: boolean;
+  teamId: string;
+  teamName: string | null;
+}
+
+/** A Slack channel bound to spaces: the agent answering there sees only those spaces. */
+export interface SlackAgentChannelBinding {
+  channelId: string;
+  spaceIds: string[];
+  teamId: string;
+}
+
+/** The project's Slack agent settings, as `GET /slack-agent` returns them. */
+export interface SlackAgentSettings {
+  channels: SlackAgentChannelBinding[];
+  connections: SlackAgentConnection[];
+}
+
+/** A channel of a Slack workspace the app can list. */
+export interface SlackAgentChannel {
+  id: string;
+  name: string;
+}

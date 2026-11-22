@@ -1,5 +1,11 @@
 import { getKnowledgeFileProblem } from '../knowledge/knowledge';
-import type { PluginConnection, PluginScope, PluginTools } from './plugin-types';
+import type {
+  PluginConnection,
+  PluginScope,
+  PluginTools,
+  SlackAgentChannel,
+  SlackAgentSettings,
+} from './plugin-types';
 import { put } from '@vercel/blob/client';
 import type { AgentImageRequest } from '@flexkit/agent-protocol';
 import { convertRecordedAudioToPcm } from './agent/dictation';
@@ -119,6 +125,14 @@ export interface ApiClient {
   installPlugin: (_id: string) => Promise<unknown>;
   setPluginPolicy: (_id: string, _input: { enabled: boolean; allowPersonal: boolean }) => Promise<{ success: boolean }>;
   refreshPluginTools: (_id: string) => Promise<PluginTools>;
+  /** Lets the agent answer in the Slack workspace of the connection `connectionId`. */
+  enableSlackAgent: (_connectionId: string) => Promise<SlackAgentSettings>;
+  /** Stops the agent answering in the Slack workspace `teamId`; its account links and channel spaces go too. */
+  disableSlackAgent: (_teamId: string) => Promise<SlackAgentSettings>;
+  /** The channels of the Slack workspace `teamId` the app can list. */
+  listSlackAgentChannels: (_teamId: string) => Promise<{ channels: SlackAgentChannel[] }>;
+  /** Binds a channel to spaces, replacing its earlier ones; no spaces unbinds it. */
+  setSlackChannelSpaces: (_input: { channelId: string; spaceIds: string[]; teamId: string }) => Promise<SlackAgentSettings>;
 
   cancelRun: (_runId: string) => Promise<MutationResult>;
   createAgentChat: (_input?: { modelId?: string | null }) => Promise<{ chat: AgentChat }>;
@@ -275,6 +289,14 @@ export function createApiClient(projectId: string): ApiClient {
       }),
     refreshPluginTools: (id) =>
       request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}/tools/refresh`, { method: 'POST' }),
+    enableSlackAgent: (connectionId) =>
+      request(`${projectBasePath}/slack-agent`, { method: 'PUT', body: JSON.stringify({ connectionId }) }),
+    disableSlackAgent: (teamId) =>
+      request(`${projectBasePath}/slack-agent`, { method: 'DELETE', body: JSON.stringify({ teamId }) }),
+    listSlackAgentChannels: (teamId) =>
+      request(`${projectBasePath}/slack-agent/channels?teamId=${encodeURIComponent(teamId)}`),
+    setSlackChannelSpaces: (input) =>
+      request(`${projectBasePath}/slack-agent/channels`, { method: 'PUT', body: JSON.stringify(input) }),
     cancelRun: async (runId) =>
       request<MutationResult>(`${automationsBasePath}/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' }),
     createAgentChat: async (input) =>
