@@ -52,8 +52,12 @@ export function SlackAgentSection({
   connectionsKey: string;
 }): JSX.Element | null {
   const { data, error, mutate } = useSWR<SlackAgentSettings>(`${base}/slack-agent`, fetcher);
-  const [busyTeamId, setBusyTeamId] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<SlackAgentConnection | null>(null);
+  // One write at a time across the section: each answer carries the whole settings, so a slower
+  // earlier one would otherwise overwrite a later one.
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState<{ connection: SlackAgentConnection; turn: 'off' | 'takeover' } | null>(
+    null
+  );
 
   const seenConnectionsKey = useRef(connectionsKey);
 
@@ -70,17 +74,22 @@ export function SlackAgentSection({
     return null;
   }
 
-  const save = async (teamId: string, action: () => Promise<SlackAgentSettings>) => {
-    setBusyTeamId(teamId);
+  const run: RunSettingsWrite = async (action, failureMessage, onFailure) => {
+    setBusy(true);
 
     try {
       await mutate(await action(), { revalidate: false });
     } catch (failure) {
-      toast.error(errorMessage(failure, 'Unable to change the Slack agent.'));
+      toast.error(errorMessage(failure, failureMessage));
+      // The refusal may come from a change made elsewhere (the workspace moved to another project).
+      void mutate();
+      onFailure?.();
     } finally {
-      setBusyTeamId(null);
+      setBusy(false);
     }
   };
+  const enable = (connection: SlackAgentConnection) =>
+    void run(() => api.enableSlackAgent(connection.connectionId), 'Unable to turn on the Slack agent.');
 
   return (
     <section className="fk:flex fk:flex-col fk:gap-3">
@@ -105,12 +114,14 @@ export function SlackAgentSection({
           <label className="fk:flex fk:w-fit fk:cursor-pointer fk:items-center fk:gap-3">
             <Switch
               checked={connection.enabled}
-              disabled={busyTeamId !== null}
+              disabled={busy}
               onCheckedChange={(checked) => {
-                if (checked) {
-                  void save(connection.teamId, () => api.enableSlackAgent(connection.connectionId));
+                if (!checked) {
+                  setConfirming({ connection, turn: 'off' });
+                } else if (connection.answersElsewhere) {
+                  setConfirming({ connection, turn: 'takeover' });
                 } else {
-                  setConfirming(connection);
+                  enable(connection);
                 }
               }}
             />
@@ -121,7 +132,9 @@ export function SlackAgentSection({
               <span className="fk:text-xs fk:text-muted-foreground">
                 {connection.enabled
                   ? 'Invite the app to each channel it should answer in.'
-                  : 'Off: the app stays silent when members mention it.'}
+                  : connection.answersElsewhere
+                    ? 'Answers for another project.'
+                    : 'Off: the app stays silent when members mention it.'}
               </span>
             </span>
           </label>
@@ -129,10 +142,10 @@ export function SlackAgentSection({
             <SlackChannelSpaces
               api={api}
               base={base}
-              disabled={busyTeamId !== null}
+              busy={busy}
+              run={run}
               settings={data}
               teamId={connection.teamId}
-              onSaved={(settings) => void mutate(settings, { revalidate: false })}
             />
           ) : null}
         </div>
@@ -140,26 +153,35 @@ export function SlackAgentSection({
       <AlertDialog open={confirming !== null} onOpenChange={(open) => (open ? null : setConfirming(null))}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Turn off the agent in {confirming?.teamName ?? 'this workspace'}?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirming?.turn === 'takeover' ? 'Move the agent to this project in ' : 'Turn off the agent in '}
+              {confirming?.connection.teamName ?? 'this workspace'}?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              The agent stops answering there. Members&rsquo; account links and the channels&rsquo; spaces are removed,
-              so turning it on again starts from scratch.
+              {confirming?.turn === 'takeover'
+                ? 'This workspace answers for another project now. Turning it on here moves the agent to this project, and the other project’s channel spaces are removed.'
+                : 'The agent stops answering there. Members’ account links and the channels’ spaces are removed, so turning it on again starts from scratch.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                const connection = confirming;
+                const current = confirming;
 
                 setConfirming(null);
 
-                if (connection) {
-                  void save(connection.teamId, () => api.disableSlackAgent(connection.teamId));
+                if (current?.turn === 'takeover') {
+                  enable(current.connection);
+                } else if (current) {
+                  void run(
+                    () => api.disableSlackAgent(current.connection.teamId),
+                    'Unable to turn off the Slack agent.'
+                  );
                 }
               }}
             >
-              Turn off
+              {confirming?.turn === 'takeover' ? 'Move here' : 'Turn off'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -168,43 +190,47 @@ export function SlackAgentSection({
   );
 }
 
+/** Runs one settings write for the section, showing `failureMessage` and reading the settings again if it fails. */
+type RunSettingsWrite = (
+  _action: () => Promise<SlackAgentSettings>,
+  _failureMessage: string,
+  _onFailure?: () => void
+) => Promise<void>;
+
 function SlackChannelSpaces({
   api,
   base,
-  disabled,
-  onSaved,
+  busy,
+  run,
   settings,
   teamId,
 }: {
   api: ApiClient;
   base: string;
-  disabled: boolean;
-  onSaved: (_settings: SlackAgentSettings) => void;
+  /** A settings write is in flight somewhere in the section. */
+  busy: boolean;
+  run: RunSettingsWrite;
   settings: SlackAgentSettings;
   teamId: string;
 }): JSX.Element {
-  const { data: channelsData, error: channelsError } = useSWR(['slack-agent-channels', base, teamId], () =>
-    api.listSlackAgentChannels(teamId)
-  );
+  const {
+    data: channelsData,
+    error: channelsError,
+    mutate: mutateChannels,
+  } = useSWR(['slack-agent-channels', base, teamId], () => api.listSlackAgentChannels(teamId));
   const { data: spacesData, error: spacesError } = useSWR<{ spaces: ProjectSpace[] }>(`${base}/spaces`, fetcher);
   const [pickedChannelIds, setPickedChannelIds] = useState<string[]>([]);
-  const [savingChannelId, setSavingChannelId] = useState<string | null>(null);
   const channels = channelsData?.channels ?? [];
   const spaces = spacesData?.spaces ?? [];
   const rows = getSlackChannelRows({ bindings: settings.channels, channels, pickedChannelIds, teamId });
   const pickable = getPickableSlackChannels(channels, rows);
 
-  const setSpaces = async (channelId: string, spaceIds: string[]) => {
-    setSavingChannelId(channelId);
-
-    try {
-      onSaved(await api.setSlackChannelSpaces({ channelId, spaceIds, teamId }));
-    } catch (failure) {
-      toast.error(errorMessage(failure, 'Unable to change the channel’s spaces.'));
-    } finally {
-      setSavingChannelId(null);
-    }
-  };
+  const setSpaces = (channelId: string, spaceIds: string[]) =>
+    run(
+      () => api.setSlackChannelSpaces({ channelId, spaceIds, teamId }),
+      'Unable to change the channel’s spaces.',
+      () => void mutateChannels()
+    );
 
   const remove = async (channelId: string, bound: boolean) => {
     if (bound) {
@@ -243,19 +269,21 @@ function SlackChannelSpaces({
             const bound = settings.channels.some(
               (binding) => binding.teamId === teamId && binding.channelId === row.channelId
             );
-            const rowDisabled = disabled || savingChannelId !== null;
+            const nameId = `slack-channel-${teamId}-${row.channelId}`;
 
             return (
               <div className="fk:flex fk:flex-col fk:gap-2 fk:border-t fk:pt-3" key={row.channelId}>
                 <div className="fk:flex fk:items-center fk:gap-2">
-                  <span className="fk:text-sm fk:font-medium">{row.name}</span>
+                  <span className="fk:text-sm fk:font-medium" id={nameId}>
+                    {row.name}
+                  </span>
                   {row.spaceIds.length === 0 ? (
                     <span className="fk:text-xs fk:text-muted-foreground">No spaces: records in no space only</span>
                   ) : null}
                   <Button
                     aria-label={`Remove ${row.name}`}
                     className="fk:ml-auto"
-                    disabled={rowDisabled}
+                    disabled={busy}
                     size="icon"
                     variant="ghost"
                     onClick={() => void remove(row.channelId, bound)}
@@ -263,12 +291,12 @@ function SlackChannelSpaces({
                     <XIcon />
                   </Button>
                 </div>
-                <div className="fk:flex fk:flex-wrap fk:gap-x-6 fk:gap-y-2">
+                <div aria-labelledby={nameId} className="fk:flex fk:flex-wrap fk:gap-x-6 fk:gap-y-2" role="group">
                   {spaces.map((space) => (
                     <label className="fk:flex fk:cursor-pointer fk:items-center fk:gap-2 fk:text-sm" key={space.id}>
                       <Checkbox
                         checked={row.spaceIds.includes(space.id)}
-                        disabled={rowDisabled}
+                        disabled={busy}
                         onCheckedChange={() => {
                           // The row stays while its spaces change, even when the last one is cleared.
                           setPickedChannelIds((current) =>
@@ -288,7 +316,7 @@ function SlackChannelSpaces({
       {spaces.length > 0 && channelsData ? (
         pickable.length > 0 ? (
           <Select
-            disabled={disabled}
+            disabled={busy}
             value=""
             onValueChange={(channelId) => setPickedChannelIds((current) => [...current, channelId])}
           >

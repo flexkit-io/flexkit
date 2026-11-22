@@ -127,6 +127,11 @@ export interface PluginTools {
 
 /** A Slack workspace of one of the project's Slack connections, and whether the agent answers there. */
 export interface SlackAgentConnection {
+  /**
+   * The workspace answers for another project; turning it on here moves it, and that project's
+   * channel spaces go. Absent from older platforms.
+   */
+  answersElsewhere?: boolean;
   connectionId: string;
   enabled: boolean;
   teamId: string;
