@@ -1018,6 +1018,11 @@ function ChangedField({ after, before, label }: { after: string; before: string;
   );
 }
 
+/** When the agent reads a proposed skill, in words; a proposal from before load modes loads on demand. */
+function describeLoadMode(loadMode: SkillProposalFields['loadMode']): string {
+  return loadMode === 'always' ? 'Always, in every chat and run that can see it' : 'When relevant';
+}
+
 /**
  * A skill the chat agent proposed, or its change to an existing skill. While
  * it waits for a decision the approver can edit every field; a change also
@@ -1051,8 +1056,18 @@ function SkillProposalView({
           <>
             <ChangedField after={fields.name} before={before.name} label="Name" />
             <ChangedField after={fields.description} before={before.description} label="Description" />
+            <ChangedField
+              after={describeLoadMode(proposal.loadMode)}
+              before={describeLoadMode(before.loadMode)}
+              label="Loads"
+            />
           </>
-        ) : null}
+        ) : (
+          <>
+            <dt className="fk:text-muted-foreground">Loads</dt>
+            <dd>{describeLoadMode(proposal.loadMode)}</dd>
+          </>
+        )}
       </dl>
       {before ? (
         before.content === fields.content ? (
@@ -1146,7 +1161,7 @@ function SkillDecisionActions({
   };
   const isIncomplete = !trimmed.name || !trimmed.description || !trimmed.content;
   const skillEdits = Object.fromEntries(
-    (Object.keys(trimmed) as (keyof SkillProposalFields)[])
+    (Object.keys(trimmed) as ('content' | 'description' | 'name')[])
       .filter((field) => trimmed[field] !== proposal[field].trim())
       .map((field) => [field, trimmed[field]])
   ) as Partial<SkillProposalFields>;

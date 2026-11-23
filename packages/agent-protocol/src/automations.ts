@@ -100,10 +100,15 @@ export interface AutomationChangePreview {
   name: string;
 }
 
+/** When the agent reads a skill: `always`, in every chat and run that may see it; `on_demand`, when it applies. */
+export type SkillLoadMode = 'always' | 'on_demand';
+
 /** The name, description and content of a skill. */
 export interface SkillProposalFields {
   content: string;
   description: string;
+  /** Absent from platforms and proposals before load modes: on demand. */
+  loadMode?: SkillLoadMode;
   name: string;
 }
 

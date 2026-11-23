@@ -1,10 +1,9 @@
 import type { FormEvent, JSX } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Eye, GraduationCapIcon, Info, LoaderCircle, PenLine, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Eye, GraduationCapIcon, History, Info, LoaderCircle, PenLine, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import Markdown, { type Components } from 'react-markdown';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/auth-context';
-import { useCanMutate } from '../../core/permissions';
 import { useConfig } from '../../core/config/config-context';
 import { MAX_SKILL_CONTENT_LENGTH } from './skill-limits';
 import {
@@ -22,6 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
   Separator,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   SidebarTrigger,
   Skeleton,
   Tabs,
@@ -37,7 +41,16 @@ import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths, type ApiClient } from './api';
 import { MarkdownEditor } from './markdown-editor';
 import { CatalogHeader } from './plugin-pages';
-import type { AutomationVisibility, ProjectSpace, Skill, SkillInput, SkillsList } from './types';
+import type {
+  AutomationVisibility,
+  ProjectSpace,
+  Skill,
+  SkillInput,
+  SkillLoadMode,
+  SkillsList,
+  SkillVersionDetail,
+  SkillVersionsList,
+} from './types';
 import { PluginLogo } from './plugin-logo';
 
 const SKILLS_PAGE_SIZE = 25;
@@ -135,6 +148,29 @@ function InfiniteScrollSentinel({ onVisible }: { onVisible: () => void }): JSX.E
   return <div aria-hidden className="fk:h-px" ref={sentinelRef} />;
 }
 
+/**
+ * Owners and developers manage the project's and the spaces' skills; every member keeps their own
+ * personal ones. While the role is unknown nothing is held back: the server decides.
+ */
+export function canManageSharedSkills(role: string | null | undefined): boolean {
+  return !role || role === 'owner' || role === 'developer';
+}
+
+/** Whether the member may save this skill: a shared one only as an owner or developer. */
+export function canSaveSkill({
+  role,
+  saved,
+  visibility,
+}: {
+  role: string | null | undefined;
+  saved: Pick<Skill, 'visibility'> | undefined;
+  visibility: AutomationVisibility;
+}): boolean {
+  return canManageSharedSkills(role) || (visibility === 'personal' && (!saved || saved.visibility === 'personal'));
+}
+
+const LOAD_MODE_LABELS: { [mode in SkillLoadMode]: string } = { always: 'Always', on_demand: 'When relevant' };
+
 function getSkillVisibilityLabel(skill: Skill, spaceLabelById: Map<string, string>): string {
   if (skill.visibility === 'space') {
     return (skill.spaceId ? spaceLabelById.get(skill.spaceId) : undefined) ?? 'Space';
@@ -163,7 +199,6 @@ export function SkillsPage(): JSX.Element {
   const { api, projectId } = useProjectApi();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const canMutate = useCanMutate();
   const hasActiveFilters = search.trim().length > 0;
 
   const getSkillsKey = (pageIndex: number, previousPage: SkillsList | null): string | null => {
@@ -213,7 +248,14 @@ export function SkillsPage(): JSX.Element {
         >
           <SkillLogo skill={skill} />
           <span className="fk:min-w-0 fk:flex-1">
-            <span className="fk:block fk:truncate fk:text-sm fk:font-medium">{skill.name}</span>
+            <span className="fk:flex fk:min-w-0 fk:items-center fk:gap-2">
+              <span className="fk:truncate fk:text-sm fk:font-medium">{skill.name}</span>
+              {skill.loadMode === 'always' ? (
+                <Badge className="fk:shrink-0" variant="secondary">
+                  Always
+                </Badge>
+              ) : null}
+            </span>
             <span className="fk:block fk:truncate fk:text-sm fk:text-muted-foreground">{skill.description}</span>
           </span>
         </button>
@@ -239,7 +281,8 @@ export function SkillsPage(): JSX.Element {
           <div>
             <h2 className="fk:text-2xl fk:font-semibold">Skills for your agents</h2>
             <p className="fk:mt-2 fk:text-muted-foreground">
-              Reusable Markdown instructions that agents load when relevant, or always when attached to an automation.
+              Reusable Markdown instructions that agents load when relevant, or follow in every chat and run when set to
+              always. Personal skills are yours alone.
             </p>
           </div>
           <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-3">
@@ -253,21 +296,13 @@ export function SkillsPage(): JSX.Element {
                 setSearch(event.target.value);
               }}
             />
-            {canMutate ? (
-              <Button asChild className="fk:ml-auto" size="sm">
-                <Link to="new">
-                  <Plus />
-                  New Skill
-                </Link>
-              </Button>
-            ) : (
-              <PermissionTooltip disabled>
-                <Button className="fk:ml-auto" disabled size="sm">
-                  <Plus />
-                  New Skill
-                </Button>
-              </PermissionTooltip>
-            )}
+            {/* Every member keeps personal skills; the form offers shared ones to owners and developers. */}
+            <Button asChild className="fk:ml-auto" size="sm">
+              <Link to="new">
+                <Plus />
+                New Skill
+              </Link>
+            </Button>
           </div>
           {content}
           {hasMore && !isLoadingMore ? <InfiniteScrollSentinel onVisible={handleLoadMore} /> : null}
@@ -422,7 +457,8 @@ export function SkillContentPane({
           </TooltipTrigger>
           <TooltipContent className="fk:max-w-sm">
             The skill itself, in Markdown. Write it like instructions for a capable colleague: procedures, rules,
-            examples, and edge cases. Attached skills are always loaded; other visible skills are loaded on demand.
+            examples, and edge cases. Skills set to load always, and those attached to an automation, are part of every
+            chat or run; the others are loaded when they apply.
           </TooltipContent>
         </Tooltip>
       </div>
@@ -501,7 +537,14 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
   const [name, setName] = useState(skill?.name ?? '');
   const [description, setDescription] = useState(skill?.description ?? '');
   const [content, setContent] = useState(skill?.content ?? '');
-  const [visibility, setVisibility] = useState<AutomationVisibility>(skill?.visibility ?? 'project');
+  const [, auth] = useAuth();
+  const role = auth.user?.role;
+  const managesShared = canManageSharedSkills(role);
+  const [visibility, setVisibility] = useState<AutomationVisibility>(
+    skill?.visibility ?? (managesShared ? 'project' : 'personal')
+  );
+  const [loadMode, setLoadMode] = useState<SkillLoadMode>(skill?.loadMode ?? 'on_demand');
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [spaceId, setSpaceId] = useState<string | null>(skill?.spaceId ?? null);
   const [isSaving, setIsSaving] = useState(false);
   const isSavingRef = useRef(false);
@@ -509,8 +552,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
   const [touched, setTouched] = useState({ content: false, description: false, name: false });
   const navigate = useNavigate();
   const { data: spacesData } = useSWR<{ spaces: ProjectSpace[] }>(paths(projectId).spaces, fetcher);
-  const [, auth] = useAuth();
-  const canMutate = useCanMutate();
+  const canMutate = canSaveSkill({ role, saved: skill, visibility });
   const userSpaceCodes = auth.user?.spaces ?? [];
   // Only spaces the caller belongs to are offered; the server rejects
   // bindings to spaces outside the caller's membership anyway.
@@ -560,6 +602,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
     const input: SkillInput = {
       content,
       description,
+      loadMode,
       name,
       spaceId: visibility === 'space' ? spaceId : null,
       visibility,
@@ -626,6 +669,12 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
               <span className="fk:text-xs fk:text-muted-foreground">Complete the required fields to save</span>
             ) : null}
             {mode === 'edit' && skill ? (
+              <Button size="sm" type="button" variant="outline" onClick={() => setIsHistoryOpen(true)}>
+                <History />
+                History
+              </Button>
+            ) : null}
+            {mode === 'edit' && skill ? (
               <Button disabled={isSaving || !canMutate} size="sm" type="button" variant="outline" onClick={() => void deleteSkill()}>
                 <Trash2 />
                 Delete
@@ -650,7 +699,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
         id="skill-editor-form"
         onSubmit={(event) => void handleSubmit(event)}
       >
-        <div className="fk:grid fk:min-w-0 fk:shrink-0 fk:gap-3 fk:px-0.75 fk:lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto]">
+        <div className="fk:grid fk:min-w-0 fk:shrink-0 fk:gap-3 fk:px-0.75 fk:lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)_auto_auto]">
           <div>
             <FieldHintLabel hint="Identifying label for this skill" htmlFor="skill-name">
               Name
@@ -707,8 +756,10 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent align="start">
-                  <SelectItem value="project">Project</SelectItem>
-                  <SelectItem disabled={selectableSpaces.length === 0} value="space">
+                  <SelectItem disabled={!managesShared} value="project">
+                    Project
+                  </SelectItem>
+                  <SelectItem disabled={!managesShared || selectableSpaces.length === 0} value="space">
                     Space
                   </SelectItem>
                   <SelectItem value="personal">Personal</SelectItem>
@@ -736,6 +787,23 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
             </div>
             {visibility === 'space' && validation.space ? <FieldError message={validation.space} /> : null}
           </div>
+          <div>
+            <FieldHintLabel
+              hint="When relevant: agents see the description and load the skill when a task needs it. Always: the skill is part of every chat and automation run that can see it. Use it for short rules such as tone, language or format."
+              htmlFor="skill-load-mode"
+            >
+              Load
+            </FieldHintLabel>
+            <Select value={loadMode} onValueChange={(value) => setLoadMode(value === 'always' ? 'always' : 'on_demand')}>
+              <SelectTrigger aria-label="Load" className="fk:w-fit fk:min-w-32" id="skill-load-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="start">
+                <SelectItem value="on_demand">{LOAD_MODE_LABELS.on_demand}</SelectItem>
+                <SelectItem value="always">{LOAD_MODE_LABELS.always}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <SkillContentPane
           content={content}
@@ -748,7 +816,176 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
           }}
         />
       </form>
+      {mode === 'edit' && skill ? (
+        <SkillHistorySheet
+          api={api}
+          canRestore={canSaveSkill({ role, saved: skill, visibility: skill.visibility })}
+          open={isHistoryOpen}
+          projectId={projectId}
+          skill={skill}
+          onOpenChange={setIsHistoryOpen}
+          onRestored={(restored) => {
+            setIsHistoryOpen(false);
+            onSaved(restored);
+          }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function formatVersionDate(value: string): string {
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+}
+
+/**
+ * The saved versions of a skill, newest first: read one, and restore it to make it current again.
+ * A restore is saved as a new version, so it can be undone the same way.
+ */
+function SkillHistorySheet({
+  api,
+  canRestore,
+  onOpenChange,
+  onRestored,
+  open,
+  projectId,
+  skill,
+}: {
+  api: ApiClient;
+  canRestore: boolean;
+  onOpenChange: (_open: boolean) => void;
+  onRestored: (_skill?: Skill) => void;
+  open: boolean;
+  projectId: string;
+  skill: Skill;
+}): JSX.Element {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [message, setMessage] = useState('');
+  // Read again each time the sheet opens, so a save made since shows.
+  const { data, error, isLoading } = useSWR<SkillVersionsList>(
+    open ? paths(projectId).skillVersions(skill.id) : null,
+    fetcher,
+    { revalidateOnMount: true }
+  );
+  const versions = data?.versions ?? [];
+  const current = data?.currentVersion ?? null;
+  const shown = selected ?? versions[0]?.version ?? null;
+  const { data: detail, isLoading: isLoadingDetail } = useSWR<{ version: SkillVersionDetail }>(
+    open && shown !== null ? paths(projectId).skillVersion(skill.id, shown) : null,
+    fetcher
+  );
+
+  async function restore(version: number): Promise<void> {
+    setIsRestoring(true);
+    setMessage('');
+
+    try {
+      const result = await api.restoreSkillVersion(skill.id, version);
+
+      if (!result.success) {
+        setMessage(Array.isArray(result.errorMessage) ? result.errorMessage.join(', ') : result.errorMessage);
+
+        return;
+      }
+
+      toast.success(`Version ${String(version)} restored.`);
+      setSelected(null);
+      onRestored(result.skill);
+    } catch (restoreError) {
+      setMessage(restoreError instanceof Error ? restoreError.message : 'Failed to restore the version.');
+    } finally {
+      setIsRestoring(false);
+    }
+  }
+
+  let list: JSX.Element;
+
+  if (isLoading) {
+    list = <Skeleton className="fk:h-24 fk:w-full" />;
+  } else if (error || versions.length === 0) {
+    list = (
+      <p className="fk:text-sm fk:text-muted-foreground">
+        {error ? 'The history of this skill is not available.' : 'No saved versions yet.'}
+      </p>
+    );
+  } else {
+    list = (
+      <ul className="fk:flex fk:flex-col fk:gap-1">
+        {versions.map((version) => (
+          <li key={version.version}>
+            <button
+              aria-pressed={shown === version.version}
+              className={`fk:w-full fk:rounded-md fk:px-3 fk:py-2 fk:text-left fk:text-sm fk:transition-colors fk:hover:bg-accent fk:corner-squircle ${shown === version.version ? 'fk:bg-accent' : ''}`}
+              type="button"
+              onClick={() => setSelected(version.version)}
+            >
+              <span className="fk:flex fk:items-center fk:gap-2 fk:font-medium">
+                Version {version.version}
+                {version.version === current ? <Badge variant="secondary">Current</Badge> : null}
+              </span>
+              <span className="fk:block fk:text-muted-foreground">
+                {formatVersionDate(version.createdAt)}
+                {version.createdByName ? ` · ${version.createdByName}` : ''}
+                {version.restoredFromVersion ? ` · restored version ${String(version.restoredFromVersion)}` : ''}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="fk:flex fk:w-full fk:flex-col fk:gap-4 fk:sm:max-w-2xl">
+        <SheetHeader>
+          <SheetTitle>History of {skill.name}</SheetTitle>
+          <SheetDescription>
+            Each save keeps a version. Restoring one makes it current again, as a new version.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="fk:grid fk:min-h-0 fk:flex-1 fk:gap-4 fk:px-4 fk:pb-4 fk:md:grid-cols-[14rem_minmax(0,1fr)]">
+          <ScrollArea className="fk:min-h-0 fk:max-h-[70vh]">{list}</ScrollArea>
+          <div className="fk:flex fk:min-h-0 fk:min-w-0 fk:flex-col fk:gap-3">
+            {message ? (
+              <p className="fk:text-sm fk:text-destructive" role="alert">
+                {message}
+              </p>
+            ) : null}
+            {isLoadingDetail ? <Skeleton className="fk:h-40 fk:w-full" /> : null}
+            {detail?.version ? (
+              <>
+                <div className="fk:flex fk:flex-wrap fk:items-start fk:justify-between fk:gap-2">
+                  <div className="fk:min-w-0 fk:text-sm">
+                    <p className="fk:font-medium">{detail.version.name}</p>
+                    <p className="fk:text-muted-foreground">{detail.version.description}</p>
+                    <p className="fk:text-muted-foreground">Load: {LOAD_MODE_LABELS[detail.version.loadMode]}</p>
+                  </div>
+                  {detail.version.version !== current ? (
+                    <PermissionTooltip disabled={!canRestore}>
+                      <Button
+                        disabled={!canRestore || isRestoring}
+                        size="sm"
+                        onClick={() => void restore(detail.version.version)}
+                      >
+                        {isRestoring ? <LoaderCircle className="fk:animate-spin" /> : <RotateCcw />}
+                        Restore
+                      </Button>
+                    </PermissionTooltip>
+                  ) : null}
+                </div>
+                <pre className="fk:min-h-0 fk:flex-1 fk:overflow-auto fk:whitespace-pre-wrap fk:rounded-md fk:border fk:p-3 fk:font-mono fk:text-xs fk:corner-squircle">
+                  {detail.version.content}
+                </pre>
+              </>
+            ) : null}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -761,7 +998,6 @@ function ReadOnlyCodeSkill({
   projectId: string;
   spaceLabelById: Map<string, string>;
 }): JSX.Element {
-  const canMutate = useCanMutate();
   const navigate = useNavigate();
   const [forking, setForking] = useState(false);
   const [forkError, setForkError] = useState('');
@@ -797,7 +1033,7 @@ function ReadOnlyCodeSkill({
         actions={
           <div className="fk:flex fk:items-center fk:gap-2">
             <Badge variant="secondary">{skill.source === 'plugin' ? 'Plugin' : 'Code'}</Badge>
-            {skill.source === 'plugin' && <Button type="button" disabled={forking || !canMutate} onClick={() => void fork()} size="sm">Edit a copy</Button>}
+            {skill.source === 'plugin' && <Button type="button" disabled={forking} onClick={() => void fork()} size="sm">Edit a copy</Button>}
           </div>
         }
         title={skill.name}
@@ -926,6 +1162,8 @@ export function SkillDetailPage(): JSX.Element {
 
   return (
     <SkillForm
+      // A restore changes every field: the form starts again from the saved skill.
+      key={data.skill.updatedAt}
       api={api}
       mode="edit"
       projectId={projectId}
