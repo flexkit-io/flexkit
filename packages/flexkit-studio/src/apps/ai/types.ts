@@ -40,6 +40,7 @@ import type {
   AutomationToolAllowRule,
   AutomationTriggerType,
   CreatedAutomationResult,
+  SkillLoadMode,
   SkillProposalFields,
   SkillProposalPreview,
 } from '@flexkit/agent-protocol';
@@ -88,6 +89,7 @@ export type {
   AutomationToolAllowRule,
   AutomationTriggerType,
   CreatedAutomationResult,
+  SkillLoadMode,
   SkillProposalFields,
   SkillProposalPreview,
 };
@@ -192,6 +194,8 @@ export interface Skill {
   createdBy: string;
   description: string;
   id: string;
+  /** Absent from a platform before load modes: on demand. */
+  loadMode?: SkillLoadMode;
   logoUrl: string | null;
   name: string;
   projectId: string;
@@ -199,6 +203,28 @@ export interface Skill {
   spaceId: string | null;
   updatedAt: string;
   visibility: AutomationVisibility;
+}
+
+/** One saved version of a Studio skill. */
+export interface SkillVersion {
+  createdAt: string;
+  createdBy: string | null;
+  createdByName: string | null;
+  description: string;
+  loadMode: SkillLoadMode;
+  name: string;
+  /** The version a restore brought back; null for an ordinary save. */
+  restoredFromVersion: number | null;
+  version: number;
+}
+
+export interface SkillVersionDetail extends SkillVersion {
+  content: string;
+}
+
+export interface SkillVersionsList {
+  currentVersion: number | null;
+  versions: SkillVersion[];
 }
 
 export interface SkillsList {
@@ -210,6 +236,7 @@ export interface SkillsList {
 export interface SkillInput {
   content: string;
   description: string;
+  loadMode: SkillLoadMode;
   name: string;
   /** Space id required when visibility is "space". */
   spaceId?: string | null;

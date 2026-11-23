@@ -59,6 +59,7 @@ export type {
   AutomationTriggerType,
   AutomationVisibility,
   CreatedAutomationResult,
+  SkillLoadMode,
   SkillProposalFields,
   SkillProposalPreview,
 } from './automations';

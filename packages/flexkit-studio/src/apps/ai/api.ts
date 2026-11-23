@@ -178,6 +178,8 @@ export interface ApiClient {
   createSkill: (_input: SkillInput) => Promise<MutationResult & { skill?: Skill }>;
   deleteAutomation: (_automationId: string) => Promise<MutationResult>;
   deleteSkill: (_skillId: string) => Promise<MutationResult>;
+  /** Makes a saved version of a skill current again, as a new version. */
+  restoreSkillVersion: (_skillId: string, _version: number) => Promise<MutationResult & { skill?: Skill }>;
   getArtifactUrl: (_artifactId: string, _options?: { download?: boolean }) => string;
   getRunArtifacts: (_workflowRunId: string) => Promise<AutomationArtifact[]>;
   getStreamUrl: (_workflowRunId: string) => string;
@@ -488,6 +490,11 @@ export function createApiClient(projectId: string): ApiClient {
       request<MutationResult>(`${automationsBasePath}/${encodeURIComponent(automationId)}`, { method: 'DELETE' }),
     deleteSkill: async (skillId) =>
       request<MutationResult>(`${skillsBasePath}/${encodeURIComponent(skillId)}`, { method: 'DELETE' }),
+    restoreSkillVersion: async (skillId, version) =>
+      request<MutationResult & { skill?: Skill }>(
+        `${skillsBasePath}/${encodeURIComponent(skillId)}/versions/${String(version)}/restore`,
+        { method: 'POST' }
+      ),
     getArtifactUrl: (artifactId, options) => {
       const suffix = options?.download ? '?download=1' : '';
 
@@ -605,6 +612,8 @@ export function paths(projectId: string): {
   run: (_runId: string) => string;
   runHistory: (_scope: 'mine' | 'team', _offset?: number, _limit?: number) => string;
   skill: (_skillId: string) => string;
+  skillVersion: (_skillId: string, _version: number) => string;
+  skillVersions: (_skillId: string) => string;
   skills: (_options?: {
     limit?: number;
     offset?: number;
@@ -687,6 +696,8 @@ export function paths(projectId: string): {
     runHistory: (scope, offset = 0, limit = 25) =>
       `${basePath}/runs?scope=${scope}&offset=${offset.toString()}&limit=${limit.toString()}`,
     skill: (skillId) => `${skillsBasePath}/${encodeURIComponent(skillId)}`,
+    skillVersion: (skillId, version) => `${skillsBasePath}/${encodeURIComponent(skillId)}/versions/${String(version)}`,
+    skillVersions: (skillId) => `${skillsBasePath}/${encodeURIComponent(skillId)}/versions`,
     skills: (options = {}) => {
       const { limit = 25, offset = 0, search, visibility } = options;
       const params = new URLSearchParams({
