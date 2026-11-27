@@ -47,10 +47,14 @@ export interface TemplateSummary {
   /** Null for skill templates. */
   automation?: TemplateAutomationDefaults | null;
   category: string;
+  /** The avatar's palette color name; absent or null from older platforms and catalogs. */
+  color?: string | null;
   data: TemplateDataRequirement[];
   description: string;
   displayName: string;
   howItWorks: TemplateHowItWorksRow[];
+  /** The avatar's Lucide icon name; absent or null from older platforms and catalogs. */
+  icon?: string | null;
   keywords?: string[];
   kind: TemplateKind;
   name: string;
