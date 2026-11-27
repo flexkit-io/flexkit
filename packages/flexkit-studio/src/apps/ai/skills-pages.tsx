@@ -40,6 +40,7 @@ import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { createApiClient, fetcher, paths, type ApiClient } from './api';
 import { MarkdownEditor } from './markdown-editor';
+import { TemplateProvenanceLabel } from './template-suggestions';
 import { CatalogHeader } from './plugin-pages';
 import type {
   AutomationVisibility,
@@ -689,6 +690,7 @@ export function SkillForm({ api, mode, onSaved, projectId, skill }: SkillFormPro
         }
         title={title}
       />
+      <TemplateProvenanceLabel className="fk:shrink-0 fk:px-3" template={skill?.template} />
       {message ? (
         <div className="fk:shrink-0 fk:rounded-md fk:border fk:border-destructive/30 fk:bg-destructive/5 fk:p-3 fk:text-sm fk:text-destructive fk:corner-squircle">
           {message}

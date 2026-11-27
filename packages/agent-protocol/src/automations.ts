@@ -60,6 +60,11 @@ export interface AutomationProposalPlugin {
  */
 export interface AutomationProposalPreview {
   customTools: string[];
+  /**
+   * False when the automation is created switched off (e.g. set up from a template), to be turned on
+   * once the user has tried it. Absent from older platforms: created switched on.
+   */
+  enabled?: boolean;
   instructions: string;
   modelLabel: string;
   mutationPolicy: AutomationMutationPolicy;

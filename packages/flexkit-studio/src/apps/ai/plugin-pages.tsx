@@ -56,9 +56,14 @@ import type {
   PluginScope,
   PluginTools,
 } from './plugin-types';
+import type { TemplateCatalog } from './template-types';
+import { TEMPLATES_SWR_OPTIONS } from './template-utils';
 import { PluginLogo } from './plugin-logo';
 import { PluginSetupNotice } from './plugin-setup-notice';
+import { aiSectionPath } from './section-path';
 import { SlackAgentSection } from './slack-agent-settings';
+
+export { aiSectionPath };
 
 function httpsCatalogUrl(value: string): string | null {
   let url: URL;
@@ -76,7 +81,7 @@ function httpsCatalogUrl(value: string): string | null {
   return url.href;
 }
 
-function useMarketplaceApi() {
+export function useMarketplaceApi() {
   const { currentProjectId } = useConfig();
   const api = useMemo(() => (currentProjectId ? createApiClient(currentProjectId) : null), [currentProjectId]);
 
@@ -101,7 +106,7 @@ function scopeColorClassname(scopes: PluginScope[]): string {
     : 'fk:bg-teal-100 fk:text-teal-800 fk:dark:bg-teal-950 fk:dark:text-teal-300';
 }
 
-function isConnected(plugin: MarketplacePlugin): boolean {
+export function isConnected(plugin: MarketplacePlugin): boolean {
   return plugin.connections.length > 0;
 }
 
@@ -201,17 +206,7 @@ export function PluginConnectControl({
   );
 }
 
-function aiSectionPath(pathname: string, section: string): string {
-  const match = /^(.*\/ai)(?:\/|$)/.exec(pathname);
-
-  if (!match) {
-    return section;
-  }
-
-  return `${match[1]}/${section}`;
-}
-
-function categoryLabel(category: string): string {
+export function categoryLabel(category: string): string {
   return category
     .split(/[\s_-]+/)
     .filter(Boolean)
@@ -239,7 +234,7 @@ function groupPlugins(plugins: MarketplacePlugin[]): Array<{ category: string; p
     .map(([category, items]) => ({ category, plugins: items }));
 }
 
-interface CatalogSkeletonRow {
+export interface CatalogSkeletonRow {
   descriptionWidth: string;
   id: string;
   nameWidth: string;
@@ -264,7 +259,7 @@ const PLUGIN_SKELETON_SECTIONS: { id: string; rows: CatalogSkeletonRow[] }[] = [
   },
 ];
 
-function CatalogRowSkeleton({ action, row }: { action?: boolean; row: CatalogSkeletonRow }): JSX.Element {
+export function CatalogRowSkeleton({ action, row }: { action?: boolean; row: CatalogSkeletonRow }): JSX.Element {
   return (
     <div className="fk:-mx-3 fk:flex fk:min-w-0 fk:items-center fk:gap-3 fk:px-3 fk:py-2">
       <Skeleton className="fk:size-10 fk:shrink-0 fk:rounded-lg" />
@@ -277,7 +272,7 @@ function CatalogRowSkeleton({ action, row }: { action?: boolean; row: CatalogSke
   );
 }
 
-const pluginGridClassName = 'fk:grid fk:grid-cols-1 fk:gap-x-16 fk:gap-y-1 fk:lg:grid-cols-2';
+export const pluginGridClassName = 'fk:grid fk:grid-cols-1 fk:gap-x-16 fk:gap-y-1 fk:lg:grid-cols-2';
 
 function PluginListSkeleton({ grouped = true }: { grouped?: boolean }): JSX.Element {
   const rows = PLUGIN_SKELETON_SECTIONS.flatMap((section) => section.rows);
@@ -313,9 +308,23 @@ function PluginListSkeleton({ grouped = true }: { grouped?: boolean }): JSX.Elem
 export function CatalogHeader(): JSX.Element {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { base } = useMarketplaceApi();
+  // Older platforms have no templates: the tab shows only once the catalog loads.
+  const { data: templateCatalog } = useSWR<TemplateCatalog>(
+    base ? `${base}/templates` : null,
+    fetcher,
+    TEMPLATES_SWR_OPTIONS
+  );
   const onPlugins = /\/ai\/plugins\/?$/.test(pathname);
   const onSkills = pathname.includes('/ai/skills');
-  const value = onSkills ? 'skills' : 'plugins';
+  const onTemplates = /\/ai\/templates\/?$/.test(pathname);
+  let value = 'plugins';
+
+  if (onSkills) {
+    value = 'skills';
+  } else if (pathname.includes('/ai/templates')) {
+    value = 'templates';
+  }
 
   return (
     <div className="fk:mb-2 fk:flex fk:shrink-0 fk:items-center fk:gap-2">
@@ -328,8 +337,16 @@ export function CatalogHeader(): JSX.Element {
       <Tabs
         value={value}
         onValueChange={(next) => {
-          const destination = next === 'skills' ? 'skills' : 'plugins';
-          const alreadyThere = next === 'skills' ? onSkills : onPlugins;
+          let destination = 'plugins';
+          let alreadyThere = onPlugins;
+
+          if (next === 'skills') {
+            destination = 'skills';
+            alreadyThere = onSkills;
+          } else if (next === 'templates') {
+            destination = 'templates';
+            alreadyThere = onTemplates;
+          }
 
           if (alreadyThere) {
             return;
@@ -352,6 +369,21 @@ export function CatalogHeader(): JSX.Element {
             Plugins
           </TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
+          {templateCatalog || value === 'templates' ? (
+            <TabsTrigger
+              value="templates"
+              onClick={() => {
+                // From another tab, onValueChange navigates; this only brings a template page back to the list.
+                if (value !== 'templates' || onTemplates) {
+                  return;
+                }
+
+                navigate(aiSectionPath(pathname, 'templates'));
+              }}
+            >
+              Templates
+            </TabsTrigger>
+          ) : null}
         </TabsList>
       </Tabs>
     </div>

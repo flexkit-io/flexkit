@@ -72,6 +72,7 @@ import { ensurePushSubscription } from './notification-settings';
 import { NotificationSettingsButton } from './notification-settings-popover';
 import { AutomationsDataTableToolbar } from './data-table-toolbar';
 import { AutomationForm } from './form';
+import { AutomationTemplateSuggestions, TemplateProvenanceLabel } from './template-suggestions';
 import {
   MessagePart,
   MutationApprovalPart,
@@ -537,7 +538,14 @@ export function AutomationsPage(): JSX.Element {
   if (isLoading && automations.length === 0) {
     content = <AutomationsTableSkeleton />;
   } else if (automations.length === 0) {
-    content = <PageMessage>{hasActiveFilters ? 'No results.' : 'No automations yet.'}</PageMessage>;
+    content = hasActiveFilters ? (
+      <PageMessage>No results.</PageMessage>
+    ) : (
+      <div className="fk:flex fk:flex-col fk:gap-6">
+        <PageMessage>No automations yet.</PageMessage>
+        {canMutate && canCreatePersonalAutomations ? <AutomationTemplateSuggestions /> : null}
+      </div>
+    );
   } else {
     content = (
       <Table>
@@ -811,6 +819,7 @@ export function AutomationDetailPage(): JSX.Element {
           {disabledReason ? (
             <p className="fk:mt-1 fk:text-sm fk:text-muted-foreground">Inactive: {disabledReason}</p>
           ) : null}
+          <TemplateProvenanceLabel className="fk:mt-1" template={data.automation.template} />
         </div>
       </div>
       <div className="fk:flex fk:shrink-0 fk:flex-wrap fk:items-center fk:justify-between fk:gap-3 fk:pr-4">
