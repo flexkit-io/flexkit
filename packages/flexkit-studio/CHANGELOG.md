@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.3.1
+
+### Patch Changes
+
+- c9e9a7d: Six more template avatar icons, so the newest catalog templates (newsletter, stuck orders, accounting, replenishment, moderation policy and review sentiment) show their own icon instead of the generic one.
+- 2d083ed: Templates now have colorful avatars: each template shows its own icon on a tile of its own color, in the template gallery, on its page and in the Automations empty state. Every template in the gallery is now labelled Automation or Skill. Templates from an older catalog get a color picked from their name and the usual automation or skill icon.
+
 ## 0.3.0
 
 ### Minor Changes
