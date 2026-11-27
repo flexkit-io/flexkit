@@ -22,6 +22,7 @@ export default defineConfig({
     'tests/ai/plugin-setup-notice.test.ts',
     'tests/ai/image-mode.test.ts',
     'tests/ai/slack-agent-parts.test.ts',
+    'tests/ai/template-avatar.test.ts',
     'tests/ai/template-utils.test.ts',
   ],
   format: ['esm'],

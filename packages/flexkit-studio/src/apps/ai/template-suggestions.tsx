@@ -1,11 +1,12 @@
 import type { JSX } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
-import { ChevronRight, Zap } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { useConfig } from '../../core/config/config-context';
 import { Button } from '../../ui';
 import { fetcher } from './api';
 import { aiSectionPath } from './section-path';
+import { TemplateAvatar } from './template-avatar';
 import type { Marketplace } from './plugin-types';
 import type { TemplateCatalog, TemplateProvenance } from './template-types';
 import { suggestedAutomationTemplates, TEMPLATES_SWR_OPTIONS } from './template-utils';
@@ -50,12 +51,7 @@ export function AutomationTemplateSuggestions(): JSX.Element | null {
             type="button"
             onClick={() => navigate(aiSectionPath(pathname, `templates/${encodeURIComponent(template.name)}`))}
           >
-            <span
-              aria-hidden
-              className="fk:flex fk:size-8 fk:shrink-0 fk:items-center fk:justify-center fk:rounded-md fk:bg-muted fk:text-muted-foreground fk:corner-squircle"
-            >
-              <Zap className="fk:size-4" strokeWidth={1.5} />
-            </span>
+            <TemplateAvatar className="fk:size-8" template={template} />
             <span className="fk:min-w-0">
               <span className="fk:block fk:text-sm fk:font-medium">{template.displayName}</span>
               <span className="fk:line-clamp-2 fk:text-sm fk:text-muted-foreground">{template.description}</span>

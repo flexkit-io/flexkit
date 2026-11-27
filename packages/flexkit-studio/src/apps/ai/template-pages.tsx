@@ -20,7 +20,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '../../ui';
-import { ArrowLeft, BookText, CheckIcon, ChevronRight, Plus, Sparkles, Zap } from 'lucide-react';
+import { ArrowLeft, BookText, CheckIcon, ChevronRight, Plus, Sparkles } from 'lucide-react';
 import { useCapabilities } from '../../core/capabilities';
 import type { OnboardingNavigationState } from '../../core/config/onboarding';
 import { useCanMutate } from '../../core/permissions';
@@ -38,6 +38,7 @@ import {
 import { PluginLogo } from './plugin-logo';
 import { connectPlugin } from './plugin-token';
 import type { Marketplace, MarketplacePlugin } from './plugin-types';
+import { TemplateAvatar } from './template-avatar';
 import type { TemplateCatalog, TemplateDetail, TemplateKind, TemplateSummary } from './template-types';
 import {
   groupTemplates,
@@ -55,19 +56,6 @@ const KIND_FILTERS: Array<{ label: string; value: KindFilter }> = [
   { label: 'Automations', value: 'automation' },
   { label: 'Skills', value: 'skill' },
 ];
-
-function TemplateIcon({ className = 'fk:size-10', kind }: { className?: string; kind: TemplateKind }): JSX.Element {
-  const Icon = kind === 'skill' ? BookText : Zap;
-
-  return (
-    <span
-      aria-hidden
-      className={`fk:flex fk:shrink-0 fk:items-center fk:justify-center fk:rounded-lg fk:bg-muted fk:text-muted-foreground fk:corner-squircle ${className}`}
-    >
-      <Icon className="fk:size-1/2" strokeWidth={1.5} />
-    </span>
-  );
-}
 
 function kindLabel(kind: TemplateKind): string {
   return kind === 'skill' ? 'Skill' : 'Automation';
@@ -140,15 +128,13 @@ function TemplateRow({
       onClick={onOpen}
       className="fk:-mx-3 fk:flex fk:min-w-0 fk:items-center fk:gap-3 fk:rounded-lg fk:px-3 fk:py-2 fk:text-left fk:transition-colors fk:hover:bg-accent fk:focus-visible:bg-accent fk:focus-visible:outline-none fk:corner-squircle"
     >
-      <TemplateIcon kind={template.kind} />
+      <TemplateAvatar template={template} />
       <span className="fk:min-w-0 fk:flex-1">
         <span className="fk:flex fk:items-center fk:gap-2">
           <span className="fk:truncate fk:text-sm fk:font-medium">{template.displayName}</span>
-          {template.kind === 'skill' ? (
-            <Badge className="fk:px-1.5 fk:py-0 fk:text-[0.625rem] fk:font-normal fk:leading-4" variant="secondary">
-              Skill
-            </Badge>
-          ) : null}
+          <Badge className="fk:px-1.5 fk:py-0 fk:text-[0.625rem] fk:font-normal fk:leading-4" variant="secondary">
+            {kindLabel(template.kind)}
+          </Badge>
         </span>
         <span className="fk:block fk:truncate fk:text-sm fk:text-muted-foreground">{template.description}</span>
       </span>
@@ -512,7 +498,7 @@ export function TemplateDetailPage(): JSX.Element {
         <div className="fk:mx-auto fk:flex fk:w-full fk:max-w-4xl fk:flex-col fk:gap-8 fk:py-6 fk:pl-4 fk:pr-6">
           <section className="fk:flex fk:flex-col fk:gap-3">
             <div className="fk:flex fk:flex-wrap fk:items-center fk:gap-4">
-              <TemplateIcon className="fk:size-14" kind={template.kind} />
+              <TemplateAvatar className="fk:size-14" template={template} />
               <div className="fk:flex fk:min-w-0 fk:flex-col fk:gap-0.5">
                 <h1 className="fk:text-xl fk:font-semibold">{template.displayName}</h1>
                 <span className="fk:text-sm fk:text-muted-foreground">
