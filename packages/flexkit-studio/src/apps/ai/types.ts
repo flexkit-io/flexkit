@@ -1,3 +1,4 @@
+import type { TemplateProvenance } from './template-types';
 import type {
   ActivityItem,
   ActivityItemKind,
@@ -201,6 +202,8 @@ export interface Skill {
   projectId: string;
   source: 'code' | 'studio' | 'plugin';
   spaceId: string | null;
+  /** The template it was made from. Absent from older platforms; treated as null. */
+  template?: TemplateProvenance | null;
   updatedAt: string;
   visibility: AutomationVisibility;
 }
@@ -281,6 +284,8 @@ export interface Automation {
   skillIds?: string[];
   /** Space the automation belongs to when visibility is "space". */
   spaceId?: string | null;
+  /** The template it was made from. Absent from older platforms; treated as null. */
+  template?: TemplateProvenance | null;
   totalRuns: number;
   triggers: AutomationTrigger[];
   updatedAt: string | null;

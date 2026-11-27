@@ -735,6 +735,9 @@ function AutomationProposalView({
   const rows: { label: string; value: string }[] = [
     ...(proposal.replacesMonitor ? [{ label: 'Replaces', value: `The monitor “${proposal.replacesMonitor}”, which stops once this exists` }] : []),
     { label: 'Runs', value: proposal.triggers.join('\n') },
+    ...(proposal.enabled === false
+      ? [{ label: 'Status', value: 'Starts paused. Turn it on from its page once you have tried it.' }]
+      : []),
     { label: 'Visible to', value: describeVisibility(proposal) },
     {
       label: 'Data changes',

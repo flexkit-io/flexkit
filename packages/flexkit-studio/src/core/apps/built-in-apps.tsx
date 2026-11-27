@@ -81,6 +81,12 @@ const aiAutomationDetailPage = lazyElement(() =>
 );
 const aiRunsPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.RunsPage })));
 const aiRunDetailPage = lazyElement(() => import('../../apps/ai/pages').then((m) => ({ default: m.RunDetailPage })));
+const aiTemplatesPage = lazyElement(() =>
+  import('../../apps/ai/template-pages').then((m) => ({ default: m.TemplatesPage }))
+);
+const aiTemplateDetailPage = lazyElement(() =>
+  import('../../apps/ai/template-pages').then((m) => ({ default: m.TemplateDetailPage }))
+);
 const aiSkillsPage = lazyElement(() => import('../../apps/ai/skills-pages').then((m) => ({ default: m.SkillsPage })));
 const aiCreateSkillPage = lazyElement(() =>
   import('../../apps/ai/skills-pages').then((m) => ({ default: m.CreateSkillPage }))
@@ -99,6 +105,8 @@ export const builtInApps: AppOptions[] = [
       { path: 'plugins', component: aiPluginsPage },
       { path: 'plugins/installed', component: aiInstalledPluginsPage },
       { path: 'plugins/:pluginId', component: aiPluginDetailPage },
+      { path: 'templates', component: aiTemplatesPage },
+      { path: 'templates/:templateName', component: aiTemplateDetailPage },
       {
         component: <NavigateCompat replace to="agent" />,
         path: '',
