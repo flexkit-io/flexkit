@@ -113,35 +113,23 @@ describe('template readiness', () => {
 });
 
 describe('groupTemplates', () => {
-  const writer = template({ category: 'catalog', name: 'writer' });
-  const intake = template({
-    category: 'orders-customers',
-    name: 'intake',
-    plugins: [{ id: 'shopify', reason: '', required: true }],
-  });
-  const voice = template({ category: 'marketing', kind: 'skill', name: 'brand-voice' });
-
-  it('puts ready automations first and leaves them out of their category', () => {
-    const groups = groupTemplates([writer, intake, voice], plugins);
+  it('groups every template by category, in alphabetical order', () => {
+    const writer = template({ category: 'catalog', name: 'writer' });
+    const intake = template({ category: 'orders-customers', name: 'intake' });
+    const voice = template({ category: 'marketing', kind: 'skill', name: 'brand-voice' });
+    const guide = template({ category: 'catalog', kind: 'skill', name: 'guide' });
 
     assert.deepEqual(
-      groups.ready.map((item) => item.name),
-      ['writer']
-    );
-    assert.deepEqual(
-      groups.categories.map((group) => [group.category, group.templates.map((item) => item.name)]),
+      groupTemplates([writer, intake, voice, guide]).map((group) => [
+        group.category,
+        group.templates.map((item) => item.name),
+      ]),
       [
+        ['catalog', ['writer', 'guide']],
         ['marketing', ['brand-voice']],
         ['orders-customers', ['intake']],
       ]
     );
-  });
-
-  it('calls nothing ready while the plugin catalog loads', () => {
-    const groups = groupTemplates([writer, intake], undefined);
-
-    assert.deepEqual(groups.ready, []);
-    assert.equal(groups.categories.flatMap((group) => group.templates).length, 2);
   });
 });
 

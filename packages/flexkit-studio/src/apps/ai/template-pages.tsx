@@ -200,7 +200,7 @@ export function TemplatesPage(): JSX.Element {
   const visible = (templates.data?.templates ?? []).filter(
     (template) => (kind === 'all' || template.kind === kind) && matchesTemplateSearch(template, search)
   );
-  const { categories, ready } = groupTemplates(visible, plugins);
+  const categories = groupTemplates(visible);
   const unsupported = templates.error instanceof FetcherError && templates.error.status === 404;
 
   function openTemplate(name: string): void {
@@ -242,15 +242,6 @@ export function TemplatesPage(): JSX.Element {
   } else {
     content = (
       <div className="fk:flex fk:flex-col fk:gap-8">
-        {ready.length > 0 ? (
-          <section>
-            <h3 className="fk:mb-1 fk:flex fk:items-center fk:gap-1.5 fk:text-sm fk:font-medium">
-              <Sparkles className="fk:size-3.5 fk:text-muted-foreground" />
-              Ready to use
-            </h3>
-            <TemplateRows plugins={plugins} templates={ready} onOpen={openTemplate} />
-          </section>
-        ) : null}
         {categories.map((group) => (
           <section key={group.category}>
             <h3 className="fk:mb-1 fk:text-sm fk:font-medium">{categoryLabel(group.category)}</h3>
