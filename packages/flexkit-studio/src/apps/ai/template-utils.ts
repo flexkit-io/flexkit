@@ -46,28 +46,16 @@ export function matchesTemplateSearch(template: TemplateSummary, search: string)
     .includes(query);
 }
 
-export interface TemplateGroups {
-  categories: Array<{ category: string; templates: TemplateSummary[] }>;
-  /** Automation templates whose required plugins are all connected; not repeated in `categories`. */
-  ready: TemplateSummary[];
+export interface TemplateGroup {
+  category: string;
+  templates: TemplateSummary[];
 }
 
-/**
- * Splits the catalog for the gallery: ready-to-use automations first, then the rest by category.
- * Without the plugin catalog (still loading) nothing is called ready.
- */
-export function groupTemplates(templates: TemplateSummary[], plugins: MarketplacePlugin[] | undefined): TemplateGroups {
-  const ready = plugins
-    ? templates.filter((template) => template.kind === 'automation' && isTemplateReady(template, plugins))
-    : [];
-  const readyNames = new Set(ready.map((template) => template.name));
+/** Splits the catalog for the gallery by category, in alphabetical order. */
+export function groupTemplates(templates: TemplateSummary[]): TemplateGroup[] {
   const groups = new Map<string, TemplateSummary[]>();
 
   for (const template of templates) {
-    if (readyNames.has(template.name)) {
-      continue;
-    }
-
     const existing = groups.get(template.category);
 
     if (existing) {
@@ -77,11 +65,9 @@ export function groupTemplates(templates: TemplateSummary[], plugins: Marketplac
     }
   }
 
-  const categories = [...groups.entries()]
+  return [...groups.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([category, items]) => ({ category, templates: items }));
-
-  return { categories, ready };
 }
 
 /** The first message of the chat that sets a template up; the agent loads the template by its name. */
