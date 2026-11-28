@@ -8,6 +8,7 @@ import {
   matchesTemplateSearch,
   missingRequiredPlugins,
   suggestedAutomationTemplates,
+  templateCategoryLabel,
   templateSetupPrompt,
 } from '../../src/apps/ai/template-utils';
 
@@ -178,5 +179,18 @@ describe('templateSetupPrompt', () => {
       templateSetupPrompt({ displayName: 'Low-stock alert', name: 'low-stock-alert' }),
       'Set up the "Low-stock alert" template (low-stock-alert).'
     );
+  });
+});
+
+describe('templateCategoryLabel', () => {
+  it('names the catalog categories', () => {
+    assert.equal(templateCategoryLabel('orders-customers'), 'Orders & Customers');
+    assert.equal(templateCategoryLabel('team-ops'), 'Team Operations');
+    assert.equal(templateCategoryLabel('catalog'), 'Catalog');
+  });
+
+  it('names a category it does not know from its id', () => {
+    assert.equal(templateCategoryLabel('customer-support'), 'Customer Support');
+    assert.equal(templateCategoryLabel('toString'), 'ToString');
   });
 });

@@ -75,6 +75,29 @@ export function groupTemplates(templates: TemplateSummary[]): TemplateGroup[] {
     .map(([category, items]) => ({ category, templates: items }));
 }
 
+/** The names of the catalog's template categories; the ids are its schema's. */
+const TEMPLATE_CATEGORY_LABELS: { [category: string]: string } = {
+  catalog: 'Catalog',
+  'data-quality': 'Data Quality',
+  marketing: 'Marketing',
+  'orders-customers': 'Orders & Customers',
+  reporting: 'Reporting',
+  'team-ops': 'Team Operations',
+};
+
+/** A template category's name; a category added to the catalog later is named from its id. */
+export function templateCategoryLabel(category: string): string {
+  if (Object.prototype.hasOwnProperty.call(TEMPLATE_CATEGORY_LABELS, category)) {
+    return TEMPLATE_CATEGORY_LABELS[category]!;
+  }
+
+  return category
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 /** The first message of the chat that sets a template up; the agent loads the template by its name. */
 export function templateSetupPrompt(template: Pick<TemplateSummary, 'displayName' | 'name'>): string {
   return `Set up the "${template.displayName}" template (${template.name}).`;
