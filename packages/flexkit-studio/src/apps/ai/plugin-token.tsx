@@ -217,7 +217,26 @@ async function connectOAuthPlugin(
   if (levels.length < 2) {
     saved = (await connectPluginPopup(api, plugin.id, scope, reconnect)).connectionId;
   } else {
+    // A connection from an earlier sign-in that still waits for its project gets the
+    // project step again rather than a second sign-in. (Only here: without the access
+    // dialog the popup must open in the caller's click, before any request.)
+    if (connect?.target && !options?.connectionId) {
+      const waiting = await api
+        .getPlugin(plugin.id)
+        .then(({ plugin: detail }) =>
+          detail.connections.find(
+            (entry) => entry.scope === scope && entry.status === 'connected' && entry.needsTarget === true
+          )
+        )
+        .catch(() => undefined);
+
+      if (waiting) {
+        return chooseConnectionTarget(api, plugin, waiting.id, { autoPickSingle: true });
+      }
+    }
+
     const current = levels.some((level) => level.id === options?.accessLevel) ? options?.accessLevel : null;
+    const abort = new AbortController();
     const signedIn = await openRequest<{ connectionId: string | null } | null>(
       (id, settle, fail) => ({
         kind: 'access',
@@ -226,11 +245,17 @@ async function connectOAuthPlugin(
         levels,
         initial: current ?? levels[0]!.id,
         submit: (accessLevel) =>
-          connectPluginPopup(api, plugin.id, scope, { ...reconnect, accessLevel }).then(settle, fail),
-        cancel: () => settle(null),
+          connectPluginPopup(api, plugin.id, scope, { ...reconnect, accessLevel, signal: abort.signal }).then(
+            settle,
+            (error: unknown) => (abort.signal.aborted ? undefined : fail(error))
+          ),
+        cancel: () => {
+          abort.abort();
+          settle(null);
+        },
       }),
       null
-    );
+    ).finally(() => abort.abort());
 
     if (!signedIn) {
       return false;
@@ -245,20 +270,23 @@ async function connectOAuthPlugin(
     return true;
   }
 
-  return chooseConnectionTarget(api, plugin, connectionId, { onlyWhenMissing: true });
+  // The account is connected; if the project step fails, it asks again on the next connect.
+  return chooseConnectionTarget(api, plugin, connectionId, { onlyWhenMissing: true, autoPickSingle: true }).catch(
+    () => false
+  );
 }
 
 /**
  * Asks which target (a Supabase project) the connection works in, with its
  * current one selected. With `onlyWhenMissing` (right after a sign-in), a
- * connection that has a target is left alone and a single target is picked
- * without asking. Resolves whether the connection has a target.
+ * connection that has a target is left alone; with `autoPickSingle`, a single
+ * target is picked without asking. Resolves whether the connection has a target.
  */
 export async function chooseConnectionTarget(
   api: ApiClient,
   plugin: ConnectablePlugin,
   connectionId: string,
-  options?: { onlyWhenMissing?: boolean }
+  options?: { onlyWhenMissing?: boolean; autoPickSingle?: boolean }
 ): Promise<boolean> {
   const noun = plugin.connect?.type === 'oauth' ? plugin.connect.target?.noun : undefined;
 
@@ -278,10 +306,16 @@ export async function chooseConnectionTarget(
   const targets = await list().catch(() => null);
   const only = targets?.length === 1 ? targets[0] : undefined;
 
-  if (only && options?.onlyWhenMissing) {
-    await api.setPluginConnectionTarget(connectionId, only.id);
+  if (only && options?.autoPickSingle && !current) {
+    // When saving fails, the dialog below offers it again with the error.
+    const saved = await api.setPluginConnectionTarget(connectionId, only.id).then(
+      () => true,
+      () => false
+    );
 
-    return true;
+    if (saved) {
+      return true;
+    }
   }
 
   return openRequest<boolean>((id, settle) => ({
@@ -289,7 +323,8 @@ export async function chooseConnectionTarget(
     id,
     plugin,
     noun,
-    current,
+    // Only a target the account still lists can be kept.
+    current: targets?.some((target) => target.id === current) ? current : null,
     targets,
     list,
     submit: async (targetId) => {

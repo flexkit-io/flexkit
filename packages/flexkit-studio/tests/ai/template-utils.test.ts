@@ -84,6 +84,14 @@ describe('template readiness', () => {
     assert.deepEqual(missingRequiredPlugins(lowStock, plugins), []);
   });
 
+  it('is not ready while a required plugin's connection still waits for its project', () => {
+    const report = template({ name: 'db-report', plugins: [{ id: 'supabase', reason: '', required: true }] });
+    const waiting = [plugin('supabase', [{ ...connected, needsTarget: true }])];
+
+    assert.equal(isTemplateReady(report, waiting), false);
+    assert.equal(missingRequiredPlugins(report, waiting).length, 1);
+  });
+
   it('lists the required plugins still to connect, in the template order', () => {
     const intake = template({
       name: 'order-webhook-intake',

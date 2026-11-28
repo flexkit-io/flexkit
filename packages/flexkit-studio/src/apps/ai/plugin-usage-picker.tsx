@@ -32,6 +32,7 @@ import { PluginConnectControl } from './plugin-pages';
 import type { Marketplace, MarketplacePlugin, PluginConnection, PluginScope, PluginTools } from './plugin-types';
 import type { AutomationToolConfigInput } from './types';
 import { PluginLogo } from './plugin-logo';
+import { isUsableConnection } from './plugin-connections';
 
 export interface PluginAccountChoice {
   connectionMode: PluginScope;
@@ -44,7 +45,7 @@ function scopeName(scope: PluginScope): string {
 }
 
 function connectedAccounts(plugin: MarketplacePlugin, scope: PluginScope): PluginConnection[] {
-  return plugin.connections.filter((connection) => connection.scope === scope && connection.status === 'connected');
+  return plugin.connections.filter((connection) => connection.scope === scope && isUsableConnection(connection));
 }
 
 /** The connection a choice points at: the pinned account, or the scope's primary when unpinned. */
@@ -464,7 +465,7 @@ function AddPluginTools({
                 >
                   <PluginLogo className="fk:size-5 fk:rounded" src={plugin.logoUrl} />
                   <span className="fk:truncate">{plugin.name}</span>
-                  {plugin.connections.some((connection) => connection.status === 'connected') ? null : (
+                  {plugin.connections.some(isUsableConnection) ? null : (
                     <span className="fk:ml-auto fk:text-xs fk:text-muted-foreground">Not connected</span>
                   )}
                 </CommandItem>

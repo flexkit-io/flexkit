@@ -1,4 +1,5 @@
 import type { MarketplacePlugin, PluginConnection, PluginScope } from '../plugin-types';
+import { isUsableConnection } from '../plugin-connections';
 
 /** What the chat's connect card offers, from the plugin's current connections and the viewer's rights. */
 export type PluginConnectState =
@@ -31,7 +32,7 @@ export function describeConnectFailure(pluginName: string, detail: string): stri
 function chatConnection(plugin: MarketplacePlugin): PluginConnection | null {
   // A connection still waiting for its project (Supabase) has no tools yet.
   const primaries = plugin.connections.filter(
-    (connection) => connection.isPrimary && connection.status === 'connected' && connection.needsTarget !== true
+    (connection) => connection.isPrimary && isUsableConnection(connection)
   );
 
   return (

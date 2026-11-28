@@ -62,6 +62,7 @@ import { PluginLogo } from './plugin-logo';
 import { PluginSetupNotice } from './plugin-setup-notice';
 import { aiSectionPath } from './section-path';
 import { SlackAgentSection } from './slack-agent-settings';
+import { isUsableConnection } from './plugin-connections';
 
 export { aiSectionPath };
 
@@ -134,7 +135,7 @@ function scopeConnections(plugin: MarketplacePlugin, scope: PluginScope): Plugin
 
 /** Mirrors chat: the personal primary account wins over the project primary. */
 function primaryToolConnection(plugin: MarketplacePlugin): PluginConnection | null {
-  const primaries = plugin.connections.filter((connection) => connection.isPrimary && connection.status === 'connected');
+  const primaries = plugin.connections.filter((connection) => connection.isPrimary && isUsableConnection(connection));
 
   return primaries.find((connection) => connection.scope === 'personal') ?? primaries.find((connection) => connection.scope === 'project') ?? null;
 }

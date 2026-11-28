@@ -61,7 +61,7 @@ export async function connectPluginPopup(
   api: ApiClient,
   pluginId: string,
   scope: PluginScope,
-  options?: { connectionId?: string; accessLevel?: string }
+  options?: { connectionId?: string; accessLevel?: string; signal?: AbortSignal }
 ): Promise<{ connectionId: string | null }> {
   const popup = window.open('about:blank', `flexkit-plugin-${crypto.randomUUID()}`, 'popup,width=560,height=720');
 
@@ -79,6 +79,10 @@ export async function connectPluginPopup(
       ...(options?.connectionId ? { connectionId: options.connectionId } : {}),
       ...(options?.accessLevel ? { accessLevel: options.accessLevel } : {}),
     });
+
+    if (options?.signal?.aborted) {
+      throw new Error('Connection was cancelled.');
+    }
   } catch (error) {
     popup.close();
     throw error;
@@ -185,6 +189,8 @@ export async function connectPluginPopup(
         void poll();
       }
     };
+    // Cancelling closes the window, so a sign-in nobody waits for cannot finish later.
+    options?.signal?.addEventListener('abort', () => finish(new Error('Connection was cancelled.')), { once: true });
     const interval = window.setInterval(() => {
       void poll();
     }, 2000);

@@ -1,4 +1,4 @@
-import type { MarketplacePlugin } from './plugin-types';
+import type { MarketplacePlugin, PluginConnection } from './plugin-types';
 import type { TemplateSummary } from './template-types';
 
 /**
@@ -18,7 +18,12 @@ export function missingRequiredPlugins(template: TemplateSummary, plugins: Marke
   return template.plugins
     .filter((requirement) => requirement.required)
     .map((requirement) => byId.get(requirement.id))
-    .filter((plugin): plugin is MarketplacePlugin => plugin !== undefined && plugin.connections.length === 0);
+    .filter((plugin): plugin is MarketplacePlugin => plugin !== undefined && !plugin.connections.some(usableOrBroken));
+}
+
+/** Templates count every connection (one needing a reconnect too) except one still waiting for its project. */
+function usableOrBroken(connection: PluginConnection): boolean {
+  return connection.needsTarget !== true;
 }
 
 /**
@@ -30,7 +35,7 @@ export function isTemplateReady(template: TemplateSummary, plugins: MarketplaceP
 
   return template.plugins
     .filter((requirement) => requirement.required)
-    .every((requirement) => (byId.get(requirement.id)?.connections.length ?? 0) > 0);
+    .every((requirement) => byId.get(requirement.id)?.connections.some(usableOrBroken) ?? false);
 }
 
 export function matchesTemplateSearch(template: TemplateSummary, search: string): boolean {
