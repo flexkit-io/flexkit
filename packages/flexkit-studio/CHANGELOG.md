@@ -1,5 +1,12 @@
 # @flexkit/studio
 
+## 0.3.2
+
+### Patch Changes
+
+- 17adf58: Plugins can now offer a choice of access (such as Read-only or Full access) before you sign in, and plugins whose connections each work in one project, such as Supabase, ask which project to use after you sign in. Connected accounts show their access level, and you can change the project from the account's menu.
+- c26dfb3: Removed the "Ready to use" section from the template gallery.
+
 ## 0.3.1
 
 ### Patch Changes
