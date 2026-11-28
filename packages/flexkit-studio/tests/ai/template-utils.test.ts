@@ -84,7 +84,7 @@ describe('template readiness', () => {
     assert.deepEqual(missingRequiredPlugins(lowStock, plugins), []);
   });
 
-  it('is not ready while a required plugin's connection still waits for its project', () => {
+  it('is not ready while a required plugin connection still waits for its project', () => {
     const report = template({ name: 'db-report', plugins: [{ id: 'supabase', reason: '', required: true }] });
     const waiting = [plugin('supabase', [{ ...connected, needsTarget: true }])];
 
