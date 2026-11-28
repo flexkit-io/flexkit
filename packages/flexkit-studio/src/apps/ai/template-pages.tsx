@@ -29,7 +29,6 @@ import {
   aiSectionPath,
   CatalogHeader,
   CatalogRowSkeleton,
-  categoryLabel,
   isConnected,
   PluginConnectControl,
   pluginGridClassName,
@@ -45,6 +44,7 @@ import {
   isTemplateReady,
   matchesTemplateSearch,
   missingRequiredPlugins,
+  templateCategoryLabel,
   templateSetupPrompt,
   TEMPLATES_SWR_OPTIONS,
 } from './template-utils';
@@ -244,7 +244,7 @@ export function TemplatesPage(): JSX.Element {
       <div className="fk:flex fk:flex-col fk:gap-8">
         {categories.map((group) => (
           <section key={group.category}>
-            <h3 className="fk:mb-1 fk:text-sm fk:font-medium">{categoryLabel(group.category)}</h3>
+            <h3 className="fk:mb-1 fk:text-sm fk:font-medium">{templateCategoryLabel(group.category)}</h3>
             <TemplateRows plugins={plugins} templates={group.templates} onOpen={openTemplate} />
           </section>
         ))}
@@ -493,7 +493,7 @@ export function TemplateDetailPage(): JSX.Element {
               <div className="fk:flex fk:min-w-0 fk:flex-col fk:gap-0.5">
                 <h1 className="fk:text-xl fk:font-semibold">{template.displayName}</h1>
                 <span className="fk:text-sm fk:text-muted-foreground">
-                  {kindLabel(template.kind)} template · {categoryLabel(template.category)}
+                  {kindLabel(template.kind)} template · {templateCategoryLabel(template.category)}
                 </span>
               </div>
               <div className="fk:ml-auto fk:flex fk:shrink-0 fk:items-center fk:gap-2">
