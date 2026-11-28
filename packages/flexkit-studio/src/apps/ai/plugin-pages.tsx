@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import { createApiClient, fetcher } from './api';
 import { PluginAccountMismatchError } from './plugin-oauth';
-import { connectPlugin } from './plugin-token';
+import { chooseConnectionTarget, connectPlugin } from './plugin-token';
 import type {
   Marketplace,
   MarketplacePlugin,
@@ -621,32 +621,43 @@ function toolCountLabel(count: number): string {
 }
 
 interface ConnectionActions {
+  /** Picks the target (a Supabase project) of plugins whose connections each work in one. */
+  onChooseTarget?: (_connection: PluginConnection) => void;
   onDisconnect: (_connection: PluginConnection) => void;
   onMakePrimary: (_connection: PluginConnection) => void;
   onReconnect: (_connection: PluginConnection) => void;
   onRename: (_connection: PluginConnection, _label: string | null) => Promise<void>;
 }
 
-function connectionSecondaryLine(connection: PluginConnection): string {
-  if (connection.accountName && connection.accountName !== connection.displayName) {
-    return connection.accountName;
-  }
+function connectionSecondaryLine(connection: PluginConnection, accessLabel: string | null): string {
+  const line =
+    connection.accountName && connection.accountName !== connection.displayName
+      ? connection.accountName
+      : connection.scope === 'project'
+        ? 'Shared with this project'
+        : 'Only you can use this account';
 
-  return connection.scope === 'project' ? 'Shared with this project' : 'Only you can use this account';
+  return accessLabel ? `${accessLabel} · ${line}` : line;
 }
 
 function ConnectionRow({
+  accessLabel,
   actionable,
   actions,
   busy,
   connection,
   pluginEnabled,
+  targetNoun,
 }: {
+  /** The name of the connection's access level, for plugins that offer several. */
+  accessLabel: string | null;
   actionable: boolean;
   actions: ConnectionActions;
   busy: boolean;
   connection: PluginConnection;
   pluginEnabled: boolean;
+  /** What each connection of the plugin works in ("project"), when it picks one. */
+  targetNoun: string | null;
 }): JSX.Element {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -710,8 +721,25 @@ function ConnectionRow({
             <span className="fk:truncate fk:text-sm fk:font-medium">{connection.displayName}</span>
             {connection.isPrimary ? <Badge variant="secondary">Primary</Badge> : null}
             {needsAuth ? <Badge variant="destructive">Needs reconnect</Badge> : null}
+            {!needsAuth && connection.needsTarget && targetNoun ? (
+              actionable && actions.onChooseTarget ? (
+                <Button
+                  className="fk:h-6 fk:px-2"
+                  disabled={busy || !pluginEnabled}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => actions.onChooseTarget?.(connection)}
+                >
+                  Choose a {targetNoun}
+                </Button>
+              ) : (
+                <Badge variant="destructive">No {targetNoun} chosen</Badge>
+              )
+            ) : null}
           </span>
-          <span className="fk:truncate fk:text-sm fk:text-muted-foreground">{connectionSecondaryLine(connection)}</span>
+          <span className="fk:truncate fk:text-sm fk:text-muted-foreground">
+            {connectionSecondaryLine(connection, accessLabel)}
+          </span>
         </span>
       )}
       {actionable && !editing ? (
@@ -734,6 +762,11 @@ function ConnectionRow({
               >
                 Rename
               </DropdownMenuItem>
+              {targetNoun && actions.onChooseTarget && !needsAuth ? (
+                <DropdownMenuItem disabled={!pluginEnabled} onSelect={() => actions.onChooseTarget?.(connection)}>
+                  Change {targetNoun}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem disabled={!pluginEnabled} onSelect={() => actions.onReconnect(connection)}>
                 Reconnect
               </DropdownMenuItem>
@@ -763,6 +796,9 @@ function ConnectedAccounts({
   plugin: MarketplacePlugin;
 }): JSX.Element {
   const grouped = plugin.scopes.length > 1;
+  const oauth = plugin.connect?.type === 'oauth' ? plugin.connect : null;
+  const accessLabel = (connection: PluginConnection) =>
+    oauth?.accessLevels?.find((level) => level.id === connection.accessLevel)?.label ?? null;
 
   return (
     <section className="fk:flex fk:flex-col fk:gap-3">
@@ -787,12 +823,14 @@ function ConnectedAccounts({
             <ul className="fk:flex fk:flex-col fk:divide-y">
               {connections.map((connection) => (
                 <ConnectionRow
+                  accessLabel={accessLabel(connection)}
                   actionable={actionable}
                   actions={actions}
                   busy={busy}
                   connection={connection}
                   key={connection.id}
                   pluginEnabled={plugin.enabled}
+                  targetNoun={oauth?.target?.noun ?? null}
                 />
               ))}
               {permitted ? (
@@ -895,6 +933,7 @@ export function PluginDetailPage(): JSX.Element {
 
   const toolConnection = primaryToolConnection(plugin);
   const connectionActions: ConnectionActions = {
+    onChooseTarget: (connection) => void perform(() => chooseConnectionTarget(api, plugin, connection.id)),
     onDisconnect: (connection) => void perform(() => api.disconnectPlugin(connection.id)),
     onMakePrimary: (connection) => void perform(() => api.updatePluginConnection(connection.id, { primary: true })),
     onReconnect: (connection) =>

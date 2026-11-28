@@ -58,7 +58,7 @@ export async function connectPluginPopup(
   api: ApiClient,
   pluginId: string,
   scope: PluginScope,
-  options?: { connectionId?: string }
+  options?: { connectionId?: string; accessLevel?: string }
 ): Promise<void> {
   const popup = window.open('about:blank', `flexkit-plugin-${crypto.randomUUID()}`, 'popup,width=560,height=720');
 
@@ -74,6 +74,7 @@ export async function connectPluginPopup(
       scope,
       studioOrigin: window.location.origin,
       ...(options?.connectionId ? { connectionId: options.connectionId } : {}),
+      ...(options?.accessLevel ? { accessLevel: options.accessLevel } : {}),
     });
   } catch (error) {
     popup.close();

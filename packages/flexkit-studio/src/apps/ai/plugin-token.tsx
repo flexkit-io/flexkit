@@ -14,13 +14,21 @@ import {
 import type { ApiClient } from './api';
 import { connectPluginPopup } from './plugin-oauth';
 import {
+  connectionAwaitingTarget,
   credentialFormComplete,
   credentialFormError,
   credentialFormFields,
   matchesTokenPattern,
   type ConnectablePlugin,
 } from './plugin-token-format';
-import type { PluginApiTokenConnect, PluginCredentialsConnect, PluginScope } from './plugin-types';
+import type {
+  PluginAccessLevel,
+  PluginApiTokenConnect,
+  PluginConnectionTarget,
+  PluginCredentialsConnect,
+  PluginOAuthConnect,
+  PluginScope,
+} from './plugin-types';
 
 interface TokenRequest {
   id: number;
@@ -38,7 +46,33 @@ interface CredentialsRequest {
   settle: (_connected: boolean) => void;
 }
 
-type FormRequest = ({ kind: 'token' } & TokenRequest) | ({ kind: 'credentials' } & CredentialsRequest);
+interface AccessRequest {
+  id: number;
+  plugin: ConnectablePlugin;
+  levels: PluginAccessLevel[];
+  /** Opens the sign-in for the chosen level; call it straight from the click so the popup is allowed. */
+  submit: (_accessLevel: string) => Promise<void>;
+  settle: (_connected: boolean) => void;
+}
+
+interface TargetRequest {
+  id: number;
+  plugin: ConnectablePlugin;
+  /** What a target is called, e.g. "project". */
+  noun: string;
+  connectionId: string;
+  /** Listed before the dialog opens; null when listing failed and the dialog should try again. */
+  targets: PluginConnectionTarget[] | null;
+  list: () => Promise<PluginConnectionTarget[]>;
+  submit: (_targetId: string) => Promise<void>;
+  settle: (_connected: boolean) => void;
+}
+
+type FormRequest =
+  | ({ kind: 'token' } & TokenRequest)
+  | ({ kind: 'credentials' } & CredentialsRequest)
+  | ({ kind: 'access' } & AccessRequest)
+  | ({ kind: 'target' } & TargetRequest);
 
 /** The one open connect form, outside React so any connect button can open it. */
 let request: FormRequest | null = null;
@@ -75,7 +109,7 @@ export function connectPlugin(
   const { connect } = plugin;
 
   if (connect?.type !== 'api-token' && connect?.type !== 'credentials') {
-    return connectPluginPopup(api, plugin.id, scope, options).then(() => true);
+    return connectOAuthPlugin(api, plugin, connect, scope, options);
   }
 
   // Opening a second dialog closes the first, as if cancelled.
@@ -130,6 +164,130 @@ export function connectPlugin(
   });
 }
 
+/** Opens one dialog request and resolves with whether it connected; a newer request cancels it. */
+function openRequest(make: (_id: number, _settle: (_connected: boolean) => void) => FormRequest): Promise<boolean> {
+  cancelLatest?.();
+
+  const id = ++lastRequestId;
+
+  return new Promise<boolean>((resolve) => {
+    const settle = (connected: boolean): void => {
+      if (request?.id === id) {
+        setRequest(null);
+      }
+
+      if (lastRequestId === id) {
+        cancelLatest = null;
+      }
+
+      resolve(connected);
+    };
+    const next = make(id, settle);
+
+    cancelLatest = () => settle(false);
+    setTimeout(() => {
+      if (lastRequestId === id) {
+        setRequest(next);
+      }
+    });
+  });
+}
+
+/**
+ * A sign-in plugin: the access-level choice first when the plugin offers
+ * several, then the sign-in popup, then the target (a Supabase project) when
+ * each connection works in one. Without levels the popup opens straight from
+ * the caller's click.
+ */
+async function connectOAuthPlugin(
+  api: ApiClient,
+  plugin: ConnectablePlugin,
+  connect: PluginOAuthConnect | undefined,
+  scope: PluginScope,
+  options?: { connectionId?: string }
+): Promise<boolean> {
+  const levels = connect?.accessLevels ?? [];
+
+  if (levels.length < 2) {
+    await connectPluginPopup(api, plugin.id, scope, options);
+  } else {
+    const signedIn = await openRequest((id, settle) => ({
+      kind: 'access',
+      id,
+      plugin,
+      levels,
+      submit: (accessLevel) => connectPluginPopup(api, plugin.id, scope, { ...options, accessLevel }),
+      settle,
+    }));
+
+    if (!signedIn) {
+      return false;
+    }
+  }
+
+  if (connect?.target) {
+    // Connected either way; a connection left without a target asks for one on the plugin page.
+    await chooseConnectionTarget(api, plugin, options?.connectionId).catch(() => undefined);
+  }
+
+  return true;
+}
+
+/**
+ * Asks which target (a Supabase project) the connection works in: the one
+ * just connected when `connectionId` is omitted. A single target is picked
+ * without asking; a connection that already has one is left alone unless
+ * `connectionId` names it.
+ */
+export async function chooseConnectionTarget(
+  api: ApiClient,
+  plugin: ConnectablePlugin,
+  connectionId?: string
+): Promise<boolean> {
+  const noun = plugin.connect?.type === 'oauth' ? plugin.connect.target?.noun : undefined;
+
+  if (!noun) {
+    return true;
+  }
+
+  let id = connectionId;
+
+  if (!id) {
+    const { plugin: detail } = await api.getPlugin(plugin.id);
+
+    id = connectionAwaitingTarget(detail.connections)?.id;
+
+    if (!id) {
+      return true;
+    }
+  }
+
+  const connection = id;
+  const list = async () => (await api.listPluginConnectionTargets(connection)).targets;
+  const targets = await list().catch(() => null);
+  const only = targets?.length === 1 ? targets[0] : undefined;
+
+  if (only && !connectionId) {
+    await api.setPluginConnectionTarget(connection, only.id);
+
+    return true;
+  }
+
+  return openRequest((requestId, settle) => ({
+    kind: 'target',
+    id: requestId,
+    plugin,
+    noun,
+    connectionId: connection,
+    targets,
+    list,
+    submit: async (targetId) => {
+      await api.setPluginConnectionTarget(connection, targetId);
+    },
+    settle,
+  }));
+}
+
 function httpsHref(value: string | null): string | null {
   if (!value) {
     return null;
@@ -157,11 +315,16 @@ export function PluginTokenDialogHost(): JSX.Element | null {
   }
 
   // A new key per request resets the fields, so a secret never outlives its dialog.
-  return current.kind === 'token' ? (
-    <PluginTokenDialog key={current.id} request={current} />
-  ) : (
-    <PluginCredentialsDialog key={current.id} request={current} />
-  );
+  switch (current.kind) {
+    case 'token':
+      return <PluginTokenDialog key={current.id} request={current} />;
+    case 'credentials':
+      return <PluginCredentialsDialog key={current.id} request={current} />;
+    case 'access':
+      return <PluginAccessDialog key={current.id} request={current} />;
+    case 'target':
+      return <PluginTargetDialog key={current.id} request={current} />;
+  }
 }
 
 function FieldError({ id, message }: { id: string; message: string | null }): JSX.Element | null {
@@ -414,6 +577,209 @@ function PluginTokenDialog({ request: current }: { request: TokenRequest }): JSX
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ChoiceList<T extends { id: string }>({
+  choices,
+  disabled,
+  label,
+  onSelect,
+  render,
+  selected,
+}: {
+  choices: T[];
+  disabled: boolean;
+  label: string;
+  onSelect: (_id: string) => void;
+  render: (_choice: T) => { title: string; detail: string | null };
+  selected: string | null;
+}): JSX.Element {
+  return (
+    <div aria-label={label} className="fk:max-h-72 fk:space-y-1.5 fk:overflow-y-auto" role="radiogroup">
+      {choices.map((choice) => {
+        const { title, detail } = render(choice);
+
+        return (
+          <button
+            aria-checked={selected === choice.id}
+            className={`fk:flex fk:w-full fk:flex-col fk:rounded-lg fk:border fk:px-3 fk:py-2 fk:text-left fk:corner-squircle ${
+              selected === choice.id ? 'fk:border-primary fk:bg-primary/5' : 'fk:border-border fk:hover:bg-muted/60'
+            }`}
+            disabled={disabled}
+            key={choice.id}
+            role="radio"
+            type="button"
+            onClick={() => onSelect(choice.id)}
+          >
+            <span className="fk:text-sm fk:font-medium">{title}</span>
+            {detail ? <span className="fk:text-xs fk:text-muted-foreground">{detail}</span> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PluginAccessDialog({ request: current }: { request: AccessRequest }): JSX.Element {
+  const { name } = current.plugin;
+  const errorId = useId();
+  const [level, setLevel] = useState(current.levels[0]?.id ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [waiting, setWaiting] = useState(false);
+
+  // Runs in the click itself: the sign-in popup is only allowed there.
+  function signIn(): void {
+    if (waiting || !level) {
+      return;
+    }
+
+    setWaiting(true);
+    setError(null);
+    current
+      .submit(level)
+      .then(() => current.settle(true))
+      .catch((failure: unknown) => {
+        setError(failure instanceof Error ? failure.message : `${name} could not be connected.`);
+        setWaiting(false);
+      });
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !waiting) {
+          current.settle(false);
+        }
+      }}
+    >
+      <DialogContent>
+        <div className="fk:flex fk:flex-col fk:gap-4">
+          <DialogHeader>
+            <DialogTitle>Connect {name}</DialogTitle>
+            <DialogDescription>
+              Choose what the agent may do in {name}. You sign in to {name} next; to change this later, reconnect.
+            </DialogDescription>
+          </DialogHeader>
+          <ChoiceList
+            choices={current.levels}
+            disabled={waiting}
+            label="Access"
+            render={(choice) => ({ title: choice.label, detail: choice.description })}
+            selected={level}
+            onSelect={(id) => {
+              setLevel(id);
+              setError(null);
+            }}
+          />
+          <FieldError id={errorId} message={error} />
+          <DialogFooter>
+            <Button disabled={waiting} size="sm" type="button" variant="outline" onClick={() => current.settle(false)}>
+              Cancel
+            </Button>
+            <Button disabled={waiting || !level} size="sm" type="button" onClick={signIn}>
+              {waiting ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : null}
+              {waiting ? `Waiting for ${name}…` : `Sign in to ${name}`}
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PluginTargetDialog({ request: current }: { request: TargetRequest }): JSX.Element {
+  const { name } = current.plugin;
+  const { noun } = current;
+  const errorId = useId();
+  const [targets, setTargets] = useState<PluginConnectionTarget[] | null>(current.targets);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    current.targets ? null : `${name} did not list the ${noun}s. Try again.`
+  );
+  const [busy, setBusy] = useState(false);
+
+  async function reload(): Promise<void> {
+    setBusy(true);
+    setError(null);
+
+    try {
+      setTargets(await current.list());
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : `${name} did not list the ${noun}s. Try again.`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function save(): Promise<void> {
+    if (busy || !selected) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    try {
+      await current.submit(selected);
+      current.settle(true);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : `The ${noun} could not be saved.`);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) {
+          // Connected all the same; the plugin page asks for the target again.
+          current.settle(true);
+        }
+      }}
+    >
+      <DialogContent>
+        <div className="fk:flex fk:flex-col fk:gap-4">
+          <DialogHeader>
+            <DialogTitle>Choose a {noun}</DialogTitle>
+            <DialogDescription>
+              The agent works only in the {noun} you choose. To use another one, connect {name} again and pick it.
+            </DialogDescription>
+          </DialogHeader>
+          {targets && targets.length > 0 ? (
+            <ChoiceList
+              choices={targets}
+              disabled={busy}
+              label={`${name} ${noun}s`}
+              render={(choice) => ({ title: choice.name, detail: choice.detail })}
+              selected={selected}
+              onSelect={(id) => {
+                setSelected(id);
+                setError(null);
+              }}
+            />
+          ) : targets ? (
+            <p className="fk:text-sm fk:text-muted-foreground">
+              This {name} account has no {noun}s. Create one in {name}, then try again.
+            </p>
+          ) : null}
+          <FieldError id={errorId} message={error} />
+          <DialogFooter>
+            {!targets || targets.length === 0 ? (
+              <Button disabled={busy} size="sm" type="button" variant="outline" onClick={() => void reload()}>
+                Try again
+              </Button>
+            ) : null}
+            <Button disabled={busy || !selected} size="sm" type="button" onClick={() => void save()}>
+              {busy ? <LoaderCircle className="fk:size-4 fk:animate-spin" /> : null}
+              Use this {noun}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

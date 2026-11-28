@@ -14,9 +14,38 @@ export interface PluginConnection {
   isPrimary: boolean;
   externalAccountId: string;
   status: 'connected' | 'needs_auth';
+  /** The access level chosen when connecting, for plugins that offer several. Absent from older platforms. */
+  accessLevel?: string | null;
+  /** What the connection works in (a Supabase project), for plugins that pick one. Absent from older platforms. */
+  target?: { id: string; name: string } | null;
+  /** The connection cannot be used until the user picks its target. Absent from older platforms. */
+  needsTarget?: boolean;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** One level of access the user chooses between before signing in, e.g. Read-only or Full access. */
+export interface PluginAccessLevel {
+  id: string;
+  label: string;
+  description: string;
+}
+
+/** A plugin that connects with a sign-in. */
+export interface PluginOAuthConnect {
+  type: 'oauth';
+  /** Choices shown before the sign-in; the first is the default. */
+  accessLevels?: PluginAccessLevel[];
+  /** Each connection works in one target (a "project") the user picks after signing in. */
+  target?: { noun: string };
+}
+
+/** Something a connection can work in, such as a Supabase project. */
+export interface PluginConnectionTarget {
+  id: string;
+  name: string;
+  detail: string | null;
 }
 
 /** A plugin that connects with a token the user pastes into a form, instead of a sign-in. */
@@ -91,7 +120,7 @@ export interface MarketplacePlugin {
   setupNotice?: PluginSetupNotice | null;
   capabilities: { agentTools: boolean; automationDelivery: boolean };
   /** Absent from older platforms, which only have sign-in plugins. */
-  connect?: { type: 'oauth' } | PluginApiTokenConnect | PluginCredentialsConnect;
+  connect?: PluginOAuthConnect | PluginApiTokenConnect | PluginCredentialsConnect;
   sourceUrl: string;
   logoUrl: string;
   enabled: boolean;
