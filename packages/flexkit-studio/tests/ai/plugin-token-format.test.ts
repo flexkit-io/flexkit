@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-  connectionAwaitingTarget,
-  findPastedPluginToken,
-  matchesTokenPattern,
-} from '../../src/apps/ai/plugin-token-format';
-import type { PluginConnection } from '../../src/apps/ai/plugin-types';
+import { findPastedPluginToken, matchesTokenPattern } from '../../src/apps/ai/plugin-token-format';
 
 const tinybird = {
   connect: {
@@ -59,26 +54,5 @@ describe('pasted plugin tokens', () => {
   it('never blocks on a pattern that is not a valid regular expression', () => {
     assert.equal(matchesTokenPattern('anything', '(['), true);
     assert.equal(matchesTokenPattern('anything', null), true);
-  });
-});
-
-describe('connection awaiting a target', () => {
-  const connection = (id: string, updatedAt: string, needsTarget?: boolean) =>
-    ({ id, updatedAt, needsTarget }) as unknown as PluginConnection;
-
-  it('picks the newest connection still without a target', () => {
-    assert.equal(
-      connectionAwaitingTarget([
-        connection('old', '2026-11-28T10:00:00Z', true),
-        connection('picked', '2026-11-28T12:00:00Z', false),
-        connection('new', '2026-11-28T11:00:00Z', true),
-      ])?.id,
-      'new'
-    );
-  });
-
-  it('finds nothing on older platforms or when every connection has a target', () => {
-    assert.equal(connectionAwaitingTarget([connection('a', '2026-11-28T10:00:00Z')]), null);
-    assert.equal(connectionAwaitingTarget([]), null);
   });
 });

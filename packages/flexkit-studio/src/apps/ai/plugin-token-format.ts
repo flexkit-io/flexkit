@@ -1,9 +1,4 @@
-import type {
-  MarketplacePlugin,
-  PluginConnection,
-  PluginCredentialField,
-  PluginCredentialsConnect,
-} from './plugin-types';
+import type { MarketplacePlugin, PluginCredentialField, PluginCredentialsConnect } from './plugin-types';
 
 export type ConnectablePlugin = Pick<MarketplacePlugin, 'connect' | 'id' | 'name'>;
 
@@ -132,14 +127,4 @@ export function findPastedPluginToken(
   }
 
   return found ? { ...found, tokens: [...tokens] } : null;
-}
-
-/** The connection a sign-in just created for a plugin that picks a target: the newest one still without one. */
-export function connectionAwaitingTarget(connections: readonly PluginConnection[]): PluginConnection | null {
-  return connections
-    .filter((connection) => connection.needsTarget === true)
-    .reduce<PluginConnection | null>(
-      (newest, connection) => (!newest || connection.updatedAt > newest.updatedAt ? connection : newest),
-      null
-    );
 }

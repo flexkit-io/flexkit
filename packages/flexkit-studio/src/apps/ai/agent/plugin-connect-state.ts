@@ -29,8 +29,9 @@ export function describeConnectFailure(pluginName: string, detail: string): stri
 
 /** The account chat uses: the personal primary wins over the project primary. */
 function chatConnection(plugin: MarketplacePlugin): PluginConnection | null {
+  // A connection still waiting for its project (Supabase) has no tools yet.
   const primaries = plugin.connections.filter(
-    (connection) => connection.isPrimary && connection.status === 'connected'
+    (connection) => connection.isPrimary && connection.status === 'connected' && connection.needsTarget !== true
   );
 
   return (

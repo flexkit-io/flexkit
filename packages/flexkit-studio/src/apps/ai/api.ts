@@ -130,7 +130,13 @@ export interface ApiClient {
   ) => Promise<{ connection: PluginConnection }>;
   pluginOAuthStatus: (
     _id: string
-  ) => Promise<{ id: string; status: 'pending' | 'exchanging' | 'complete' | 'failed'; expires_at: string }>;
+  ) => Promise<{
+    id: string;
+    status: 'pending' | 'exchanging' | 'complete' | 'failed';
+    expires_at: string;
+    /** The connection a completed sign-in saved. Absent from older platforms. */
+    connection_id?: string | null;
+  }>;
   disconnectPlugin: (_id: string) => Promise<{ success: boolean }>;
   installPlugin: (_id: string) => Promise<unknown>;
   setPluginPolicy: (_id: string, _input: { enabled: boolean; allowPersonal: boolean }) => Promise<{ success: boolean }>;

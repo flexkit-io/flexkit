@@ -937,7 +937,12 @@ export function PluginDetailPage(): JSX.Element {
     onDisconnect: (connection) => void perform(() => api.disconnectPlugin(connection.id)),
     onMakePrimary: (connection) => void perform(() => api.updatePluginConnection(connection.id, { primary: true })),
     onReconnect: (connection) =>
-      void perform(() => connectPlugin(api, plugin, connection.scope, { connectionId: connection.id })),
+      void perform(() =>
+        connectPlugin(api, plugin, connection.scope, {
+          connectionId: connection.id,
+          accessLevel: connection.accessLevel ?? null,
+        })
+      ),
     onRename: (connection, label) => perform(() => api.updatePluginConnection(connection.id, { label })),
   };
 

@@ -64,6 +64,12 @@ describe('getPluginConnectState', () => {
     });
   });
 
+  it('does not count a connection still waiting for its project as connected', () => {
+    const waiting = connection({ id: 'p1', scope: 'project', needsTarget: true });
+
+    assert.equal(getPluginConnectState(plugin({ connections: [waiting] }), true).kind, 'connect');
+  });
+
   it('reconnects the account the agent asked about, if the viewer may', () => {
     const broken = connection({ id: 'p1', scope: 'project', status: 'needs_auth' });
 
