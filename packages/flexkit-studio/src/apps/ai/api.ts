@@ -1,6 +1,8 @@
 import { getKnowledgeFileProblem } from '../knowledge/knowledge';
 import type {
   PluginConnection,
+  PluginConnectionTarget,
+  PluginDetail,
   PluginScope,
   PluginTools,
   SlackAgentChannel,
@@ -97,7 +99,15 @@ export interface ApiClient {
     scope: PluginScope;
     studioOrigin: string;
     connectionId?: string;
+    /** For plugins that offer access levels; the server defaults to the first. */
+    accessLevel?: string;
   }) => Promise<{ transactionId: string; authorizeUrl: string; completionOrigin: string; launchTicket: string }>;
+  /** The plugin, with its current connections. */
+  getPlugin: (_id: string) => Promise<PluginDetail>;
+  /** What a connection can work in, such as the projects of a Supabase organization. */
+  listPluginConnectionTargets: (_id: string) => Promise<{ targets: PluginConnectionTarget[] }>;
+  /** Points a connection at one of its targets. */
+  setPluginConnectionTarget: (_id: string, _targetId: string) => Promise<{ connection: PluginConnection }>;
   /** Connects a credentials plugin from its form, or replaces the credentials of `connectionId`. */
   connectPluginCredentials: (_input: {
     pluginId: string;
@@ -120,7 +130,13 @@ export interface ApiClient {
   ) => Promise<{ connection: PluginConnection }>;
   pluginOAuthStatus: (
     _id: string
-  ) => Promise<{ id: string; status: 'pending' | 'exchanging' | 'complete' | 'failed'; expires_at: string }>;
+  ) => Promise<{
+    id: string;
+    status: 'pending' | 'exchanging' | 'complete' | 'failed';
+    expires_at: string;
+    /** The connection a completed sign-in saved. Absent from older platforms. */
+    connection_id?: string | null;
+  }>;
   disconnectPlugin: (_id: string) => Promise<{ success: boolean }>;
   installPlugin: (_id: string) => Promise<unknown>;
   setPluginPolicy: (_id: string, _input: { enabled: boolean; allowPersonal: boolean }) => Promise<{ success: boolean }>;
@@ -272,6 +288,14 @@ export function createApiClient(projectId: string): ApiClient {
     connectPluginCredentials: (input) =>
       request(`${projectBasePath}/plugins/connect-credentials`, { method: 'POST', body: JSON.stringify(input) }),
     pluginOAuthStatus: (id) => request(`${projectBasePath}/plugins/oauth-transactions/${encodeURIComponent(id)}`),
+    getPlugin: (id) => request(`${projectBasePath}/plugins/${encodeURIComponent(id)}`),
+    listPluginConnectionTargets: (id) =>
+      request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}/targets`),
+    setPluginConnectionTarget: (id, targetId) =>
+      request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}/target`, {
+        method: 'PUT',
+        body: JSON.stringify({ id: targetId }),
+      }),
     updatePluginConnection: (id, input) =>
       request(`${projectBasePath}/plugin-connections/${encodeURIComponent(id)}`, {
         method: 'PATCH',

@@ -234,7 +234,12 @@ export function PluginConnectCard({
     setConsentOpen(false);
     setAttempt(attemptKey, { status: 'connecting' });
 
-    connectPlugin(api, plugin, scope, reconnect ? { connectionId: reconnect.id } : undefined)
+    connectPlugin(
+      api,
+      plugin,
+      scope,
+      reconnect ? { connectionId: reconnect.id, accessLevel: reconnect.accessLevel ?? null } : undefined
+    )
       .then(
         (connected) => {
           setAttempt(attemptKey, null);

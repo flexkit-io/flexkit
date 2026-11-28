@@ -53,13 +53,16 @@ function trustedPluginOAuthTargets(
   return { href: authorize.href, origin };
 }
 
-/** Must be called directly from the click handler so browsers allow the popup. */
+/**
+ * Must be called directly from the click handler so browsers allow the popup.
+ * Resolves with the connection the sign-in saved (null from older platforms).
+ */
 export async function connectPluginPopup(
   api: ApiClient,
   pluginId: string,
   scope: PluginScope,
-  options?: { connectionId?: string }
-): Promise<void> {
+  options?: { connectionId?: string; accessLevel?: string; signal?: AbortSignal }
+): Promise<{ connectionId: string | null }> {
   const popup = window.open('about:blank', `flexkit-plugin-${crypto.randomUUID()}`, 'popup,width=560,height=720');
 
   if (!popup) {
@@ -74,7 +77,12 @@ export async function connectPluginPopup(
       scope,
       studioOrigin: window.location.origin,
       ...(options?.connectionId ? { connectionId: options.connectionId } : {}),
+      ...(options?.accessLevel ? { accessLevel: options.accessLevel } : {}),
     });
+
+    if (options?.signal?.aborted) {
+      throw new Error('Connection was cancelled.');
+    }
   } catch (error) {
     popup.close();
     throw error;
@@ -89,7 +97,7 @@ export async function connectPluginPopup(
 
   const expectedOrigin = targets.origin;
 
-  await new Promise<void>((resolve, reject) => {
+  return new Promise<{ connectionId: string | null }>((resolve, reject) => {
     let polling = false;
     let finished = false;
     // Once the popup leaves for the provider, `popup.closed` says nothing:
@@ -97,7 +105,7 @@ export async function connectPluginPopup(
     // the opener and reports the window as closed while it is open. From then
     // on only the transaction's status (and the timeout) ends the wait.
     let handedOff = false;
-    const finish = (error?: Error) => {
+    const finish = (error?: Error, connectionId: string | null = null) => {
       if (finished) {
         return;
       }
@@ -114,7 +122,7 @@ export async function connectPluginPopup(
         return;
       }
 
-      resolve();
+      resolve({ connectionId });
     };
     const poll = async () => {
       if (polling || finished) {
@@ -135,7 +143,7 @@ export async function connectPluginPopup(
       polling = false;
 
       if (status.status === 'complete') {
-        finish();
+        finish(undefined, status.connection_id ?? null);
 
         return;
       }
@@ -181,6 +189,8 @@ export async function connectPluginPopup(
         void poll();
       }
     };
+    // Cancelling closes the window, so a sign-in nobody waits for cannot finish later.
+    options?.signal?.addEventListener('abort', () => finish(new Error('Connection was cancelled.')), { once: true });
     const interval = window.setInterval(() => {
       void poll();
     }, 2000);
